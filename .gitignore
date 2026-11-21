@@ -1,0 +1,10 @@
+# Harness'in yerel durumu: oturum kayıtları, defter, görev kartları, indeks
+.harness/
+
+# Python
+__pycache__/
+*.pyc
+
+# İşletim sistemi
+.DS_Store
+.claude/worktrees/

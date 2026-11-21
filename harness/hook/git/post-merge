@@ -1,0 +1,6 @@
+#!/bin/sh
+# post-merge: başkasının bilgi tabanı değişikliği geldiyse üretilen dosyaları yeniler.
+KOK=$(git rev-parse --show-toplevel) || exit 0
+cd "$KOK" || exit 0
+PYTHONDONTWRITEBYTECODE=1 python3 harness/h.py uret --sessiz || echo "[harness] uret başarısız: python3 harness/h.py uret" >&2
+exit 0

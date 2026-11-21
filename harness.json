@@ -1,0 +1,33 @@
+{
+  "bicim_surumu": 1,
+  "kaynak_kokleri": [],
+  "haric": ["**/node_modules/**", "**/dist/**", "**/.next/**"],
+  "taban_dal": "main",
+  "duzey": 1,
+  "ogretici": true,
+  "profil": "",
+  "harness_gelistirme": false,
+  "korunan_ayar": [],
+  "oturum_agaci": "zorunlu",
+  "konular": [],
+  "katmanlar": [],
+  "roller": ["tasarimci", "uygulayici", "inceleyici", "kesif"],
+  "ajan_rolleri": { "Plan": "tasarimci", "Explore": "kesif", "general-purpose": "uygulayici" },
+  "butce": { "agents_bayt": 24576, "ifade_karakter": 400, "dosya_basina_kural": 12, "paket_karakter": 6000, "hook_ms": 300 },
+  "gorev": {
+    "komut": "claude",
+    "model": "sonnet",
+    "max_tur": 40,
+    "zaman_asimi_sn": 1200,
+    "izin_modu": "bypassPermissions",
+    "onay": "baslangic",
+    "butce_usd": null,
+    "izinli_araclar": [],
+    "inceleme": "zorunlu",
+    "inceleme_model": "",
+    "yalitim": "proje",
+    "kum_havuzu": true,
+    "ag_izinli": [],
+    "ag_araclari": false
+  }
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+# pre-commit: zincir denetimi. Kırmızıysa ya da ölçülemediyse commit durur.
+# Kapı atlanmaz (--no-verify kullanılmaz); kırmızının nedeni düzeltilir.
+KOK=$(git rev-parse --show-toplevel) || exit 1
+cd "$KOK" || exit 1
+PYTHONDONTWRITEBYTECODE=1 exec python3 harness/h.py denetle
