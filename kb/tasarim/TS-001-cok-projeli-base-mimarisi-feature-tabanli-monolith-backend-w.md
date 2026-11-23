@@ -1,0 +1,853 @@
+---
+kimlik: TS-001
+tur: tasarim
+durum: taslak
+surum: 1
+baslik: Çok projeli base mimarisi: feature tabanlı monolith (backend, web, mobil)
+agirlik: tek-yonlu
+tarih: 2026-11-21
+---
+Kullanıcının birden çok projede yeniden kullanacağı base yapısını tasarlar: backend, web ve mobil yüzeyi olan, feature tabanlı, sınırları net çizilmiş bir monolith.
+
+## Sorun
+**Amaç (kullanıcı beyanı, 2026-11-21):**
+- Tek bir ürün değil, birçok projede kullanılacak base yapısı.
+- BADI benzeri monolith; üç yüzey: backend, web frontend, mobil.
+- Feature tabanlı yapı; yapısal sınırların çizgileri net ve katı olacak.
+- Öğrenme de amaçtır. (Varsayım: kastedilen kullanıcının kendi öğrenmesidir; teyit edilmedi.)
+
+- Depo aynı zamanda bilgi tabanı iskeletini denemek için kum havuzudur; zaman baskısı yoktur, adım adım ilerlenir.
+- Referans: BADI'nin mimarisi ve tasarım desenleri referans alınır (modular monolith, dikey dilim mimarisi — VSA). BADI'nin özellikleri burada yeniden yazılmayabilir. (Kullanıcı düzeltmesi, 2026-11-21; önceki "BADI özellikleri yeniden yazılır" ifadesi ajanın yanlış okumasıydı.)
+- Yan amaç: burada doğrusunu kurarken BADI'nin eksiğini net görmek; BADI'nin yaklaşan bakım dönemine girdi olur.
+- Base'in anlamı: shared katmanı ve temel yapılar tam kurulur; yeni projede yalnız feature eklenir ("feature'ı bas geç").
+- Sıra (kullanıcı): önce shared, sonra ilk yapı olarak ABAC (öznitelik tabanlı yetkilendirme).
+
+**Kapsam dışı:**
+- Mikroservis mimarisi (kullanıcı monolith dedi).
+- BADI'den kod, veri ya da sır kopyalamak; yalnız fikir ve desen alınır. (Öneri (ajan); kullanıcı onayı bekliyor.)
+
+**Başarının ölçüsü:** Açık soru.
+Öneri (ajan): yeni bir feature eklenirken shared katmanında değişen dosya sayısı; hedef sıfır. ("Feature'ı bas geç" sözünün ölçülebilir hâli; kullanıcı onayı bekliyor.)
+
+**BADI'de shared katmanı (ölçüm: klasör adları, 2026-11-21; içleri okunmadı):**
+- `backend/src/shared` altında 34 klasör var; `backend/src/features` altında 26.
+- Teknik altyapı adları: authorization, cache, config, cqrs, database, errors, filters, kernel, lifecycle, messaging, observability, security, storage, utils ve benzerleri.
+- En az 9 klasör iş konusu adı taşıyor: baskan-summary, basvuru, citizen-verification, formlar, genciala, household, kurul, randevu, vehicle.
+- 5 ad hem `features` hem `shared` altında var: formlar, genciala, identity, randevu, settings.
+- Yetki: motor `shared/authorization` altında (içinde application, domain, infrastructure), ayrıca `features/policy` var.
+- Düzeltme (2026-11-21): önceki okuma ("ortak iş kodu shared'e taşınmış, giriş kuralı yok") yanlış çıkarımdı. Kullanıcının kanonu ("Yapı" bölümünde) feature'lar arası sözleşmelerin ve dış sistem concern'lerinin shared altında durmasını ister; `citizen-verification`, `identity` gibi adlar bu kanonla açıklanır. Bu klasörlerin yalnız sözleşme mi yoksa iş mantığı da mı taşıdığı kod okunmadan bilinmez.
+
+**Sonuçları:**
+- Çatılar BADI ile aynı olmalı: desen ancak aynı çatıda yan yana okunur.
+- "Shared'i tam kur" hedefi, shared'e neyin girebileceği kuralı yazılmadan tanımsızdır; önce bu kural kararlaştırılır.
+- Tüketicisi olmayan shared kodu KU-005 ile gerilimlidir; shared'in içeriği ilk tüketicinin (ABAC) ihtiyacından çıkarılır.
+
+**Açık sorular:**
+- Dil ve çatı seçimi (konuşuluyor).
+- Başarının ölçüsü.
+- Base'in dağıtım biçimi: kopyalanan şablon mu, paylaşılan paket mi.
+
+## Senaryolar
+(Tek yönlü işte zorunlu. "Şu olunca, şu ortamda, sistem şunu şu ölçüyle yapar"; her birinde sayı.)
+Yalnız yetkilendirme için yazıldı (2026-11-23; öneri, ajan; kullanıcının KR-008'deki seçimlerinden türetildi). Diğer kümelerin senaryoları henüz yok.
+1. Geri alma: 5000 kişi bağlıyken SuperAdmin bir üyeliği ya da yeteneği siler; o kişinin silmeden sonraki ilk isteği reddedilir. Ölçü: silmeden sonra erişimin sürdüğü istek sayısı = 0.
+2. Sıcak istek: saklanan yetki geçerliyken liste isteği gelir. Ölçü: yetki için veritabanı okuması = 1; dönen kayıt sayısı artınca artmaz.
+3. Sınır dışı yazma: on kaydı güncelleyen istekte iki kayıt sınır dışındadır; istek reddedilir. Ölçü: yazılan kayıt sayısı = 0.
+4. Çok üyelikli kişi: aynı grupta iki rolü ve başka grupta bir rolü olan kişi liste ister; her kayıt yalnız kendisini tutan yeteneklerin kolonlarını taşır. Ölçü: başka kümenin kolonunun göründüğü kayıt sayısı = 0.
+5. Eksik tanım: şartı ve "bütün kayıtlar" işareti olmayan yetenek kayıt döndürmez; kolon dizisi ve "bütün kolonlar" işareti olmayan yetenek kolon döndürmez. Ölçü: dönen kayıt = 0, dönen kolon = 0.
+6. Şema değişimi: bir kolon şemadan kalkar; adı kolon dizisinde geçen yetenek öbür kolonlarla çalışır, adı şartında geçen yetenek derlenmez. Ölçü: bu yüzden açılan kayıt sayısı = 0; göç öncesi tarama bayat adların tamamını raporlar.
+7. Derleme dalgası: 5000 kişi bağlıyken bir yetenek yazılır; her etkin kişi bir kez yeniden derler. Ölçü: dalganın süresi ve yanıt süresine etkisi; eşik belirlenmedi, ilk ölçüm taban çizgisi olur.
+8. Yeni birim: birim açılır ve üye eklenir; üyeler yalnız kök kümenin yeteneklerini kullanır. Ölçü: birime özgü yetenek sayısı = 0; değişen kaynak dosya sayısı = 0.
+9. Göç çakışması: göç, yöneticinin değiştirdiği bir tohum yeteneğine dokunmak ister; durur ve bildirir. Ölçü: ezilen satır sayısı = 0.
+10. Kilitlenme: son SuperAdmin üyeliğini ya da bir kişinin kök üyeliğini silme isteği reddedilir. Ölçü: kalan SuperAdmin üyeliği ≥ 1.
+
+## Kısıtlar
+- Kesin kurallar: KU-001…KU-006 (süreç). Kanonun zorunlu kıldığı kalıplar "açıkça istenen" sayılır; KU-005 ile çelişmez (KR-003 istisna yolu).
+- İskelet bütçesi: dosya başına en çok 12 kural, rol paketi en çok 6000 karakter, kural cümlesi en çok 400 karakter. Yaklaşık 270 kanon maddesi birebir düğüm olamaz; kümelenir, yol kapsamıyla daraltılır, makineyle denetlenebilenler lint ve derleyici ayarına taşınır.
+- Yığın: KR-004 (taslak).
+- Kullanıcı (2026-11-23): kuyruk da kullanılacak ("bullmq(rabbitmq)") ve olay güdümlü tasarım ileride buradan gelecek. Not (ajan): BullMQ Redis üstünde çalışan iş kuyruğudur, RabbitMQ ayrı bir mesaj aracısıdır; hangisinin seçileceği olaylar kümesinde kararlaştırılacak. BADI'deki kod yorumundan okundu (2026-11-23): BullMQ işi tek tüketiciye verir, bütün sunuculara duyuru için ayrıca yayın-abone gerekir.
+- Kanon mobil yüzeyi hiç ele almaz (yedi belgede sıfır geçiş); mobil kuralları yeni tasarım ister.
+
+## Değişmezler
+Yedi belgenin ortak söylediği çekirdek (kanon harmanı, 2026-11-21). Kimlikler kaynak belgelerdeki kimliklerdir; D = ARCHITECTURE değişmezi, P = PATTERNS deseni.
+1. Feature'lar birbirini doğrudan içe aktarmaz; iletişim shared üzerinden dört yoldan biriyle yapılır (D1, MOD-01, EVT-00, P16).
+2. Bağımlılık yönü presentation → application → domain'dir; domain çatı kodu (NestJS, Prisma) içe aktarmaz (D2, MOD-02, EXC-05, P24).
+3. Çapraz kesen yetenekler yalnız shared'de yaşar (D6).
+4. Komut ve sorgu ayrıdır; komut HTTP gövdesinin kendisidir, handler sonuç nesnesi döner (D3, CTRL-04, CTRL-05, P1).
+5. Veriye yalnız repository arayüzü üzerinden erişilir; birden çok yazma Unit of Work içindedir; silme `deletedAt` ile yapılır (REPO-01…03, TXN-01, TXN-02, D7).
+6. Yetki ABAC'tır: guard kaba denetimi yapar, ince denetim repository'dedir, handler yetki kodu yazmaz, yetki tanımının tek kaynağı veritabanıdır (GUARD-01, CASL-01…08, D5, D10, P20, FE-CASL-01).
+7. Olay ve audit, iş verisiyle aynı transaction'da outbox'a yazılır (TXN-03, EVT-04, D11, P22). Ç1 çözülünce kesinleşir.
+8. Her dış sistem ACL ile bağlanır (D14, P31, EVT-11, OBS-12, JOB-03).
+9. İstemci backend'e yalnız Server Action üzerinden gider (D4, SA-01, BOUNDARY-01).
+10. Doğrulama iki taraftadır: backend class-validator, frontend Zod; alan adları birebir eşleşir (VAL-01, VAL-02, CONTRACT-01…05).
+
+### Kanon harmanı: envanter
+| Belge | Madde |
+|---|---|
+| ARCHITECTURE | 14 değişmez |
+| PATTERNS | 28 desen (32 numara; biri kaldırılmış, üçü yönlendirme) |
+| IRON_RULES_BACKEND | yaklaşık 80 kural |
+| IRON_RULES_SHARED | 55 kimlikli kural |
+| IRON_RULES_FRONTEND | 70 kimlikli kural |
+| IRON_RULES_EVENTS | 13 kural (EVT-00…12) |
+| IRON_RULES_OBSERVABILITY | 12 kural (OBS-01…12) |
+
+Yöntem: ARCHITECTURE ana oturumda okundu; diğer altısını keşif ajanları okudu. Alıntıların yalnız bir kısmı karakter karakter doğrulandı; her alıntı, düğümü açılırken kaynak dosyada yeniden doğrulanır.
+
+### Kanon harmanı: kümeler (önerilen düğüm kümeleri)
+| # | Küme | Kaynak kimlikler | Denetim |
+|---|---|---|---|
+| 1 | Yapı ve sınırlar | D1, D2, D6, D9, D12, MOD-01…03, EVT-00, P6, P16, P23, FILE-01…06 | araç: içe aktarma sınırı lint'i |
+| 2 | Kod hijyeni | TS-01…06, FTS-01…11, HOOK-01…03, NAME-01…03, ENUM-01…03, HARD-01, EXC-01, EXC-04 | araç: derleyici ve lint |
+| 3 | Yetki ve güvenlik | GUARD-01, CASL-01…10, CTRL-01, RATE-01…02, SEC-01…11, AUTH-01…04, D5, D10, P20, FE-CASL-01…04 | karma |
+| 4 | Veri erişimi ve işlem | D3, D7, REPO-01…03, TXN-01…06, CQRS-01…02, CTRL-02…05, MIG-01…05, DT-01…03, PERF-01…04, BULK-01, P1, P3, P26, P27 | çoğu inceleme |
+| 5 | Olaylar | D8, D11, EVT-01…12, AUDIT-01…03, P22, P28, P29 | karma |
+| 6 | Dış sistem | D14, P31, EVT-11, OBS-12, JOB-03 | sözleşme testi |
+| 7 | Doğrulama ve API sözleşmesi | VAL-01…03, ERR-01…02, API-02…05, CONTRACT-01…05, ENUM-04, EXC-02…03 | karma |
+| 8 | Frontend | D4, SA-01…04, COMP, BOUNDARY, STATE, FORM, A11Y, PERF (frontend), FE-ROUTE, FE-DATE, MNY-02, P7…9, P14, P17…19 | karma |
+| 9 | Gözlemlenebilirlik | D13, OBS-01…12, TRACE-01…03, FE-LOG-01, P32 | karma |
+| 10 | Test | TEST-01…05, TEST-07…09, P13 | inceleme |
+
+### Kanon harmanı: çelişkiler (kullanıcı kararı gerekir)
+Ajanlar belgelerde toplam 58 tutarsızlık işaretledi (backend 8, desenler 20, events ve observability 15, shared ve frontend 15); çoğu, örnek kodun kuralın gerisinde kalmasıdır. Düğüm açmayı etkileyenler:
+- Ç1 Audit ve olay yayını: AUDIT-02, P1.5, P10 ve P16 örneği kuyruğa doğrudan yazar; TXN-03, EVT-04, D11 ve P22 outbox'ı zorunlu tutar.
+- Ç2 Handler ve yetki: P1.7 ve ARCHITECTURE sorgu akışında handler yetki koşulunu okur; CASL-07 ve P20 handler'da yetki kodunu yasaklar.
+- Ç3 DTO: CTRL-04 "ayrı HTTP DTO yazılmaz" der; CTRL-02 "her uçta DTO zorunlu" der.
+- Ç4 `as`: FTS-02 ve TS-02 istisnasız yasaklar; ENUM-02 `as const` kullanımını zorunlu tutar.
+- Ç5 Korelasyon kimliği: OBS-05 elle üretimi yasaklar; aynı kuralın örnek ara katmanı ve TRACE-01 elle üretir.
+- Ç6 Maskeleme: PII-01, OBS-01, P20 (cevapta son dört hane), FE-FORM-06, OBS-11 ve OBS-12 maskeleme ister; kullanıcının 2026-11-17 talimatı uygulamada maskelemeyi ajanın kendiliğinden eklemesini yasaklar. Günlük, cevap ve silme (takma adlama) akışları ayrı ayrı sorulacak.
+- Ç7 Süreç kuralları: GIT-01…15 (dal, worktree konumu, Jira bileti zorunluluğu) bu deponun iskeletiyle ve "burada Jira yok" beyanıyla çelişir.
+- Ç8 Unit of Work biçimi: kanon ortam bağlamı ister (TXN 6.1, `this.uow.transaction(async () => …)`); kullanıcı 2026-11-21'de fabrika biçimini seçti (bkz. "Yapı"). Kullanıcının seçimi geçerlidir; kanon belgesi bu noktada alınmaz.
+Öneri (ajan): Ç1–Ç5'te yeni ve sıkı olan kural kazanır (outbox; repository'de yetki; komut DTO'nun kendisidir; `as const` istisnadır; kimlik yalnız giriş noktasında üretilir). Ç6 ve Ç7 kullanıcı kararıdır.
+Kullanıcı teyidi (2026-11-24: "uygun"): Ç1–Ç5 için yukarıdaki öneri geçerlidir. Ç3, Ç4 ve Ç5'in kanon satırlarını keşif oturumları özetlemişti; ajan satırları kurala çevirirken kendisi doğrulayacak. Ç6'nın silme parçası kapandı (KR-012 Seçim 4); günlük ve cevap parçaları açıktır. Ç8 kapandı (KR-011).
+
+### Kanon harmanı: alınmayacaklar (öneri (ajan); kullanıcı onayı bekliyor)
+- Süreç: GIT-01…15, SCOPE-01…02, EVID-01, TEST-06 ve 6.7 (iskeletin ve kullanıcının kendi kuralları karşılıyor).
+- Projeye özel: TXN-05, CONC-01, JOB-01, CASL-09 örnekleri, ENUM-05, MNY-01 istisnası, P11, hız sınırı sayıları, kuyruk adları.
+- Yasal, kullanıcı kararı: KVKK-01…04, EVT-10, P30.
+
+### Kanon harmanı: boşluklar
+- Mobil yüzey hiç yok.
+- Shared'e neyin giremeyeceğini söyleyen cümle belgelerde yok; kullanıcının "Yapı" bölümündeki seçimi bu boşluğu doldurur.
+- Kararların çoğunda reddedilen seçenek yazmıyor; iskelet kabulde en az iki seçenek ister.
+- Sözleşme eşleşmesi (CONTRACT-01…05, ENUM-04) elle denetleniyor; araçla denetime çevrilebilir.
+
+### Kanon harmanı: altyapı talebi
+Kurallar şu bileşenleri şart koşar: PostgreSQL, Redis + BullMQ, Loki, SIEM, Prometheus, OpenTelemetry toplayıcı, Sentry. Kum havuzunda hangilerinin gerçekten kurulacağı açık sorudur.
+
+## Kapasite
+(Tek yönlü işte zorunlu. Açık aritmetik; her girdi ölçüldü ya da varsayım.)
+- Kullanıcı beklentisi (2026-11-23; ölçüm değil): sistem aynı anda 10–20 kişiye değil, 1000, 2000, 5000 kişiye hizmet verebilir.
+- Saniyedeki istek sayısı (r) bilinmiyor; kullanıcı sayı vermedi, ölçeği belirtti (2026-11-23): tasarım büyük sistemlere uygun olmalı ve performans denetimleri ile karmaşıklık değerlendirmesi bu sayılarla yapılmalıdır. Açık aritmetik "Performans mantığı" bölümündedir.
+- Kullanıcının kaygısı (2026-11-23): yetkinin her istekte veritabanından derlenmesi bu yükte veritabanına fazla biner; Redis ya da belirteç (token) içinde saklama ve belirteç karalistesi önerdi. Seçim (kullanıcı, 2026-11-23): derlenmiş yetki Redis'te sürüm damgasıyla saklanır, belirteç yalnız kimliği taşır (KR-008 Seçim 23).
+- Ölçülmedi: istek başına derleme sorgularının sayısı ve süresi (ajan tahmini: üyelikler, yetenekler ve ağaç açılımı için iki ya da üç küçük sorgu; varsayım, 2026-12-21'e kadar yürüyen iskelette ölçülecek).
+
+## Veri modeli
+Yalnız yetki modeli yazıldı; diğer varlıklar henüz ele alınmadı.
+
+**Yetki modeli (kullanıcı, 2026-11-21; "matris" sorusunun cevabı):** yapı grup → rol → izin → koşul (nitelik) zinciridir; koşul izinde durur ve ABAC esnekliği oradan gelir.
+
+Ölçüm (BADI `backend/prisma/schema.prisma` ve `shared/authorization`, 2026-11-21; yalnız yapı okundu, kod alınmadı):
+- Grup ağaçtır (üst grup, yol, düzey).
+- Üyelik üçlüdür: kullanıcı + grup + rol; yani rol gruba değil, kullanıcının o gruptaki üyeliğine bağlanır. Ayrıca bir grupta hangi rollerin atanabileceğini tutan katalog vardır (alt ağaca miras seçeneğiyle).
+- İzin = eylem + kaynak + koşul (JSON) + ters kural işareti + öncelik.
+- Rol–izin bağında ikinci bir koşul, alan listesi, maskelenecek alan listesi ve öncelik durur; yani koşul iki katmandadır (izinde taban, rol–izin bağında ek).
+- Koşul dili sınırlıdır: 13 yaprak işleç, derinlik en çok 4, boyut en çok 8 KB, alan adları model başına alan kataloğundan doğrulanır, yer tutucular beyaz listededir; doğrulama yazma kapısında yapılır.
+- Koşul Prisma biçiminde yazılır ve istemci tarafı için ikinci bir biçime çevrilir; işleç listesi çeviricinin işleyebildikleriyle sınırlıdır.
+- Kapsam bağlama: grup yer tutuculu kural her üyelik için ayrı üretilir; böylece bir grupta alınan rol başka gruptaki kayıtlara uygulanmaz. Bağlam genişliğindeki yer tutucular (bütün gruplar, bütün roller) bu güvenceyi vermez (koddaki uyarı).
+- Kayda özel atama için ayrı bir dizin tablosu ve yer tutucu vardır.
+- `shared/authorization` altında projeye özgü kavramlar bulunur (müdürlük yolu, ikamet doğrulama, vatandaş rolü istisnası). Ajan notu: TS-001 "Yapı"daki öneri ("shared belirli bir projenin iş kavramını adlandırmaz") açısından bu, base'de tekrarlanmaması gereken yerdir; öneri kullanıcı teyidi bekliyor.
+
+Kullanıcının zincirinin henüz söylemediği noktalar (ajan; önem sırasıyla, her biri ayrı soru):
+1. Rol gruba mı bağlanır (gruptaki herkes taşır), üyeliğe mi (BADI'deki üçlü). Seçim (kullanıcı, 2026-11-21): üyeliğe; "ama kapsamı biraz daha genişleteceğiz, grup da bu konuya dahil olacak". Genişletmenin anlamı (kullanıcı, 2026-11-21): bilgi işlem müdürlüğü grubundaki müdür ile kültür ve sosyal işler müdürlüğü grubundaki müdür farklı izinler alır; aynı izinleri alsa bile koşulları farklıdır. Yani izin kümesini ve koşulu rol tek başına değil, grup + rol çifti belirler.
+   - Seçenek A — gruba özgü rol: rol bir gruba aittir ("bilgi işlem / müdür" ile "kültür / müdür" iki ayrı roldür); izin ve koşul role bağlanır; üyelik kullanıcı + rol çiftine iner, çünkü rol grubunu zaten bilir. Kazanç: zincir kullanıcının yazdığı oklarla birebir; her rolün tek grubu olduğu için grup yer tutucusu tek değere çözülür, BADI'deki üyelik başına kural çoğaltma gerekmez. Bedel: rol sayısı grup sayısıyla çoğalır; ortak izinlerin tekrarı veri üretiminde (şablondan kopyalama) giderilir, çalışma anında kalıtım olmaz (KU-014); şablon sonradan değişirse var olan rollere sürümlü göçle yansıtılır (KU-015).
+   - Seçenek B — genel rol, gruba göre izin ataması: rol geneldir ("müdür" tektir); atama satırı grup + rol + izin + koşul taşır; üyelik kullanıcı + grup + rol üçlüsüdür. Kazanç: "bütün müdürler" tek kavramdır, ortak atama bir kez yazılır. Bedel: genel atama ile gruba özel atama çakışınca hangisinin geçerli olduğunu söyleyen bir öncelik kuralı gerekir; koşul izinden atamaya taşınır.
+   - Ajan çıkarımı (BADI ölçümünden): BADI'de rol geneldir ve grup farkı koşuldaki yer tutucuyla çözülür; bu "aynı izin, farklı kapsam" durumunu karşılar, "farklı izin" durumunu karşılamaz.
+   - Öneri (ajan): A'ydı. Seçim (kullanıcı, 2026-11-22): B — aşağıdaki "Seçim" paragrafı.
+2. Bir grupta alınan rolün koşulu yalnız o grubun kapsamında mı geçerlidir (kapsam bağlama).
+3. "Tam esneklik"in sınırı: koşul hem veritabanı sorgusuna hem istemcideki denetime çevrilebilmelidir; BADI tuzak kaydı T-0324 doğrulanmayan koşulun ancak çalışma anında patladığını yazar.
+4. Koşul tek katman mı (yalnız izinde; kullanıcının söylediği), iki katman mı (BADI). Seçim (kullanıcı, 2026-11-22): tek katman; koşul grup + rol + izin üçlüsünün satırında durur, izin kataloğu koşul taşımaz.
+5. Alan düzeyi izin (hangi alanlar görünür) zincirin neresinde durur; maskeleme kullanıcı kararıdır (Ç6).
+6. Ters kural (yasaklama) ve öncelik olacak mı, yoksa yalnız eklenen izinler mi. Seçim (kullanıcı, 2026-11-22): öncelik olacak; ayrıntı aşağıda "Öncelik" bloğunda.
+7. Grup ağaç mı; rol alt gruplara miras kalır mı (KU-014 rol kalıtımını yasaklar; grup ağacı mirası ayrı sorudur). Seçim (kullanıcı, 2026-11-22): ağaç; ayrıntı aşağıda "Grup ağacı" bloğunda.
+8. Kayda özel atama base'e girer mi.
+9. Projeye özgü yer tutucular (BADI'deki müdürlük yolu gibi) shared'e yazılmadan nasıl eklenir.
+
+**Amaç (kullanıcı, 2026-11-21):** grup + rol kümeleri izin verilirken tam ayrı çalışır; koşul tarafı grup, rol ve izin üçlüsünün sınırını tam belirler. Örnek: bilgi işlem müdürlüğünün müdür rolü `users` kaynağında `read` eyleminde belirli kolonları görebilir ya da göremez; yapı esnek olacak.
+
+**Seçim (kullanıcı, 2026-11-22):** grup tektir, rol (vasıf) tektir, izin (bir tablonun okuma ya da yazma yetkisi) tektir; "şu grubun şu rolü şu izinle gelir" ayrı bir senaryodur ve sınır oraya yazılır: girebilir mi, girerse hangi kolonlarda işlem yapar, hangi kayıtları listeler (where koşulu). Kullanıcının gerekçesi: böylece hiçbir yerde kalabalık olmaz. Bu, yukarıdaki Seçenek B'dir; ajanın 2026-11-21'deki "gruba özgü rol" (A) okuması yanlıştı ve geri alındı.
+
+**Model (ajan, kullanıcının 2026-11-22 seçimine göre; ayrıntılar onay bekliyor):**
+- Üç katalog: Grup (birim), Rol (vasıf; geneldir, bir gruba ait değildir), İzin (kaynak + eylem; koşul taşımaz). Kaynak ve eylem de katalog tablosudur.
+- Üyelik: kullanıcı + grup + rol.
+- Yetenek (kullanıcının adı, 2026-11-22; bu kayıtta "senaryo" diye de geçer; teknik adı ilişki varlığı, yani üç kataloğu bağlayan ve kendi niteliği olan satır): kullanıcının tarifiyle satır grup + rol + izin + kolon + şart + öncelik taşır ve kendi kimliği vardır. Sınır bu satırda durur: şart (hangi kayıtlar) ve kolon (hangi alanlar). Ajanın "üçlü tekildir" önerisi geri alındı (aşağıda "Yeteneklerin bağımsızlığı").
+- "Giremez": o üçlü için senaryo satırı yoksa varsayılan rettir (KR-007). Açık yasak ayrı bir senaryodur ve etki alanı (girebilir / giremez) gerektirir; ajanın "ayrı yasaklama satırı önerilmiyor" okuması kullanıcının öncelik seçimiyle geri alındı (aşağıda "Öncelik").
+- Yetki hesabı: kullanıcının üyelikleri (grup + rol çiftleri) eşleşen senaryoları bulur; her senaryo bir yetki kuralına döner (eylem, kaynak, koşul, alanlar).
+- Kaynak alanı: kaynağın kolon kataloğu; tablo olarak durur, şemadan üretilir, şemayla hizası mekanik denetlenir. (Değişti, 2026-11-23: tablo yoktur, katalog şemadan okunur; KR-008 Seçim 20.)
+
+Kazanç ve bedel (ajan):
+- Kazanç: rol sayısı grup sayısıyla çoğalmaz (A'da her grup için ayrı "müdür" rolü gerekirdi); bir kullanıcının ne yapabildiği tek tablodan okunur.
+- Kazanç: senaryo tek bir gruba bağlı olduğu için koşuldaki "bu grup" tek değere çözülür. Ölçüm (BADI `schema.prisma`, 2026-11-22): rol–izin bağı grup taşımaz; grup ayrımı koşuldaki yer tutucuyla ve üyelik başına kural çoğaltmayla sağlanır.
+- Bedel: kalabalık yok olmaz, senaryo tablosunda toplanır; satır sayısının üst sınırı grup × rol × izin çarpımıdır. Tekrar izin verisini üreten kodda giderilir (KU-014), değişiklik sürümlü göçle yapılır (KU-015).
+- Bedel: KU-014'ün cümlesi "her rol kendi izin kümesini taşır" der; bu modelde izin kümesini grup + rol çifti taşır. Kuralın özü (kalıtım yok) değişmez; cümle kabulden önce düzeltilmelidir.
+- Değişmeyen: iki üyeliği olan kullanıcıda aynı kaynağa iki senaryo düşer; kolon görünürlüğü yine satır bazında hesaplanır (aşağıda).
+
+Öncelik:
+- Seçim (kullanıcı, 2026-11-22): senaryo öncelik taşır (kullanıcının örneği: 1 ile 100 arası bir değer); bir kişinin yetkileri derlenirken yüksek değer düşük olanı ezer. Amaç: ileride yetkileri silmeden, tek bir yetki yapısı tanımlayarak sahip olunan bütün yetkileri devre dışı bırakmak.
+- Teknik ad: çakışma çözme stratejisi (aynı konuda iki kural farklı şey söylediğinde hangisinin geçerli olacağı). Alternatifler: yasak her zaman kazanır (sayı gerekmez, ama yasağa istisna yazılamaz); izin her zaman kazanır (kapatma yapılamaz).
+- Ölçüm (CASL belgesi, define-rules ve intro, okundu 2026-11-22): izin kuralları "veya" ile birleşir, yasak kuralları "ve" ile; sıra yalnız izin ile yasak arasında sonucu değiştirir ve sonra tanımlanan kazanır.
+- Ölçüm (BADI `policy-compiler.ts`, 2026-11-22): kurallar önceliğe göre küçükten büyüğe dizilir (yüksek sona), eşit öncelikte yasak izni yener. Koddaki not eski ters sıralamanın gizli hata olduğunu yazar: yüksek öncelik öne dizildiği için düşük öncelik kazanıyordu.
+- Sonuç (ajan): bu davranışta öncelik iki izin arasında bir şey ezmez (ikisi toplanır); yalnız izin ile yasak çakışınca karar verir. "Tek yapıyla hepsini kapatma" için üç şey gerekir: senaryoda etki alanı (girebilir / giremez), "bütün kaynaklar ve bütün eylemler" anlamında bir izin satırı, ve yüksek öncelik.
+- Açık (kullanıcı kararı): ezme iki izin arasında da geçerli olsun mu (tam ezme: yüksek öncelikli senaryo düşük olanı tümüyle devre dışı bırakır). CASL'in doğal davranışı değildir, derlemede ayrı bir süzme adımı ister ve iki üyeliğin yetkilerinin toplanmasını bozar; karşılığında her izin için tek geçerli senaryo kalır ve satır bazında kolon hesabı gerekmez.
+- Açık: kapatma senaryosu tek bir kişiye nasıl bağlanır (senaryo grup + rol içindir; kişi için bir üyelik gerekir).
+- Açık: sıralamanın yönünü kilitleyen test (BADI'deki hata tekrar etmesin).
+- Ajan görüşü (tam ezme sorusu için): iki izin toplanmalı. Gerekçe: tam ezmede bir kümenin senaryosuna verilen sayı, aynı kişinin başka kümedeki sonucunu değiştirir; bu kullanıcının "kümeler tam ayrı çalışır" amacıyla çelişir.
+- Kapandı (kullanıcı, 2026-11-22): tam ezme yok; satırlar bağımsız yeteneklerdir (aşağıda "Yeteneklerin bağımsızlığı").
+
+Derleme, iz ve silme:
+- Seçim (kullanıcı, 2026-11-22): kişinin yetkileri önceliğe göre özel olarak derlenir; amaç derlenen kural kümesinin şişmesini önlemek.
+- Seçim (kullanıcı, 2026-11-22): bir erişimin hangi senaryoyla yapıldığı senaryonun kimliğinden yakalanır.
+- Seçim (kullanıcı, 2026-11-22): yetki silme yumuşak silmedir (satır durur, silindi işareti alır).
+- Ölçüm (CASL belgesi, debugging-testing, okundu 2026-11-22): `relevantRuleFor(action, subject, field)` kararı veren kuralı döndürür; eşleşen kural yoksa `null`.
+- Ölçüm (BADI `policy-compiler.ts`, 2026-11-22): derlenen kuralın üstünde özel alanlar taşınır; özdeş kurallar tekilleştirilir; koddaki not yetki önbelleğinde kural sayısı tavanı olduğunu yazar (5000). Yani şişme orada yaşanmış bir sorundur.
+- Sonuç (ajan): senaryo kimliği derlenen kuralın üstünde taşınır ve karar anında kararı veren kuraldan okunur. CASL'in kural üstündeki özel alanı koruduğu bu depoda ölçülmedi.
+- Sonuç (ajan): anlamı değiştirmeden atılabilen kurallar şunlardır: koşulsuz ve kolon listesiz bir yasağın altında kalan düşük öncelikli kurallar ile özdeş kopyalar. Kapatılan kişinin derlenmiş yetkisi tek kurala iner.
+- Öneri (ajan; kullanıcı onayı bekliyor): senaryo değişmez satırdır; sınırı (koşul, kolon) değişecekse eski satır yumuşak silinir ve yenisi eklenir. Gerekçe: satır yerinde düzenlenirse kimlik aynı kalır ama sınır değişir; eski erişim kaydı o günkü sınırı göstermez. Teknik ad: değişmez kayıt (sürümleme). Bedel: her değişiklik yeni satır üretir.
+- Sonuç (ajan): üçlü tekillik yalnız silinmemiş satırlar için geçerli olmalıdır (kısmi tekil dizin); Prisma'da nasıl yazılacağı doğrulanmadı.
+- Açık: liste isteğinde birden çok senaryo katkı verebilir; erişim kaydı istek başına kimlik kümesi mi, satır başına mı tutulur (gözlemlenebilirlik kümesinde ele alınacak).
+
+Yeteneklerin bağımsızlığı:
+- Seçim (kullanıcı, 2026-11-22): tablonun satırı grup kimliği + rol kimliği + izin kimliği + kolon + şart + öncelik taşır; izin esnekliği bu satırda verilir. Her satır eşsiz kimlikli ayrı bir yetenektir; farklı satırlar birbiriyle ilişkili değildir, bu yüzden "toplanır mı, yüksek olan mı kalır" sorusu doğmaz.
+- Sonuç (ajan): her satır tek bir yetki kuralına döner; araya birleştirme ya da eleme katmanı yazılmaz (CASL'de izin kuralları zaten birbirinden bağımsız değerlendirilir, yukarıdaki ölçüm). Bir kayda şartı tutan her yetenekle erişilir; erişim o yeteneğin kimliğiyle izlenir.
+- Sonuç (ajan): öncelik yalnız "giremez" satırı ile "girebilir" satırı çakışınca karar verir (kullanıcının kapatma amacı). Kullanıcının satır tarifinde etki alanı (girebilir / giremez) yoktur; kapatma için gerekir.
+- Öneri (ajan; kullanıcı teyidi bekliyor): kimlik satırın kendisi olduğu için grup + rol + izin üçlüsü tekil tutulmaz; aynı üçlüye farklı şart ve kolonla ikinci satır yazılabilir (örnek: herkesin adını görür; maaş kolonunu yalnız kendi biriminde görür). Böylece yumuşak silmedeki kısmi tekil dizin ihtiyacı da kalmaz.
+- Açık (kullanıcıya soruldu, 2026-11-22): satırdaki "kolon" tek kolon mu, kolon listesi mi. Tek kolon: her kolon ayrı satırdır; kolon başına şart, öncelik ve iz olur; satır sayısı kolon sayısıyla çarpılır. Liste: satır birden çok kolonu kapsar, kolonlar bağlantı tablosunda durur; farklı şart gereken kolon için ikinci satır yazılır. Öneri (ajan): liste.
+
+Kolon ve şart biçimi:
+- Seçim (kullanıcı, 2026-11-22): kolon listesi; where şartı satırın içinde dizi ya da JSON olarak durur ("net olur").
+- Ajan okuması (teyit bekliyor): kolonlar bağlantı tablosunda durur (yetenek + kaynak alanı), çünkü kullanıcının veri modelleme kuralı eşleşmenin ilişkisel tutulmasını ister. Kullanıcı "kolonlar zaten orada" dedi; satırda dizi olarak kastetmiş olabilir. Seçim (kullanıcı, 2026-11-23): kolonlar satırda dizidir; bağlantı tablosu fazla mühendislik bulundu ve ajan okumasını geri aldı (KR-008 Seçim 19).
+- Kazanç (şart satırda): bir yeteneğin sınırı tek satırda okunur ve doğrudan sorgu koşuluna çevrilir.
+- Bedel: şartın içindeki alan adı yabancı anahtar olmaz; kolon silinir ya da adı değişirse veritabanı uyarmaz. BADI tuzak kaydı T-0324 bunun orada yaşandığını yazar (var olmayan alana bakan şart ancak çalışma anında patlar).
+- Yükümlülük (ajan): şart yazılırken kolon kataloğundan doğrulanır; şema değişince saklı bütün şartları tarayan mekanik bir denetim koşar.
+- Sonuç (ajan): satırlar bağımsız olduğu ve "veya" ile değerlendiği için tek satırın şartı yalnız "ve" listesi olabilir; "veya" ikinci satırla yazılır. Teknik ad: ayrık normal biçim (şartın "ve" gruplarının "veya"sı olarak yazılması). Kazanç: iç içe ağaç, derinlik ve boyut sınırı gerekmez; her "veya" dalının kendi kimliği, kolonu ve önceliği olur. Bedel: "(A veya B) ve C" iki satır ister ve C tekrar yazılır.
+- Açık (kullanıcıya soruldu, 2026-11-22): şart düz dizi mi (`alan, işleç, değer` üçlülerinin "ve" listesi), iç içe JSON ağacı mı (BADI'deki; ölçüm: derinlik en çok 4, boyut en çok 8 KB). Öneri (ajan): düz dizi. Seçim (kullanıcı, 2026-11-22): düz dizi.
+- Yaprak biçimi (seçimin sonucu): şart, `alan + işleç + değer` üçlülerinin listesidir ve hepsi "ve" ile bağlanır; "veya" ikinci satırla yazılır; değer sabit ya da yer tutucudur. İşleç listesi ve ilişki üzerinden alan yolu henüz belirlenmedi.
+- Açık (kullanıcıya soruldu, 2026-11-22): kolon listesi boşken anlam. Seçenek 1: satır ya "bütün kolonlar" işaretini taşır ya da kolonları tek tek sayar; liste boş ve işaret yoksa hiçbir kolon görünmez. Seçenek 2: boş liste bütün kolonlar demektir. Ölçüm (BADI `policy-compiler.ts`, 2026-11-22): liste boşsa kurala alan kısıtı yazılmaz. Öneri (ajan): 1; gerekçe: listedeki son kolon silinirse 2'de satır sessizce "hepsi"ne döner, 1'de kapalı tarafa düşer. Seçim (kullanıcı, 2026-11-22): 1 — açık işaret.
+- Geri alınan öneri (ajan): 2026-11-21'de sunulan "katalogda hassas kolon işareti" seçeneği. Gerekçe: kullanıcının 2026-11-17 talimatı ajanın kendiliğinden kişisel veri işareti ya da gizleme kapısı eklemesini yasaklar.
+
+ABAC değerlendirmesi ve yer tutucular:
+- Beyan (kullanıcı, 2026-11-22): grup, rol ve izin satırları sade kalır ve yalnız birleşince anlam taşır; "bilgi işlem müdürlüğünün müdürünün users tablosundaki okuma yetkisi" tek ifadedir; fiiller orada küme gibi durur.
+- Ajan okuması (teyit bekliyor): her fiil (eylem) ayrı satırdır; aynı grup + rol + tablo için satırlar yan yana bir küme oluşturur. Gerekçe: okuma ile yazmanın kolon listesi ve şartı çoğu zaman farklıdır; tek satırda fiil kümesi tutulursa hepsi aynı sınırı paylaşır.
+- Soru (kullanıcı): bu yapı ABAC anlayışını deliyor mu. Cevap (ajan): delmiyor; yapı RBAC ile ABAC'ın karmasıdır: hangi yeteneklerin geleceğini grup + rol seçer, sınırı kaydın ve isteği yapanın nitelikleri belirler. Dış kaynak (Kuhn, Coyne, Weil, "Adding Attributes to Role-Based Access Control", IEEE Computer 2010; özeti okundu 2026-11-22): rol ile niteliğin birleştirilmesini önerir ve yalnız rolle gidildiğinde rol sayısının patladığını yazar. Ortam nitelikleri (saat, ağ adresi) bu modelde yoktur; istenmedi.
+- Sağlam kalmasının koşulları (ajan): şartın değer tarafı isteği yapanın niteliğine bakabilir (yer tutucu); karar repository'de kaydın kendisine bakılarak verilir, tekil kayıtta ve yazmada da (KR-007, KU-012); nitelikler istek gövdesinden değil üyelik verisinden gelir (KU-013); eksik satır rettir.
+- Soru (kullanıcı): şartta kullanıcı kimliği ve grup kimliği gibi ifadeler kullanılabilir mi. Cevap (ajan): evet, düz dizide de ağaçta da; yer tutucu yaprağın değer tarafındadır, yaprakların birbirine nasıl bağlandığından bağımsızdır.
+- Ölçüm (BADI `policy-compiler.ts`, 2026-11-22): yer tutucular iki türdür. Tekil olanlar (grup kimliği, rol kimliği, grup yolu) kuralın geldiği üyeliğe bağlı çözülür; çoğul olanlar (kişinin bütün grupları, bütün rolleri) dizidir ve liste işleçleriyle kullanılır. Koddaki uyarı: çoğul olan başka bir kapsam yer tutucusuyla yan yana yazılırsa kişinin bir birimdeki rolü başka birimin kayıtlarına uygulanır.
+- Sonuç (ajan): bu modelde yetenek satırı grubunu ve rolünü kendisi taşır; tekil yer tutucu satırdan doğrudan çözülür, BADI'deki üyeliğe bağlama mekanizması gerekmez. Öneri (ajan): base tekil yer tutucularla başlar (isteği yapanın kimliği, yeteneğin grubu, yeteneğin grubu ve altındakiler; KR-008 ile aynı liste); çoğul olanlar ihtiyaç doğana kadar eklenmez.
+- Örnek ("kendi kaydı veya kendi grubunun kayıtları"): ağaçta tek satırdır ve kolon listesi ortaktır; düz dizide iki satırdır ve her dalın kendi kolon listesi, önceliği ve kimliği olur.
+- Açık: ilişki üzerinden bakan şart (örnek: kaydın üyeliklerinden biri bu grupta) yaprağın alan tarafında yol gerektirir; ele alınmadı.
+- Beyan (kullanıcı, 2026-11-22): RBAC'a gidilmeyecek; ABAC'ın tam gücü kullanılacak. Düzeltme (ajan): yukarıdaki "karma" etiketi modeli değiştirmez; grup ve rol isteği yapanın iki niteliğidir, her yetenek şart ve kolon taşıdığı için yapı ABAC'tır. Şartsız "rol → izin" eşlemesi (saf RBAC) bu modelde yoktur.
+- Ajan değerlendirmesi: "tam güç" sınırsız ifade gücü değildir; düz dizi seçimi ve ortam niteliklerinin alınmaması bilinçli sınırlardır. ABAC'ın bilinen zayıf yanı "kim neyi görebilir" sorusunun zor cevaplanmasıdır; eşsiz kimlikli satırlar ve düz şart listesi bunu hafifletir.
+- Dış kaynak (okundu 2026-11-22; bu depoda ölçüm değildir): AWS IAM nitelik tabanlı izni resmî olarak destekler; Uber'in yazısına göre 70 servisi ABAC politikası kullanır ve politika servisin içindeki yerel kütüphanede değerlendirilir; Google'ın Zanzibar makalesi ilişki tabanlı başka bir modeli anlatır ve saniyede milyonlarca yetki isteği yazar.
+- Maliyetin doğduğu yerler (ajan; ölçülmedi, "Performans mantığı" ve "Kapasite" bölümlerinde ele alınacak): kişinin yeteneklerinin derlenmesi ve önbelleği, şartın sorguya eklediği koşulun dizinleri, satır bazında kolon indirgeme. Yük hedefi kullanıcıdan gelmedi.
+
+Grup ağacı:
+- Seçim (kullanıcı, 2026-11-22): gruplar ağaçtır; şart "bu birim ve altındakiler" diyebilir. Yetenek alt gruba miras kalmaz (KU-014); ağaç yalnız şartın kapsamını genişletir.
+- Saklama biçimi (ajan önerisi; geri alınabilir seçim olduğu için kullanıcıya sorulmadı): doğruluk kaynağı üst grup bağıdır (teknik ad: komşuluk listesi). "Altındakiler" için üç yol vardır:
+  - Yol alanı (BADI'deki; ölçüm: üst grup, yol, düzey): şart "yol şununla başlar" der; grup taşınınca altındakilerin yolu yeniden yazılır; kaydın grubunun yoluna bakmak için ilişki üzerinden alan gerekir.
+  - Ata–torun tablosu (teknik ad: kapanış tablosu): ilişkiseldir ve yabancı anahtar taşır; grup taşınınca satırları güncellenir.
+  - Yalnız üst grup bağı ve derleme anında özyinelemeli sorgu: ek yapı yoktur.
+- Öneri (ajan): üçüncüyle başlanır. "Altındakiler" yer tutucusu derlemede grup kimliği listesine açılır ve şart "grup kimliği listede" olur; böylece kayıtta yalnız grup kimliğine bakılır. Bedel: liste alt ağacın büyüklüğü kadardır ve ağaç değişince derlenmiş yetkiler geçersiz kılınır. Ölçüm gerektirirse ilk iki yoldan biri türetilmiş veri olarak eklenir. Prisma'da özyinelemeli sorgunun ham SQL gerektirdiği varsayımdır (doğrulanmadı, 2026-12-21'e kadar).
+- Açık (kullanıcıya soruldu, 2026-11-22): herkes için geçerli yetenek (örnek: her kullanıcı kendi kaydını görür) nasıl yazılır. Seçenek 1: ağacın tepesinde kök grup, her kullanıcı orada temel bir rolle üyedir; yetenek o çifte yazılır; satırda boş alan olmaz. Seçenek 2: yetenek satırında grup ya da rol boş bırakılır ve "hepsi" anlamına gelir; üyelik gerekmez ama boş alan her derlemede özel durumdur. Öneri (ajan): 1; sistem yöneticisi kök grupta bir rol, kurum dışı kullanıcı ağaçta ayrı bir dal olur. Bu soru devralma sorusu netleşene kadar bekletildi; kullanıcının devralma seçiminden sonra yeniden soruldu (2026-11-22). Seçim (kullanıcı, 2026-11-22): 1 — kök grup + temel rol; yetenek satırında grup ve rol boş bırakılmaz.
+- Soru (kullanıcı, 2026-11-22): başkan alttaki müdürlüklerin müdürlerinin yetkilerine sahip olabilir; bu modelde nereden gelir. Kullanıcı ağaç bölümünü anlamadığını söyledi; yeniden anlatıldı.
+- Cevap (ajan): ağaç tek şey yapar: şarttaki "bu birim ve altındakiler" yer tutucusunun hangi birimlere açılacağını belirler. Başkanın gördüğü, başkan kümesine (üst grup + başkan rolü) yazılan kendi satırlarından gelir; müdürlerin satırlarını devralmaz. Sonuç: başkanın kolon listesi kendi satırındadır; müdüre sonradan yazılan yetenek başkana kendiliğinden geçmez.
+- Açık (kullanıcıya soruldu, 2026-11-22): üstteki rol alttaki rollerin yeteneklerini kendiliğinden devralsın mı. Seçenek 1: devralmaz; kendi satırları yazılır, izin başına tek satır yeter çünkü şart ağacı kapsar. Seçenek 2: devralır (yukarı doğru kalıtım); bakım azalır, ama üstteki rolün sınırı hiçbir yerde yazılı olmaz, alttaki değişiklik üsttekini sessizce değiştirir ve KU-014 taslağıyla çelişir (kuralı değiştiren karar gerekir). Ara yol (1 içinde): üstteki kişiye ilgili birimde o rolle ikinci üyelik verilir; motor değişmez. Öneri (ajan): 1. Seçim (kullanıcı, 2026-11-22): 1 — devralma yok, üstteki rolün kendi satırları yazılır; KU-014 taslağı aynen geçerli kalır.
+
+Model özeti (2026-11-22 sonu; kullanıcı seçimleri, henüz karar düğümü değil):
+- Grup: ağaç (üst grup bağı); tepede kurumu temsil eden kök grup.
+- Rol: genel katalog. İzin: kaynak + eylem kataloğu. Kolon kataloğu: ayrı tablo değildir, şemadan okunur (kullanıcı seçimi, 2026-11-23; KR-008 Seçim 20; önceki "tablo" önerisi ajanındı).
+- Üyelik: kullanıcı + grup + rol; her kullanıcı kök grupta temel bir rolle de üyedir. Kullanıcı (2026-11-23): aynı kişi aynı grupta iki rolle üye olabilir (örnek: imar biriminde iskân raportörü rolü ve hakediş tarafındaki rol); tekillik üçlüdedir (ajan okuması, KR-008 Seçim 2).
+- Yetenek: grup + rol + izin + şart (düz "ve" dizisi) + "bütün kolonlar" işareti + yumuşak silme işareti; kimliği eşsizdir, üçlü tekil tutulmaz (ajan önerisi), satırlar birbirinden bağımsızdır; değişmez satırdır (düzenleme = eskisini yumuşak sil + yenisini ekle).
+- Kolonlar: yetenek satırında dizi (kullanıcı seçimi, 2026-11-23; bağlantı tablosu okuması geri alındı). Kolon kataloğu şemadan okunur (KR-008 Seçim 20). "Bütün kolonlar" modelin bütün alanlarıdır; sırlar kaynak olmayan ayrı tabloda durur (KR-008 Seçim 21).
+- Kalıtım yok: ne rolden role ne üst gruptan alt gruba; ağaç yalnız şartın "bu birim ve altındakiler" kapsamını belirler.
+- Ertelenen (kullanıcı seçimi): öncelik ve etki alanı kapatma özelliğiyle birlikte eklenir. Bekleyen: işleç listesi, yer tutucular ve ilişki üzerinden şart.
+- Yazım yeri (kullanıcı seçimi): katalog tabloları yalnız sürümlü göçle gelir; kurum verisi (grup, rol, üyelik, yetenek) çalışma anında da yazılır ve ilk kurulum için göçle tohumlanır.
+- Ölçüm (`@casl/prisma` README, okundu 2026-11-22): şart Prisma sorgu koşulu biçiminde yazılır ve aynı koşul bellekte de yorumlanır; ilişki üzerindeki koşulda `some`, `every`, `none`, `is`, `isNot` işleçlerinden biri zorunludur; JSON kolonu ve dizi kolonu eşitliği bellekte desteklenmez; desteklenmeyen işlemde hata fırlatılır.
+- Gözlem (ajan): kullanıcının ana örneği ("müdür kendi birimindeki personeli görür") `users` kaynağında ilişki gerektirir, çünkü bu modelde birim kullanıcının satırında değil üyelikte durur. Bellekteki denetimde kaydın o ilişkiyle birlikte yüklenmiş olması gerekir; bu depoda ölçülmedi.
+- Açık (kullanıcıya soruldu, 2026-11-22): yaprağın alanı ilişki üzerinden bir adım geçebilir mi. Seçenek 1: geçer; tek adım ve yalnız "ilişkili kayıtlardan en az biri" anlamıyla. Seçenek 2: geçmez; şart yalnız kaydın kendi kolonlarına bakar, `users` gibi kaynaklara birim kolonu eklenir ve üyelikle eşit tutulur. Öneri (ajan): 1. Seçim (kullanıcı, 2026-11-22): 1 — tek adım.
+- Karar taslağı (2026-11-22): bu bölümdeki seçimler KR-008'de toplandı; kural taslakları KR-008'in "Kabulden önce kapanması gerekenler" listesi kapandıktan sonra açılacak. Bağımsız çürütme turu 2026-11-22'de koştu ve taslağı bu hâliyle imzalamadı ("Çürütme" bölümü).
+- Açık (kullanıcıya soruldu, 2026-11-22): öncelik ve etki alanı satıra şimdi mi girer, kapatma yapılırken mi. Öncelik yalnız "giremez" satırı varken sonuç değiştirir; etki olmadan tek başına işlevsizdir. Ölçüm (BADI `schema.prisma`, 2026-11-22): rol–izin tablosunda hiçbir kapının bakmadığı bir kolon durur ve yorumu, altı okuyucusu olduğu için silinmesinin ayrı karar gerektirdiğini yazar. Öneri (ajan): ikisi birlikte, kapatma yapılırken eklenir (iki kolon eklemek geri alınabilir bir şema göçüdür). Seçim (kullanıcı, 2026-11-22): kapatma yapılırken; ilk sürümde satır yalnız izin verir, öncelik ve etki kolonu yoktur.
+- Açık (kullanıcıya soruldu, 2026-11-22): yetenek değişmez satır mı. Seçenek 1: değişmez; düzenleme eski satırı yumuşak silip yenisini eklemektir, her kimlik tek bir sınırı anlatır; bedel her değişiklikte yeni satır ve kolon bağlantılarının kopyalanması. Seçenek 2: yerinde düzenleme ve ayrı değişiklik günlüğü; kimlik sabit kalır, satır az olur; bedel erişim kaydındaki kimliğin o günkü sınırı tek başına göstermemesi ve geçmiş için ikinci bir tablo. Öneri (ajan): 1. Seçim (kullanıcı, 2026-11-22): 1 — değişmez satır.
+- Açık (kullanıcıya soruldu, 2026-11-22): yetenekler nereden yazılır. Seçenek 1: tabloya göre ayrılır; katalog tabloları (kaynak, eylem, izin, kaynak alanı) yalnız sürümlü göçle gelir, çünkü koda bağlıdır (dekoratörü olmayan izin anlamsızdır); kurum verisi (grup, rol, üyelik, yetenek) çalışma anında yazılır ve ilk kurulum için göçle tohumlanır. Bedel: ortamlar arasında veri ayrışır; yazma kapısı şartı çalışma anında doğrular; kimin yetenek yazabildiği ayrı bir yetenektir. Seçenek 2: her şey yalnız göç dosyasıyla yazılır; her değişiklik gözden geçirilir ve ortamlar aynı kalır; bedel kurumdaki her değişikliğin geliştirici ve yayın gerektirmesidir. Öneri (ajan): 1. Seçim (kullanıcı, 2026-11-22): 1 — tabloya göre ayrılır; yönetim ekranının ne zaman yazılacağı bu seçimle bağlanmadı.
+- Not (ajan): KU-015 taslağının cümlesi "izin verisindeki her değişiklik" der; belgedeki alıntı yalnız "seed değişikliği" der. Cümle alıntıdan geniştir; seçenek 1 seçilirse "kodla gelen izin verisi" diye daraltılmalıdır.
+
+Okuma ve yazma:
+- Okuma yolu (KU-012 ile): repository sorguya satır koşulunu ekler, seçimi izinli kolonların birleşimiyle yapar, sonra her satırı o satır için izinli kolonlara indirir.
+- Yazma yolu (kullanıcı seçimi, 2026-11-23): güncellemede kayıt hem değişmeden önce hem değiştikten sonra şartı tutar; oluşturmada yeni hâl, silmede var olan hâl tutar. Kaydı şartın dışına taşımak iki hâli de kapsayan yetenek ister. Ayrıntı KR-008 "Kabulden önce kapanması gerekenler" 1. madde; KU-012 taslağının cümlesi hâlâ yalnız okumayı söyler.
+- "Göremez" kolonun cevapta hiç yer almaması demektir; kısmi gösterim (maskeleme) bu öneride yoktur ve kullanıcı istemeden eklenmez.
+
+Kolon görünürlüğü neden satır bazında hesaplanmalı:
+- CASL belgesi (restricting-fields, okundu 2026-11-21): alan izni koşullu kuralda sorulurken sonuç, kayıt örneği mi yoksa tür adı mı verildiğine göre değişir; tür adıyla sorulursa koşula bakılmaz ("en az bir kayıtta yapabilir mi").
+- Sonuç (ajan): bir kullanıcının aynı kaynakta farklı satır sınırı ve farklı kolon listesi taşıyan iki izni varsa (iki üyelik), tür düzeyinde alınan kolon listesi ikisinin birleşimidir; bir kümede verilen kolon öbür kümenin satırlarında da görünür.
+- Ölçüm (BADI `field-filter.helper.ts`, 26 satır, 2026-11-21): yardımcı sınıf kolon listesini tür adıyla sorar. Repository'lerin ayrıca satır bazında süzüp süzmediğine bakılmadı.
+- Ölçüm (BADI `field-catalog.const.ts`, 2026-11-21): alan kataloğu 60.983 satırlık bir sabit dosyasıdır (üretilmiş mi elle mi yazılmış bilinmiyor); kullanıcının "eşleşme kod sabitiyle değil, ilişkisel tabloyla tutulur" kuralı bu öneride kataloğun tablo olmasının nedenidir.
+
+Açık sorular (2026-11-23 itibarıyla): yetki veri modelinin seçimleri KR-008 Seçim 1–29'dadır; çürütme turunun yedi tanımı kapandı, ajan okumaları teyit edildi, ertelenenler karar yeriyle birlikte KR-008'de listelidir. Kalanlar: saniyedeki istek sayısı ve yanıt süresi hedefi; KR-008'in yeniden bakma eşikleri; KR-008 için kural taslakları ve ikinci bağımsız inceleme.
+
+Kimlik doğrulama ve oturum (başlandı 2026-11-23; karar taslağı henüz açılmadı):
+- Bağlananlar (yetki tasarımından, KR-008): belirteç (token) yalnız kimliği taşır, yetki bilgisi taşımaz (Seçim 23); sırlar kaynak olmayan ayrı tabloda durur (Seçim 21); kişisiz iş belirteç kullanmaz, sistem aktörüyle çalışır (Seçim 25).
+- Kanon girdileri: "Aşamalar" bölümünün başındaki satır aralıkları. Kanonda access token için liste denetimi yoktur: geri alma yalnız refresh token'ı iptal eder, access token süresi dolana kadar (15 dakika) geçerli kalır (`IRON_RULES_BACKEND.md` satır 1896–1922, okundu 2026-11-23).
+- Seçim (kullanıcı, 2026-11-23): oturumun geçerliliği her istekte beyaz listeyle anlaşılır; her oturumun Redis'te bir kaydı olur, belirteç oturum kimliğini taşır, kayıt yoksa istek reddedilir.
+  - Neden: kullanıcının "erişmemesi için zaman harcanmaz" ilkesi; kapatılan oturum bir sonraki istekte geçersizdir. Kullanıcı önce karalisteyi önermişti; karalistede Redis verisi kaybolursa iptal edilmiş belirteçler yeniden geçerli olur (açık tarafa düşer), beyaz listede kayıp kapalı tarafa düşer.
+  - Bedel: Redis boşalırsa bütün access token'lar reddedilir; istemci veritabanındaki refresh token ile yeni oturum kaydı alır. Ek gidiş yoktur: oturum kaydı, yetki kaydıyla aynı Redis okumasında gelir (öneri, ajan; ölçülmedi).
+  - Reddedilenler: karaliste; kanondaki "listeye bakılmaz" düzeni.
+  - Teyit edildi (kullanıcı, 2026-11-23): belirteç yalnız kullanıcı kimliği, oturum kimliği ve süre taşır; oturumun kalıcı yanı veritabanındaki refresh token satırıdır, Redis kaydı ondan türetilir; kullanıcı kapatılınca bütün oturum kayıtları silinir.
+- Seçim (kullanıcı, 2026-11-23): refresh token her kullanıldığında değişir; eski bir token ikinci kez gelirse çalınmış sayılır ve o oturum düşürülür.
+  - Teknik: döndürme ve yeniden kullanım tespiti. Kazanç: çalınan refresh token en çok bir kez işe yarar ve hırsızlık fark edilir.
+  - Bedel: aynı anda iki yenileme isteği yanlış alarm üretebilir; istemcide tek yenileme kilidi ve kısa bir hoşgörü penceresi gerekir (pencerenin süresi belirlenmedi).
+  - Reddedilen: kanondaki sabit refresh token (kanon metninde döndürme geçmez, satır 1896–1922; çalınan token süresi dolana kadar sessizce kullanılabilir).
+- Seçim (kullanıcı, 2026-11-23): base oturum çekirdeğini (belirteç üretme, oturum kaydı, yenileme, çıkış) ve bir "giriş yöntemi" kapısını taşır; parola ile giriş hazır gelir, proje başka yöntemi kapıya takar.
+  - Desen: strateji (aynı işi yapan değiştirilebilir parçalar tek arayüzün arkasında); mimarideki adı kapı ve bağdaştırıcı. Kazanç: oturum çekirdeği yönteme bağlı olmaz; yürüyen iskelet gerçek girişle denenir.
+  - Bedel: parola ile girişi kullanmayan projede bu parça boşta durur; kapatılabilir olmalıdır.
+  - Reddedilenler: yalnız kapı (iskelet için yine yöntem yazılır, iş ertelenir); kapısız gömülü tek yöntem (ikinci projede base'in çekirdeği değişir).
+  - Kanondaki telefon ve SMS kodu akışı projeye özgüdür; base'e alınmadı.
+- Seçim (kullanıcı, 2026-11-23): tarayıcı backend'e Next.js aracı katmanı (BFF) üzerinden ulaşır ve belirteci betiğin okuyamadığı çerezde tutar; mobil backend'e doğrudan ulaşır ve belirteci cihazın güvenli saklama alanında tutar.
+  - Kazanç: backend tek sözleşme bilir (istek başlığındaki belirteç); çerez ve tarayıcıya özgü korumalar yalnız aracı katmanın işidir.
+  - Bedel: mobil olan projede backend internete açılır; mobil olmayan projede kapalı kalabilir.
+  - Reddedilenler: tarayıcının da backend'e doğrudan ulaşması (çerez, alan adı ve sahte istek korumaları backend'e taşınır); mobilin de aracı katmandan geçmesi (mobil web sunucusuna bağımlı olur, fazladan durak).
+  - Kanon web için aracı katmanı söyler; mobil için hiçbir şey söylemez.
+- Ajan okumaları (kullanıcı 2026-11-23'te teyit etti): backend yalnız başlıktaki belirteci tanır, çerez yalnız aracı katmanda yaşar; belirteç yalnız kullanıcı kimliği, oturum kimliği ve süre taşır; oturumun kalıcı yanı veritabanındaki özetlenmiş refresh token satırıdır, Redis kaydı ondan türetilir; çıkışta, parola değişince ve kullanıcı kapatılınca oturum kayıtları silinir ve refresh satırları iptal edilir; kullanıcı silinmez, pasife alınır; kanondaki süre ve sınır sayıları base'in varsayılanıdır, proje ayarla değiştirir; isteği yapanın kimliği yalnız doğrulanmış belirteçten alınır ve isteğe kimlik guard'ı yazar (KU-013); parola sıfırlama, kendi kendine kayıt ve çok adımlı doğrulama base'de yoktur.
+- Açık: parola özeti algoritması (kanon bcrypt, iş faktörü en az 12 der; güncel öneri doğrulanmadı); hız sınırı (kanonda ayrı bölüm; henüz alınmadı); hoşgörü penceresinin süresi; aracı katmandaki sahte istek koruması (frontend kümesi).
+
+## Yapı
+Taslak; kararı henüz açılmadı.
+
+**Referans kanon (kullanıcının w0nderSuperior eklentisi; okundu 2026-11-21):**
+- Kaynak: `.claude-plugin/context/ARCHITECTURE.md` ve `PATTERNS.md`, sürüm 13.1.0, commit 446f56080; yerel kopya GitHub ile aynı. Eklenti kurulu ama kullanıcı ayarında kapalı.
+- Okunan bölümler: yığın, BC = feature yapısı, 14 mimari değişmez, Pattern 16 (feature'lar arası iletişim), Pattern 31'in sorumluluk listesi ve klasör yapısı. Geri kalanı okunmadı.
+- Değişmez 1: feature'lar birbirini doğrudan içe aktaramaz (modülün dış export'u dahil); iletişim dört yoldan biriyle ve hep shared üzerinden yapılır: shared arayüz sözleşmesi, ACL, domain event (outbox), saga.
+- Değişmez 6: CQRS altyapısı, yetki, veritabanı, güvenlik, mesajlaşma, gözlemlenebilirlik, dış sistem ACL'leri ve hata filtreleri yalnız shared'de yaşar.
+- Değişmez 14 ve Pattern 31: her dış sistem ACL ile bağlanır; iş odaklı concern klasörü (`shared/<concern>/`) ve satıcıya özel klasör (`shared/external/<vendor>/`); sekiz sorumluluk.
+- Değişmez 10: doğrulama backend'de DTO, frontend'de Zod şemasıdır (iki ayrı kaynak, bilinçli).
+
+**Kanonla çelişen ajan önerileri (çözülmedi):**
+- Aşağıdaki "feature → feature karşı feature'ın dış arayüzünden" önerisi Değişmez 1 ile çelişir; kanonda sözleşme arayüzü shared'de durur, sahibi feature uygular.
+- "Yeni feature eklenirken shared'de sıfır dosya değişir" ölçüsü kanonla gerilimlidir: başka feature'ın tüketeceği her yetenek shared'e bir sözleşme ekler. Olası çözüm: shared'i projeden bağımsız platform ile projeye özel sözleşmeler diye ikiye ayırmak; ölçü yalnız platforma uygulanır.
+- "Üç yüzeyde ortak sözleşme paketi" önerisi Değişmez 10 ile çelişir.
+
+**Shared'e giriş kuralı (kullanıcı seçimi, 2026-11-21):** shared'e yalnız iş bilgisi taşımayan altyapı girer; iki feature'ın ortak iş kodu shared'e değil, sahibi olan feature'ın dış arayüzüne konur.
+Kullanıcının şartı: dış sistem entegrasyonları (ör. KPS) ve yetki sisteminin ana dekoratörleri shared'de durur; feature'lar buradan beslenir.
+
+**Ayrım (öneri (ajan); kullanıcı teyidi bekliyor):**
+- Shared "nasıl"ı bilir: dış sisteme nasıl bağlanılır, yetki nasıl denetlenir (bağdaştırıcı, dekoratör, guard, değerlendirme motoru).
+- Feature "ne zaman ve kim"i bilir: hangi işlem hangi yetkiyi ister, kimlik ne zaman doğrulanır, sınırlar nedir.
+- Yetki motoru ve kimlik kendi veri modeli olan ortak yeteneklerdir; "teknik altyapı" tanımına tam oturmaz. Bu yüzden ölçüt "teknik mi" sorusu değil, şu iki sınamadır:
+  1. Shared'deki kod hiçbir feature'ı içe aktarmaz (araçla denetlenebilir).
+  2. Shared'deki kod belirli bir projenin iş kavramını adlandırmaz (incelemeyle denetlenir).
+- Her projede gerekmeyen entegrasyonlar shared içinde isteğe bağlı ayrı birimlerdir; çekirdek onlara bağımlı olmaz.
+
+**Bağımlılık yönü (öneri (ajan)):** feature → shared serbest; shared → feature yasak; feature → feature yalnız karşı feature'ın dış arayüzü üzerinden.
+
+**Dikey dilimin gerekçesi (kullanıcı, 2026-11-21):** özellikler birbirini bozmadan ayrı ayrı geliştirilsin; her feature kendi içinde Clean Architecture'dır (KR-005, KU-008).
+
+**Feature'ların shared'e ve ortak dosyalara değdiği yerler (kanondan; klasör ayrımı bunları kendiliğinden çözmez):**
+- Tek Prisma şeması (`backend/prisma/schema.prisma`): her feature'ın modeli aynı dosyaya girer.
+- Kaynak sabiti (`shared/authorization/domain/resource.const.ts`): yeni feature'ın yetki öznesi shared'deki sabite eklenir.
+- Unit of Work: `ARCHITECTURE.md` feature repository'lerini shared arayüzüne tip olarak yazar (`readonly basvurular`); `PATTERNS.md` 6.3 ise feature'ın kendini kaydettiği registrar'ı anlatır (`uow.register(TOKEN, fabrika)`). İki anlatım uyuşmuyor.
+- Kök modül: feature modülü uygulamanın kök modülüne eklenir.
+Bu dört nokta, "yeni feature eklenirken shared'de değişen dosya sayısı" ölçüsünün neyi sayacağını belirler; yürüyen iskelette ölçülür.
+
+**Unit of Work (kullanıcı, 2026-11-21):** amacı bir iş birimini tek transaction olarak çalıştırmaktır; tekil (singleton) durum taşımamalı, her çağrı kendi örneğiyle çalışabilmelidir.
+- Ölçüm (BADI `shared/database/infrastructure/unit-of-work.service.ts`, 2026-11-21; yalnız yapısı okundu): sınıf varsayılan kapsamda, yani tekil sağlayıcıdır; işlem durumu örneğin içinde değil AsyncLocalStorage'da tutulur (koddaki not: "tx, instance içinde DEĞİL → race-safe"); repository'ler belirteçle (token) kayıt defterinden, işlem başına fabrikayla üretilir.
+- NestJS belgesi (provider-scopes, okundu 2026-11-21): TRANSIENT kapsam her çağrıda değil, enjekte eden her sınıf için bir örnek üretir; REQUEST kapsamı enjeksiyon zincirini yukarı doğru istek kapsamlı yapar; belge sağlayıcıları tekil tutup isteğe özgü durumu AsyncLocalStorage'dan okumayı önerir.
+- Seçenekler: (A) ortam bağlamı — tekil nesne, çağrı başına işlem bağlamı (BADI ve kanonun biçimi: `this.uow.transaction(async () => …)`); (B) fabrika — her çağrı callback'e kendi örneğini verir (`run(async (uow) => …)`); (C) REQUEST kapsamı.
+- Kanondaki zayıf nokta: A biçiminde işlem dışında `this.uow.users.create(…)` yazmak derlenir ve çalışır; kanon bunu yalnız "YASAK" örneğiyle anlatır (`IRON_RULES_BACKEND.md` satır 546–548). B biçiminde bu yol derleme düzeyinde kapanır.
+- Seçim (kullanıcı, 2026-11-21): B — her çağrı kendi örneğini alır ve transaction dışında repository'ye yazmak derlenmez. Karar taslağı açılmadı; veri erişimi kümesinde açılacak.
+- Ölçüm (BADI aynı dosya, tamamı okundu 2026-11-21; kod alınmadı): transaction dışında istenen repository ana veritabanı istemcisine bağlı üretilir, yani yazma tek tek (autocommit) çalışır ve hata vermez; iç içe çağrı SAVEPOINT'tir; yazma çakışmasında callback varsayılan en çok 5 kez yeniden denenir; `detached` seçeneği çağıranın rollback'inden etkilenmeyen ayrı transaction açar.
+- Ölçüm (kanon `IRON_RULES_BACKEND.md` satır 332–339): sorgu handler'ı repository'yi doğrudan enjekte eder ve Unit of Work kullanmaz; örnekte okuma ve yazma için ayrı arayüz yoktur.
+- Sonuç 1 (ajan; B'nin tek başına yetmediği yer): doğrudan enjekte edilen repository arayüzü yazma metodu taşıdıkça transaction dışında yazmak yine derlenir. B'nin sözü ancak arayüz ayrılırsa tutulur: enjekte edilen arayüz yalnız okur, yazma arayüzü yalnız `uow` örneğinden alınır.
+- Sonuç 2 (ajan): iç içe çağrıda varsayılan tersine döner. A'da içteki çağrı dıştaki transaction'a katılır; B'de çalıştırıcıyı içeride yeniden çağırmak bağımsız ikinci transaction açar (BADI'deki `detached` davranışı), katılmak için dıştaki `uow` örneği kullanılır. Öneri: çalıştırıcı zaten bir transaction içindeyse açık seçenek verilmedikçe hata atar.
+- Sonuç 3 (ajan): senkron shared sözleşmesi aynı transaction'da yazacaksa `uow` örneği sözleşme imzasına parametre olarak girer; kanon bu durumu söylemiyor (`PATTERNS.md` 16.0 yalnız "handler icinde SIRAYLA cagir" der). Açık.
+- Sonuç 4 (ajan): yeniden denemede her deneme yeni örnek alır. Örneği callback dışına sızdırmak derlemeyle engellenmez; kapanmış örnek çalışma anında hata atmalıdır.
+- Sonuç 5: yazım biçimi BADI ve kanondan ayrılır (`this.uow.transaction(async () => …)` yerine `run(async (uow) => …)`); kod BADI ile birebir taşınmaz, KR-004'teki iki yönlü aktarım kazancı bu noktada azalır.
+- BADI bakım dönemi için bulgu adayı: transaction dışında yazma derlenir ve çalışır (yukarıdaki ölçüm).
+- Kullanıcı (2026-11-21): arayüz ayrımına önce "evet" dedi, sonra sordu: bütün repository'ler Unit of Work üzerinden alınsa dezavantajı ne olur.
+- Değerlendirme (ajan): repository'yi Unit of Work'ten almanın kendisi bedelsizdir ve kaydı teke indirir (kanonda repository hem NestJS sağlayıcısı hem registrar kaydıdır). Bedel, okumaların da transaction içinde koşmasından doğar:
+  - her okuma BEGIN ve COMMIT ile sarılır (iki ek gidiş-dönüş; büyüklüğü ölçülmedi);
+  - transaction tek bağlantı kullanır (Prisma belgesi, okundu 2026-11-21: "Every call on `tx` uses the same transaction connection"); kanondaki liste sorgusunun paralel veri + sayım çağrısı (`IRON_RULES_BACKEND.md` satır 291–299) sıraya girer;
+  - bağlantı callback bitene kadar havuza dönmez;
+  - transaction süre sınırı okumaya da uygulanır (BADI'de 5000 ms ayarlı, ölçüldü).
+- Seçenekler: (1) her şey `run` içinde, okuma dahil; (2) Unit of Work'te iki kapı — `run` transaction açar ve tam repository verir, `read` transaction açmaz ve yalnız okuma görünümü verir; (3) okuma arayüzü ayrıca enjekte edilir (ajanın ilk önerisi).
+- Öneri (ajan): 2. Okuma görünümü ikinci bir elle yazılmış arayüz olmadan, tek arayüzden metot adı önekiyle türetilebilir (TypeScript eşlenmiş tip); bedeli adlandırma kuralının yük taşır hâle gelmesidir.
+- Destek (Prisma belgesi, okundu 2026-11-21): yardımcı fonksiyon kendi transaction'ını açmak yerine `tx`'i parametre olarak almalıdır; bu B'nin biçimidir.
+- Seçim (kullanıcı, 2026-11-21): 2 — iki kapı; repository'ler tek yerde kaydedilir.
+- Sonuç (ajan): erişim belirteçle olur (`uow.repo(TOKEN)`, `uow.read(TOKEN)`), shared'deki Unit of Work arayüzüne feature adı yazılmaz; yukarıdaki dört değme noktasından Unit of Work maddesi registrar lehine kapanır.
+- Unit of Work'te açık kalanlar (veri erişimi kümesinde, karar taslağıyla birlikte): iç içe çağrı korkuluğu (Sonuç 2), aynı transaction'da yazan shared sözleşmesinin imzası (Sonuç 3), okuma görünümünü belirleyen metot adı önekleri.
+- Açık (yığın, KR-004'ü ilgilendirir): npm'de `latest` etiketi Prisma 8.0.0-rc.34, `prev` etiketi 7.10.1'dir (ölçüldü, 2026-11-21); BADI 7.10 kullanır. Prisma belgesinin güncel hattı yeni API'yi anlatır (`db.transaction`); "coming-from-prisma-orm-7" sayfası transaction seçeneklerini ve iç içe transaction'ı "yok" diye listeler. Dextra'nın hangi sürümle kurulacağı seçilmedi. Öneri (ajan): BADI ile aynı ana sürüm (7.10.x) ile kurulur; 8 kararlı yayımlanınca yeniden bakılır. NestJS için npm'de `latest` 12.6.0, `legacy` 11.2.11'dir (ölçüldü, 2026-11-21); BADI 11 kullanır; hangi ana sürümle kurulacağı seçilmedi.
+
+**Klasör düzeni (kullanıcı eğilimi, 2026-11-21: kökte tek pnpm workspace, adlar BADI ile aynı — `backend/`, `frontend/`, `mobile/`; karar taslağı: KR-006).**
+Bu seçenekte bulunan sorun (kanıtlarıyla):
+- BADI'de üç proje ayrı pnpm köküdür; her birinin kendi `pnpm-workspace.yaml` ve kilit dosyası vardır (ölçüldü, 2026-11-21).
+- BADI mobilinde `nodeLinker: hoisted` zorunlu çıkmış: izole kurulumda Metro, nativewind'in geçişli modülünü çözemeyip paketlemeyi durdurmuş (BADI `mobile/pnpm-workspace.yaml` içindeki 11.09.2026 notu).
+- Expo belgesi (docs.expo.dev/guides/monorepos, okundu 2026-11-21): SDK 54'ten beri izole bağımlılık desteklenir, ama her paket çalışmaz; sorun çıkarsa deponun kökündeki `pnpm-workspace.yaml` içinde `nodeLinker: hoisted` yapılır. Aynı belge monorepo'da tek React sürümünü zorlamayı önerir.
+- Sonuç 1: bağlayıcı ayarı kökte verilir; mobil aynı workspace'te olursa backend ve frontend de düz (hoisted) kuruluma geçer ve bildirilmemiş bağımlılığı içe aktarabilir hâle gelir (paket düzeyindeki sınır zayıflar).
+- Sonuç 2: BADI'de frontend React `^19.3.0`, mobil React `19.1.0` (tam sürüm) kullanır (ölçüldü); tek düz ağaçta iki React sürümü çakışma riskidir, tek sürüme zorlamak ise web'in React yükseltmesini mobilin React Native sürümüne bağlar.
+- Sonuç 3: tek kilit dosyası üç yüzeyi birbirine bağlar; BADI'nin proje başına kurulum ve dağıtım düzeni buraya aynen taşınmaz.
+- Kanon yüzeyler arasında ortak çalışma zamanı kodu istemediği için (VAL-02) workspace'in kazancı ortak lint ve derleyici ayarı ile tek kurulumla sınırlıdır.
+Öneri (ajan; önceki "tek workspace" önerisinin düzeltilmiş hâli): backend ve frontend tek workspace'te, mobil BADI'deki gibi ayrı pnpm kökü. Hiçbiri bu depoda denenmedi; yürüyen iskelette kurulum, derleme ve lint ile doğrulanır.
+Seçim (kullanıcı, 2026-11-21): bu öneri — backend ve frontend tek workspace, mobil ayrı kök (KR-006, taslak).
+
+Kural kapsamlarının yolu bu karara bağlıdır.
+
+**Açık:** KPS'ye bu kişisel alanda erişim olup olmadığı bilinmiyor (varsayım: yok). BADI'den kod alınmaz; burada bağdaştırıcı deseni kurulur.
+
+## Seçenekler
+Konu: backend dili. Web arayüzü iki seçenekte de TypeScript'tir; mobil teknolojisi açık sorudur.
+Aşağıdaki değerlendirmeler ajan bilgisidir; bu oturumda ölçülmedi.
+
+### A — TypeScript her yerde
+- Kazanç: tipler ve doğrulama şemaları üç yüzeyde doğrudan paylaşılır; tek araç zinciri; kullanıcının BADI deneyimi taşınır; iş uygulaması kütüphaneleri olgun.
+- Kayıp: yeni dil öğrenilmez; paket içi görünürlük derleyiciyle değil araçla denetlenir.
+- Sınır: feature başına workspace paketiyle paket düzeyinde zorlanabilir (bildirilmemiş bağımlılık çözülmez).
+
+### B — Backend Rust, web TypeScript (kullanıcının ilk taslağı, 2026-11-21)
+- Kazanç: feature başına crate ile sınırı derleyici zorlar (bildirilmemiş bağımlılık derlenmez, döngüsel bağımlılık kurulamaz, `pub(crate)` iç ayrıntıyı gizler); tip sistemi (geçersiz durum derlenmez, null yok, hata `Result` ile açık); yeni dil öğrenilir.
+- Kayıp: CRUD ağırlıklı işte geliştirme hızı düşer; yüzeyler arası sözleşme kod üretimiyle paylaşılır; en az iki araç zinciri.
+- Riskler (ölçülmedi): async Rust öğrenme eğrisi; her çalışma ağacının kendi derleme dizini (KU-003 ile birlikte derleme süresi ve disk yükü; makine 18 çekirdek / 48 GB ölçüldü, bu risk ilk yazıldığından düşüktür); SOAP ve e-imza gibi entegrasyonlarda kütüphane olgunluğu.
+- Taslaktaki eksik: seçimin gerekçesi ve ölçütleri yazılmadı.
+
+### C — Backend .NET (C#), web TypeScript (kullanıcının ikinci taslağı, 2026-11-21)
+- Gerekçe (kullanıcı): C# okuyup yazabiliyor; performans önemli.
+- Kazanç: kullanıcının incelemesi kanıt üretir; feature başına proje (csproj) ile sınırı derleyici zorlar (bildirilmemiş proje referansı derlenmez, döngüsel referans kurulamaz, `internal` iç ayrıntıyı gizler); iş uygulaması kütüphaneleri olgun (veri erişimi, kimlik, SOAP istemcisi); aşağıdaki Fortunes tablosunda en üst sıra; öğrenme emeği dile değil mimariye gider.
+- Kayıp: yüzeyler arası sözleşme kod üretimiyle paylaşılır; iki araç zinciri (dotnet + pnpm); bellek kullanımı Rust'tan yüksek (ölçülmedi); tip sistemi Rust kadar sıkı değil.
+- Ölçüm (bu Mac, 2026-11-21): .NET SDK 9.0.317 ve 10.0.400 kurulu; cargo kurulu değil; Apple M5 Pro, 18 çekirdek, 48 GB RAM.
+- Açık: performans hedefi sayıyla yazılmadı; web ve mobilde C# (Blazor, MAUI) seçeneği ayrıca konuşulacak.
+
+### A ile C arasındaki ayrım (2026-11-21; karar verilmedi)
+- Web ve mobil iki seçenekte de TypeScript'tir: C'nin derleyici sınırı üç yüzeyin yalnız birini korur, diğer ikisinde sınır yine TypeScript araçlarıyla çizilir.
+- A'nın üstünlüğü: tek dil, tek araç zinciri, kod üretimsiz tip paylaşımı, BADI ile iki yönlü bilgi aktarımı, daha az parça (KU-005).
+- C'nin üstünlüğü: en riskli kod (veri, yetki, iş kuralı) kullanıcının en iyi bildiği dilde incelenir; backend'de derleyici sınırı; performans payı.
+- Performans, yük BADI ölçeğinin çok üstünde değilse ya da ağır işlemci işi yoksa ayırıcı değildir. (BADI aynı yığınla canlıda çalışıyor; gecikme ölçümü bu oturumda alınmadı.)
+- Ayırıcı açık soru: kullanıcı TypeScript backend kodunu ne kadar güvenle inceleyebiliyor.
+
+### Kullanıcının eğilimi: A — TypeScript (2026-11-21; karar taslağı henüz açılmadı)
+Gerekçe (kullanıcı beyanı):
+- Amaç BADI'nin simetriği bir yapı.
+- TypeScript kodunda akışı izleyebiliyor (ne yapıyor, nereye gidiyor, nereden geliyor); sözdizimine tam hâkim değil, ajanın açıklamasına da bakıyor.
+- TypeScript'e daha hâkim olmak istiyor (öğrenme amacıyla örtüşür).
+
+Vazgeçilenler: C'nin performans payı ve backend'de derleyici sınırı; B'nin bellek ve tip sıkılığı.
+Zayıf nokta: akış düzeyinde inceleme tip düzeyindeki hatayı kaçırabilir; karşılığı derleyici ve lint ayarlarının sıkı tutulup kapı yapılmasıdır (tasarlanacak).
+
+### BADI'nin yığını (ölçüm: package.json ve klasörler, 2026-11-21)
+- Backend: NestJS 11 (Express 5), Prisma 7.10, `@nestjs/cqrs`, BullMQ, CASL, class-validator, Jest 30, eslint-plugin-boundaries, TypeScript 6.0; `src/features` + `src/shared`.
+- Web: Next.js 16.4, React 19, TanStack Query, zustand, zod 4.6, Tailwind 4, Vitest, Playwright; `src/app` + `src/features` + `src/shared`.
+- Mobil: Expo 54, React Native 0.81, expo-router, nativewind, TanStack Query, zustand, zod 4.4, Jest 29, TypeScript 5.9.
+- Üç ayrı pnpm projesi; kökte workspace yok, yüzeyler arasında paylaşılan paket yok.
+- Sonuç: BADI'de tek dil olmasına rağmen tipler yüzeyler arasında paylaşılmıyor (backend class-validator, web ve mobil zod; TypeScript ve zod sürümleri yüzeyden yüzeye farklı).
+- Backend derlemesi ve tip denetimi yükseltilmiş bellek sınırıyla koşuyor (betiklerde 4–6 GB); süre ölçülmedi.
+- Açık soru: "simetri" birebir ayna mı, yoksa aynı çatılar + bu eksiklerin giderilmesi mi.
+
+### Çalışma biçimi (kullanıcı beyanı, 2026-11-21)
+Kodu ajan yazar, kullanıcı inceler. Sonuçları:
+- Yazma tarafındaki öğrenme eğrisi riski düşer.
+- Yerine inceleme riski gelir: kullanıcının okuyamadığı dilde yaptığı inceleme kanıt üretmez. Kullanıcının Rust okuma düzeyi bilinmiyor (açık soru).
+- Derleme süresi ajan döngüsüne biner: her görev kendi çalışma ağacında baştan derler.
+
+### Performans verisi (dış kaynak; bu depoda ölçülmedi)
+Kaynakların ikisi de ikincildir ve zayıftır; karar bunlara dayandırılmaz, yürüyen iskelette ölçülür.
+
+Veritabanı sorgusu + HTML üretimi (TechEmpower Round 23, Fortunes; ikincil derleme, üç satırı türetilmiş):
+
+| Çatı | İstek/sn |
+|---|---|
+| ASP.NET (C#) | 609.966 |
+| Fiber (Go) — tahmin | 338.096 |
+| Actix (Rust) — ayrı koşum | 320.144 |
+| Spring (Java) | 243.639 |
+| Express (Node) | 78.136 |
+
+Veritabanısız sağlık ucu (tek yazar, tek makine, wrk 200 bağlantı):
+
+| Dil | İstek/sn | p99 | Bellek (RSS) | Derleme süresi |
+|---|---|---|---|---|
+| Rust (Axum) | 210K | 1,48 ms | 33 MB | 98,3 sn |
+| Go | 100K | 6,13 ms | 60 MB | 9,4 sn |
+| Kotlin (Ktor) | 99K | 15,36 ms | 650 MB | 14,1 sn |
+| Java | 88K | sayfada yok | 372 MB | 5,6 sn |
+
+Kaynaklar: dev.to/tuananhpham/popular-backend-frameworks-performance-benchmark-1bkh · dev.to/netfishx/same-api-in-java-go-rust-and-kotlin-a-4-language-benchmark-2fn6
+
+Okuma: Rust ham hızda Node'un belirgin üstünde, Go ile aynı sınıfta; bellek ve kuyruk gecikmesinde önde; derleme süresinde açık ara geride. Hedef yük bilinmeden (Kapasite bölümü boş) performans bu kararın ölçütü yapılamaz.
+
+## Hata modları
+Yalnız yetki veri modeli için yazıldı (kaynak: 2026-11-22 çürütme turu); diğer alanlar ele alınmadı. "Öneri" yazanlar ajanındır; kullanıcı kararı bekleyenler KR-008 "Kabulden önce kapanması gerekenler" listesindedir.
+1. Yazmada kayıt sınır dışına taşınır ya da içeri çekilir. Neden: şartın kaydın önceki mi sonraki mi hâline bakacağı yazılmadı; oluşturmada şart hiç denetlenmez; denetim ile yazma arasında kayıt değişebilir. Öneri: güncellemede iki hâl de şartı tutar; oluşturmada yeni kayıt, silmede var olan kayıt tutar; yazmanın sorgu koşulu yetki koşulunu taşır.
+2. Şartın baktığı kolon seçilmezse bellekteki denetim tutmaz: yetkili kişi boş kayıt görür, olumsuz işleçte kolon başka kümenin kaydında görünür. Öneri: sorgu izinli kolonlarla birlikte şartların baktığı kolonları da seçer; cevap indirgemeden sonra yalnız izinli kolonları taşır.
+3. İlişki üzerinden şart: olumsuz işleç kök üyelik yüzünden herkesi eşleştirir; aynı ilişkiye bakan iki yaprağın birlikte mi ayrı ayrı mı tutacağı tanımsızdır; yumuşak silinen ilişkili kayıt veritabanı ile belleği ayrıştırabilir. Öneri: ilişki üzerinden yalnız "eşit" ve "listede"; aynı ilişkiye bakan yapraklar tek ilişkili kayıtta birlikte tutar. Seçim (kullanıcı, 2026-11-23): ilişki üzerinden yalnız "eşit" ve "listede" (KR-008 Seçim 13); aynı ilişkiye bakan yapraklar tek ilişkili kayıtta birlikte tutar (KR-008 Seçim 14); yumuşak silinen ilişkili kayıt parçası açık.
+4. Yer tutucu çözülemezse şart açık tarafa düşer. Ölçüm (Prisma belgesi, okundu 2026-11-22): sorgu koşulunda değeri tanımsız olan anahtar atlanır. Öneri: çözülemeyen ya da boş çözülen yer tutucuda yetenek derlenmez; isteği yapanı olmayan çalışma ayrıca tanımlanır.
+5. Yetenek yazabilen kişi kendi kümesine şartsız satır yazıp sınırını kaldırabilir. Öneri: ilk sürümde grup, rol, üyelik ve yetenek yazımı yalnız kök gruptaki yönetici rolündedir. Seçim (kullanıcı, 2026-11-23): yalnız SuperAdmin rolü yazar; hakları yetenek satırlarından gelir; küme kök gruba bağlanır (KR-008 Seçim 17).
+6. Yetenek kimliği o günkü kapsamı tek başına anlatmaz: "altındakiler" ve "bütün kolonlar" ağacın ve kataloğun o günkü hâline bağlıdır; bir kaydı iki yetenek tutarsa kolonlar birleşimdir ve kararı veren tek kural bunu açıklamaz. Yapılan: KR-008'deki iddia daraltıldı. Açık: erişim kaydında neyin tutulacağı (gözlemlenebilirlik kümesi).
+7. "Bütün kolonlar" işareti şema büyüyünce genişler; yazmada yeni kolon kendiliğinden yazılabilir olur. Öneri: işaret yalnız okumada kullanılır. Seçim (kullanıcı, 2026-11-23): öneri alınmadı; işaret yazmada da kullanılır ve bu genişleme kabul edilen bedeldir (KR-008 Seçim 12).
+8. Görünmeyen kolon süzme, sıralama ve sayım üzerinden sızar. Öneri: süzme ve sıralama yalnız o kolonu veren yeteneklerin kayıtlarında uygulanır; kullanıcı süzgeci yetki koşuluyla "ve" ile birleşir; sayım aynı koşulu taşır.
+9. Aynı satıra göç ve yönetici iki yoldan dokunur; yarıda kesilip yeniden koşan tohum çift satır üretir. Öneri: tohum satırı sabit tohum anahtarı taşır; yeni satır yerine geçtiği satırı gösterir; göç yöneticinin değiştirdiği satırı ezmez, durur ve bildirir. Seçim (kullanıcı, 2026-11-23): öneri kabul edildi (KR-008 Seçim 16); durduğunda kararın nasıl verileceği açık.
+10. Kök grup, temel rol ve yönetici rolü koda bağlıdır ama silinebilir; kullanıcı açan yollardan biri kök üyeliği unutabilir. Öneri: sabit kod taşıyan, göçle gelen, çalışma anında silinemeyen "sistem satırı" sınıfı; kullanıcı tek yoldan açılır. Seçim (kullanıcı, 2026-11-23): sistem satırı kabul edildi; kök grup yapıdan tanınır, temel rol kod taşır (KR-008 Seçim 15).
+11. Ağaç çalışma anında yazılır: döngü özyinelemeli sorguyu düşürür; silinen birimin altı ve yetenekleri tanımsızdır; taşınan birim önbellekte eski yerinde durur. Öneri: üst grup değişirken döngü denetimi; taşımada derlenmiş yetkilerin tümü geçersiz kılınır; silme kuralı açık. Seçim (kullanıcı, 2026-11-23): birim yalnız boşken silinir (KR-008 Seçim 22); taşıma kuralı açık.
+12. Geri alınan yetki önbellek ömrü kadar yaşar. Açık: süre hedefi kullanıcıdan gelmedi.
+13. Boş şart "bütün kayıtlar" demektir ve açık işareti yoktur. Öneri: satır ya "bütün kayıtlar" işaretini ya da şart taşır; ikisi de yoksa hiçbir kayıt. Seçim (kullanıcı, 2026-11-23): öneri kabul edildi (KR-008 Seçim 11).
+14. Tek adım sınırı: iki adım ilişki gerektiren kaynak kendi birim kolonunu taşımak zorundadır; bellekteki denetim alan nesnesinde değil veritabanı biçimindeki kayıtta yapılmalıdır.
+15. Derlenmiş kural istemciye giderse kolonu indirgenmiş kayıtta istemci denetimi yanlış sonuç verebilir. Açık: kuralın istemciye gidip gitmeyeceği (frontend kümesi).
+16. Sürüm sayacı (KR-008 Seçim 23): sayacı artırmayan bir yazma yolu, ya da veritabanı yazıldıktan sonra artmayan sayaç, silinmiş yetkiyi saklanan kayıtta yaşatır. BADI'den ders (2026-11-23, yalnız yapı): boşaltma olayı 34 ayrı dosyadan yayılıyor, yani her yeni yazma yolu hatırlamak zorunda. Öneri: artırma tek yerde yapılır. Seçim (2026-11-23; KR-008 Seçim 24, ajan okuması teyit ister): sayaç veritabanında durur, yazmayla aynı işlemde artar ve her istekte oradan okunur; güvenlik ağı süresine gerek kalmaz.
+
+## Performans mantığı
+(Tek yönlü işte zorunlu. En sık çalışan yolların işlem ve sorgu sayısı; veri büyüdükçe davranışı.)
+Yalnız yetkilendirme için yazıldı (2026-11-23). Hepsi hesaptır, ölçüm değildir; ölçüm yürüyen iskelette yapılacak (varsayım, 2026-12-21).
+
+Ölçek (kullanıcı, 2026-11-23): tasarım büyük sistemlere uygun olmalıdır; verilen sayılar (aynı anda 1000, 2000, 5000 kişi) performans denetimlerinin ve algoritma karmaşıklığı değerlendirmesinin ölçeğidir.
+
+Değişkenler: U aynı anda bağlı kişi (1000–5000); r kişi başına saniyedeki istek (bilinmiyor); R = U × r; m kişinin üyelik sayısı; y kişinin derlenmiş yetenek sayısı; y_k bir istekte ilgili kaynak + eylem için eşleşen yetenek sayısı; a bir grubun alt ağacındaki grup sayısı; G toplam grup; n dönen kayıt sayısı; k kolon sayısı; T yetenek tablosundaki satır (geçmiş dahil).
+
+Yollar (KR-008 Seçim 23–26'ya göre):
+- Her istek, saklanan kayıt geçerli: 1 veritabanı okuması (sürüm sayacı, tek satır) + 1 Redis okuması. Maliyet O(y): kişinin bütün yetenekleri okunur ve ayrıştırılır. Kaynak + eylem başına saklanırsa O(y_k) olur (öneri; tasarlanmadı).
+- Liste okuma: işin kendi sorgusuna koşul eklenir, ek sorgu yoktur. Koşulun boyutu O(y_k × yaprak + Σ a): "bu birim ve altındakiler" bir kimlik listesine açılır ve üst birimlerde büyür (kökte a = G). Kayıt başına kolon indirgeme O(n × y_k); eşleşen yeteneklerin kolon kümesi aynıysa O(1).
+- Derleme (saklanan kayıt yok ya da sürümü eski): 2–3 sorgu (üyelikler, o kümelerin canlı yetenekleri, ağaç açılımı). Maliyet O(m + y + Σ a); T'ye bağlı olmaması canlı satırlar üzerindeki dizine bağlıdır (değişmez satır geçmişi biriktirir).
+- Yazma: var olan kaydın yetki koşuluyla okunması (+1 sorgu), bellekte kolon ve yeni hâl denetimi, yetki koşullu yazma. Toplu yazmada O(n), tek işlemde.
+- Yetki yazma (yalnız SuperAdmin; seyrek): 1 yazma + sayaç artışı, aynı işlemde.
+- Erişim kaydı: istek başına 1 kayıt; günde R × 86.400 satır.
+
+Ölçek büyüdükçe öne çıkan riskler (ajan sıralaması; ölçülmedi):
+1. Derleme dalgası: sayaç tek ve genel olduğu için her yetki yazımından sonra etkin herkes bir kez yeniden derler (U × 2–3 sorgu, kişilerin bir sonraki isteğine kadar geçen sürede); SuperAdmin art arda düzenleme yaparsa dalga tekrarlanır. Kaldıraç: sürümü kümeye ya da kişiye göre tutmak (yalnız etkilenenler derler; bedeli istek başına birden çok sürümün okunması). Kullanıcı (2026-11-23): derleme ve yetki değişimi her zaman olan bir şey değildir; bu risk şimdilik kabul edilir, süreç gerekirse sonradan iyileştirilir.
+2. Erişim kaydı hacmi: sistemde en hızlı büyüyen veridir; nerede tutulacağı (veritabanı tablosu mu, günlük hattı mı) ve saklama süresi gözlemlenebilirlik kümesinde kararlaştırılacak.
+3. Kişi başına kayıt boyutu: çok yeteneği olan kişide (örneğin bütün izinleri satır satır taşıyan SuperAdmin) her istekte O(y) okuma. Kaldıraç: kaynak + eylem başına saklama.
+4. Üst birimlerde uzun kimlik listesi. Kaldıraç: kök düzeyinde "bütün kayıtlar" işareti; ağaç haritasının sürüm başına bir kez saklanması (derlemeden bir sorgu eksiltir).
+5. İlişki üzerinden şartın bellekte denetimi kaydın o ilişkiyle yüklenmesini ister; kayıt başına ek sorguya (N+1) dönüşmemelidir.
+6. Sayaç okuması her istekte bir veritabanı bağlantısı kullanır; bağlantı havuzunun boyutu R'ye göre ölçülecek.
+
+Performans denetimi adayları (öneri, ajan; eşik sayıları belirlenmedi, ilk ölçüm taban çizgisi olur):
+- Sorgu sayısı sınaması: saklanan kayıt geçerliyken bir liste isteğinde yetki için yapılan veritabanı sorgusu 1'dir; kayıt sayısı artınca sorgu sayısı artmaz.
+- Derleme sınaması: m, y ve a büyütülerek derleme süresi ölçülür; büyümenin doğrusal kaldığı gösterilir.
+- Yük sınaması: U = 1000, 2000, 5000 için yanıt süresi ve yetki yazımından sonraki derleme dalgası ölçülür.
+- Geri alma sınaması: üyelik ya da yetenek silindikten sonraki ilk istek reddedilir.
+
+Düzeltme (2026-11-23; ikinci çürütme turu 33–38. bulgular ve KR-008/KR-010 Seçim 32, 37, 40). Yukarıdaki terimler şu yönlerde eksikti; hepsi yine hesaptır:
+- Saklanan kaydın boyutu O(y) değil O(y + Σa)'dır, çünkü "altındakiler" derlemede kimlik listesine açılır; her yetenek kendi listesini taşırsa en kötü O(y × a) olur. Öngörü: alt ağaç listesi kayıtta bir kez durur, yetenekler ona başvurur (tasarlanmadı). Redis belleği U × kayıt boyutu kadardır.
+- Her istekte okunan sürüm artık iki sayıdır (genel ve kişi) ve tek sorguda okunur (Seçim 32).
+- Bellekte kolon indirgeme için şart değerlendirilmez (Seçim 37): eşleşen yeteneklerin kolon kümeleri aynıysa ek iş yoktur; farklıysa yetenek başına bir sorgu atılır (y_k sorgu) ve bellekteki iş O(n)'dir. Okumada iz yalnız kullanılan yetenekleri taşıdığı için (Seçim 40) kolon kümeleri aynıyken ek sorgu gerekmez.
+- Yazma: yetenek başına şartlı yazma ve aynı işlemde yeniden okuma; aday yetenek birden çoksa deneme sayısı y_k ile büyür.
+- Derleme dalgası "U × 2–3 sorgu" alt sınırdır: kişi başına eşzamanlı istekler ayrı ayrı derleyebilir. Tetikleyiciler: yetenek, rol, ağaç ya da izin yazımı; şemayı değiştiren yayın; Redis'in boşalması. Üyelik yazımı artık dalga üretmez (Seçim 32).
+- Okuma isteği başına bir erişim kaydı yazılır; "yetki için 1 okuma" ölçüsü bu yazmayı saymaz. Örnek aralık (varsayım; r bilinmiyor): U = 5000 ve r = 0,1–0,5 için saniyede 500–2500 istek, günde 43–216 milyon erişim kaydı. Bu kaydın nerede tutulacağı bu aritmetikle kararlaştırılmalıdır (gözlemlenebilirlik kümesi).
+- Sorgu koşulundaki parametre sayısı y_k × a ile büyür; veritabanının ifade başına parametre sınırına üst birimlerde yaklaşılabilir (sınırın değeri doğrulanmadı). Kök düzeyinde "bütün kayıtlar" işareti bu terimi sıfırlar.
+- Ö işaretli iki konu yürüyen iskelette ölçülecek: Redis yokken her isteğin derlemesi (süreç içi kayıt seçeneği, KR-010) ve ilişki üzerinden şartın sorgu maliyeti.
+
+## Aşamalar
+**Sıra (kullanıcı, 2026-11-23): önce KR-008 kapanır (ikinci inceleme, kural taslakları, kabul); sonra kimlik doğrulama ve oturum tasarlanır; ardından mimari ve tasarım desenleri konuşulur; sonra yürüyen iskelet gelir. Amaç iskeleti bitirmektir.**
+Kimlik doğrulama için eldeki kanon girdileri (okundu 2026-11-23; henüz düğüme çevrilmedi): `ARCHITECTURE.md` satır 598–624 (giriş akışı, çerez, token yenileme); `IRON_RULES_SHARED.md` satır 335–346 (RS256, parola özeti, refresh token'ın özetlenerek saklanması, hız sınırı); `IRON_RULES_BACKEND.md` satır 1894–1972 (AUTH-01…04: süreler, eşzamanlı oturum sınırı, parola değişince bütün oturumların düşmesi, "beni hatırla").
+
+**Açık kalanlar (2026-11-23; ağır bulgular kapandıktan sonra ajan derledi; numaralar "Çürütme" bölümündeki turların numaralarıdır).** Kullanıcıyla anlaşılan yön: karar düzeyindeki sorular kapatıldı; kalan dikişler bu listeden yürütülür ve kâğıt üstünde yeni bir tur yerine yürüyen iskelette sınanır.
+- Tanım cümlesi bekleyenler, yetki (üçüncü tur): 5 (çok adaylı güncellemede geri alma, toplu yazmada beklenen sayı); 6 (ad göçünün kapsamı, tarama kapısının sırası); 7 (uç kümesi ile tohum anahtarı tekilliği); 8 (yazılan kolonun tanımı); 9 (niyetin yazdığı kolonların düz güncellemeye kapalı olması); 10 (süzülen iç içe kayıt ne döner); 11 (kapalı birim: döngü, taşıma, ilişki şartı; "silinen" ve "kapatılan" sözcükleri); 12 (yeteneksiz üyelik yazımı ile "her yazma bir yeteneğe bağlıdır" cümlesi; KR-008 Seçim 43 de buna girer); 13 (niyetin başka kaynağa yan yazması); 15 (üyelik tekilliği yalnız canlı satırlarda mı; ajan okuması teyit bekliyor).
+- Tanım cümlesi bekleyenler, kimlik (KR-009 ilk tur): 9 (kimlik isteyen ama yetenek istemeyen uçlar); 10 (giriş yöntemi kapısının sözleşmesi, iki adımlı yöntemler); 11 (sistem aktörü oturum açamaz); 12 (yenileme kullanıcının etkin olduğuna bakar); 13 (parola değişiminde isteği yapan oturum); 17 (hareketsizliğin ölçümü, ayarlar arası değişmez); 20 (çerezi kimin yazdığı, köken denetiminin görevi; IP ve imza denetimi KU-010'daki zincire yeni adım ekler); 21 (izde oturum kimliği); 26 ("oturumlarım" listesi ve tek oturumu kapatma); 27 (refresh token imzalı mı opak mı); KR-009 Seçim 9'un teyit edilmemiş ayrıntıları; hazır kimlik sağlayıcı karşı görüşü (kullanıcıya ayrıntılı sunulmadı).
+- Yürüyen iskelette sınanacaklar: KR-008, KR-009 ve KR-010 "Doğrulama" listeleri; hoşgörü penceresinin süresi; kaybolan cevabın yöntemi (KR-009 Kural 4); Next.js'te istek girişinde yenileme ve refresh çerezinin yol kapsamı (Kural 5); IP kapısının yeniden giriş yükü ("adres değişti" nedeniyle kapanan oturum sayısı); aracı katmanın imzası ve öndeki sunucudan adres okuma (Kural 9); oturum satırı ile sürümün tek sorguda okunması; mobilin aracı katman üzerinden gecikmesi; Argon2id süresi; derleme dalgası; üçüncü tur 10 (maliyet), 14 ve 24.
+- Altyapı ve başka küme: imza anahtarının ve RS256 anahtarlarının üretimi, saklanması, değiştirilmesi; backend'e yalnız aracı katmanın ulaşmasını sağlayan ağ ayarı; Redis yedekliliği; hız sınırı kümesi ("parola belirle" ucu ondan önce yayına çıkmaz; KR-009 ilk tur 16); donanım anahtarı (ertelendi).
+- Belge işi: KR-007'nin ve KU-012, KU-014, KU-015 cümlelerinin yeniden yazımı; KU-010 ve KU-013'ün kimlik seçimlerine göre gözden geçirilmesi; üçüncü tur 17–23; KR-009 ilk tur 22–24 ve 28–30; bu kayıttaki "Kimlik doğrulama ve oturum" bloğu bayattır (KR-009 esas alınır); kimlik için Senaryolar, Kapasite, Hata modları ve Performans mantığı yazılmadı.
+- Süreç: KR-009'un 2026-11-23 sonundaki hâli bağımsız incelenmedi (Seçim 1, 2, 4, 5 değişti; 7, 8, 9 ve Kural 1–10 eklendi); KR-008, KR-009 ve KR-010 için kural taslakları açılmadı; KR-008 ve KR-009 tek yönlüdür ve çalışan bir denetim olmadan kabul edilemez.
+
+**Kanon alımı (kullanıcı kararı, 2026-11-21: kanonun tamamı uygundur, uygulamaya yerleştirilecek).**
+Ham kaynak (değiştirilmeden kopyalandı, 2026-11-21; eklenti sürümü 13.1.0, commit 446f56080): `kb/_gelen/` altında yedi belge — `ARCHITECTURE.md`, `PATTERNS.md`, `IRON_RULES_BACKEND.md`, `IRON_RULES_EVENTS.md`, `IRON_RULES_FRONTEND.md`, `IRON_RULES_OBSERVABILITY.md`, `IRON_RULES_SHARED.md`.
+- `ARCHITECTURE.md` ana oturumda baştan sona okundu. Diğer altısının kural çıkarımı keşif ajanlarına verildi; sonuç gelince harmanlanacak.
+- Kopyalamadan önce hassas desen taraması yapıldı: yalnız kod örneklerindeki sahte değerler bulundu. Not: iskeletin hassas veri denetimi `kb/_gelen/` klasörünü taramıyor.
+- Alınmayan eklenti belgeleri (mimari değil, eklentinin kendi süreci): `AGENT_OVERLAP_MATRIX.md`, `FABLE5_DIRECTIVES.md`, `HANDOFF_TEMPLATES.md`, `JIRA_PROTOCOL.md`, `MCP_USAGE.md`, `MODULE_MAP.md`.
+
+Alım tek seferde değil, kümeler hâlinde yapılır; nedeni iskeletin bütçesidir (dosya başına en çok 12 kural, rol paketi en çok 6000 karakter, kural cümlesi en çok 400 karakter). Kurallar yol kapsamıyla daraltılmak zorundadır, bu da klasör düzeninin önce kararlaştırılmasını gerektirir.
+
+Önerilen sıra (ajan; kullanıcı onayı bekliyor):
+1. Yapı: modular monolith + VSA, BC = feature; Değişmez 1 (feature izolasyonu), 2 (katman yönü), 6 (shared tekelliği).
+2. Yetki ve güvenlik: guard zinciri (Değişmez 5), CASL ABAC, tek doğruluk kaynağı (Değişmez 10); ABAC tasarımıyla birlikte.
+3. Veri erişimi: CQRS (3), repository, Unit of Work, soft delete (7), outbox (11), aggregate root (12), audit (8).
+4. Dış sistem: ACL (14).
+5. Frontend: Server Action sınırı (4), Atomic Design (9).
+6. Gözlemlenebilirlik: iz yayılımı (13), istek bağlamı.
+
+Küme durumu (2026-11-21):
+- 1 Yapı: KR-005, KU-007…009 taslak.
+- 2 Yetki ve güvenlik: KR-007, KU-010…015 taslak (kullanıcı onayı: "evet, bu altısıyla").
+- Açık iş (kullanıcı, 2026-11-21): yetki matrisi bu kümede tam olarak yeniden değerlendirilecek; ayrıntılı yapılacaklar oradan çıkacak ve yapılmaları gerekiyor. Kullanıcının cevabı: grup → rol → izin → koşul zinciri (bkz. "Veri modeli").
+
+BADI tuzak kayıtlarından bu kümeye değenler (hook hatırlatması, 2026-11-21; kaynak depo dışındadır, yalnız ders alındı, kod alınmadı):
+- T-0534: istek içinde önbelleğe alınan yetki, farklı bir kullanıcı kimliği (örneğin sistem aktörü) için de aynen döner; kanondaki CASL-08 örneğinin açığıyla aynıdır ve BADI'de yaşanmıştır.
+- T-0394: `requesterId`'yi interceptor'ın komuta yazması BADI'de güvenilmez bulunmuş; oradaki pratik kimliği controller'da açıkça alıp komuta yazmaktır. NestJS belgesi (request lifecycle, okundu 2026-11-21): interceptor pipe'tan önce çalışır. Ajan çıkarımı: gövdeden üretilen komut örneği interceptor çalışırken henüz yoktur; bu depoda ölçülmedi. KU-013'ün ikinci yarısı bu yüzden açıktır.
+- T-0397: BADI'de handler içinde yetki nesnesi kuran iki belgeli istisna vardır (kullanıcının kendi yetkisini döndüren sorgu, menü görünürlük süzgeci); KU-012 için istisna adayıdır.
+- T-0324: kullanıcıyı hedefleyen koşulda şemada olmayan alan adı çalışma anında hata verir; koşulların baktığı alanlar şemadan doğrulanır (yetki matrisi değerlendirmesinde).
+- T-0171: sağlık ucunu sık yoklamak hız sınırını tetikleyip yasak üretmiş; çalıştırma aşamasında dikkat edilir.
+
+Düğüme çevrilmeyecekler (projeye özel ya da betimleyici): hız sınırı sayıları, kuyruk adları, dil stratejisi, SMS akışı, PostGIS, erişilebilirlik tablosu, API sürümleme notu, dosya konumu tablosu.
+
+Belgede olmayanlar: mobil yüzey (Expo) hiç geçmiyor; kararların çoğunda reddedilen seçenek ve gerekçe yazmıyor.
+
+Kullanıcıya sorulacak çelişki: belge cevapta ve günlükte kişisel veri maskelemeyi zorunlu tutuyor; kullanıcının 2026-11-17 tarihli talimatı uygulamada maskelemeyi ajanın kendiliğinden eklemesini yasaklıyor. Bu madde kullanıcı söylemeden alınmaz.
+
+## Doğrulama
+(Her kritik karar için çalışan ölçüm.)
+Yalnız yetkilendirme için yazıldı (2026-11-23). Kod yazılmadığı için hiçbir ölçüm koşmadı; denetim kimliği ve ölçüm tarihi yok.
+- Senaryo 1, 3, 4, 5, 6, 9, 10: işlev testi (KR-008 "Doğrulama" listesi: sızıntı, boş kolon, şart taraması, değişmezlik, eşlik ve taşıma testleri; ek olarak geri alma, çakışma ve kilitlenme testleri).
+- Senaryo 2: sorgu sayısı sınaması ("Performans mantığı").
+- Senaryo 7: yük sınaması, U = 1000, 2000, 5000 ("Performans mantığı").
+- Senaryo 8: yeni küme için yetki tanımlarken değişen kaynak dosya sayısının 0 olduğunu gösteren uçtan uca test.
+- Açık: testlerin hangi araçla ve hangi aşamada koşacağı test kümesinde kararlaştırılacak.
+
+## Çürütme
+Bağımsız tur 2026-11-22'de koştu. Kapsam: yalnız yetki veri modeli (KR-008, KR-007, bu kaydın "Veri modeli" bölümü, KU-012…015); kaydın geri kalanı incelenmedi. İnceleyen, taslağı yazmamış ayrı bir oturumdur (rol: inceleyici); dosya değiştirmedi.
+
+Sonuç: "bu hâliyle imzalamam." Çekirdek (sade tablolar ve yetenek satırı) çökmüyor; eksik olan, satırın anlamını belirleyen ve veri biriktikten sonra değiştirilemeyecek tanımlardır.
+
+Dört soru:
+- Nerede çöker: yazmada (kayıt başka birime gider ya da çekilir), okumada şartın baktığı kolon seçilmeyince, ilişki üzerinden olumsuz şartta ve çözülemeyen yer tutucuda.
+- Düşünülmemiş hata kipi: "Hata modları" bölümü boştu; on beş madde oraya yazıldı.
+- En güçlü karşı görüş: BADI'deki yapıda politika rol başına bir kez yazılır, satır sayısı birim sayısından bağımsızdır ve yeni birim üyelik verildiği an çalışır. Yazılmamış bir melez daha güçlüdür: yetenek satırı ya belirli grubu ya da "üyeliğin grubu"nu taşır. Belge bu görüşe hakkını vermemişti.
+- İmzalar mıydı: hayır; yedi veri biçimi sorusu kapanmadan (KR-008 "Kabulden önce kapanması gerekenler").
+
+Bulgular ve cevaplar (ajan):
+- 1–15 (hata kipleri): kabul; "Hata modları"na yazıldı, yükümlülükleri KR-008'e eklendi.
+- 16 (ölçütler seçenekleri ayırmıyor; BADI'deki yapının bedeli yanlış yazılmış; satır hesabı yok; kullanıcının "derlenen küme şişmesin" isteği taşınmamış): kabul; KR-008'de ölçütlere iki ayırıcı ölçüt eklendi, C yeniden yazıldı, D seçeneği eklendi. Ajanın 2026-11-22'de kullanıcıya söylediği "genel satır öncelik kuralı gerektirir" savı satırlar bağımsız olduğu için geçersizdir; kullanıcıya bildirilecek.
+- 17 (belgeler arası çelişki): kabul; KR-008'de "katalog" sözü ayrıştırıldı; KR-007, KU-012 ve KU-014'e not düşüldü; bu kayıttaki yer tutucu listesi ve yazma yolu satırı düzeltildi.
+- 18 ("ölçüldü" diye geçen çıkarımlar): kabul; KR-008 "Bağlam"da şemadan, koddan, kod yorumundan ve tuzak kaydından okunanlar ayrıldı.
+- 19 (eksik varsayım ve geri dönüş): kabul; KR-008'e eklendi.
+- 20 (süreç): kabul. Bu kayıtta Senaryolar, Kapasite, Performans mantığı ve Doğrulama hâlâ boştur; KR-008 kabule hazır değildir. Öğretici modda tek yönlü kararın ilk taslağını kullanıcının yazması beklenir; KR-008 kullanıcının seçimlerinden derlendi ama metnini ajan yazdı; sapma olarak kayıtlıdır.
+
+Ajanın bulgulardan sonra doğruladıkları (2026-11-22):
+- Kanon belgesindeki uygun örnek (`IRON_RULES_BACKEND.md` satır 285–301) kullanıcı süzgecini yetki koşulunun üstüne yayar, kolon listesini tür adıyla sorar, yetki koşulu yoksa boş koşula düşer ve sayım sorgusu süzgeci taşımaz; okundu.
+- Prisma belgesi: sorgu koşulunda değeri tanımsız olan anahtar atlanır; katı denetim için ayrı bir önizleme ayarı vardır; okundu.
+- CASL'in boş kolon listesini reddettiği belgede bulunamadı; doğrulanmadı.
+
+İncelemenin sınırı: kütüphane davranışları çalıştırılmadı (bağımlılık kurulu değil); BADI ölçümleri inceleyen tarafından doğrulanmadı.
+
+### İkinci tur (2026-11-23)
+Kapsam: KR-008'in Seçim 10–29 ile değişen hâli ve bu kaydın Senaryolar, Kapasite, Veri modeli, Hata modları, Performans mantığı ve Doğrulama bölümleri. İşi yapmayan ayrı bir oturum inceledi (salt okuma). İlk deneme sunucu hatasıyla (529) sonuçsuz düştü; ikincisi tamamlandı.
+
+Hüküm: "bu hâliyle imzalamam". Çekirdek (sade tablolar ve yetenek satırı) çökmüyor; çöken yerler 2026-11-23'te eklenen parçaların birbirine değdiği dikişlerdir.
+
+Bulgular (numara inceleyenin; ağırlık inceleyenin; "→" ajanın ilk sınıflaması: K kullanıcıya sorulacak, A ajan düzeltir ya da öneri olarak yazar, Ö yürüyen iskelette ölçülür):
+1. Ağır. SuperAdmin'in yönetim hakkı satırdır ama korunan yalnız üyeliktir; o satır daraltılır ya da silinirse kimse yetenek yazamaz, göç de geri yazmaz. Öneri: bu kümenin dört yetki tablosundaki yetenekleri de sistem satırı sayılır; kilit kırma yolu yazılır. → K
+2. Ağır. Kullanıcı açılışındaki kök üyeliği yazabilecek tanımlı aktör yok (üyelik yazımı yalnız SuperAdmin kümesinde; yetkisiz kapı reddedildi); sistem aktörü SuperAdmin yapılırsa her arka plan işi yetki tablolarına yazar ve "son SuperAdmin" sayımı bozulur. → K
+3. Ağır. "Yetki yazımı seyrektir" üyelik için tutmaz: her kullanıcı açılışı genel sayacı artırır ve derleme dalgası üretir. Öneri: üyelik yazımı yalnız o kişinin sürümünü artırır. → K
+4. Ağır. Saklanan kayıt şemaya ve kod sürümüne bağlıdır ama yalnız yetki yazımında geçersiz olur; kolon kaldıran yayında bayat kayıt sorguyu düşürür. Öneri: saklama anahtarı şema ya da derleyici özetini taşır, ya da yayın sayacı artırır. → A
+5. Ağır. "Bütün kolonlar" ilişki alanlarını ve sistem kolonlarını tanımlamıyor: ilişkiyle yüklenen kayıt kendi sınırı uygulanmadan görünür; işaretli güncelleme silinme zamanı kolonunu yazarak silme izni olmadan yumuşak siler. Öneri: kolon skaler alandır; ilişkiyle gelen kayıt kendi kaynağının yeteneğiyle süzülür. → K
+6. Orta. "Yazılan kolon" tanımsız; model satır yaması varsayıyor, kanon niyet komutu kullanıyor ("onayla" gövdede kolon taşımaz ama üç kolon yazar). → K
+7. Orta. Redis yokken davranış kullanıcının yük nedeniyle reddettiği tasarımın kendisidir; aynı kişinin eşzamanlı istekleri ayrı ayrı derler. Eksik seçenek: (kişi, sürüm) anahtarlı süreç içi kayıt. → Ö
+8. Orta. Derlemenin okuma sırası ve anlık görüntüsü yok; eski veri yeni sürümle damgalanabilir ya da hiçbir anda var olmamış bir yetki bir istekte kullanılır. Öneri: sayaç ve derleme verisi tek anlık görüntüde okunur. → A
+9. Orta. Dört değişmez (son SuperAdmin, döngü, tek kök, boş birim) oku-sonra-yaz denetimidir; eşzamanlı iki yazmada delinir. Öneri: yetki yazan işlem ilk iş olarak sayaç satırını artırır ve değişmezleri o kilit altında denetler. → A
+10. Orta. Sayacın kapsamı eksik (tohum göçü, elle SQL, katalog tabloları) ve artırma mekanizması ertelenmişken "0 istek" ölçütü söylenemez. Öneri: ilke şimdi yazılır; "sayaç artırmadan yetki tablosuna yazan yol yok" denetimi eklenir. → A
+11. Orta. "İstek başına 1 okuma" istek içi bellek ister; o bellek aktör kimliğine bakmazsa başka aktör adına yapılan çağrı ilk aktörün yetkisiyle koşar. Öneri: istek içi yetki belleği (aktör, sürüm) anahtarlıdır. → A
+12. Orta. "Her istekte" istek olmayan bağlamda tanımsız; uzun süren iş başta derlenen yetkiyle devam eder. Öneri: sürüm iş birimi başına okunur. → A
+13. Hafif. Veritabanı geri yüklemesinde sayaç aynı numarayı farklı içerikle yeniden üretir. Öneri: damga dönem kimliği taşır ya da geri yükleme yordamına Redis temizliği yazılır. → A
+14. Orta. Kolon adı değişikliğinin kesintisiz yolu yok: şartında eski ad geçen yetenekler derlenmez, göç yönetici satırını yenileyemez (Seçim 16). → K
+15. Orta. Tarama "şema göçünden önce"ye bağlı ama katalog Prisma alan adıdır; alan adı veritabanı göçü doğurmadan değişebilir. Öneri: tetik, yeni sürümün kataloğu ile canlı yetenek verisinin yayın öncesi karşılaştırmasıdır. → A
+16. Orta. Tek bozuk yetenek (şemadan kalkan sabit değer) kaynağın bütün sorgusunu düşürür. Öneri: derleme ve tarama işleç, tip ve sabit değer uyumunu da denetler; uymayan yetenek atlanır ve bildirilir. → A
+17. Hafif. Kapalı varsayılana uymayan durum tek değil: boş sabit listeyle "listede değil" bütün kayıtları açar; olumsuz işleçte boş değer veritabanı ile bellekte ayrışır. Öneri: boş liste yazımda reddedilir; "olumsuz işleç boş değeri tutmaz" seçime yazılır. → A
+18. Orta. "Aynı yetenek" kuralı CASL'in hazır sorularıyla ifade edilemez (kurallar "veya" ile birleşir). Öneri: yazma denetimi yetenek yetenek yapılır; yazmanın sorgu koşulu yalnız seçilen yeteneğin şartını taşır. → K (motor seçimi)
+19. Orta. Toplu yazmada etkilenen satır sayısı denetimi yok; kısmi yazma oluşabilir. Öneri: etkilenen satır beklenenden azsa işlem geri alınır. → A
+20. Orta. İstek içinde süzülmemiş okuma (tekillik denetimi) ve yan yazma (outbox, erişim kaydı, başka feature'ın tablosu) tanımsız. → K
+21. Hafif. Oluşturmada "yeni hâl" bellekte eksiktir (veritabanı varsayılanları, henüz olmayan üyelik). Öneri: son hâl yazmadan sonra aynı işlemde veritabanında denetlenir. → K ("tek motor" ile birlikte)
+22. Hafif. Ayrılan kişinin yaşam döngüsü yok; pasif kullanıcının üyelikleri canlı kalır. → A (KR-009 ile birlikte)
+23. Hafif. Silme kuralı yalnız grup için var; rol ve izin için yok. Öneri: onlar da yalnız boşken silinir. → A
+24. Hafif. "Silinen birimin kayıtları yalnız 'bütün kayıtlar' yeteneğine görünür" sonucu ajanındır; açık teyit yok. → K
+25. Orta. Tohum mekanizması iki kolonla çalışmaz: yumuşak silineni kimin sildiği bilinmez; ikiye bölünen tohum satırında zincirin iki ucu olur. Öneri: köken alanı; "uç" canlı torunların kümesidir. → A
+26. Orta. Göçün durması yalnız canlıda görülür ve geri alma adımı tanımsız. Öneri: tohum göçü yayından önce canlı veride kuru koşar; ya tümü uygulanır ya hiç. → A
+27. Hafif. Tohum anahtarı canlı satırlarda tekil olmalıdır; "tekillik gerekmez" varsayımı bayatladı. → A
+28. Orta. Kolon indirgeme iki motorun (veritabanı ve bellek) tam eşliğine dayanır; tip farkları (tarih, ondalık, harf duyarlılığı) düşünülmedi. → K ("tek motor" ile birlikte)
+29. Orta. Kısmi kaydın okuma modeline etkisi (türetilmiş alan) ve ham SQL okumaları yazılmamış. → A
+30. Hafif. Kullanıcı süzgeci ve sıralaması ilişki yolu üzerinden başka kaynağın kolonunu ele verir. → A
+31. Hafif. "Silinmiş sayılmaz" yalnız üyelik için yazıldı; her ilişki yaprağına hedef modelin silinmemişlik koşulu eklenmeli. → A
+32. Hafif. Bellekteki ilişki denetimi ilişkinin tamamını yüklemeyi ister; "ek sorgu yok" iddiası düşer. → Ö
+33–38. Orta ve hafif. "Performans mantığı" terimleri eksik: saklanan kaydın boyutu O(y + Σa), en kötü O(y × a); kolon indirgeme yaprak, alt ağaç ve ilişkili kayıt çarpanlarını taşır ve "aynı kolon kümesi" kısayolu izin bütün kimlikleri taşımasıyla çelişir; derleme dalgası alt sınırdır; Kapasite bölümünde aritmetik yok; koşuldaki parametre sayısı sınırı; yazma ve yetki yazma terimleri. → A ve Ö
+39. Orta. Satırın kesin biçimi tek yerde yok. → A
+40. Orta. Karar cümlesi yalnız veri modelini söyler; düğüm saklamayı, sayacı, sistem aktörünü ve işlem anlamını da bağlıyor. Öneri: saklama ve sayaç ayrı (çift yönlü) karara ayrılır ya da cümle genişler. → K
+41. Orta. "Soruldu; düzeltmedi" teyit sayılmış (Seçim 14, 17 ve 24'teki okumalar). → K (açık teyit)
+42. Orta. Erişim kaydının ayrıntısı kullanıcı teyidi gibi yazılmış ama soru yanlış anlaşılmıştı. → K
+43. Orta. Yükümlülük ve Doğrulama listeleri Seçim 10–29'un yarısını taşımıyor. → A
+44. Orta. Geri dönüş ve İstisna yolu yeni seçimleri karşılamıyor. → A
+45. Orta. Kaynak üç biçimde duruyor (kod sabiti, göçle gelen tablo, Prisma modeli) ve eşleme tasarlanmadı; Seçim 20–21 bu eşleme olmadan tanımsız. → K
+46. Hafif. "Rol geneli satır sonradan eklenir, var olanı bozmaz" iz ve değişmezler için doğru değil. Öneri: erişim izi bugünden (yetenek kimliği, üyelik kimliği) çiftini taşır. → A
+47. Hafif. Bayat ifadeler (KR-008 ve bu kayıtta sayılı satırlar). → A
+48. Hafif. Tarihsiz bekleyenler; aracın tarih okuma biçimi yüzünden iki varsayım satırı yarından itibaren "gecikmiş" görünecek. → A
+49. Hafif. "Ölçüldü" iddiaları: BADI'de sayacın yalnız yazma tarafı ölçüldü; "benzeri var" emsal değildir. → A
+50–55. Orta ve hafif. KR-007, KU-012, KU-014 ve KU-015 ile çelişkiler: `throwUnlessCan` istisnası reddedilen davranışı uygular; istek içi bellek "kurala çevrilmeyenler"de; "rol ataması eksikse 403"; KU-012'nin yazma cümlesi; KU-014'ün cümlesi; KU-015'te geri alma adımı, önbellek boşaltma ve tohum anahtarı ad alanı. → A
+
+En güçlü karşı görüş (inceleyen): hâlâ rol geneli satır, ama belgede en zayıf yüzüyle duruyor. Yazılmamış iki eksen: (1) yeni izin ekseni — her yeni kaynak ya da eylem, var olan her (grup, rol) kümesi için ayrı satır ister ve her ortamda elle yazılır; (2) merkezden düzeltilebilirlik — satırların çoğu hiçbir göçün, testin ve incelemenin görmediği canlı veridir; bir yetenekteki güvenlik düzeltmesi her birimde elle tekrarlanır. Hiç tartılmamış ikinci görüş: tek motor — kararı yalnız veritabanı verir (yazmada son hâl aynı işlemde yetki koşuluyla yeniden okunur; okumada kolon kümeleri farklıysa küme başına sorgu); bedeli ek sorgu, kazancı eşlik yükümlülüğünün ve 17, 21, 28, 31. bulguların kalkması. Üçüncü: süreç içi kayıt seçeneği.
+
+İnceleyenin imza koşulu (on madde): 1; 2 ve 3; 4; 5, 6 ve 45; 8 ve 9; 14 ve 15; 18, 19 ve 50; 20; 25; belge (39, 41, 42, 43). İskelette ölçülerek bekleyebilir dedikleri: 7, 12, 13, 28, 33–38.
+
+Ajanın cevabı (2026-11-23): bulguların hiçbirini henüz doğrulamadım ya da çürütmedim; kütüphane davranışına dayananlar (4, 15, 16, 17, 18, 28, 31, 32, 37) inceleyenin kendi ifadesiyle "bilgimden, doğrulanmadı"dır. K işaretliler kullanıcıya tek tek sorulacak; A işaretliler KR-008'e öneri olarak işlenecek ve kullanıcıya toplu sunulacak. Bu tur tamamlanana kadar KR-008 kabule sunulmaz.
+
+Kapanış (2026-11-23, aynı gün):
+- K işaretliler kullanıcıyla tek tek kapatıldı: 1 → Seçim 30; 2 → 31; 3 → 32; 5 ve 45 → 33; 6 → 34; 14 → 35; 20 → 36; 21 ve 28 ("tek motor") → 37; 18 → 38; en güçlü karşı görüş (rol geneli satır) iki yazılmamış yüküyle sunuldu ve kullanıcı B'de kaldı → 39; 42 → 40 (yazmada değişiklik kaydı, okumada istek başına erişim kaydı); 24 → 41; 41 (açık teyit) → yedi okuma açıkça teyit edildi; 40 → karar ikiye bölündü.
+- A işaretliler (4, 8–13, 15–17, 19, 22, 23, 25–27, 29–31) kullanıcıya iki toplu listeyle sunuldu ve teyit edildi; KR-008 ile KR-010'da "İkinci çürütme turundan çıkan kurallar" olarak durur. Hiçbiri denenmedi.
+- Belge bulguları (39, 43, 44, 47–49): KR-008 anlamı değiştirilmeden yeniden düzenlendi (tek "satır biçimi" bloğu, güncel yükümlülük ve doğrulama listeleri, geri dönüş ve istisna yolu); çalışma anı seçimleri (23, 24, 25, 26, 32, 36, 37, 38, 40) yeni KR-010 taslağına taşındı.
+- Bağlı taslaklar (50–55): KR-007, KU-012, KU-014 ve KU-015'e uyarlama notu düşüldü; cümleleri kabulden önce yeniden yazılacak.
+- Hâlâ açık: Ö işaretliler (7, 32) ve performans terimleri (33–38) — "Performans mantığı" bölümü bu bulgulara göre henüz düzeltilmedi; bu kayıttaki bayat satırlar (47. bulguda sayılanlar) temizlenmedi; KR-008 ve KR-010'un düzenlenmiş hâli üçüncü kez bağımsız incelenmedi; kural taslakları açılmadı.
+
+### Üçüncü tur (2026-11-23)
+Kapsam: ikiye bölünüp yeniden düzenlenen KR-008 ve KR-010; bu kaydın ilgili bölümleri; bağlı taslaklar. İşi yapmayan ayrı bir oturum inceledi (salt okuma).
+
+Hüküm: "bu hâliyle imzalamam". İkinci turun on koşulundan ikisi (1 ve 3) kapandı, sekizi kısmen kapandı. Çekirdek yine çökmüyor; kapanış sırasında eklenen seçimlerin birbirine değdiği yerlerde dört ağır dikiş var. Bölmede numara kaybolmadı (1–41'in hepsi iki belgeden birinde bulundu).
+
+Bulgular (numara ve ağırlık inceleyenin):
+1. Ağır. Ad değişikliği göçü satırı yenileyip kökenine "göç" yazınca yöneticinin değişikliğini tanıtan işaret silinir; sonraki tohum göçü yöneticinin daralttığı yeteneği sessizce genişletir. Öneri: ad göçü kökeni korur.
+2. Ağır. Seçim 32'den sonra "sayaç satırı" iki ayrı satırdır; üyelik yazımının hangisini kilitlediği yazılmadı. Yalnız kişi satırı kilitlenirse son iki SuperAdmin üyeliğini silen iki eşzamanlı işlem birbirini beklemez. Öneri: kilit her zaman genel sayaç satırındadır.
+3. Ağır. Pasife almada üyelikleri kimin, hangi yetenekle kapattığı tanımsız ve "tek istisna" cümlesiyle çelişiyor; kapatılan kişi son SuperAdmin ise iki kural birlikte tutmaz. Öneri: pasife alma ve yeniden açma Seçim 17'nin adıyla ikinci istisnası olur; son SuperAdmin'i taşıyan kişi pasife alınamaz.
+4. Ağır. Niyet eyleminde şartın kaydın hangi hâline baktığı yazılmadı ("durum = bekliyor" şartlı "onayla" iki hâl kuralında hep geri alınır).
+5. Orta. Çok adaylı güncellemede başarısız denemenin nasıl geri alınacağı ve toplu yazmada "beklenen" sayı tanımsız (kayıtları farklı yetenekler tutuyorsa meşru istek geri alınır).
+6. Orta. Ad değişikliği istisnası yalnız kolon adını kapsar (sabit değer, model, ilişki alanı dışarıda); tarama kapısının sırası ve neyi durdurduğu yazılmadı.
+7. Orta. "Uç canlı torunların kümesidir" ile "tohum anahtarı canlı satırlarda tekildir" birlikte tutmaz; anahtarı kimin taşıdığı seçilmeli.
+8. Orta. "Yazılan kolon = değeri değişen alan" tanımı okunamayan kolon için değer tahmini yaptırır. Öneri: izinli kümede olmayan alan, değeri değişmese de reddedilir.
+9. Orta. Niyet komutunun yazdığı kolonların düz güncellemeye kapalı olduğu yazılmadı («bütün kolonlar» güncellemesi olan kişi durum kolonuna "onaylandı" yazabilir).
+10. Orta. Süzülen iç içe ilişkili kaydın ne döndüğü (boş mu, kayıt mı düşer) ve sorgu maliyeti yazılmadı; "yetki için tek okuma" ölçütü burada tutmaz.
+11. Orta. Kapalı birim açılımda kalıyor ama döngü denetimi, taşıma ve ilişki şartı onu nasıl görür yazılmadı; yeni kayıt kapalı birime yazılabilir; "silinen" ve "kapatılan" iki sözcük.
+12. Orta. Seçim 31'in yeteneksiz üyelik yazımı KR-010'un "yetkiyi atlayan yol yoktur" ve "her yazma tek bir yeteneğe bağlı kayda geçer" cümleleriyle çelişir; yazma isteği içinde sistem aktörüyle yapılan okuma hiç kayda geçmez.
+13. Orta. Niyetin başka kaynağın tablosuna yan yazması (örneğin onayın karar kaydı oluşturması) hangi aktör ve yetenekle yapılır, yazılmadı.
+14. Orta. Saklanan kaydın damgası derleyici biçim sürümünü de taşımalı; ad değişikliği yayını eski ve yeni kodu birlikte koşturamaz (iskelette bekleyebilir).
+15. Orta. Üyelik tekilliğinin canlı satırlarda mı bütün satırlarda mı olduğu yazılmadı (çıkarılıp aynı rolle geri eklenen kişi).
+16. Orta (süreç). `denetle: temiz` taslaklar hakkında bir şey söylemez; KR-008 bugünkü hâliyle kabul kapısından geçmez, çünkü Doğrulama bir denetim kimliği ya da ölçüm tarihi taşımıyor. KR-010 çift yönlü olduğu için aracın bu denetimlerine hiç girmez.
+17. Orta. Yükümlülük ve Doğrulama listeleri bazı seçimleri taşımıyor (KR-008: Seçim 14, 33, 41, "sistem aktörü SuperAdmin yapılamaz"; KR-010: süzme ve sayım sızıntısı testi, tek anlık görüntü, Seçim 38).
+18. Hafif. KR-010 karar cümlesi sistem aktörünü ve izi söylemez; "tek satırlık okuma" iki sayıdan sonra bayat.
+19. Hafif. Seçim 30–41'in konuşma kaydı bu kaydın "Veri modeli" bölümünde yok, yalnız "Kapanış"ta numara eşlemesi var; KR-008'de ajan önerisi olan kurallar seçimlere eritildi ve "ajan önerisi, denenmedi" etiketi kayboldu.
+20. Hafif. Bayat ya da çelişkili ifadeler (KR-008 Seçim 21 ile 33; KR-010'da "karaliste"; KR-009'un "KR-008 Seçim 23/25" göndermeleri; bu kayıtta eski performans terimleri, "eşlik testi" ve Senaryolar'ın Seçim 31, 33–36, 41'i kapsamaması).
+21. Hafif. Geri dönüş sınıflaması eksik (Seçim 6 ve 41; köken ve tohum anahtarı; tutulmayan okuma izi geriye dönük üretilemez).
+22. Hafif. Kilitlenme yolu bir yayın gerektirir; "kullanıcı tek yoldan açılır" cümlesinin iki göç istisnası (ilk SuperAdmin, sistem aktörü) adlandırılmadı.
+23. Hafif. "Olumsuz işleç boş değeri tutmaz" seçime değil varsayıma yazıldı; tohum anahtarı ad alanı yalnız KU-015 notunda.
+24. Hafif. Sürümün hangi veritabanı sunucusundan okunacağı yazılmadı; okuma kopyasından okunursa silinmiş yetki gecikme kadar yaşar.
+25. Hafif. KR-009 ile doğrudan çelişki yok; "Redis yokken reddet" seçilince KR-010'un "veritabanından derle" yolu yalnız sistem aktörüne kalır.
+
+İnceleyenin imza koşulu: 1–4; tanım cümlesi isteyen 5, 6, 7, 8, 9, 11, 12, 13 ve 15; KR-008 için gerçek bir denetim (16) ve liste boşlukları (17); KR-007 ile KU-012 cümlelerinin yeniden yazımı. İskelette ölçülerek bekleyebilir dedikleri: 10'un maliyet yarısı, 14, 24, performans terimleri ve kütüphane davranışları.
+
+### KR-009 için ilk tur (2026-11-23)
+Kapsam: kimlik doğrulama ve oturum kararı (KR-009), bağlı kararlar ve kanon girdileri. İşi yapmayan ayrı bir oturum inceledi (salt okuma). İnceleyen dokuz herkese açık belgeyi (OWASP, RFC 9700, Next.js, BullMQ, Expo, Node, Redis) onay sormadan okuduğunu ve proje verisi göndermediğini bildirdi; bu, kullanıcının "dış çağrı onaya bağlıdır" kuralına aykırıdır ve kullanıcıya söylendi.
+
+Hüküm: "bu hâliyle imzalamam". Çekirdek seçimler (beyaz liste, yalın belirteç, döndürme, kapı, aracı katman) ayakta; çöken yerler bu seçimlerin birbirine ve Redis kesintisine değdiği dikişlerdir.
+
+Bulgular (numara ve ağırlık inceleyenin):
+1. Ağır. "Önce Redis, sonra veritabanı" sırası iptali korumaz: Redis kaydı silinince istemci hemen yeniler, veritabanı satırı hâlâ geçerlidir ve kayıt geri yazılır. Öneri: iptal ve yenileme aynı satır kilidinde seri koşar.
+2. Ağır. Redis yokken dönen durum kodu ve yenilemenin adım sırası yazılmadı; yenileme veritabanında token'ı döndürüp Redis'e yazamazsa Redis dönünce herkes "çalınmış" sayılır. Öneri: Redis yokken cevap 503'tür ve yenileme veritabanına dokunmadan reddeder.
+3. Ağır. Kesinti hareketsizlik süresinden uzunsa "Redis dönünce yenilenir" cümlesi tutmaz; herkes parolayla yeniden girer.
+4. Ağır. Hoşgörü penceresi içinde ikinci isteğe ne döneceği tanımsız ve pencere "en çok bir kez işe yarar" ölçütünü çürütür.
+5. Ağır. Kaybolan yenileme cevabı düşünülmedi: mobil uygulama yeni token'ı alamadan eskisi geçersizleşirse oturum düşer ve yanlış hırsızlık alarmı üretilir.
+6. Ağır. Döndürme ile çerez birlikte, Next.js sayfa çizimi sırasındaki yenilemeyi oturum düşürene çevirir, çünkü çizim sırasında çerez yazılamaz (Next.js belgesi; inceleyen okudu).
+7. Ağır. Yeniden kullanım tespiti yalnız mağdur eski token'la geri dönerse çalışır; mutlak sürenin döndürmeyle uzayıp uzamadığı yazılmadı.
+8. Ağır. İlk SuperAdmin'in ve "kullanıcı aç" ile açılan kişinin ilk parolası tanımsız; hazır parola girişi parola belirleme yolu olmadan kullanılamaz.
+9. Orta. Kimlik isteyen ama yetenek istemeyen uçlar (çıkış, parola değiştir) üç taslağın arasında tanımsız.
+10. Orta. Kapının sözleşmesi yazılmadı; tek adımlı parola girişine göre biçimlenirse iki adımlı ilk gerçek yöntemde çekirdek değişir.
+11. Orta. Sistem aktörü bir kullanıcı satırıdır ama "oturum açamaz" kuralı yok.
+12. Orta. Yenileme kullanıcının durumuna bakmıyor; pasif durumunun tek yoldan yazıldığı söylenmiyor.
+13. Orta. Oturum sınırı aşımı ve yeniden kullanım düşürmesi iptal yolları listesinde yok; parola değişiminde isteği yapan oturumun düşüp düşmediği yazılmadı.
+14. Orta. "Veri kaybı kapalı tarafa düşer" yalnız kayıt kaybında doğrudur; silmenin kaybı (Redis yedeğe geçişinde) iptal edilmiş kaydı geri getirir.
+15. Orta. Aracı katmanın backend'e kim olarak gittiği yazılmadı; backend bütün web kullanıcılarını tek adres olarak görür ve hız sınırına çarpar.
+16. Orta. Hız sınırı alınmadan hazır parola girişi, internete açık backend ve Argon2id birlikte korumasız tahmin ve ucuz hizmet engelleme demektir.
+17. Orta. Hareketsizlik son istekten değil son yenilemeden ölçülür; ayarlar arasında değişmez yoktur.
+18. Orta. Oturum satırının biçimi yok; tespit, pencere, mutlak süre ve iptal ona bağlıdır.
+19. Orta. Oturum, yetki ve kuyruk aynı Redis'teyse bellek dolduğunda oturum yazımı reddedilir.
+20. Orta. Çerezi kimin yazdığı ve OriginGuard'ın görevi kanondan sapıyor ama sapma yazılmadı; KU-010 zinciri hâlâ değişmez sayıyor.
+21. Orta. Güvenlik olayı ve izde oturum kimliği yok.
+22. Orta. Yükümlülük ve Doğrulama listeleri seçimlerin yarısını taşımıyor.
+23. Orta. Karar cümlesi en pahalı dönüşü (erişim yolu) söylemiyor; tek yönlü düğüm çift yönlü seçimleri de bağlıyor.
+24. Orta. Bu kayıtta kimlik için Senaryolar, Kapasite, Hata modları ve Performans mantığı yok; kimlik bloğu bayat.
+25. Orta. Seçenekler en güçlü karşı görüşü taşımıyor.
+26. Orta. Mobilde tek oturumu kapatma yolu ve oturum etiketi yok.
+27. Hafif. Anahtar değişiminin bedeli refresh token'ın opak olup olmadığına bağlı ve bu yazılmadı.
+28. Hafif. KR-010 ile dikişte bayat ve eksik satırlar.
+29. Hafif. Biçim kabulde düşer; dört varsayım satırı sınanabilir varsayım değil, ertelemedir.
+30. Hafif. Geri dönüş ve İstisna yolu eksik; iki kanon atfı kayık.
+
+En güçlü karşı görüş (inceleyen; belgede yoktu): (1) opak sunucu tarafı oturum — her istekte Redis'e bakıldığı için belirtecin durumsuz doğrulaması zaten bırakılmış; opak oturumda RS256 anahtar yönetimi, web tarafındaki token ikiliği, döndürme yarışı, pencere ve 6. bulgu kalkar; (2) oturum geçerliliğinin KR-010'un her iş biriminde zaten yaptığı veritabanı okumasına binmesi — "Redis yoksa herkes dışarıda" bedeli ve 14. bulgu düşer; (3) hazır kimlik sağlayıcı — base'in "yok" dediği parçaları hazır getirir, bedeli ayrı bir servis işletmektir. Mevcut tasarımın lehine kalan: imza çöp isteği Redis'e gitmeden eler, Redis'i okuyan oturum çalamaz, web ve mobil tek sözleşme konuşur.
+
+İnceleyenin imza koşulu (on madde): 1; 2 ve 3; 4 ve 5; 6; 7; 18; 8 ve 11; 9; 10; belge (20, 22–25, 29). İskelette ölçülür dedikleri: pencere süresi, yenileme ve derleme dalgası, Argon2id süresi, tek Redis gidişi, Redis belleği.
+
+Ajanın cevabı (2026-11-23, KR-009): bulgular henüz KR-009'a işlenmedi ve hiçbiri ajan tarafından doğrulanmadı. En güçlü karşı görüş (opak oturum) kullanıcıya sunulacak.
+
+Ajanın cevabı (2026-11-23; yukarıdaki "Üçüncü tur" için, yani KR-008 ve KR-010): bulgular henüz KR-008 ve KR-010'a işlenmedi. 16. bulgu önemli bir süreç gerçeğidir: KR-008 çalışan bir ölçüm olmadan kabul edilemez ve kod yoktur; kabul yürüyen iskeletteki sınamalardan sonra gelir. 19. bulgu doğrudur: Seçim 30–41'in konuşması yalnız KR-008/KR-010'da ve bu "Çürütme" bölümünde yazılıdır.
+
+Ağır bulguların kapanışı (2026-11-23; sürüyor). Kullanıcı ağır bulguların ele alınıp bitirilmesini istedi; her madde tek tek soruluyor.
+- Üçüncü tur 4. bulgu — kapandı (kullanıcı, 2026-11-23): niyet eyleminde şart kaydın yalnız önceki hâline bakar; kaydı taşıyan niyet komutu hedefini kendi kodunda denetler (KR-008 Seçim 42). Reddedilen: niyette de iki hâl.
+- Üçüncü tur 1. bulgu — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-23): ad göçü satırı yeni satırla yeniler ve kökeni korur (KR-008 Seçim 35 düzeltildi). Kullanıcı ayrıca sordu: göçte ve yöneticinin müdahalesinde de "yenisi yazılır, eskisi pasife çekilir" kuralı geçerli midir; cevap evettir (Seçim 7) ve Seçim 35'e açıkça yazıldı.
+- Üçüncü tur 2. bulgu — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-23): kilit her zaman genel sayaç satırındadır; "kullanıcı aç" ve yeniden açma kilit almaz (KR-010 "İkinci çürütme turundan çıkan kurallar" ve yükümlülük 2).
+- Üçüncü tur 3. bulgu — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-23): pasife alma ve yeniden açma Seçim 17'nin ikinci adlı istisnasıdır; son SuperAdmin'i taşıyan kişi pasife alınamaz; eski üyelikler geri gelmez (KR-008 Seçim 43).
+- Açık (ajan okuması; teyit istenecek): kapatılan üyelik satırı pasif kalır ve kişi aynı gruba aynı rolle yeniden eklenirse yeni satır yazılır; bu, üyelik tekilliğinin yalnız canlı satırlarda arandığı anlamına gelir (üçüncü tur 15. bulgu).
+- KR-009 kök sorusu — açık (2026-11-23): kullanıcıya X (imzalı token ve dönen refresh token; bugünkü seçim) ile Y (opak sunucu tarafı oturum; inceleyenin en güçlü karşı görüşü) tek örnek üzerinden yan yana sunuldu. Ajan Y'yi önerdi (gerekçe: her istekte Redis'e bakıldığı için imzalı token'ın ana faydası kullanılmıyor; Y dört ağır bulguyu kaldırıyor; bedeli çalınan token'ın hiç fark edilmemesi). Kullanıcı X'e yatkın olduğunu söyledi ve yeni bir fikir getirdi: token geldiği yere bağlansın (parmak izi), çalınsa da parmak izi olmadan çalışmasın. Ajanın değerlendirmesi (doğrulanmadı, bilgiye dayanır): parmak izi X ile Y arasındaki seçimi değiştirmez, ikisine de eklenir ve token'ın içine değil oturum kaydına yazılır; token ile aynı yerde duran ya da kopyalanabilen parmak izi (tarayıcı bilgisi) hırsızı durdurmaz; IP hem paylaşılır hem değişir; gerçek koruma cihazdan çıkmayan bir anahtarla imzalamaktır (sahiplik kanıtı) ve X'te uzun ömürlü sır yalnız yenilemede kullanıldığı için bağlamayı yalnız orada yapmak yeter. Kullanıcının hırsızlığa verdiği ağırlık X'i tutarlı seçim yapar. Karar bekliyor.
+- KR-009 Seçim 1 yeniden açıldı (2026-11-23): kullanıcı sordu — "Redis'te oturum kaydı tutmak değil de yetki derlemelerini oradan diye konuşmuştuk ya". Bu, bugünkü "beyaz liste" cevabının "Redis'te oturum başına bir kayıt" anlamına geldiğinin açık anlatılmadığını gösterir; ajan seçimi bağlayıcı saymadı ve soruyu üç seçenekle yeniden sordu: (a) Redis'te oturum kaydı (bugünkü metin); (b) liste yok, token süresi dolana kadar geçerli (kanon); (c) oturumun açık olup olmadığı veritabanında, KR-010'un her istekte zaten yaptığı sürüm okumasıyla aynı sorguda cevaplanır (inceleyenin ikinci karşı görüşü; kullanıcıya ilk kez sunuldu). Ajanın önerisi c'dir. Parmak izi sorusu bu kapanana kadar bekletildi.
+- KR-009 Seçim 1 — kapandı (kullanıcı, 2026-11-23): c. Oturumun açık olup olmadığı veritabanındaki oturum satırından, yetki sürümüyle aynı sorguda okunur; Redis'te oturum kaydı tutulmaz. KR-009'un başlığı, karar cümlesi ve bağlı satırları buna göre düzeltildi. Sonuç (ajan): KR-009 ilk turunun 1, 2 ve 3. ağır bulguları ile 14 ve 19. orta bulguları dayandıkları yapı kalktığı için düşer; 1 ve 2 için birer cümle yine yazılacak (iptal ve yenileme aynı oturum satırını kilitler; Redis yokken cevap 503'tür ve yenileme çalışır) ve Seçim 5 yeniden teyit edilecek. X (imzalı token ve dönen refresh token) yerinde kalır.
+- Parmak izi sorusu — kullanıcı (2026-11-23): "c" (cihaza bağlama şimdi tasarıma girer) ve "burada BADI'den yardım alabiliriz, git bak". Ajan BADI'yi salt okudu (aşağıdaki blok). Okunan şey ajanın c'de anlattığı donanım anahtarı değildir; cihaza özel ikinci bir sırdır. Kullanıcının hangisini kastettiği teyit bekliyor.
+- BADI'den okunanlar — kimlik (2026-11-23; salt okuma, yalnız yapı ve ders, kod alınmadı; okunan dosyalar: `backend/src/shared/security/domain/device-binding.ts`, `backend/src/shared/security/infrastructure/cookie.util.ts`, `backend/src/features/identity/auth/application/commands/refresh-token/refresh-token.handler.ts`, `backend/src/features/identity/auth/domain/entities/refresh-token.entity.ts`, `backend/prisma/schema.prisma` içinde `RefreshToken`, `frontend/src/proxy.ts` satır 255–399; sürümler: Next.js 16.4.6, Expo 54, `expo-secure-store`):
+  - Cihaz bağı: girişte sunucu cihaza özel 256 bitlik rastgele bir sır üretir; web'de ayrı bir HttpOnly çerezde durur ve yalnız kimlik uçlarına gider; veritabanında yalnız özeti (alan ayrımlı ve sürüm önekli) refresh token satırında durur; yenilemede sır uymazsa istek reddedilir (bağlı satır kapalı tarafa düşer); döndürmede korunur, her yeni girişte yenisi üretilir. Mobil yenileme gövdesinde aynı sırrı gönderir.
+  - Ders: BADI'de parmak izi önce IP ve tarayıcı bilgisinin özetiydi; bırakıldı ve eski satırlar "güvenli bağ" sayılmıyor (kod yorumu).
+  - Neyi korur (ajan yorumu): refresh token tek başına sızarsa işe yaramaz. Neyi korumaz: iki sır aynı yerden birlikte kopyalanırsa (tarayıcının çerez deposu, telefonun deposu).
+  - Hoşgörü penceresi 5 saniyedir; pencere içinde ikinci istek temiz bir 401 alır, oturum düşmez ve kaybeden elindeki hâlâ geçerli access token ile devam eder; dağıtık kilit bilerek yoktur (kod yorumu). Tuzak kaydı T-0012: pencere yük altında kısa kalmamalı.
+  - Mutlak oturum ömrü 7 gündür; oturumun başlangıç zamanı döndürmede korunur ve sınırı aşacak access token üretilmez. Hareketsizlik son döndürmeden ölçülür.
+  - Yeniden kullanımda kullanıcının bütün oturumları kapatılır; güvenlik olayı yalnız gerçekten bir oturum kapandıysa yazılır (aksi hâlde aynı olay tekrar tekrar yazılıp gerçek sinyali boğmuş). Meşru iptal (çıkış, hareketsizlik, mutlak ömür, grup ya da rol değişimi, pasife alma) hırsızlıktan ayırt edilemediği için kullanıcılar haksız yere atılmış (tuzak T-0012); satırda iptal nedeni yoktur, ayrım "döndürmeyle yerine yenisi yazılmış mı" sorusuyla sonradan eklenmiş. Ders: iptal nedeni satırda tutulmalı.
+  - Yenileme kullanıcının etkin olduğuna bakar; tek kullanımlık hak atomik alınır ve yarışı kaybeden 401 alır.
+  - Web'de yenileme isteğin girişinde (`proxy.ts`) yapılır: yeni çerez hem çizime giden isteğe hem cevaba yazılır; çizim yolunda çerez yazmak hata verir (kod yorumu); ön yükleme istekleri tek kullanımlık token'ı harcamasın diye yenileme yapmaz; Server Action isteği yönlendirilmez (tuzak T-0215). Kod yorumuna göre bu dal canlıda etkisizdir, çünkü refresh çerezi yalnız kimlik yoluna gider ve sayfa isteği onu taşımaz; canlıdaki koruma ayrı bir yoldur. Ders: refresh çerezinin yol kapsamı ile girişte yenileme birlikte tasarlanmalı.
+  - BADI'de mobil de web'in aracı katmanından geçer; bu depoda mobil backend'e doğrudan gider (KR-009 Seçim 4).
+  - HMAC (anahtarlı özet): kullanıcı "orada HMAC dediğimiz bir olay vardı" dedi. BADI'de HMAC birçok yerde geçer (dosya adlarından görüldü, içerikleri bu turda okunmadı: tek kullanımlık kod özeti, kimlik özeti, hız sınırı, derlenmiş yetki kaydı, refresh devri); cihaz bağının özeti ise düz SHA-256'dır (dosya okundu). Ajan yorumu: rastgele 256 bitlik sır tahmin edilemediği için düz özet yeter; anahtarlı özet tahmin edilebilir değerler (kısa kod, telefon numarası) içindir.
+- Parmak izi sorusu — kapandı (kullanıcı, 2026-11-23): a. BADI'deki cihaz bağı yapı olarak alınır; donanım anahtarı ertelenir (KR-009 Seçim 7).
+- Yeniden kullanımın kapsamı — kapandı (kullanıcı, 2026-11-23): hırsızlık tespitinde kullanıcının bütün oturumları kapatılır (BADI'deki gibi); KR-009 Seçim 2 düzeltildi.
+- Parmak izi yeniden açıldı (kullanıcı, 2026-11-23): "bir kere bile olmasını engellemek şart"; tarayıcı bilgisi ve IP de parmak izine girsin, "şifrelendiğinde bizde şifreli karşılığı olur", IP ile birlikte tam oturur mu diye bakılsın. Ajanın baktığı (BADI, salt okuma): bugünkü kod yenilemede yalnız cihaz sırrına bakar; kod yorumu eski parmak izinin IP ve tarayıcı bilgisi özeti olduğunu ve o satırların "güvenli bağ" sayılmadığını söyler; bırakılma nedeni yazılı bulunamadı (dosyanın geçmişi tek bir taşıma commit'idir, belgelerde gerekçe yoktur). `docs/raporlar/PROJECT_OVERVIEW.md` satır 113–122 bugünkü düzeni doğrular. Ajanın değerlendirmesi (bilgiye dayanır, denenmedi): tarayıcı bilgisi gizli değildir, sunucuda özetlemek onu gizli yapmaz, hırsız aynısını gönderir; üçlünün gerçek gücü IP'dedir, çünkü IP kolay taklit edilmez; IP başka ağdaki hırsızı durdurur, aynı ağdakini durdurmaz ve ağ değiştiren meşru kullanıcıyı dışarıda bırakır; oturum satırı her istekte okunduğu için (Seçim 1) IP her istekte ek sorgu olmadan denetlenebilir ve bu, çalınan access token'ı da başka ağda durdurur; hiçbir katman "hiçbir durumda bir kez bile" güvencesi vermez.
+- IP kapısının kapsamı — kapandı (kullanıcı, 2026-11-23): a. IP ve tarayıcı bilgisi kapısı her yüzeyde ve her projede zorunludur, kapatma ayarı yoktur (KR-009 Seçim 8). Ajanın önerisi b idi (proje ve yüzey bazında kapatılabilir); kullanıcı bedelleri (ağ değiştirenin yeniden girişi, çok adresli ağda çalışamama) sunulduktan sonra a'yı seçti. Ayrıntı kuralları ve yedi kuralın toplu teyidi bekliyor.
+- BADI'den okunanlar — aracı katman ile backend arasındaki güven (2026-11-23; kullanıcı "Kural 9'da HMAC hem frontta hem backte kurallar var, git bak" dedi ve okuma izni verdi; salt okuma, yalnız yapı ve ders; okunan dosyalar: `backend/src/shared/security/infrastructure/client-ip.util.ts`, `frontend/src/shared/lib/security/client-ip.ts`, `frontend/src/shared/lib/api/forwarded-headers.ts`, `backend/src/features/identity/auth/application/commands/claim-refresh-handoff/claim-refresh-handoff.handler.ts`, `frontend/src/app/api/auth/refresh/route.ts` satır 1–175, `frontend/src/proxy.ts` içinde HMAC satırları, `docs/raporlar/PROJECT_OVERVIEW.md` satır 113–122):
+  - HMAC'in iki tarafta kullanıldığı yer refresh devridir: aracı katman ile backend aynı gizli anahtarı taşır; aracı katman kısa ömürlü (60 saniye) bir durum değerini imzalayıp çereze yazar ve backend'e "bu istek benden geliyor" kanıtını başlıkta gönderir; backend kanıtı aynı anahtarla, sabit süreli karşılaştırmayla doğrular ve durum değerini Redis'te tek kez kullandırır (ikinci deneme 409 alır). Redis yoksa döndürme yapılmaz (503). Her kullanımın kendi ad alanı öneki vardır; anahtar en az 32 karakterdir ve iki taraf da açılışta denetler; Redis anahtarına durum değerinin kendisi değil özeti yazılır.
+  - İstemci adresi için HMAC yoktur: aracı katman, önündeki vekilin adıyla bildirilen başlığından gerçek adresi çözer (zincirde en sağdaki değer; istemcinin uydurduğu değer solda kalır) ve backend'e kendi başlığında iletir; backend bu başlığa yalnız bir ayar açıkken güvenir. Güvenin dayanağı backend'in internete kapalı olmasıdır (kod yorumu). İki ayar da varsayılan kapalıdır ve açma sırası önemlidir (tuzak T-0019); bu sözleşme kurulmadan önce backend bütün web trafiğini tek adres görmüş ve bir kişinin davranışı herkesi kilitleyebilmiştir (kod yorumu).
+  - Web'de yenilemenin canlıdaki yolu devirdir: süresi dolmuş oturumla gelen sayfa isteği, refresh çerezinin gittiği tek yola yönlendirilir, orada yenilenir ve geri döner; istemci tarafındaki istekler 401'de bir kez, kilitle yeniler; sekmeler arası eşgüdüm ve 30 saniyelik canlı tutma vardır (genel bakış belgesinden okundu, kodun tamamı okunmadı). Ders: refresh çerezinin yol kapsamı daraltılınca bu devir düzeni gerekir.
+  - Bu depo için sonuç (ajan yorumu): BADI'nin adres güveni "backend internete kapalı" varsayımına dayanır; bu depoda mobil backend'e doğrudan gittiği için (KR-009 Seçim 4) backend internete açık olabilir ve o varsayım tutmaz. İmzasız bir "gerçek adres" başlığını herkes yazabilir ve IP kapısı (Seçim 8) atlatılır. Bu yüzden BADI'nin devirde kullandığı imza deseni burada adres başlığına uygulanmalıdır.
+- KR-009 Seçim 4 yeniden açıldı (kullanıcı, 2026-11-23): "o zaman mobil de frontun üzerinden gider, bunu komple çözeriz?" Ajanın değerlendirmesi (denenmedi): backend internete hiç açılmaz ve adres güveni tek kapıda toplanır (BADI'deki düzen); "komple" olması iki şarta bağlıdır — backend'e ağ düzeyinde yalnız aracı katman ulaşabilmeli (kurulum işi) ve imza ikinci katman olarak kalmalı (yanlış kurulumda kapalı tarafa düşmek için). Bedel: mobilin her isteği bir durak fazla yapar, aracı katman mobil trafiği de taşır ve düşerse mobil de düşer, aracı katmana mobil için aktarma yolu yazılır (backend zaten başlıktaki token'ı tanıdığı için BADI'dekinden ince). 
+- KR-009 Seçim 4 — kapandı (kullanıcı, 2026-11-23): a. Mobil de aracı katmandan geçer, backend internete açılmaz, imza ikinci güvence olarak kalır; KR-009 Seçim 4, seçenekleri, sonuçları ve geri dönüşü düzeltildi.
+- Kimlikte on kural — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-23: "uygun"): KR-009 "Çürütme turundan ve BADI'den çıkan kurallar" (Kural 1–10) ve Seçim 5'in yeni hâli. Bununla KR-009 ilk turunun 1–7. ağır bulguları için tanım yazılmış oldu (1: Kural 1; 2 ve 3: Seçim 5; 4: Kural 3; 5: Kural 4; 6: Kural 5; 7: Kural 6 ve 7); hiçbiri kodla sınanmadı. 
+- KR-009 ilk tur 8. bulgu — kapandı (kullanıcı, 2026-11-23): a. İlk parola davet akışıyla belirlenir (KR-009 Seçim 9); kullanıcı normalde geçici parolaya gideceğini söyledi ve ajanın önerisini seçti.
+- Sonuç (2026-11-23): 12 ağır bulgunun (üçüncü tur 1–4; KR-009 ilk tur 1–8) hepsi için karar ya da tanım yazıldı. Hiçbiri kodla sınanmadı; KR-009'un yeni hâli bağımsız incelenmedi. Açık kalanların listesi "Aşamalar" bölümündedir.
+- Mimari, katman sorusu — kapandı (kullanıcı, 2026-11-23): a. Kuralı olmayan basit alt özellik de dört katmanı taşır; kullanıcının gerekçesi: "DDD'yi tam sağlamamız gerekiyor, EDD de gelebilir, o yüzden çakılı sağlam olmalı, kuralları tam geçmeli" (KR-005 "Bağlam"). KR-005'in "belgede yok" yazan bölümleri (ölçüt, reddedilen seçeneklerin gerekçesi, neyden vazgeçildiği, geri dönüş, sapma yolu, "shared feature'ı içe aktarmaz") için ajan önerisi kullanıcıya toplu teyide sunuldu; karar bekliyor.
+- Feature'lar arası erişim — açık (2026-11-23): kullanıcı sordu, "feature'ın içinde shared katmanı olabilir, ACL ile diğer feature'lara ulaşmak gerekirse oradan gidebilir diye bir karar almıştık ya". Kayıtta bu cümle yoktur; yakın iki parça vardır: kullanıcının 2026-11-21 seçimi ("ortak iş kodu sahibi olan feature'da durur", "Yapı" bölümü) ve kanondaki feature içi `_shared/` klasörü ("BC-içi, alt özellikler arası paylaşım"; `ARCHITECTURE.md` satır 126). Ajanın okuması: feature'ın `_shared/` klasörü yalnız kendi alt özellikleri içindir; başka feature'a ulaşırken arayüz genel ortak kodda durur, sahibi feature uygular (`PATTERNS.md` satır 538–551), tüketen feature isterse arayüzü kendi `_shared/` klasöründeki bir ACL ile sarar. İki seçenek soruldu: (a) bu okuma, feature'lar birbirini hiç içe aktarmaz; (b) tüketenin ACL'i karşı feature'ın dış arayüzünü doğrudan içe aktarabilir. Karar bekliyor. Bu, "Yapı" bölümündeki "kanonla çelişen ajan önerileri"nin ilk maddesini de kapatacaktır.
+- Mikroservis (kullanıcı, 2026-11-23): "mikroservis faz 2 aslında; bu modular monolith with VSA bu işlerin temeli; burada ABAC ve diğer sistemleri sağlam bir şekilde oturtup yapıyı sonrasında mikroservise adım adım taşıyacağız". KR-005'te B seçeneği "reddedildi" yerine "ertelendi" diye düzeltildi ve "Geri dönüş" bölümüne ileri yol ile taşımayı zorlaştıracağı bilinen üç nokta yazıldı. Bu, "Sorun" bölümündeki "mikroservis kapsam dışıdır" cümlesini daraltır: bu fazın kapsamı dışıdır.
+- Feature'lar arası erişim — ajanın genişletilmiş önerisi (2026-11-23; kullanıcı "önerin ne, genişlet" dedi; karar bekliyor). Kanon okundu (`IRON_RULES_EVENTS.md` satır 27–121, EVT-00): dört yol vardır — senkron ön koşul için shared arayüz sözleşmesi (`shared/<concern>/domain/`, konu adıyla, sahibini anmadan; "aynı transaction"), dış sistem için ACL (`shared/external/<vendor>/`), "olduktan sonra" için outbox üzerinden olay, çok adımlı iş için saga. Düzeltme: ajanın bir önceki çiziminde tüketen feature'ın `_shared/` klasörüne konan "ACL" kanonda yoktur; kanonda ACL yalnız dış sistemler içindir. Öneri: (K1, kanon) feature başka feature'ı içe aktarmaz; (K2, kanon) sözleşme konu adıyla durur ve modül yalnız belirtecini dışa verir; (K3, ek; kanondan sıkı) sözleşme başka feature'da yazmaz, yalnız sorar ya da denetler, başka feature'daki değişiklik olayla ya da saga ile olur; (K4, ek) sözleşme düz veri alır ve verir, kayıt sınıfı, Prisma tipi ya da işlem nesnesi geçmez; (K5, ek) her tablo tek feature'ındır, başka feature onu sorgulamaz ve ilişki üzerinden çekmez, veritabanındaki yabancı anahtar kalır; (K6, ek) yetki şartındaki ilişki adımı yalnız aynı feature'ın tablosuna gider; (K7) tüketen tarafa çevirici katman varsayılan olarak yazılmaz. Faz 2 köprüsü: feature servise çıkınca aynı sözleşmeyi kanondaki ACL deseni uygular ve tüketen kod değişmez. Bedeller: K3 feature'lar arasında nihai tutarlılık getirir; K5 listelerde başka feature'ın bilgisi için ek sözleşme çağrısı ister. Hiçbiri denenmedi.
+- Kullanıcının cevabı (2026-11-23): (1) yazma için — "bütün repository'ler tek bir Unit of Work içinde kaydedildiği için transaction yapılmasında sorun yok gibi düşünüyorum, ama bakmak lazım"; yani K3'ü olduğu gibi almadı. (2) "ACL'yi şu an istiyorum, bu yapıda onsuz olmaz"; yani K7'yi ("tüketen tarafa çevirici varsayılan olarak yazılmaz") reddetti: feature'lar arası erişimde ACL bugünden vardır. Ajanın baktığı (kayıttan; kod yok, denenmedi): kullanıcının 2026-11-21 Unit of Work seçiminde her çağrı kendi örneğini alır ve repository belirteçle istenir ("Yapı" bölümü); başka feature'ın belirteci içe aktarılamayacağı için aynı işlemde yazmanın tek yolu işlem nesnesini sözleşmeye açıkça vermektir ("Yapı" bölümündeki Sonuç 3 bunu açık bırakmıştı). Bu tek uygulamada çalışır; servis ayrıldığında o çağrı ağ üzerinden yapılamaz ve her biri olaya ya da saga'ya çevrilir. Ajanın düzeltilmiş önerisi teyit bekliyor: (K3') başka feature'da yazma iki yoldan olur — aynı işlemde (işlem nesnesi sözleşmeye açıkça verilir) ya da olayla; (K4') sözleşme düz veri taşır, tek istisna aynı işlemde yazan metodun aldığı işlem nesnesidir; (K7') her feature dışarıya yalnız kendi ACL'i üzerinden ulaşır: feature'ın `_shared/` klasöründe kendi diliyle bir arayüz (port) ve onu uygulayan ACL durur, ACL ortak koddaki sözleşmeyi çağırıp veriyi ve hatayı çevirir, alt özelliklerin iş kodu sözleşmeyi doğrudan çağırmaz. Kazanç (ajan): bir feature'ın dışarıya bütün bağımlılıkları ve aynı işlemde yazan çağrıları ACL dosyalarından sayılabilir; faz 2'nin taşıma listesi budur. Bedel: her feature'lar arası ihtiyaç dört dosya ister (sözleşme, sahibinin uygulaması, tüketenin port'u, tüketenin ACL'i). Ad çakışması: kanon "ACL" adını dış sistem bağdaştırıcısı için kullanır (`shared/external/<vendor>/`, sekiz sorumluluk); buradaki ikinci bir türdür (feature ACL'i). Kanonun olay sınırı kuralı (EVT-11) okunmadı.
+- Feature'lar arası erişim — kapandı (kullanıcı teyidi, 2026-11-23: "uygun"): yedi kural KR-005 "Feature'lar arası erişim" bloğuna yazıldı (K1 içe aktarma yasağı, K2 konu adlı sözleşme, K3 aynı işlemde ya da olayla yazma, K4 düz veri ve işlem nesnesi istisnası, K5 tablo sahipliği, K6 yetki şartında ilişki adımı aynı feature'da, K7 feature ACL'i). Bununla "Yapı" bölümündeki üç açık kapanır: "kanonla çelişen ajan önerileri"nin ilk maddesi (feature, karşı feature'ın dış arayüzünü içe aktarmaz; sözleşme ortak kodda durur), "Bağımlılık yönü" önerisinin son parçası (feature → feature yoktur) ve Unit of Work "Sonuç 3" (aynı işlemde yazan sözleşme işlem nesnesini parametre alır). KU-007'ye uyarlama notu eklendi.
+- KR-005'in boşlukları — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-23: "uygun"): ölçütler (içe aktarma 0, ACL dışı sözleşme çağrısı 0, eksik katman 0), yatay katmanlı düzenin neden seçilmediği, neyden vazgeçildiği, geri dönüş, "shared hiçbir feature'ı içe aktarmaz" yükümlülüğü ve "geçici sapma yoktur" cümlesi KR-005'e yazıldı. "Yeni feature eklenirken ortak kodda değişen dosya 0" ölçüsü çıkarıldı; yerine iskelette ölçüm yapılacak.
+- Veri erişimi (2026-11-23): kullanıcının 2026-11-21 seçimlerinden KR-011 taslağı açıldı (fabrika, iki kapı, tek kayıt yeri; ağırlık tek yönlü). Açık noktalar taslakta listelidir.
+- KR-011 iç içe çağrı — kapandı (kullanıcı, 2026-11-23): a. İşlem içindeyken `run` yeniden çağrılırsa hata verir; ayrı işlem adıyla istenir (KR-011 Seçim 5). "Yapı" bölümündeki Unit of Work "Sonuç 2" bununla kapanır. 
+- KR-011 okuma görünümü — kapandı (kullanıcı, 2026-11-23): a. Her repository ayrı bir okuma arayüzü taşır ve `read` kapısı yalnız onu verir (KR-011 Seçim 6). Ajan 2026-11-21'de metot adı önekiyle türetmeyi önermişti; kullanıcının "önce kapat" ilkesi üzerine önerisini değiştirdi. "Yapı" bölümündeki "okuma görünümünü belirleyen metot adı önekleri" açığı bununla düşer. Kalan iki küçük nokta (yeniden deneme, işlem süre sınırı ve yalıtım) ajan önerisi olarak toplu teyide sunuldu.
+- KR-011 iki küçük nokta — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-24): ilk sürümde otomatik yeniden deneme yoktur; işlem varsayılan yalıtım düzeyinde çalışır ve süre sınırı 5 saniyeyle başlar. KR-011'de kullanıcı kararı bekleyen nokta kalmadı; bağımsız inceleme, kural taslakları ve kod yoktur. Sıradaki konu olaylardır (outbox, kuyruk, EDD).
+- Olaylar kümesi — harita (2026-11-24). Kanondan okunan (`IRON_RULES_EVENTS.md`: dizin satır 1–26, EVT-00 satır 27–121, EVT-01 satır 125–164, EVT-04 satır 311–350, EVT-05 satır 389–418; öbür kuralların yalnız başlığı ve sorumluluk cümlesi okundu): on üç kural vardır — dört yol (EVT-00); standart zarf (EVT-01: olay kimliği, sürümlü tür adı, kaynak feature, ilişki ve neden kimlikleri, zaman); zincirin izlenmesi (EVT-02); şema sürümü (EVT-03); outbox (EVT-04: olay kuyruğa doğrudan konmaz, iş ile aynı işlemde outbox tablosuna yazılır, aktarıcı kuyruğa taşır, en az bir kez teslim); tekrar güvenli tüketici ve kayıt tablosu (EVT-05, EVT-06: olay kimliği + tüketici kimliği); bekleme kuyruğu (EVT-07); artan aralıklı yeniden deneme (EVT-08); yeniden oynatma (EVT-09); silme talebinde eski olaylardaki kişisel verinin anonimleştirilmesi (EVT-10); dış sistemden gelen olayın ACL'de çevrilmesi (EVT-11); saga (EVT-12, ileriye dönük). Kullanıcı kanonun tamamını uygun bulduğu için çoğu karar istemeden kurala çevrilir. Kullanıcı kararı isteyenler (ajan): (1) kuyruk ve yayın modeli — kanondaki örnek bütün tüketicileri tek kuyruğa bağlar, oysa BullMQ bir işi tek tüketiciye verir ("Kısıtlar"daki BADI notu); (2) tüketicinin kimin adına çalıştığı ve sistem aktörünün sayısı (KR-010'da buraya ertelenmişti); (3) EVT-10 — kullanıcının maskeleme talimatı gereği ajan kendiliğinden almaz, sorar; (4) olay sözleşmesinin yeri ve tüketen tarafta feature ACL'i (KR-005 Kural 7'nin olaylardaki karşılığı). İlk soru (kuyruk ve yayın modeli) kullanıcıya soruldu, karar bekliyor.
+- BullMQ ile RabbitMQ ayrımı — doğrulandı (2026-11-24). Kullanıcı sordu: "BullMQ dediğimiz NestJS'in içinde olan bir RabbitMQ yapısı değil mi, ben mi yanlış biliyorum, bi bak gel". Ajan kullanıcının isteğiyle belgeye baktı (context7 üzerinden; sorgular geneldi, proje verisi gönderilmedi) ve BADI'nin bağımlılık listesini okudu (salt okuma). Belgelerden: NestJS "Queues" sayfası — `@nestjs/bullmq` paketi BullMQ kütüphanesini sarar; "Both BullMQ and Bull use Redis to persist job data, so you need a running Redis instance". NestJS "RabbitMQ" sayfası — RabbitMQ ayrı bir taşıyıcıdır (`Transport.RMQ`), `amqplib` ve `amqp-connection-manager` paketlerini ve `amqp://` adresli ayrı bir sunucuyu ister. BullMQ belgesi (docs.bullmq.io, "Relay > How it compares" tablosu) — kuyrukta "Each message goes to: One worker". Aynı belge BullMQ'nun yeni ve deneysel bir yayın-abone parçasını (Relay) anlatır: her aboneye ulaşır, ama "the Relay is for live messages. It is not a log: when a message must be processed reliably and with retries, use a queue"; abone sonradan katılırsa eskileri görmez ve düşen düğüm bekleyen mesajlarını kaybeder. BADI `backend/package.json`: `@nestjs/bullmq`, `bullmq` ve `ioredis` vardır; RabbitMQ paketi yoktur. Sonuç: BullMQ RabbitMQ değildir; "Kısıtlar"daki ajan notu doğrudur ve kanondaki tek ortak kuyruk örneği olayı tek tüketiciye verir. Güvenilir olay için Relay uygun değildir; tüketici başına ayrı kuyruk ya da ayrı bir mesaj sunucusu gerekir.
+- Olaylar, kuyruk ve yayın modeli — kapandı (kullanıcı, 2026-11-24): a. BullMQ ile devam edilir ve her tüketicinin kendi kuyruğu olur: aktarıcı outbox'tan okur, abone listesine bakar ve her aboneye birer iş koyar. Şart (ajan önerisi; seçeneğin parçası olarak sunuldu): feature'lar BullMQ'yu doğrudan tanımaz; olay gönderme ve dinleme ortak kodda tek bir arayüzün arkasında durur (kapı ve bağdaştırıcı), faz 2'de arkası başka bir mesaj sunucusuyla değiştirilebilir. Reddedilenler: RabbitMQ (bugünden işletilecek yeni sunucu); tek ortak kuyruk (kanondaki örnek; olay tek tüketiciye gider). Kabul edilen bedel: "kim neyi dinliyor" listesi kodda tutulur ve aktarıcı her olay için abone sayısı kadar iş üretir. Karar taslağı (olaylar) kümedeki kullanıcı kararları kapanınca açılacak.
+- Olaylar, tüketicinin kimliği — kapandı (kullanıcı, 2026-11-24): a. Olay tüketicisi, olayı bir insan başlatmış olsa da sistem aktörüyle çalışır; olayı çıkaran iş zaten başlatanın yetkisiyle denetlenmiştir. Sonuç (ajan; seçenekle birlikte sunuldu): olay zarfı başlatan kişinin kimliğini taşır (kanondaki zarfta bu alan yoktur; eklenecek) ve tüketicinin yazdığı değişiklik kaydı onu gösterir; tüketicinin ihtiyaç duyduğu yetenekler sistem aktörüne tohumlanır. Reddedilen: tüketicinin başlatan kişinin adına çalışması (her kullanıcıya olayların dokunduğu bütün feature'lar için yetenek vermek gerekir). Bu, KR-010'un "Ertelenenler" listesindeki "olay tüketicisinin kimin adına çalışacağı" maddesini kapatır. 
+- Sistem aktörünün sayısı — kapandı (kullanıcı, 2026-11-24): b. Her feature'ın kendi sistem aktörü olur; o feature'ın tüketicileri ve zamanlanmış işleri onunla çalışır ve aktör yalnız o feature'ın işlerine yetecek yeteneği taşır (en az yetki). Sonuç (ajan): her aktör kök grupta kendi rolüyle üyedir ve kullanıcısı, rolü ve yetenek satırları göçle tohumlanır; faz 2'de feature servise çıkınca aktör onun kimliği olur (öngörü). Reddedilenler: tek aktör (zamanla her şeye yetkili olur; izden hangi işin yazdığı anlaşılmaz); iş başına aktör (satır sayısı yükü). Bu, KR-010 "Ertelenenler"deki ve KR-008 "Varsayımlar"daki "sistem aktörü tek mi iş türü başına mı" maddesini kapatır. 
+- Silme talebinde kişisel veri (EVT-10) — kapandı (kullanıcı, 2026-11-24): a. Kanondaki mekanizma base'e alınır: silme talebinde kullanıcı kaydındaki kişisel alanlar kişiye geri götürmeyen bir değerle değiştirilir ve kullanıcı kapatılır; bir olay çıkar ve kişisel veri tutan her feature kendi kopyasını aynı şekilde değiştirir; denetim kayıtları, değişiklik kayıtları ve eski olayların içeriği de aynı işlemden geçer, satırlar silinmez. Sıra (ajan önerisi; seçenekle birlikte sunuldu): kural şimdi yazılır ("kişisel veri tutan feature bu olayı dinler"), kod olay altyapısı çalıştıktan sonra eklenir. Ajan bunu kullanıcının 2026-11-17 talimatı gereği kendiliğinden almadı, sordu; bu ekranda gizleme değildir, ekranlar veriyi olduğu gibi gösterir. Kabul edilen bedeller: değişiklik kayıtlarının içi de taranır (ağır iş; tasarlanmadı); değiştirilen veri geri getirilemez. Açık: hangi projede hangi kayda uygulanacağı hukuki değerlendirmedir ve projeye aittir; base yalnız mekanizmayı taşır. Reddedilen: base'e almamak (sonradan eklemek yazılmış her feature'a geri dönmeyi gerektirir). Sıradaki nokta (olay sözleşmesinin yeri ve tüketen tarafın kuralları) ajan önerisi olarak toplu teyide sunuldu.
+- Olaylarda beş kural — kapandı (öneri ajan; kullanıcı teyidi, 2026-11-24: "uygun"): olay sözleşmesi ortak kodda durur; olay yalnız `run` içinde outbox'a yazılır; tüketici yalnız çevirip kendi feature'ının komutunu çağırır; tüketici dinlediği olayı kayıt defterine bildirir; zarf başlatan kişinin kimliğini taşır. Bugünkü dört seçim ve bu beş kural KR-012 taslağında toplandı (ağırlık tek yönlü; bağımsız inceleme ve kod yok). Kullanıcı ayrıca sordu: "daha çok var mı, sonlara mı yaklaşıyoruz"; ajanın cevabı ve kalan iş listesi kullanıcıya verildi (aşağıdaki satır).
+- Kalan iş (ajan, 2026-11-24): büyük kararlar kapandı (yapı, yetki, kimlik, veri erişimi, olaylar). Yürüyen iskeletten önce kullanıcı kararı isteyenler: kanon içi çelişkiler Ç1–Ç5 (toplu teyit; soruldu, bekliyor); yığın sürümleri (Prisma, NestJS, Next.js; KR-004); iskeletin kapsamı ve kum havuzunda kurulacak altyapı; günlükte ve cevapta maskeleme (Ç6'nın kalan iki parçası); değişiklik ve erişim kayıtlarının yeri ve saklama süresi. Karar istemeyen, ajanın yapacağı işler: kanonun kalan kümelerinin (kod hijyeni, dış sistem, doğrulama ve API, frontend, gözlemlenebilirlik, test) kurala çevrilmesi; KR-005, KR-008…KR-012 yükümlülükleri için kural taslakları; KR-007 ve KU-010, KU-012…KU-015 cümlelerinin yeniden yazımı; "Aşamalar"daki tanım cümlesi bekleyenler; KR-009, KR-011 ve KR-012 için bağımsız inceleme. Tek yönlü kararların kabulü çalışan denetim ister; bu yüzden kabul iskeletteki sınamalardan sonra gelir.
+- Yığın sürümleri — kapandı (kullanıcı, 2026-11-24): b. En yeni kararlı ana sürümlerle kurulur: NestJS 12, Prisma 7 (8 kararlı olana kadar), Next.js, Expo ve BullMQ'nun güncel kararlı sürümleri (KR-004 "Seçim"). Ajanın önerisi BADI ile aynı ana sürümlerdi; kullanıcı b'yi seçti. Kesin numaralar ve NestJS 12'nin değişiklik listesi iskelet kurulurken okunacak; o adımda dış okuma için kullanıcının izni ayrıca istenecek. "Yapı" bölümündeki "hangi ana sürümle kurulacağı seçilmedi" açığı bununla kapanır. 
+- Yürüyen iskeletin kapsamı — kapandı (kullanıcı, 2026-11-24): a. İlk dilim backend ve web'dir; sıra önce backend ve testleri, sonra web. Üç feature yazılır: `kimlik` (kullanıcı aç, davet bağlantısıyla parola belirle, giriş, yenileme, çıkış; grup, rol, üyelik ve yetenek yazma, en yalın hâliyle), `görev` (örnek iş feature'ı: oluştur, listele, güncelle ve "onayla" niyeti; yetkiyi sınar) ve `bildirim` ("görev onaylandı" olayını dinleyip kendi kaydını yazar; olayları sınar). İki örnek feature projelere taşınmaz; base'in kendini kanıtlaması içindir. Altyapı PostgreSQL ve Redis'tir. Mobil ikinci dilimdir. İzleme araçları (günlük toplama, ölçüm, hata izleme) ilk dilimde kurulmaz; bu ertelemedir ve ikinci dilimde yeniden sorulacaktır. Reddedilenler: üç yüzey birden (mobil kurulumu kararlar kanıtlanmadan araya girer); yalnız backend (çerez, girişte yenileme ve adres imzası web olmadan sınanmaz). Bu, KR-004 "Doğrulama"daki "tek feature, üç yüzeyde" önerisini daraltır. 
+- Cevapta ve ekranda maskeleme (Ç6'nın cevap parçası) — teyit (ajan okuması, 2026-11-24; yeni karar değil): kanonun cevapta maskeleme isteyen maddeleri alınmaz; veri olduğu gibi gösterilir ve bir alanın görünüp görünmeyeceğini yalnız kolon sınırı belirler (kullanıcı talimatı 2026-11-17; KR-008 Seçim 21).
+- Günlükte kişisel veri (Ç6'nın günlük parçası) — kapandı (kullanıcı, 2026-11-24): a, bir şartla. Teknik günlüğe kişisel verinin değeri ve istek gövdesi yazılmaz; maskeleme kodu da yazılmaz. Kullanıcının şartı: "kullanıcı kimliğine gideriz, kişisel veri yakalanması gerekiyorsa oradan yürürüz; günlüklerde ne yapıldığını ve hangi veriye dokunulduğunu görüyorsak problem yok". Sonuç (ajan): günlük satırı zamanı, istek kimliğini, kullanıcı ve oturum kimliğini, işin adını, kaynağı ve kayıt kimliğini, sonucu ve süreyi taşır; alanın değerini görmek isteyen istek kimliğinden değişiklik kaydına gider (KR-010 Seçim 40), o kayıt veritabanında ve yetki altındadır. Parola, token ve gizli anahtar hiçbir seçenekte yazılmaz. Reddedilenler: ham veriyi yazmak (günlükler kişisel veri deposuna dönüşür ve silme talebi onlara ulaşamaz; KR-012 Seçim 4); kanondaki maskeleme. Bilinen sınır: "günlüğe istek gövdesi yazılmaz" kuralı makineyle tam denetlenemez, incelemeye kalır. Kullanıcının şartındaki açık (ajan): yazmada ve tek kayıt okumada "hangi veriye dokunulduğu" görünür; liste okumasında bugünkü karar yalnız istek başına bir erişim kaydı tutar ve dönen kayıtların kimliklerini yazmaz. Bu açık kullanıcıya soruldu.
+- Liste okumasında erişim kaydı — kapandı (kullanıcı, 2026-11-24): b. Okumada hangi kayıtların döndüğü yazılmaz; kaç kayıt okunduğu ve nereye erişildiği yazılır. Dışa aktarma gibi bir işlem tetiklenirse o işlem ayrıca kayda alınır. Kullanıcının gerekçesi: kişinin hangi kayıtları okuyabildiği erişim kaydındaki yeteneğin ayrıntısından bulunabilir. Ajanın önerisi kimliklerin de yazılmasıydı; kullanıcı almadı. Bilinen sınır (ajan): yetenekten çıkarılan şey kişinin o gün görebileceği kayıtlardır, gerçekten gördüğü sayfa değil; veri sonradan değiştiyse çıkarım yaklaşık kalır (KR-008 ölçüt 2'deki sınırla aynıdır).
+- İz kayıtlarının yeri — açık (2026-11-24). Kullanıcı sordu: kayıt defteri ve günlük gibi işlemler outbox'a atılırsa sistem anlık yükten kurtulmaz mı; bu kayıtlar veritabanı yerine diske yazılırsa daha hızlı olmaz mı ve veritabanı şişmekten kurtulmaz mı. Ajanın değerlendirmesi (bilgiye dayanır, ölçülmedi): üç ayrı kayıt türü vardır ve cevap her biri için farklıdır — (1) teknik günlük zaten diske ya da çıktı akışına yazılır, veritabanına girmez; (2) erişim kaydı artık yalnız kimlik ve sayı taşıdığı için günlükle aynı yoldan, ayrı bir türle diske yazılabilir ve okuma başına veritabanı yazması ortadan kalkar; (3) değişiklik kaydı diske yazılamaz, çünkü iş geri alınırsa kaydın da geri alınması, iş yazıldıysa kaydın da yazılmış olması gerekir, ayrıca yetki altında okunması ve silme talebinin ona ulaşması gerekir (KR-012 Seçim 4). Outbox anlık yükü azaltmaz: outbox'a yazmak da aynı işlemde bir satır yazmaktır; kazancı kaydın sonradan başka bir depoya taşınabilmesidir. Değişiklik kaydı için iki yol kullanıcıya soruldu: (a) işle aynı işlemde doğrudan kendi tablosuna; (b) işle aynı işlemde outbox'a, oradan tüketiciyle ayrı depoya (kanondaki denetim kuyruğu).
+- Değişiklik kaydının yolu — kapandı (kullanıcı, 2026-11-24): b. Değişiklik kaydı işle aynı işlemde outbox'a yazılır ve tüketici onu ayrı depoya taşır. Kullanıcının eki: ayrı depo diskteki dosya değil, ayrı bir veritabanı olsun ("orası da günlük gibi olur"); istenmeyen tarihler ve kayıtlar orada temizlenir, temizlik sürerken olaylar geçici olarak birikir ve asıl yapı yük altında kalmadan işine devam eder. Ajanın değerlendirmesi (denenmedi): fikir b ile örtüşür ve "veritabanını şişirmeme" hedefini gerçek yapar; temizlik ayrı veritabanında yapıldığı için asıl veritabanını yavaşlatmaz; silme talebi ayrı veritabanına olayla ulaşır (KR-012 Seçim 4). Düzeltme: bekleyen kayıtlar çoğunlukla outbox'ta değil kuyrukta birikir, çünkü aktarıcı outbox'tan kuyruğa hemen taşır; sonuç aynıdır. Bedel: ikinci bir veritabanı, onun şeması ve göçleri; kayıt kısa bir gecikmeyle görünür; ayrı veritabanı uzun süre kapalı kalırsa kuyruk büyür. Açık: değişiklik kaydını kimin, hangi yetenekle okuyacağı (altyapı tablosu kaynak değildir; KR-010 Seçim 36). Okuma tarafı (erişim kaydı) için yol kullanıcıya soruldu: (a) doğrudan kuyruğa, oradan ayrı veritabanına; (b) outbox üzerinden; (c) diske.
+- Erişim kaydının yolu — kapandı (kullanıcı, 2026-11-24): b. Okuma kaydı da outbox üzerinden gider ve son durağı iz veritabanıdır; "kuyruğa doğrudan yazılmaz" kuralına istisna açılmaz. Kullanıcının gerekçesi: "Redis çöktü; düzelmesi için sistem yeri geldiğinde yükü veritabanı ve outbox üzerine alsın". Ajanın önerisi doğrudan kuyruktu; kullanıcı almadı. Kabul edilen bedel: her okuma isteği asıl veritabanına bir outbox satırı yazar (KR-010'da kabul edilen "okuma başına bir kayıt" bedeli sürer; ölçülmedi). Kullanıcı sordu: "başarılı olduğunda outbox'tan düşüyor, değil mi". Kanondaki cevap hayırdır: aktarılan satır işaretlenir ve 30 gün sonra temizlenir (`IRON_RULES_EVENTS.md` satır 321). Öneri (ajan; teyit bekliyor): aktarılan outbox satırı hemen silinir; aksi hâlde okuma başına yazılan satırlar asıl veritabanını 30 gün boyunca şişirir ve ayrı veritabanının amacı boşa çıkar.
+- Tutarsızlık bulundu (ajan, 2026-11-24): kullanıcının gerekçesi Redis çökünce sistemin veritabanı üzerinden çalışmaya devam ettiğini varsayar; oysa KR-009 Seçim 5 (kullanıcı teyidi, 2026-11-23) Redis'e ulaşılamadığında kimlik gerektiren isteğin 503 aldığını söyler, yani o sırada okuma da yazma da olmaz ve birikecek kayıt doğmaz. KR-012 "Doğrulama"daki "Redis yokken iş yazılır ve olay outbox'ta bekler" cümlesi de yalnız sistem aktörünün işleri için doğrudur. Kullanıcıya soruldu, karar bekliyor: (a) Redis yokken kullanıcı istekleri çalışmaya devam eder — yetki veritabanından derlenir ve sunucunun belleğinde kısa süre tutulur, kuyruğa gidecek her şey outbox'ta bekler (Seçim 5 değişir); (b) bugünkü karar kalır (503).
+- Redis yokken kullanıcı istekleri — kapandı (kullanıcı, 2026-11-24): a. İstekler çalışmaya devam eder; yetki veritabanından derlenir ve sunucunun belleğinde kısa süre tutulur; kuyruğa gidecekler outbox'ta bekler. KR-009 Seçim 5, yükümlülüğü ve testi; KR-010 "İstisna yolu" düzeltildi. KR-012 "Doğrulama"daki kesinti testi bununla kullanıcı istekleri için de doğru olur. Ajanın 2026-11-23 önerisi (503) kullanıcının beklentisini karşılamıyordu; teyit o gün toplu listede verilmişti. Açık: bellekteki kaydın Redis varken de kullanılıp kullanılmayacağı; Redis yokken hız sınırının davranışı. İz ve Redis için kalan ayrıntılar ajan önerisi olarak toplu teyide sunuldu.
+- İz ve Redis ayrıntıları — kapandı (2026-11-24). Kullanıcı: aktarılan outbox satırı hemen değil, 3 gün sonra silinsin (ajanın önerisi hemen silmekti; kanonda 30 gün); öbür dört öneri uygundur — iz veritabanı ilk dilimde aynı PostgreSQL sunucusunda ayrı veritabanıdır; saklama süresi proje ayarıdır ve ayar yoksa temizlik yapılmaz; değişiklik kaydını okumak kendi izni olan iştir ve başlangıçta yalnız SuperAdmin'dedir; sunucu belleğindeki yetki kaydı her zaman ilk bakılan yerdir. Bunlar KR-013 (yeni taslak; çift yönlü), KR-012 Kural 6 ve KR-010 "İstisna yolu"na yazıldı. Bununla yürüyen iskeletten önce kullanıcı kararı isteyen başlıkların hepsi kapandı; kalan işler ajanın yapacaklarıdır ("Kalan iş" satırı).
+- Yürüyen iskeletin taslak planı (2026-11-24; kullanıcı "uygun devam" dedi): backend dilimi on bir iş — depo iskeleti; Unit of Work; yetki tabloları ve yazma kuralları; yetki motoru; oturum çekirdeği; olay altyapısı; iz; `kimlik`, `görev` ve `bildirim` feature'ları; bütün sınaması. Web dilimi ayrı plandır. Plan aracına henüz yazılmadı.
+- Yürütme ortamı ölçümü (2026-11-24; `harness.json` ve `harness/gorev.py` satır 483–519 okundu): görev oturumu `sonnet` modeliyle, en çok 40 turla ve 1200 saniye sınırıyla koşar; kum havuzu açıktır ve ağ izin listesi boştur; oturum yalnız projenin ayarlarını yükler (kullanıcının kişisel talimat dosyası gitmez), alt oturum başlatamaz ve web araçları kapalıdır; her görev kendi yeni çalışma ağacında koşar ve işçi yalnız commit edilmiş hâli görür. Sonuçlar (ajan): (1) paket indiren bir iş (depo iskeleti) bu ayarla görev olarak koşamaz; (2) her görev ağacında bağımlılıkların yeniden kurulması gerekir ve ağ olmadan yerel depodan kurulup kurulamayacağı bilinmiyor; (3) görev oturumunun yerel PostgreSQL ve Redis'e bağlanıp bağlanamayacağı bilinmiyor, oysa kararların çoğu gerçek veritabanı davranışıyla sınanır; (4) on bir iş 1200 saniyeye sığmaz, yapraklar daha küçük yazılmalı ya da sınır büyütülmelidir; (5) test koşturma kuralı (yalnız eklenen dosya, tam yolla) işçiye kişisel talimattan gitmez, karta yazılmalıdır.
+- İlerleme sırası — kapandı (kullanıcı, 2026-11-24): a. Önce depo iskeletini ana oturumda ajan kurar ve sonucu ayrı bir oturuma inceletir; sonra araç üzerinden tek bir küçük deneme işi koşturulup kum havuzunun neye izin verdiği ölçülür; sonra aracın ayarı birlikte belirlenip kartlar yazılır. Reddedilenler: önce ayarı değiştirip bütün planı araçla koşturmak; iskeleti araç olmadan yazmak.
+- Bu makinenin durumu (ölçüldü, 2026-11-24): depo kökünde yalnız iskelet aracı ve bilgi tabanı vardır, kod yoktur; yolda Node 26.8.1 vardır ama pnpm onunla kurulu değildir; ayrı bir Node 24.18.0 kurulumunda pnpm ve NestJS komut aracı vardır; Docker kuruludur (29.6.1) ama servisi çalışmıyor; PostgreSQL ve Redis komutları yolda yoktur. Kurulum için gereken dış işlemlerin listesi kullanıcıya onaya sunuldu.
+- Kullanıcı (2026-11-24): Docker'ı açtı; kapsayıcı için "dextra" adını önerdi. Ajanın okuması: PostgreSQL ve Redis iki ayrı servistir, bu yüzden "dextra" adlı tek bir grup altında iki kapsayıcı olur (teyit istenecek). Beş dış işlemin tamamı için açık "onay" sözü henüz gelmedi; yalnız Docker kısmı kullanıcının sözünden anlaşılıyor.
+- Yeni gereksinim (kullanıcı, 2026-11-24): "dosya yükleme, dosya sistemi içinde clawaw kurulacak zaten, onun üzerinden kullanılacak file sistemi". Ajanın okuması (teyit bekliyor): kastedilen ClamAV'dır (yüklenen dosyayı zararlı yazılıma karşı tarayan araç); yüklenen dosya dosya sisteminde saklanır ve taramadan geçmeden kabul edilmez. Bu konu hiçbir kararda yoktur ve iskeletin ilk diliminde dosya yükleme yoktur. Öneri (ajan): gereksinim kayda geçti; dosya saklama bir arayüzün arkasında durur ve ClamAV bir dış sistem olarak kanondaki ACL deseniyle bağlanır (Değişmez 14); tasarımı ve Docker'a eklenmesi dosya yüklemeyi getiren dilimde yapılır.
+- Kuralların durumu (kullanıcı sordu, 2026-11-24: "kurallarımız tamam mı, frontend için de"). Cevap (ajan; `h.py durum` çıktısından): tamam değildir. Kabul edilmiş 6 kural vardır ve hepsi çalışma sürecine aittir. Backend için 9 kural taslağı vardır (KU-007…KU-015); üçünün cümlesi yeniden yazılacaktır. On karar taslağının (KR-004…KR-013) yükümlülükleri henüz kural taslağına çevrilmedi. Frontend için hiçbir kural ve frontend'e özgü hiçbir karar yoktur; kanonun frontend kümesi (yaklaşık 70 kural; "Kanon harmanı" 8. küme) alınmadı. Frontend'e değen bugünkü kararlar yalnız kimlikten gelir: çerez aracı katmanda yaşar, yenileme istek girişinde yapılır, adres bilgisi imzalanır, mobil aracı katmandan geçer (KR-009).
+- Görev modeli (kullanıcı, 2026-11-24): "kodu opus'a yazdırabilirsin, problem yok". Ajan bunu `harness.json` içindeki görev modelini değiştirme izni olarak okudu ve yalnız o satırı değiştirdi (`sonnet` → `opus`); ağ izni, süre ve tur sınırı deneme işinden sonra birlikte belirlenecek.
+- Kurulum izni (kullanıcı, 2026-11-24): "ClamAV'ı kastettim; Redis, PostgreSQL ve ClamAV'ı ona kurabilirsin direkt, problem yok". Ajan bunu kurulum için gereken dış işlemlere (sürüm okuma, belge okuma, paket indirme, Docker) izin olarak okudu; veritabanı göçü çalıştırmadı (henüz şema yok).
+- Sürüm ölçümü (2026-11-24; paket kayıt defteri ve belgeler; yalnız paket adları gönderildi): NestJS 12.6.0 (komut aracı 12.0.15, BullMQ sarmalayıcısı 12.0.2); Prisma'nın `latest` etiketi 8.0.0-rc.35'tir, kararlı olan `prev` etiketindeki 7.10.1'dir; BullMQ 6.7.8; ioredis 6.1.0; TypeScript `latest` 7.0.2; ESLint 10.15.0; typescript-eslint 8.74.0; eslint-plugin-boundaries 7.4.4; Jest 30.5.2; ts-jest 29.4.15; Vitest 5.1.1; pnpm 12.23.0 (bu makinede 11.24.0 kurulu).
+- Uyum bulguları (aynı ölçüm): TypeScript 7 kullanılamaz — typescript-eslint `<6.1.0`, ts-jest `<7` ister ve NestJS komut aracı `~6.0.2`'ye bağlıdır; en yeni kullanılabilir sürüm 6.0'dır (BADI de 6.0 kullanır). NestJS belgesi ("Migration guide", okundu 2026-11-24): v12 paketleri yalnız ESM'dir; CommonJS uygulama onları `require(esm)` ile kullanır ve değişmeden çalışır; yeni proje aracı varsayılan olarak ESM ve Vitest kurar, `--type cjs` ile CommonJS ve Jest kurar; üretilen projeler varsayılan olarak oxlint kullanır; Jest'in yalnız ESM olan paketleri yükleyebilmesi Node 24.9 ve üstünü ister. Sınır denetimi eklentisi ESLint eklentisidir; oxlint ile çalışıp çalışmadığı bilinmiyor.
+- Docker kurulumu (2026-11-24; yapıldı ve doğrulandı): `docker-compose.yml` ve `docker/postgres-init/01-iz-veritabani.sql` yazıldı. "dextra" grubu altında `dextra-postgres` (PostgreSQL 19.0; `dextra` ve `dextra_iz` veritabanları; yalnız yerel adres, kapı 5440) ve `dextra-redis` (Redis 8; bellek dolunca veri atmaz; yalnız yerel adres, kapı 6390) çalışıyor ve sağlıklı. ClamAV tanımlandı (`dextra-clamav`, yerel adres, kapı 3320) ama başlatılmadı: yalnız "dosya" profiliyle başlar, çünkü ilk dilimde kullanılmıyor ve bellek yükü yüksek. İmajın arm64 sürümü yoktur; makinede zaten bulunan amd64 imaj öykünmeyle kullanılacak. PostgreSQL parolasız girişe ayarlıdır ve yalnız yerel adrese açıktır; nedeni, görev oturumlarının `.env` dosyasını okuyamamasıdır (`harness.json` "okunmaz" listesi) ve bu yolla depoda hiçbir sır durmaz. Makinede başka bir projeye ait çalışan kapsayıcılar vardır; onlara dokunulmadı ve kapıları çakışmıyor.
+- TypeScript 7 doğrulaması (2026-11-24; kullanıcı "TS 7'nin kararlı sürümü yok diye biliyorum, bi bak gel" dedi). Kayıt defterinden: 7.0.1-rc 2026-06-18'de, 7.0.2 2026-07-08'de yayımlandı ve `latest` etiketi 7.0.2'dir; 7.1.0-beta 2026-10-20 tarihlidir; 6.x hattının son sürümü 6.0.3'tür (2026-04-16). Web aramasından: GitHub'da "TypeScript 7.0.2" yayını vardır ve TypeScript günlüğünde 7'nin kullanıma sunulduğunu duyuran yazının özeti görünür; yazının kendisi açılamadı ve tarihler kaynaklar arasında tutarsızdır (18 Haziran aday sürümün tarihi olabilir). Üçüncü taraf bir geçiş rehberine göre araçların kullandığı programatik arayüz 7.0'da kararlı değildir ve 7.1 için hedeflenir; resmî kaynaktan doğrulanmadı, ama lint ve test araçlarının 7'yi desteklememesiyle örtüşür. Sonuç: TypeScript 7.0 kararlı olarak yayımlanmıştır, ama bu deponun araç zinciriyle kullanılamaz; 6.0.3 kullanılır.
+- Modül düzeni — kapandı (kullanıcı, 2026-11-24): a. Backend ESM ve Vitest ile kurulur (NestJS 12'nin varsayılanı). Kullanıcı önce Jest ile Vitest'in karşılaştırılmasını istedi; ajanın önerisi backend ve web için Vitest, mobil için Jest'ti (Expo'nun standart aracı). Kabul edilen bedel: iki test aracı olur; BADI'deki test desenleri birebir taşınmaz; içe aktarmalarda dosya uzantısı zorunludur.
+- Depo iskeleti kuruldu (2026-11-24). Yazılanlar: kökte `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `docker-compose.yml`, `docker/postgres-init/`; `backend/` altında NestJS 12 uygulaması (resmî proje aracıyla ESM olarak üretildi, sonra uyarlandı), en sıkı derleyici ayarı, ESLint ile sınır denetimi, sağlık ucu ve üç test dosyası. Kurulan sürümler: NestJS 12.6.0, TypeScript 6.0.3, ESLint 10.15.0, typescript-eslint 8.73.0, eslint-plugin-boundaries 7.4.4, Vitest 4.1.12, ioredis 6.0.0, pg 8.23.1. Ajanın kendi kararları: (1) bir günden yeni iki sürüm alınmadı (typescript-eslint 8.74.0 ve ioredis 6.1.0 ölçüm anında 5 ve 13 saatlikti; pnpm bunlar için kendiliğinden istisna yazmıştı, istisna silindi ve bir önceki sürümlere çekilindi); (2) proje aracının kurduğu lint aracı (oxlint) yerine ESLint kondu, çünkü sınır eklentisi ESLint eklentisidir; (3) proje aracının eklediği ajan talimat dosyası, tanıtım dosyası, yayın betiği ile paketi ve örnek controller kaldırıldı; (4) Vitest proje aracının denediği ana sürümde bırakıldı (4.1; 5.1 vardır ama bu düzenle denenmedi); (5) Prisma kurulmadı, veri erişimi işine aittir; (6) pnpm makinede kurulu olan sürümdür (11.24).
+- Kendi sınamaları (2026-11-24): tip denetimi, lint ve derleme temiz; üç test dosyasında beş test yeşil (ikisi asıl ve iz veritabanına, biri Redis'e gerçekten bağlanır); derlenen uygulama başlatıldı ve sağlık ucu 200 döndü.
+- NestJS 12'nin birinci taraf paketleri (proje aracının ürettiği listeden okundu; hiçbiri incelenmedi): outbox, tekrar güvenli istek, kilit, hız sınırı, dosya saklama, kimlik doğrulama, yetki, dayanıklılık ve gözlem için resmî paketler vardır. Öneri (ajan; kullanıcıya söylendi): her iskelet işinde önce ilgili resmî pakete bakılır; karara uyuyorsa kullanılır, uymuyorsa kendi parçamız yazılır.
+- Bağımsız inceleme — depo iskeleti (2026-11-24; işi yapmayan ayrı bir oturum). Hüküm: "düzeltmelerle alınabilir"; 14 bulgu (dördü orta, onu hafif). İnceleyen kendi hatasını bildirdi: sınama için kurduğu geçici klasör üzerinden bağımlılık klasörünü dolaylı olarak değiştirdi ve "dosya oluşturma" ile "kurulum yapma" sınırlarını aştı; ana oturum bağımlılık klasörlerini silip kilit dosyasından ağa çıkmadan yeniden kurdu (394 paket) ve geçici klasörü sildi. Düzeltilenler: 1 (sınır denetimi çalışma klasörüne bağlıydı; kök yol ayarı eklendi), 2 (hiçbir öğeye uymayan dosya sınırı dolanma yoluydu; bilinmeyen dosya ve bilinmeyen hedef kuralları açıldı), 3 (satır içi yorumla kural kapatılabiliyordu; kapatıldı), 4 (modül düzeni kararı kayda bağlandı), 7 (biçim), 8 (derleme ayarı test tiplerini görmez; iki sıkılık bayrağı eklendi), 9 (kullanılmayan ayar ve bağımlılıklar çıkarıldı), 11'in iki maddesi (birim adları, sağlık denetimi), 12 (günlük dosyaları yok sayılır), 13'ün iki maddesi (lint bütün klasörü kapsar; biçem kuralları eklendi). 1, 2 ve 3 gerçek depoda geçici ihlal dosyalarıyla, hem backend klasöründen hem depo kökünden koşularak doğrulandı; geçici dosyalar silindi. Düzeltmelerden sonra ikinci bir bağımsız inceleme yapılmadı.
+- İncelemeden açık kalanlar: 5 (üretim kodunun test klasörünü içe aktarması lint'te yakalanmaz; derlemenin yakaladığı varsayılır, denenmedi); 6 (Vitest 4'te kalındı; gerekçe yukarıdadır); 10 (aracın ayar dosyasındaki model satırı ayrı commit'e alınır); 11 (parolasız PostgreSQL yerine bilinen bir geliştirme parolası önerisi; ClamAV'ın bu işlemci için ayrı imajı; Docker'ın bağladığı klasörün çalışma ağacının yoluna bağlı olması); 13 (derleyici ve lint commit kapısına bağlı değildir; KR-004 yükümlülüğü karşılanmadı); uygulama bütün ağ arayüzlerinde dinler; ayar dosyası başka klasörden açıkça gösterilerek koşulursa dosya desenleri eşleşmez (ölçüldü).
+- Yan ölçüm (görev ağaçları için): bağımlılıklar yerel depodan ağa çıkmadan, kilit dosyasıyla yaklaşık bir saniyede kurulabiliyor; bu ana oturumda ölçüldü, kum havuzunun içinde denenmedi.
+- GitHub (kullanıcı, 2026-11-24): "depoyu GitHub'da aç, dextra olarak, bitirelim"; commit, push, PR ve merge izni verildi. Özel bir depo açıldı. Bu bilgi tabanındaki başka projeden okunmuş notların depoyla birlikte gideceği kullanıcıya soruldu; kullanıcı olduğu gibi gönderilmesini seçti. Kullanıcının iki kuralı (kalıcı nota da yazıldı): başka projeye ait inceleme kapısı bu depoda uygulanmaz; başka projenin klasörlerine kullanıcı söylemeden girilmez.
+- Sıra (kullanıcı, 2026-11-24): bu kurulum bitince frontend kuralları ve kararları; sonra kalan kararlar; sonra özelliklerin tasarımı, yapılar ve kodlama. Araç üzerinden deneme işi ve backend kartları bu sıranın içinde yeniden planlanacak.
+- Rol karışması sorusu (kullanıcı, 2026-11-24): "x kullanıcısı Bilgi İşlem'de müdür, Kültür'e personel olarak eklenirse bu ayrım nasıl yapılacak; bizde hepsi tek olacak dedim, müdürler ayrılacak mı; bu bir yetki boşluğu gibi". Ajanın cevabı (karardan; kodla sınanmadı): rol tek satır kalır; ayrımı rolün adı değil, üyelik üçlüsü ve yeteneğin bağlandığı (grup, rol) çifti yapar (KR-008 Seçim 2 ve 3); "o birimin müdürü" şartı rolü ve birimi aynı üyelikte arar (Seçim 14). Boşluk doğabilecek iki yer açıkça söylendi: «bütün kayıtlar» işaretli bir yetenek birim ayrımı yapmaz (yöneticinin açık seçimidir) ve birim şartı yazılmamış bir yetenek o kaynağın bütün birimlerdeki kayıtlarını kapsar. KR-008 "Doğrulama"ya "rol karışması" sınaması eklendi.

@@ -5,6 +5,18 @@
 __pycache__/
 *.pyc
 
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Ortam dosyaları: gerçek değer taşıyan dosya depoya girmez
+.env
+.env.*
+!.env.example
+
 # İşletim sistemi
 .DS_Store
 .claude/worktrees/
