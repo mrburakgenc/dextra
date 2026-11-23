@@ -16,7 +16,7 @@
   "butce": { "agents_bayt": 24576, "ifade_karakter": 400, "dosya_basina_kural": 12, "paket_karakter": 6000, "hook_ms": 300 },
   "gorev": {
     "komut": "claude",
-    "model": "sonnet",
+    "model": "opus",
     "max_tur": 40,
     "zaman_asimi_sn": 1200,
     "izin_modu": "bypassPermissions",
