@@ -1,0 +1,103 @@
+// Lint ayarı: en sıkı tip denetimli kurallar ve klasör sınırları.
+// Sınırlar (KR-005, KU-007, KU-009): feature başka feature'ı içe aktarmaz;
+// ortak kod (shared) hiçbir feature'ı içe aktarmaz.
+import js from '@eslint/js';
+import boundaries from 'eslint-plugin-boundaries';
+import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
+
+export default defineConfig(
+  {
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'eslint.config.mjs'],
+  },
+  js.configs.recommended,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      'no-console': 'error',
+      // NestJS modülleri gövdesiz, dekoratörlü sınıflardır.
+      '@typescript-eslint/no-extraneous-class': [
+        'error',
+        { allowWithDecorator: true },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    plugins: { boundaries },
+    // Satır içi yorumla kural kapatılamaz; istisna yalnız bu dosyada tanımlanır.
+    linterOptions: { noInlineConfig: true },
+    settings: {
+      // Sınıflama, lint hangi klasörden koşarsa koşsun bu klasöre göre yapılır.
+      'boundaries/root-path': import.meta.dirname,
+      'boundaries/include': ['src/**/*'],
+      'boundaries/legacy-templates': false,
+      'boundaries/elements': [
+        { type: 'shared', pattern: 'src/shared', partialMatch: false },
+        {
+          type: 'feature',
+          pattern: 'src/features/*',
+          capture: ['feature'],
+          partialMatch: false,
+        },
+      ],
+      // Kök dosyalar (main.ts, app.module.ts) bir klasör öğesi değildir; dosya olarak sınıflanır.
+      'boundaries/files': [{ pattern: 'src/*.ts', category: 'app' }],
+      'import/resolver': {
+        typescript: { project: `${import.meta.dirname}/tsconfig.json` },
+      },
+    },
+    rules: {
+      // Hiçbir öğeye uymayan dosya ya da hedef, sınırı dolanma yolu olmasın diye hatadır.
+      'boundaries/no-unknown-files': 'error',
+      'boundaries/no-unknown-dependencies': 'error',
+      'boundaries/dependencies': [
+        'error',
+        {
+          default: 'disallow',
+          policies: [
+            {
+              // Kök dosyalar her şeyi bağlar.
+              from: { file: { categories: 'app' } },
+              allow: {
+                to: [
+                  { file: { categories: 'app' } },
+                  { element: { type: ['shared', 'feature'] } },
+                ],
+              },
+            },
+            {
+              // Ortak kod yalnız ortak kodu içe aktarır.
+              from: { element: { type: 'shared' } },
+              allow: { to: { element: { type: 'shared' } } },
+            },
+            {
+              // Feature ortak kodu ve yalnız kendi içini içe aktarır.
+              from: { element: { type: 'feature' } },
+              allow: {
+                to: [
+                  { element: { type: 'shared' } },
+                  {
+                    element: {
+                      type: 'feature',
+                      captured: {
+                        feature: '{{ from.element.captured.feature }}',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  },
+);

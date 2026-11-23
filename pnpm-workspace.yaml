@@ -1,0 +1,4 @@
+# Backend ve frontend tek çalışma alanındadır; mobil ayrı bir pnpm köküdür (KR-006).
+packages:
+  - backend
+  - frontend

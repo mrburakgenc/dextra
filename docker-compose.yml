@@ -1,0 +1,58 @@
+# Yerel geliştirme altyapısı. Yalnız bu makineden erişilir (127.0.0.1); canlı ortam tanımı değildir.
+# Kapılar, makinedeki öbür servislerle çakışmasın diye varsayılan değildir.
+name: dextra
+
+services:
+  postgres:
+    image: postgres:19-alpine
+    container_name: dextra-postgres
+    environment:
+      POSTGRES_USER: dextra
+      POSTGRES_DB: dextra
+      # Parolasız giriş yalnız yerel geliştirme içindir; kapı yalnız 127.0.0.1'e açıktır.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Ağ üzerinden sorar: ilk kurulumdaki geçici sunucu yalnız yerel yuvayı dinler ve sağlıklı sayılmaz.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U dextra -d dextra"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:8-alpine
+    container_name: dextra-redis
+    # Kuyruk verisi bellek dolunca atılmamalıdır.
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6390:6379"
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Dosya yükleme dilimine kadar kullanılmaz; yalnız "dosya" profiliyle başlar:
+  #   docker compose --profile dosya up -d clamav
+  clamav:
+    image: clamav/clamav:stable
+    # Bu imajın arm64 sürümü yoktur; Apple Silicon'da öykünmeyle çalışır.
+    platform: linux/amd64
+    container_name: dextra-clamav
+    profiles: ["dosya"]
+    ports:
+      - "127.0.0.1:3320:3310"
+    volumes:
+      - clamav:/var/lib/clamav
+
+# Birim adları grup adıyla öneklenir: dextra_postgres, dextra_redis, dextra_clamav.
+volumes:
+  postgres:
+  redis:
+  clamav:
