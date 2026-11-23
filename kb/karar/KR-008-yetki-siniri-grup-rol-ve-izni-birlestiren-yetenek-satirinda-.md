@@ -141,6 +141,7 @@ Denetim kimliği ve ölçüm tarihi henüz yok; kod yazılmadı.
 - Açık sınır: işareti ve şartı olmayan yetenek kayıt döndürmez; işareti ve kolon dizisi olmayan yetenek kolon döndürmez; ikisi birlikte ya da boş listeyle yazma reddedilir.
 - Şart doğrulama: şemada olmayan alan, tipe uymayan işleç ya da değer ve ilişki üzerinden olumsuz işleç yazılırken reddedilir.
 - Sızıntı: iki üyelikli kullanıcıda her kayıt yalnız kendisini tutan yeteneklerin kolonlarını döndürür; iç içe gelen ilişkili kayıt kendi kaynağının yeteneğiyle indirilir.
+- Rol karışması: bir birimde Müdür, başka bir birimde Personel olan kişi ikinci birimin kayıtlarında yalnız (o birim, Personel) kümesinin yeteneklerini kullanır; Müdür rolünü bir üyelikten, birimi öbür üyelikten alarak "o birimin müdürü" sayılmaz (Seçim 2, 3 ve 14). Kullanıcı bu durumu 2026-11-24'te ayrıca sordu.
 - Taşıma: sınır dışına taşıyan ve sınır içine çeken güncelleme reddedilir; önceki hâli bir yeteneğin, sonraki hâli başka bir yeteneğin tuttuğu güncelleme de reddedilir.
 - Niyet: "durum = bekliyor" şartlı onay yeteneği bekleyen kaydı onaylar; onaylanmış kaydı ve başka birimin kaydını reddeder.
 - Yönetim: SuperAdmin kümesi dışındaki bir kümeye yetki tablolarına yazma yeteneği bağlanamaz; son SuperAdmin üyeliği, kök üyelik ve SuperAdmin'in yönetim yetenekleri silinemez; aynı anda gelen iki silme isteği sıfır SuperAdmin bırakamaz.
