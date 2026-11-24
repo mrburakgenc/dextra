@@ -7,8 +7,8 @@ import type { GrupOkumaRepo } from '../domain/grup.repository.js';
 
 const KAYNAK = 'Grup';
 
-// Liste düzdür: her kayıt ustGrupId taşır, ağacı ekran kurar. Canlılık süzgeci burada yazılmaz
-// (TS-002 AK-42): kapıya "yalnız canlı kayıtlar" seçeneğini ayrı bir görev ekler.
+// Liste düzdür: her kayıt ustGrupId taşır, ağacı ekran kurar. Liste yalnız canlı kayıtları verir;
+// süzgeci kapı uygular, kişinin baktığı kolonlara girmez (TS-002 AK-42). Tek kayıt süzülmez.
 export function grupPrismaRepository(
   kapi: OkumaKapisi,
 ): RepoFabrikasi<GrupOkumaRepo> {
@@ -21,6 +21,7 @@ export function grupPrismaRepository(
             : [{ alan: 'ustGrupId', islec: 'esit', deger: ustGrupId }],
         siralama: siralama === undefined ? [] : [siralama],
         sayfa: { atla, al },
+        yalnizCanli: true,
       }),
     tek: (id) => kapi.tek(istemci, KAYNAK, id),
   });
