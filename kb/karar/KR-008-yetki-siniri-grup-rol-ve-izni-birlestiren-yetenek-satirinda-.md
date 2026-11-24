@@ -45,7 +45,7 @@ Rol geneldir; şart izinde ve rol–izin bağında iki katman durur; grup ayrım
 Yetenek satırı ya belirli bir grubu taşır ya da "üyeliğin grubu" anlamına gelen boş grubu; ortak yetenek bir kez yazılır. İki çürütme turunun da en güçlü karşı görüşüdür. B'ye göre iki yükü kaldırır: yeni birim ve yeni izin için satırların elle çoğaltılması; bir yetenekteki düzeltmenin her birimde tekrarlanması. Bedeli: tek satır değişince bütün birimler etkilenir ve "yetenek satırında grup boş bırakılmaz" seçimi geri alınır. Kullanıcı iki yük kendisine sunulduktan sonra B'de kaldı (Seçim 39).
 
 ## Seçim
-B. Aksi yazılmadıkça her madde kullanıcı seçimidir (1–9: 2026-11-22; 10–43: 2026-11-23).
+B. Aksi yazılmadıkça her madde kullanıcı seçimidir (1–9: 2026-11-22; 10–43: 2026-11-23; 44–45: 2026-11-24).
 
 Satır biçimi (seçimlerin toplamı; adlar örnek, kesin adlar şema yazılırken konur):
 ```
@@ -56,6 +56,8 @@ Rol        kimlik · kod (yalnız sistem rollerinde) · silindi
 Üyelik     kullanıcı + grup + rol · silindi                         (tekillik üçlüdedir)
 Yetenek    kimlik · grup · rol · izin
            kayıt sınırı : şart [ {alan, işleç, değer}, … ]   ya da   «bütün kayıtlar» işareti
+           birim kapsamı: şartta birim koşulu                 ya da   «bütün birimler» işareti
+                          (yalnız birim kolonu olan kaynakta ve şart taşıyan satırda; Seçim 45)
            kolon sınırı : kolonlar [ad, …]                    ya da   «bütün kolonlar» işareti
                           (silme ve niyet eylemlerinde kolon sınırı aranmaz)
            silindi · tohum anahtarı · yerine geçtiği satır · köken (göç ya da yönetici)
@@ -68,6 +70,8 @@ Tablolar ve üyelik:
 22. Birim yalnız boşken silinir: canlı alt birimi, üyeliği ya da yeteneği olan grup silinemez. Reddedilen: zincirleme silme.
 27. Birim taşınabilir: SuperAdmin başka bir üstün altına taşır; döngü engellenir; taşınan birim yeni üstünün "altındakiler" kapsamına girer, eskisinden çıkar.
 41. Kapatılan birim "altındakiler" açılımında kalır; üst birim o kayıtları görmeye devam eder. Reddedilen: açılımın yalnız canlı birimleri kapsaması.
+44. Kodda rol ya da grup tek başına sorulmaz; yalnız yetenek (izin) sorulur. Kişinin yetenekleri bulunurken grup ve rol her zaman aynı üyelik satırından okunur ve yetenek satırındaki grup ve rolle birlikte eşleşir; grup bir üyelikten, rol başka üyelikten toplanmaz. Kural makineyle denetlenir. Kullanıcının sorduğu durum (2026-11-24): bir birimde müdür, başka birimde personel olan kişi "o birimde mi, evet; müdür mü, evet" diye ikinci birimin müdürü sayılamaz. Açığın doğduğu düzen (grup ve rol iki ayrı bağlantı tablosunda) bu modelde yoktur: üyelik tek tablodur ve üçlüdür (Seçim 2). Öneri ajanındır; kullanıcı teyit etti.
+   - Açık: makine denetiminin biçimi (rol ya da grup adına bakan karşılaştırmayı yakalayan lint kuralı) tasarlanmadı; yürüyen iskelette yazılıp sınanacak.
 
 Yetenek satırı:
 3. Yetenek satırı grup + rol + izin + kayıt sınırı + kolon sınırıdır. Her satır eşsiz kimlikli bağımsız bir yetenektir; satırlar birbirini ezmez ve birleştirilmez. Her eylem ayrı satırdır; aynı grup + rol + izin üçlüsünden birden çok satır olabilir (teyit edildi).
@@ -81,6 +85,8 @@ Kayıt sınırı (şart):
 11. Kayıt sınırı açık yazılır: satır ya «bütün kayıtlar» işaretini ya da en az bir şart taşır; ikisi de yoksa hiçbir kayıt dönmez; ikisi birlikte yazılırsa satır kaydedilirken reddedilir. Boş liste şart değeri olarak yazılamaz.
 13. İlişki üzerinden bakan şartta yalnız "eşit" ve "listede" yazılır; olumsuz işleçler kaydın kendi kolonlarında serbesttir. Reddedilen: olumsuz işlecin "hiçbiri" diye okunması.
 14. Aynı ilişkiye bakan yapraklar aynı ilişkili kayıtta birlikte tutar ("Bilgi İşlem'in müdürü" tek üyelikte aranır). Çok üyelikli kişi şartı tutan herhangi bir üyeliği üzerinden eşleşir; isteği yapan her üyeliğinden gelen yeteneği ayrı ayrı kullanır (teyit edildi). Silinmiş ilişkili kayıt sayılmaz: her ilişki şartına hedef kaydın silinmemiş olması koşulu eklenir.
+45. Birim kapsamı açık yazılır: birim kolonu olan bir kaynakta, şart taşıyan yetenek satırı ya bir birim koşulu ("yeteneğin grubu" ya da "yeteneğin grubu ve altındakiler" yer tutucusuyla) ya da «bütün birimler» işaretini taşır; ikisi de yoksa satır kaydedilirken reddedilir. Neden: yetenek satırının bir birime bağlı olması yalnız "kim alır" sorusunu cevaplar, "hangi kayıtlar" sorusunu değil; yalnız [durum = bekliyor] şartı taşıyan bir satır bütün birimlerin kayıtlarını kapsar ve satır bir birime bağlı göründüğü için bu gözden kaçar. «Bütün kayıtlar» işaretli satır zaten açık bir seçimdir ve ayrıca işaret istemez. Birim kolonu olmayan kaynakta kural uygulanmaz. Öneri ajanındır; kullanıcı teyit etti. Reddedilen: birim koşulunu yazmayı yöneticinin dikkatine bırakmak.
+   - Açık: bir kaynağın birim kolonunun hangisi olduğunun nasıl bildirileceği (kaynak tanımı) tasarlanmadı.
 
 Kolon sınırı:
 5. Kolonlar listedir. Satır ya «bütün kolonlar» işaretini taşır ya da kolonları tek tek sayar; ikisi de yoksa hiçbir kolon görünmez; ikisi birlikte yazılamaz.
@@ -131,6 +137,8 @@ Neyden vazgeçildi: tek satırda iç içe "ve / veya"; ortak yeteneği birimler 
   9. Sır alanı kaynak olarak kayıtlı modele konmaz (Seçim 21).
   10. Yazmada kaydın iki hâlini ve yazılan kolonları aynı yetenek tutar; niyet eyleminde şart yalnız önceki hâle bakar ve kaydı taşıyan niyet komutu hedefini kendisi denetler; kimlik ve zaman kolonları istek gövdesinden kabul edilmez (Seçim 10, 18, 34, 42).
   11. Her niyet komutu kendi iznini taşır (KU-011 ile birlikte; Seçim 34).
+  13. Kodda rol ya da grup tek başına sorulmaz; yalnız yetenek sorulur ve grup ile rol aynı üyelik satırından eşleşir (Seçim 44).
+  14. Birim kolonu olan kaynakta şart taşıyan yetenek satırı ya birim koşulu ya da «bütün birimler» işareti taşır (Seçim 45).
   12. Kullanıcı tek yoldan açılır ve o yol kök üyeliği yazar; pasife alınan kullanıcının üyeliklerini pasife alma komutu kapatır, son SuperAdmin'i taşıyan kişi pasife alınamaz ve yeniden açılan kişi yalnız kök üyelikle döner (Seçim 31, 43).
 - Ortak parça: `shared` altında şart doğrulayıcı ve yetki tablolarının yazma kapısı; adları ve sınırları tasarlanmadı. Derleyici ve çevirici KR-010'dadır.
 
@@ -142,6 +150,8 @@ Denetim kimliği ve ölçüm tarihi henüz yok; kod yazılmadı.
 - Şart doğrulama: şemada olmayan alan, tipe uymayan işleç ya da değer ve ilişki üzerinden olumsuz işleç yazılırken reddedilir.
 - Sızıntı: iki üyelikli kullanıcıda her kayıt yalnız kendisini tutan yeteneklerin kolonlarını döndürür; iç içe gelen ilişkili kayıt kendi kaynağının yeteneğiyle indirilir.
 - Rol karışması: bir birimde Müdür, başka bir birimde Personel olan kişi ikinci birimin kayıtlarında yalnız (o birim, Personel) kümesinin yeteneklerini kullanır; Müdür rolünü bir üyelikten, birimi öbür üyelikten alarak "o birimin müdürü" sayılmaz (Seçim 2, 3 ve 14). Kullanıcı bu durumu 2026-11-24'te ayrıca sordu.
+- Birim kapsamı: birim kolonu olan kaynakta, birim koşulu ve «bütün birimler» işareti taşımayan şartlı yetenek satırı kaydedilirken reddedilir; işareti taşıyan satır bütün birimlerin kayıtlarını kapsar.
+- Rol sorgusu denetimi: rol ya da grup adına tek başına bakan kod lint'te hata verir.
 - Taşıma: sınır dışına taşıyan ve sınır içine çeken güncelleme reddedilir; önceki hâli bir yeteneğin, sonraki hâli başka bir yeteneğin tuttuğu güncelleme de reddedilir.
 - Niyet: "durum = bekliyor" şartlı onay yeteneği bekleyen kaydı onaylar; onaylanmış kaydı ve başka birimin kaydını reddeder.
 - Yönetim: SuperAdmin kümesi dışındaki bir kümeye yetki tablolarına yazma yeteneği bağlanamaz; son SuperAdmin üyeliği, kök üyelik ve SuperAdmin'in yönetim yetenekleri silinemez; aynı anda gelen iki silme isteği sıfır SuperAdmin bırakamaz.

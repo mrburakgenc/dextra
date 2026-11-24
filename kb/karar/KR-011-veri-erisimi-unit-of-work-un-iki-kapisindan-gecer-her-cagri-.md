@@ -41,13 +41,16 @@ Kullanıcıdan sayısal ölçüt gelmedi. Öneri (ajan; teyit edilmedi):
 - 3 — Okuma arayüzü ayrıca enjekte edilir (ajanın ilk önerisiydi): repository iki yerde kaydedilir (ölçüt 3'ü karşılamaz).
 
 ## Seçim
-Kullanıcı seçimleri (1–3: 2026-11-21; 4–6: 2026-11-23):
+Kullanıcı seçimleri (1–3: 2026-11-21; 4–6: 2026-11-23; 7: 2026-11-24):
 1. İşlem fabrikayla taşınır (B): her çağrı kendi örneğini alır ve işlem dışında repository'ye yazmak derlenmez.
 2. Unit of Work iki kapılıdır: `run` işlem açar ve tam repository verir; `read` işlem açmaz ve yalnız okuma görünümü verir.
 3. Repository'ler tek yerde kaydedilir. Sonuç (ajan): erişim belirteçle olur (`uow.repo(BELİRTEÇ)`, `uow.read(BELİRTEÇ)`), ortak koddaki Unit of Work arayüzüne feature adı yazılmaz ve kayıt feature başına tek registrar'dadır (kanon).
 4. Başka feature'da aynı işlemde yazan sözleşme metodu işlem nesnesini parametre alır (KR-005 Kural 3).
 5. İç içe çağrı hata verir: işlem içindeyken `run` yeniden çağrılırsa çalıştırıcı hata atar. Aynı işleme katılmak isteyen işlem nesnesini parametre alır; ayrı işlem isteyen bunu adıyla isteyen ayrı çağrıyı kullanır (örnek: iş başarısız olsa da kalması gereken kayıt). Reddedilenler: sessizce ayrı ikinci işlem açmak (iş yarıda düşerse yardımcının yazdığı kayıt geride kalır); dıştaki işleme kendiliğinden katılmak (gizli bağlam ister; kanon ve BADI davranışıdır). Bedel: "şu an bir işlemin içinde miyim" bilgisini tutan küçük bir işaret gerekir; yalnız hata vermek için kullanılır, işlemi taşımak için değil.
 6. Okuma görünümü ayrı bir arayüzdür: her repository bir okuma arayüzü ve onu genişleten tam arayüz taşır; `read` kapısı yalnız okuma arayüzünü verir. Bir metot okuma arayüzüne bilerek yazılmadıkça `read` kapısında görünmez. Reddedilen: tek arayüzden metot adı önekiyle türetme (ajanın 2026-11-21 önerisiydi; yazan ama adı okuma gibi duran bir metot okuma görünümüne sızar, yani hata açık tarafa düşer). Bedel: repository başına bir arayüz daha.
+7. Veritabanındaki adlar Türkçedir ve snake_case yazılır; tablo, kolon ve öbür veritabanı nesneleri buna dahildir (örnek: `kullanici_adi`). Koddaki model ve alan adları serbesttir. Kullanıcının sözü: "veritabanında terimler Türkçe olsun; veritabanında kesinlikle snake_case olsunlar, objeler de buna dahil; modelde KullaniciAdi olabilir, o fark etmez".
+   - Ajan okumaları (ilk şema yazılırken kullanıcıya gösterilip teyit edilecek): adlar Türkçeye özgü harf taşımaz (`kullanici`, `uyelik`); tablo adı tekildir; indeks ve kısıt adları tablo ve kolon adından türediği için aynı kurala uyar; veritabanında saklanan sabit değerler ve JSON anahtarları da Türkçedir (şart: `alan`, `islec`, `deger`); göç aracının kendi tablosu bu kuralın dışındadır.
+   - Ajanın seçimi (kullanıcı serbest bıraktı): koddaki alan adları da Türkçe yazılır ki kod, veritabanı ve yetki tanımları tek sözlüğü konuşsun (model `Uyelik`, alan `kullaniciId`, kolon `kullanici_id`); teknik altyapı adları İngilizce kalır (`UnitOfWork`, `health`). Yetki tanımındaki kaynak ve alan adları modeldeki adlardır (KR-008 Seçim 33).
 
 Ajan önerileri — kullanıcı teyit etti (2026-11-24); ikisi de ölçümle yeniden bakılacak başlangıç değerleridir:
 - İlk sürümde otomatik yeniden deneme yoktur: iki iş aynı kayıtta çakışırsa hata istemciye "yeniden dene" olarak döner. Neden: yeniden deneme işin kodunu baştan çalıştırır ve dışarıya giden etki iki kez gider. BADI'de 5 kez yeniden deneme vardır; yük sınamasında çakışma oranı ölçülür, gerekirse eklenir.
