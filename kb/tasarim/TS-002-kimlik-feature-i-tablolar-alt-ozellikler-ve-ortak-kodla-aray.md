@@ -141,7 +141,7 @@ Kolon türleri, kısıtlar ve adlar (ajan önerisi, 2026-11-24; ilk görevin kar
 - yetenek: id · grup_id · rol_id · izin_id (üçü de yabancı anahtar) · sart jsonb? · butun_kayitlar boolean varsayılanı false · butun_birimler boolean varsayılanı false · kolonlar text dizisi? · butun_kolonlar boolean varsayılanı false · sistem_satiri boolean varsayılanı false · silinme_zamani? · tohum_anahtari text? · yerine_gectigi_id uuid? (yetenek'e yabancı anahtar) · koken text · olusturma_zamani varsayılan. Kısmi dizin: silinme_zamani boş olan satırlar için (grup_id, rol_id) (yetenek_grup_id_rol_id_dizin). Kısmi tekil: silinme_zamani boş olan satırlar için tohum_anahtari (yetenek_tohum_anahtari_tekil). İki denetim kısıtı: butun_kayitlar doğruyken sart dolu olamaz (yetenek_kayit_siniri_denetim); butun_kolonlar doğruyken kolonlar dolu olamaz (yetenek_kolon_siniri_denetim). İkisi de yoksa satır saklanabilir (yasak olan yalnız ikisinin birlikte yazılmasıdır).
 - yetki_surumu: id integer birincil anahtar · sayac integer varsayılanı 0. Denetim kısıtı: id yalnız 1 olabilir (yetki_surumu_tek_satir_denetim); tabloda en çok bir satır bulunur.
 - Şema dilinde ifade edilemeyen nesneler (denetim kısıtları; gerekiyorsa kök grubun tekilliği) göç dosyasının sonuna elle yazılır ve yorumla işaretlenir. Tablolara ilk satırları şema göçü değil kurulum (tohum) göçü yazar.
-- Açık (kullanıcıya soruldu, 2026-11-24): kurulum göçlerinden hangisinin uygulandığını tutan defter tablosu (`tohum_gocu`: göçün adı, uygulanma zamanı). Bu bilgi her veritabanının kendi durumudur; kodda ya da bilgi tabanında tutulamaz.
+- Kurulum (tohum) göçleri (kullanıcı, 2026-11-24: "badideki gibi devam"): şema Prisma göçüyle, veri kodla yazılan sürümlü göçle değişir (BADI'deki düzen); uygulanan veri göçlerinin defteri `tohum_gocu` tablosudur (göçün adı, uygulanma zamanı) ve kullanıcı tabloyu bu sözle onayladı. Prisma'nın kendi defteri yalnız kendi SQL dosyalarını sayar. Reddedilen: veriyi de SQL olarak Prisma göçüne yazmak (ayrı koşucu ve defter gerekmez; ama SQL uygulama kodunu çağıramaz: yetki sayacı, değişiklik kaydı ve tek yoldan kullanıcı açma kuralı elle taklit edilir ve yöneticinin değiştirdiği yeteneği ezmeme kuralı düz SQL ile tutulamaz).
 
 Durum geçişleri:
 ```
@@ -404,7 +404,7 @@ Yazılmadı: uç adresleri ve şemaları; öbür alt özelliklerin dosya döküm
   - epic "Yönetim": task'lar kullanıcı, grup, rol, üyelik, yetenek; her task'ın işleri (aç, listele, güncelle …) subtask'tır ve koşturulan birim subtask'tır. İlk task kullanıcıdır; üyelik grup ile role, yetenek grup, rol ve izne bağlıdır.
   - "Kullanıcı aç" iskelet listesinden yönetim epic'inin ilk task'ına taşındı: giriş, kurulum göçünün yazdığı ilk SuperAdmin ile sınanır.
   - On bir tablonun onayı (ajan okuması; kullanıcıya söylendi): kullanıcı "evet" demedi, auth tarafının yapılmasını söyledi; tablolar onsuz yazılamadığı için onay sayıldı.
-  - Auth çekirdeğinde sırası gelince sorulacaklar: kurulum göçlerinin defter tablosu; erişim kaydı tablosu; imza anahtarlarının nereden okunacağı.
+  - Auth çekirdeğinde sırası gelince sorulacaklar: erişim kaydı tablosu; imza anahtarlarının nereden okunacağı. (Kurulum göçlerinin defter tablosu kapandı; "Veri modeli".)
 
 ## Doğrulama
 KR-008, KR-009 ve KR-010 "Doğrulama" listeleri bu feature'ın sınamalarıdır. Bu tasarımın ekledikleri (öneri, ajan; kod yazılmadı, denetim kimliği yok):
