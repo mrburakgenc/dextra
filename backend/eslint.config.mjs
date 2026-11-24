@@ -71,6 +71,21 @@ export default defineConfig(
           pattern: 'src/shared/messaging/outbox/outbox-repo.ts',
           category: 'outbox-repo',
         },
+        // Olay ve iz yolunun feature'a kapalı parçaları (KR-012 Yükümlülük 2): kuyruk kapısının
+        // bağdaştırıcısı ve göçü, iki aktarıcı ve repository'leri, tüketici tabanının repository'si.
+        // Feature olay yoluna yazma yüzeyinden, abone defterinden ve tüketici tabanından ulaşır.
+        {
+          pattern: [
+            'src/shared/messaging/kuyruk/bullmq-is-kuyrugu.ts',
+            'src/shared/messaging/kuyruk/kuyruk-gocu.ts',
+            'src/shared/messaging/olay/olay-aktarici.ts',
+            'src/shared/messaging/olay/outbox-olay.repository.ts',
+            'src/shared/messaging/tuketici/islenen-olay.repository.ts',
+            'src/shared/observability/iz/iz-aktarici.ts',
+            'src/shared/observability/iz/outbox-iz.repository.ts',
+          ],
+          category: 'olay-altyapisi',
+        },
       ],
       'import/resolver': {
         typescript: { project: `${import.meta.dirname}/tsconfig.json` },
@@ -127,6 +142,36 @@ export default defineConfig(
               // Feature outbox repository'sine ve belirtecine ulaşamaz; notu yalnız yazma yüzeyi yazar.
               from: { element: { type: 'feature' } },
               disallow: { to: { file: { categories: 'outbox-repo' } } },
+            },
+            {
+              // Feature kuyruk bağdaştırıcısına, aktarıcılara ve tüketici repository'sine ulaşamaz.
+              from: { element: { type: 'feature' } },
+              disallow: { to: { file: { categories: 'olay-altyapisi' } } },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Kuyruk paketi feature'a kapalıdır (KR-012 Yükümlülük 2). Sınır kuralı dış paketlere yalnız
+    // checkAllOrigins ile bakar; o ayar her dış paketi izin listesine almayı gerektirdiğinden paket
+    // yasağı ESLint'in kendi kuralıyla verilir.
+    files: ['src/features/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'bullmq',
+              message: 'Feature kuyruk paketini içe aktaramaz.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['bullmq/*'],
+              message: 'Feature kuyruk paketini içe aktaramaz.',
             },
           ],
         },

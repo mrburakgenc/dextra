@@ -7,6 +7,18 @@ import {
 } from '../src/shared/database/istemci-belirtecleri.js';
 import type { PrismaClient } from '../src/shared/database/generated/client.js';
 import type { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
+import { type AppDatabases, createAppDatabases } from './test-database.js';
+
+// Uygulama göçleri uygulanmış geçici veritabanlarıyla açılır; istemciler onlara bağlanmalıdır.
+let databases: AppDatabases;
+
+beforeAll(async () => {
+  databases = await createAppDatabases({ migrations: true });
+});
+
+afterAll(async () => {
+  await databases.drop();
+});
 
 // Değişken baştan tanımsızsa geri yüklemek onu silmektir; "undefined" metnine eşitlemek değil.
 function restoreEnv(name: string, saved: string | undefined): void {
@@ -30,7 +42,7 @@ describe('asıl veritabanı modülü', () => {
         { name: string }[]
       >`select current_database() as name`;
 
-      expect(rows[0]?.name).toBe('dextra');
+      expect(rows[0]?.name).toBe(databases.asil.name);
     } finally {
       await app.close();
     }
@@ -62,7 +74,7 @@ describe('iz veritabanı istemcisi', () => {
         { name: string }[]
       >`select current_database() as name`;
 
-      expect(rows[0]?.name).toBe('dextra_iz');
+      expect(rows[0]?.name).toBe(databases.iz.name);
     } finally {
       await app.close();
     }
