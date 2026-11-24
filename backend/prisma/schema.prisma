@@ -60,3 +60,179 @@ model IslenenOlay {
   @@id([tuketici, olayId], map: "islenen_olay_ba")
   @@map("islenen_olay")
 }
+
+// Kimlik feature'ının tabloları (TS-002 "Veri modeli"). Kimlikler uygulamada üretilir; veritabanı
+// varsayılanı yoktur. Bütün yabancı anahtarlarda silme kuralı RESTRICT'tir. Şema dilinde yazılamayan
+// nesneler (denetim kısıtları, kök grubun tekilliği) göç dosyasının sonunda elle yazılıdır.
+
+model Kullanici {
+  id              String    @id(map: "kullanici_ba") @db.Uuid
+  // Boş değerler tekil kısıtta birbirinden farklı sayılır; birden çok satır boş olabilir.
+  kullaniciAdi    String?   @unique(map: "kullanici_kullanici_adi_tekil") @map("kullanici_adi")
+  telefon         String?   @unique(map: "kullanici_telefon_tekil")
+  gorunenAd       String    @map("gorunen_ad")
+  sistemAktoru    Boolean   @default(false) @map("sistem_aktoru")
+  yetkiSurumu     Int       @default(0) @map("yetki_surumu")
+  pasifZamani     DateTime? @map("pasif_zamani") @db.Timestamptz
+  unutulmaZamani  DateTime? @map("unutulma_zamani") @db.Timestamptz
+  olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  sirri                         KullaniciSirri?
+  oturumlar                     Oturum[]
+  parolaBaglantilari            ParolaBaglantisi[] @relation("ParolaBaglantisiKullanici")
+  olusturduguParolaBaglantilari ParolaBaglantisi[] @relation("ParolaBaglantisiOlusturan")
+  uyelikler                     Uyelik[]
+
+  @@map("kullanici")
+}
+
+model KullaniciSirri {
+  kullaniciId      String   @id(map: "kullanici_sirri_ba") @map("kullanici_id") @db.Uuid
+  parolaOzeti      String   @map("parola_ozeti")
+  guncellemeZamani DateTime @default(dbgenerated("clock_timestamp()")) @map("guncelleme_zamani") @db.Timestamptz
+
+  kullanici Kullanici @relation(fields: [kullaniciId], references: [id], onDelete: Restrict, map: "kullanici_sirri_kullanici_id_ya")
+
+  @@map("kullanici_sirri")
+}
+
+model Oturum {
+  id                 String    @id(map: "oturum_ba") @db.Uuid
+  kullaniciId        String    @map("kullanici_id") @db.Uuid
+  girisYontemi       String    @map("giris_yontemi")
+  baslangicZamani    DateTime  @default(dbgenerated("clock_timestamp()")) @map("baslangic_zamani") @db.Timestamptz
+  mutlakBitisZamani  DateTime  @map("mutlak_bitis_zamani") @db.Timestamptz
+  sonDondurmeZamani  DateTime  @map("son_dondurme_zamani") @db.Timestamptz
+  ipAdresi           String    @map("ip_adresi")
+  tarayiciBilgisi    String    @map("tarayici_bilgisi")
+  kapatilmaZamani    DateTime? @map("kapatilma_zamani") @db.Timestamptz
+  kapatilmaNedeni    String?   @map("kapatilma_nedeni")
+
+  kullanici Kullanici    @relation(fields: [kullaniciId], references: [id], onDelete: Restrict, map: "oturum_kullanici_id_ya")
+  sirri     OturumSirri?
+
+  // Açık oturumlar için kısmi dizin.
+  @@index([kullaniciId], map: "oturum_kullanici_id_dizin", where: raw("kapatilma_zamani IS NULL"))
+  @@map("oturum")
+}
+
+model OturumSirri {
+  oturumId              String  @id(map: "oturum_sirri_ba") @map("oturum_id") @db.Uuid
+  nesil                 Int
+  gecerliYenilemeOzeti  String  @map("gecerli_yenileme_ozeti")
+  oncekiYenilemeOzeti   String? @map("onceki_yenileme_ozeti")
+  cihazSirriOzeti       String  @map("cihaz_sirri_ozeti")
+
+  oturum Oturum @relation(fields: [oturumId], references: [id], onDelete: Restrict, map: "oturum_sirri_oturum_id_ya")
+
+  @@map("oturum_sirri")
+}
+
+model ParolaBaglantisi {
+  id                  String    @id(map: "parola_baglantisi_ba") @db.Uuid
+  kullaniciId         String    @map("kullanici_id") @db.Uuid
+  kodOzeti            String    @unique(map: "parola_baglantisi_kod_ozeti_tekil") @map("kod_ozeti")
+  sonGecerlilikZamani DateTime  @map("son_gecerlilik_zamani") @db.Timestamptz
+  kullanilmaZamani    DateTime? @map("kullanilma_zamani") @db.Timestamptz
+  olusturanId         String?   @map("olusturan_id") @db.Uuid
+  olusturmaZamani     DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  kullanici Kullanici  @relation("ParolaBaglantisiKullanici", fields: [kullaniciId], references: [id], onDelete: Restrict, map: "parola_baglantisi_kullanici_id_ya")
+  olusturan Kullanici? @relation("ParolaBaglantisiOlusturan", fields: [olusturanId], references: [id], onDelete: Restrict, map: "parola_baglantisi_olusturan_id_ya")
+
+  // Bir kişinin aynı anda en çok bir kullanılmamış bağlantısı olur.
+  @@unique([kullaniciId], map: "parola_baglantisi_kullanici_id_tekil", where: raw("kullanilma_zamani IS NULL"))
+  @@map("parola_baglantisi")
+}
+
+model Grup {
+  id              String    @id(map: "grup_ba") @db.Uuid
+  ustGrupId       String?   @map("ust_grup_id") @db.Uuid
+  ad              String
+  silinmeZamani   DateTime? @map("silinme_zamani") @db.Timestamptz
+  olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  ustGrup    Grup?     @relation("GrupUstGrup", fields: [ustGrupId], references: [id], onDelete: Restrict, map: "grup_ust_grup_id_ya")
+  altGruplar Grup[]    @relation("GrupUstGrup")
+  uyelikler  Uyelik[]
+  yetenekler Yetenek[]
+
+  @@index([ustGrupId], map: "grup_ust_grup_id_dizin")
+  @@map("grup")
+}
+
+model Rol {
+  id            String    @id(map: "rol_ba") @db.Uuid
+  kod           String?   @unique(map: "rol_kod_tekil")
+  ad            String
+  silinmeZamani DateTime? @map("silinme_zamani") @db.Timestamptz
+
+  uyelikler  Uyelik[]
+  yetenekler Yetenek[]
+
+  @@map("rol")
+}
+
+model Izin {
+  id     String @id(map: "izin_ba") @db.Uuid
+  kaynak String
+  eylem  String
+
+  yetenekler Yetenek[]
+
+  @@unique([kaynak, eylem], map: "izin_kaynak_eylem_tekil")
+  @@map("izin")
+}
+
+model Uyelik {
+  id              String    @id(map: "uyelik_ba") @db.Uuid
+  kullaniciId     String    @map("kullanici_id") @db.Uuid
+  grupId          String    @map("grup_id") @db.Uuid
+  rolId           String    @map("rol_id") @db.Uuid
+  silinmeZamani   DateTime? @map("silinme_zamani") @db.Timestamptz
+  olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  kullanici Kullanici @relation(fields: [kullaniciId], references: [id], onDelete: Restrict, map: "uyelik_kullanici_id_ya")
+  grup      Grup      @relation(fields: [grupId], references: [id], onDelete: Restrict, map: "uyelik_grup_id_ya")
+  rol       Rol       @relation(fields: [rolId], references: [id], onDelete: Restrict, map: "uyelik_rol_id_ya")
+
+  @@unique([kullaniciId, grupId, rolId], map: "uyelik_kullanici_id_grup_id_rol_id_tekil", where: raw("silinme_zamani IS NULL"))
+  @@index([kullaniciId], map: "uyelik_kullanici_id_dizin", where: raw("silinme_zamani IS NULL"))
+  @@map("uyelik")
+}
+
+model Yetenek {
+  id              String    @id(map: "yetenek_ba") @db.Uuid
+  grupId          String    @map("grup_id") @db.Uuid
+  rolId           String    @map("rol_id") @db.Uuid
+  izinId          String    @map("izin_id") @db.Uuid
+  sart            Json?     @db.JsonB
+  butunKayitlar   Boolean   @default(false) @map("butun_kayitlar")
+  butunBirimler   Boolean   @default(false) @map("butun_birimler")
+  kolonlar        String[]
+  butunKolonlar   Boolean   @default(false) @map("butun_kolonlar")
+  sistemSatiri    Boolean   @default(false) @map("sistem_satiri")
+  silinmeZamani   DateTime? @map("silinme_zamani") @db.Timestamptz
+  tohumAnahtari   String?   @map("tohum_anahtari")
+  yerineGectigiId String?   @map("yerine_gectigi_id") @db.Uuid
+  koken           String
+  olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  grup           Grup      @relation(fields: [grupId], references: [id], onDelete: Restrict, map: "yetenek_grup_id_ya")
+  rol            Rol       @relation(fields: [rolId], references: [id], onDelete: Restrict, map: "yetenek_rol_id_ya")
+  izin           Izin      @relation(fields: [izinId], references: [id], onDelete: Restrict, map: "yetenek_izin_id_ya")
+  yerineGectigi  Yetenek?  @relation("YetenekYerineGectigi", fields: [yerineGectigiId], references: [id], onDelete: Restrict, map: "yetenek_yerine_gectigi_id_ya")
+  yerineGecenler Yetenek[] @relation("YetenekYerineGectigi")
+
+  @@unique([tohumAnahtari], map: "yetenek_tohum_anahtari_tekil", where: raw("silinme_zamani IS NULL"))
+  @@index([grupId, rolId], map: "yetenek_grup_id_rol_id_dizin", where: raw("silinme_zamani IS NULL"))
+  @@map("yetenek")
+}
+
+// Tek satırlık yetki sürümü sayacı; id yalnız 1 olabilir (denetim kısıtı göçte elle yazılıdır).
+model YetkiSurumu {
+  id    Int @id(map: "yetki_surumu_ba")
+  sayac Int @default(0)
+
+  @@map("yetki_surumu")
+}
