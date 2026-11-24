@@ -1,8 +1,23 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../../../shared/database/database.module.js';
+import { Registrar } from '../../../shared/database/registrar.js';
+import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
+import { YetenekListeleHandler } from './application/yetenek-listele.handler.js';
+import { YetenekOkuHandler } from './application/yetenek-oku.handler.js';
+import { YETENEK_REPO } from './domain/yetenek.repository.js';
+import { yetenekPrismaRepository } from './infrastructure/yetenek.prisma-repository.js';
+import { YetenekController } from './presentation/yetenek.controller.js';
 
-// Yetenek alt özelliği (TS-002 AK-30); bugün boştur, yönetim görevleri dosyalarını buraya ekler.
+// Yetenek alt özelliği (TS-002 AK-30). Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez
+// kurulan genel YetkiModule verir (TS-002 AK-42).
 @Module({
-  imports: [KimlikCekirdekModule],
+  imports: [DatabaseModule, KimlikCekirdekModule],
+  controllers: [YetenekController],
+  providers: [YetenekListeleHandler, YetenekOkuHandler],
 })
-export class YetenekModule {}
+export class YetenekModule {
+  constructor(registrar: Registrar, kapi: OkumaKapisi) {
+    registrar.register(YETENEK_REPO, yetenekPrismaRepository(kapi));
+  }
+}
