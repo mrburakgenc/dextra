@@ -63,7 +63,10 @@ type JsonDegeri = Extract<
 // denenir; her deneme satırı yalnız o yeteneğin koşuluyla kilitler (anahtar dışı güncelleme kilidi:
 // kimliği kendi değerine yazan şartlı güncelleme). Kilitlenen satırın eski hâli okunur, değişen
 // alanlar bulunur ve yazma sorgusu yine aynı koşulu taşır. Hiçbir yetenek satırı kilitleyemezse
-// bulunamadi. Düz güncellemede yazılan alanlar (istekle gelen ve değeri değişen alanlar) yeteneğin
+// bulunamadi. Silinme zamanı alanı olan kaynakta güncelleme, silme ve niyet eylemi yalnız silinmemiş
+// satırı kilitler (TS-002 "Durum geçişleri": silinmiş kayıt geri dönmez ve değişmez); silinmiş satırın
+// sonucu var olmayan satırınkiyle aynıdır, bulunamadi.
+// Düz güncellemede yazılan alanlar (istekle gelen ve değeri değişen alanlar) yeteneğin
 // kolon listesinde olmalıdır; koşulu tutan ama alanları kapsamayan yetenek atlanır ve hiçbiri
 // kapsamıyorsa yetki_yok. Düz güncellemede iki hâli ve kolonları aynı yetenek tutar (KR-008 Seçim
 // 18): yeni hâl, önceki hâli tutan ve kolonları kapsayan adayların koşuluyla sırayla yeniden okunur;
@@ -133,6 +136,7 @@ export class YazmaKapisi {
       id,
       veri: this.istekVerisi(kaynak, alanlar, veri),
       duz: true,
+      yumusak: alanlar.includes(SILINME_ALANI),
     });
   }
 
@@ -156,6 +160,7 @@ export class YazmaKapisi {
       id,
       veri: bilinenVeri(alanlar, veri),
       duz: false,
+      yumusak: alanlar.includes(SILINME_ALANI),
     });
   }
 
@@ -207,9 +212,10 @@ export class YazmaKapisi {
       id: string;
       veri: Record<string, unknown>;
       duz: boolean;
+      yumusak: boolean;
     },
   ): Promise<void> {
-    const { isAdi, kaynak, eylem, id, veri, duz } = istek;
+    const { isAdi, kaynak, eylem, id, veri, duz, yumusak } = istek;
     // Yeni hâl yetenekten bağımsızdır (aynı veri aynı satıra yazılır); bu yüzden önce önceki hâli
     // tutan ve kolonları kapsayan yetenekler sırayla toplanır, satır bir kez yazılır ve adaylar
     // sırayla yeni hâlde denenir. Önceki hâl yazmadan sonra sorulamayacağı için adaylar yazmadan önce
@@ -218,7 +224,14 @@ export class YazmaKapisi {
     let degisen: Record<string, unknown> = {};
     const adaylar: YetenekKurali[] = [];
     for (const kural of kurallar(kaynak, eylem)) {
-      if (!(await kilitle(vekil, id, kayitKosulu(id, kural)))) {
+      // Yumuşak silinmiş kayıt güncellenmez: silinmiş satır kilitlenmez ve sonuç bulunamadi olur.
+      const kosul = {
+        AND: [
+          kayitKosulu(id, kural),
+          ...(yumusak ? [{ [SILINME_ALANI]: null }] : []),
+        ],
+      };
+      if (!(await kilitle(vekil, id, kosul))) {
         continue;
       }
       // Satır kilitli olduğu için bundan sonraki denemelerde eski hâl değişmez.

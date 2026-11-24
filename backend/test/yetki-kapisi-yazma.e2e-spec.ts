@@ -335,7 +335,13 @@ beforeEach(async () => {
   await gozlemci.query('delete from uyelik where id <> all($1::uuid[])', [
     UYELIK_IDLERI,
   ]);
-  await gozlemci.query('update uyelik set silinme_zamani = null');
+  for (const [id, kisi, grup, rol] of UYELIKLER) {
+    await gozlemci.query(
+      `update uyelik set kullanici_id = $2, grup_id = $3, rol_id = $4, silinme_zamani = null
+         where id = $1`,
+      [id, kisi, grup, rol],
+    );
+  }
   await gozlemci.query('delete from kullanici where id <> all($1::uuid[])', [
     KISI_IDLERI,
   ]);
@@ -614,6 +620,80 @@ describe('yetki kapısı - yazma', () => {
       expect((await uyelikSatiri(UY_B))?.silinme_zamani).toBeNull();
       expect(await notlar()).toHaveLength(1);
     });
+  });
+
+  it('d2) silinme zamanı taşıyan kaynakta silinmiş kayıt güncellenmez ve niyet eylemi almaz (bulunamadi); canlı kayıtta ve silinme zamanı olmayan kaynakta ikisi de yazar', async () => {
+    const yetki = await yetkiAl(AYSE, [AYSE_A], [
+      yetenek({
+        kaynak: 'Uyelik',
+        sart: [GRUP_VE_ALTI],
+        butunKolonlar: true,
+      }),
+      yetenek({
+        yetenekId: Y2,
+        kaynak: 'Uyelik',
+        eylem: 'rol_degistir',
+        sart: [GRUP_VE_ALTI],
+        butunKolonlar: true,
+      }),
+      yetenek({ yetenekId: Y3, butunKayitlar: true, butunKolonlar: true }),
+    ]);
+    const guncelle = (id: string, rolId: string): Promise<void> =>
+      yaz(AYSE, yetki, (islem) =>
+        kapi.guncelle(islem, 'uyelik.guncelle', 'Uyelik', id, { rolId }),
+      );
+    const rolDegistir = (id: string, rolId: string): Promise<void> =>
+      yaz(AYSE, yetki, (islem) =>
+        kapi.niyet(islem, 'uyelik.rol_degistir', 'Uyelik', 'rol_degistir', id, {
+          rolId,
+        }),
+      );
+    await gozlemci.query(
+      'update uyelik set silinme_zamani = now() where id = $1',
+      [UY_A1],
+    );
+    const silinen = await uyelikSatiri(UY_A1);
+
+    // a) ve b): aynı yetenekler canlı satırı yazar; silinmiş satır var olmayan satır gibi bulunamadi döner.
+    await expect(guncelle(UY_A1, R2)).rejects.toMatchObject({
+      kod: 'bulunamadi',
+    });
+    await expect(rolDegistir(UY_A1, R2)).rejects.toMatchObject({
+      kod: 'bulunamadi',
+    });
+    expect(await uyelikSatiri(UY_A1)).toEqual(silinen);
+    expect(await notlar()).toEqual([]);
+
+    // c) canlı satırda güncelleme ve niyet eylemi yazar ve not bırakır.
+    await guncelle(UY_A, R2);
+    expect((await uyelikSatiri(UY_A))?.rol_id).toBe(R2);
+    await rolDegistir(UY_A, R1);
+    expect((await uyelikSatiri(UY_A))?.rol_id).toBe(R1);
+
+    // d) silinme zamanı alanı olmayan kaynakta güncelleme yazar.
+    await yaz(AYSE, yetki, (islem) =>
+      kapi.guncelle(islem, 'kullanici.guncelle', 'Kullanici', BANU, {
+        gorunenAd: 'Banu Nur',
+      }),
+    );
+    expect((await kisiSatiri(BANU))?.gorunen_ad).toBe('Banu Nur');
+
+    expect(await notlar()).toEqual([
+      expect.objectContaining({
+        kayit_id: UY_A,
+        is_adi: 'uyelik.guncelle',
+        degisen: { rol_id: { eski: R1, yeni: R2 } },
+      }),
+      expect.objectContaining({
+        kayit_id: UY_A,
+        is_adi: 'uyelik.rol_degistir',
+        degisen: { rol_id: { eski: R2, yeni: R1 } },
+      }),
+      expect.objectContaining({
+        kayit_id: BANU,
+        degisen: { gorunen_ad: { eski: 'Banu', yeni: 'Banu Nur' } },
+      }),
+    ]);
   });
 
   it('e) oluşturma: şarta uyan satır yazılır; başka birime yazılan satır yetki_yok ile reddedilir ve tabloda kalmaz', async () => {
