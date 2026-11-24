@@ -95,12 +95,14 @@ Yazma yüzeyi (`shared/messaging`; feature tam repository'yi isteyemez):
 ### 1 — Erişim kaydının yolu (kullanıcı, 2026-11-24: A)
 - A — (seçildi) İstek sonunda doğrudan iz veritabanına tek INSERT. Okumada birlikte onaylanacak iş yoktur, outbox'ın atomiklik kazancı da yoktur (KR-013 bulgu 9). Asıl veritabanına okuma başına yazma yok; outbox yalnız değişiklik kaydı ve olay taşır ve kullanıcının 3 gün kuralı aynen kalır. Bedel: iz veritabanı kapalıyken okumalar reddedilir (KR-011 Seçim 9). Ajanın önerisiydi.
 - B — Outbox'tan (KR-013 Seçim 4, bugünkü karar). İz veritabanı kapalıyken okumalar sürer. Bedel: okuma başına asıl veritabanına bir ekleme ve bir silme (varsayım aralığıyla saniyede 500–2500); erişim notu 3 gün tutulamaz, yazıldığı doğrulanınca silinir ve iz veritabanı o kaydın tek kopyası olur (yedekten dönülürse aradaki kayıtlar kaybolur).
-### 2 — Olay kuyruğunun yeri (açık; deneme görevinden sonra)
+### 2 — Olay kuyruğunun yeri (kullanıcı, 2026-11-24: a)
 Belgeden (BullMQ deposunun belgeleri, 2026-11-24; bu depoda denenmedi): BullMQ 6 kuyruğu PostgreSQL'de de tutabilir (`createPostgresBackend`, `runMigrations`, ayrı şema).
-- a — Kuyruk PostgreSQL'de: işlerin durumu veritabanında durur, Redis olay yolunda yoktur, süpürücü yazılmaz. Çürütmenin düzeltmesi (17): kazanç taslağın söylediğinden küçüktür — tekrar güvenliği için (olay, tüketici) "işlendi" tablosu yine gerekir, `outbox_olay` ve olay aktarıcısı da kalır (arka uç bizim işlemimize katılamıyorsa); yeniden deneme fırtınasının yükü asıl PostgreSQL'e biner; tüketici başına bağlantı ve boşta yoklama yükü ile `runMigrations`'ın istediği yetki bilinmiyor.
+- a — (seçildi) Kuyruk PostgreSQL'de: işlerin durumu veritabanında durur, Redis olay yolunda yoktur, süpürücü yazılmaz. Çürütmenin düzeltmesi (17): kazanç taslağın söylediğinden küçüktür — tekrar güvenliği için (olay, tüketici) "işlendi" tablosu yine gerekir, `outbox_olay` ve olay aktarıcısı da kalır (arka uç bizim işlemimize katılamıyorsa); yeniden deneme fırtınasının yükü asıl PostgreSQL'e biner; tüketici başına bağlantı ve boşta yoklama yükü ile `runMigrations`'ın istediği yetki bilinmiyor.
 - b — Kuyruk Redis'te, (olay, tüketici) başına teslim satırı bizim tablomuzda: satır tüketicinin `run`'ında kapanır ve "işlendi" kaydıyla tek tablo olur; kapanmamış satırları süpürücü yeniden kuyruğa koyar. Bedel: süpürücü ile BullMQ'nun kendi durumu ayrışabilir (çürütme 18: denemesi tükenmiş iş duruyorsa yeniden koyma etkisizdir ve teslim sessizce açık kalır) → teslim satırı son durumu ve deneme sayısını taşır.
 - c — Teslim tablosu kuyruğun kendisidir (BullMQ'suz; çürütmenin en güçlü karşı görüşü). Kullanıcı BullMQ'yu açıkça istediği için alınmadı.
-- İlk taslakta ajan (a)'yı önermişti; çürütme bu öneriyi zayıflattı. Karar deneme görevinin ölçümünden sonra kullanıcıya götürülecek.
+- İlk taslakta ajan (a)'yı önermişti; çürütme bu öneriyi zayıflattı ve karar ölçüme bırakıldı. Ölçüm (GV-008 ve GV-009; işçi ve inceleyici ayrı ayrı koşturdu, sayılar örtüştü; bullmq 6.7.7, tek makine): göç ayrı bir şemaya 15 tablo, 78 işlev ve 33 dizin kurar, public şemasına yazmaz ve uzantı istemez; göçü koşan role veritabanında CREATE yetkisi gerekir; Redis ayarı olmadan iş eklenir ve işlenir; aynı iş kimliğiyle ikinci ekleme bekleyen, işlenen, tamamlanmış ve başarısız işte yok sayılır, silinmiş işte yeni iş üretir; işçi zorla kapatılınca iş kaybolmaz ve küçültülmüş ayarla 2 saniyede yeniden işlenir (varsayılan ayarda ölçülmedi); hep hata veren iş 3 kez denenir ve başarısız olarak okunabilir; yeni iş LISTEN/NOTIFY ile öğrenilir (ekleme ile tamamlanma arası 40 ms); boşta dinleyen başına 3 bağlantı ve 10 saniyede 8 işlem; resmî arayüz uygulamanın işlemini kabul etmez (yalnız belgelenmemiş bir iç SQL işleviyle olur; kullanılmayacak); 200 işlik hata fırtınası 0,2 saniyede biter ve yan sorgunun ortancası 0,26 ms'den 0,41 ms'ye çıkar (kaba ölçü; ölçümler fırtınanın başını kapsar); tamamlanan ve başarısız işi silme seçenekleri çalışır, olay geçmişi satırları kalır.
+- Kullanıcı (a)'yı seçti (2026-11-24). Kabul edilen bedel: dinleyen başına 3 veritabanı bağlantısı (10 dinleyen ve 2 uygulama kopyası 60 bağlantı eder; PostgreSQL'in varsayılan sınırı 100'dür) ve desteğin yeni olması; dinleyen sayısı büyürse sınır yükseltilir ya da (b)'ye geçilir, feature kodu değişmez.
+- Seçimin sonuçları: `outbox_olay` ve olay aktarıcısı kalır (aynı işlemde ekleme resmî yoldan yapılamaz); tekrar güvenliği için (olay, tüketici) "işlendi" kaydı bizdedir (silinmiş işin kimliği yeniden eklenebildiği için kuyruğun kopya engeli tek başına yetmez); kuyruk tabloları ayrı şemada durur ve göçleri yayın adımında koşar; Redis yalnız yetki önbelleği için kalır.
 
 ## Hata modları
 - İz veritabanı kapalı: değişiklik kaydı notları asıl veritabanında bekler ve okumalar reddedilir; açılınca aktarım sürer. Fark edilir: en eski satırın yaşı.
@@ -113,7 +115,7 @@ Belgeden (BullMQ deposunun belgeleri, 2026-11-24; bu depoda denenmedi): BullMQ 6
 1. Deneme: BullMQ PostgreSQL arka ucu (kurulur mu; ayrı şema; iş kimliğiyle kopya engeli; işçi kapanıp açılınca iş kaybı; bizim işlemimizin içinde kuyruğa konabiliyor mu; bağlantı sayısı ve boşta yük; göçü hangi rol koşar; sürekli hata veren işin yükü).
 2. Outbox tabloları ve yazma yüzeyi.
 3. Değişiklik kaydı tablosu ve iz aktarıcısı.
-4. Olay yolu (Seçenek 2'nin cevabından sonra): kapı, bağdaştırıcı, abone defteri, olay aktarıcısı, tüketici tabanı.
+4. Olay yolu: kapı, bağdaştırıcı, abone defteri, olay aktarıcısı, tüketici tabanı.
 5. Bütünün sınaması.
 
 ## Doğrulama
@@ -148,5 +150,5 @@ Bağımsız oturum (inceleyici rolü, yalnız okuma, 2026-11-24) ilk taslağı �
 | 14 | hafif | Değişiklik kaydında "hangi iş" yok | işlendi: `is_adi` |
 | 15 | hafif | `outbox_olay`'da yinelenen alanlar ve erken kolonlar; `son_hata` eksik | işlendi: en küçük hâl; `outbox_iz` dizini ölçülünce |
 | 16 | hafif | İz tablolarının temizliği silmeyle yapılırsa ortak diski yorar | açık: gerçek veri gelmeden |
-| 17 | orta | (a)'nın kazancı küçük, bedeli büyük; denemeye dört soru eksik | işlendi: Seçenek 2 ve Aşama 1; ajanın (a) önerisi geri çekildi |
+| 17 | orta | (a)'nın kazancı küçük, bedeli büyük; denemeye dört soru eksik | kapandı: dört soru deneme görevleriyle ölçüldü; kullanıcı (a)'yı seçti (Seçenek 2) |
 | 18 | orta | (b)'de süpürücü ile BullMQ'nun durumu ayrışır | işlendi: teslim satırı son durumu ve deneme sayısını taşır |
