@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 46 görevin 37 tanesi alındı. Son koşuların ve incelemelerin toplamı: 399 dakika, 144.08 dolar.
+Kayıtlı 49 görevin 42 tanesi alındı. Son koşuların ve incelemelerin toplamı: 485 dakika, 177.61 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -51,9 +51,9 @@ Kayıtlı 46 görevin 37 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | alındı | 1.0 | 5.9 | 3.25 | 4 | 0 engel, 2 öneri | 1 |
 | GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | alındı | 2.2 | 7.7 | 4.62 | 18 | 0 engel, 3 öneri | 0 |
 | GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | alındı | 9.5 | 5.8 | 6.54 | 10 | 0 engel, 2 öneri | 1 |
-| GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
+| GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | alındı | 10.5 | 9.0 | 8.99 | 16 | 0 engel, 4 öneri | 0 |
 | GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | alındı | 1.5 | 6.1 | 2.52 | 4 | 0 engel, 1 öneri | 0 |
-| GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | bekliyor | — | — | — | 0 | — | 0 |
+| GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | alındı | 12.5 | 6.9 | 9.82 | 12 | 0 engel, 4 öneri | 0 |
 | GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | bekliyor | — | — | — | 0 | — | 0 |
 | GV-034 | EP-003 12 | Yetki kapısı - yazma: şartlı yazma, kolon sınırı, oluşturma denetimi ve değişiklik kaydı | bekliyor | — | — | — | 0 | — | 0 |
 | GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | bekliyor | — | — | — | 0 | — | 0 |
@@ -66,8 +66,11 @@ Kayıtlı 46 görevin 37 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-042 | EP-003 20 | Tohum ve komutların sertleştirilmesi: ada göre sıra, komut bağlamında döngülerin başlamama | alındı | 8.7 | 7.0 | 6.24 | 12 | 0 engel, 3 öneri | 0 |
 | GV-043 | EP-003 21 | Kimlik guard'ı: belirteç, adres imzası ve oturum denetimiyle koruma; açılış denetimleri ve | alındı | 10.0 | 8.4 | 6.64 | 9 | 0 engel, 3 öneri | 0 |
 | GV-044 | EP-004 1 | Ön yüz iskeleti: Next.js uygulaması, derleyici, lint, Tailwind, Vitest ve karşılama sayfas | alındı | 6.5 | 6.4 | 4.97 | 13 | 0 engel, 3 öneri | 0 |
-| GV-045 | EP-004 2 | Aracı katman: backend isteği, istemci adresi imzası, oturum çerezleri, hata eşleme ve biçi | tamam | 1.2 | — | 0.51 | 11 | — | 1 |
-| GV-046 | EP-005 1 | Testlerde derleme yarışı: derleme gerektiren test kendi geçici klasörüne derler | bekliyor | — | — | — | 0 | — | 0 |
+| GV-045 | EP-004 2 | Aracı katman: backend isteği, istemci adresi imzası, oturum çerezleri, hata eşleme ve biçi | alındı | 2.9 | 5.4 | 3.29 | 11 | 0 engel, 3 öneri | 1 |
+| GV-046 | EP-005 1 | Testlerde derleme yarışı: derleme gerektiren test kendi geçici klasörüne derler | alındı | 8.6 | 7.5 | 5.21 | 8 | 0 engel, 4 öneri | 0 |
+| GV-047 | EP-004 3 | Giriş, çıkış, parola belirleme ekranları ve korumalı düzen | alındı | 2.7 | 5.5 | 3.66 | 25 | 0 engel, 4 öneri | 0 |
+| GV-048 | EP-005 2 | Test derleme klasörünün yeri ve bağlantı sayımının tek yardımcıya toplanması | tamam | 15.6 | — | 3.06 | 10 | — | 0 |
+| GV-049 | EP-005 3 | Yerel deneme betiği: geçici veritabanlarıyla backend ve ön yüzü birlikte açar | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -122,6 +125,8 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-028 | alma aşamasında birleştirme çakışması (kimlik.module.ts) | aracın çıktısı | elle çözüldü ve ölçüldü; kayıt için yeniden koşturuluyor |
 | GV-029 | işçi soruyla durdu: guard'ın dokunmak zorunda olduğu dosyalar kartta yok | bitiş kaydı | iş ikiye bölündü (AK-29); GV-029 daraltılmış kapsamla sürdü, GV-043 açıldı |
 | GV-045 | işçi soruyla durdu: bir ölçütün denemesi kartın dışındaki klasöre dosya ister | bitiş kaydı | cevaplandı; denemeyi ana oturum yapacak |
+| GV-045 | inceleme kaldı: bitiş kaydında istenen bölüm yok; iki kod önerisi | inceleme kaydı | yeniden koşuldu, geçti |
+| GV-047 | inceleme kaldı: KU-006 (ilgisiz renk değişikliği) | inceleme kaydı | yeniden koşuldu, geçti |
 
 ## 6. Hatalarım
 
@@ -207,3 +212,8 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 00:10 — GV-043 (guard, açılış denetimleri, uygulamaya bağlama) alındı: guard testi 42, parola 10, uçtan uca 7, HTTP temeli 35; iki ayrı görevin birleşimi de ölçüldü (komut bağlamı 4, tohum koşucusu 14, kapanış 1, sağlık 1, veritabanı 5). Her seferinde tip, lint ve derleme 0.
 - 00:10 — GV-044 (ön yüz iskeleti) alındı: tip, lint ve derleme 0; karşılama testi 2/2; derlemeden sonra çalışma ağacı temiz. GV-045 (aracı katman) tek ölçütte soruyla durdu (sızma denemesi kartın dışındaki klasöre dosya ister); cevaplandı, denemeyi ana oturum yapacak.
 - 00:10 — İnceleme önerilerinden üç karar daha yazıldı (AK-32, AK-33, AK-34). Test altyapısı için ayrı epic açıldı (EP-005) ve GV-046 başladı. Auth çekirdeğinin yürütmesi sürüyor: giriş ve çıkış (GV-030) koşuyor.
+- 00:48 — GV-030 (giriş ve çıkış) alındı: giriş testi 10, guard testi 42, parola testi 10; tip ve lint 0. Yürütme GV-032'ye (yetki verisi, yetki guard'ı, yetkilerim) geçti.
+- 00:48 — GV-045 (ön yüzün aracı katmanı) ilk incelemede kaldı (bitiş kaydında istenen bölüm eksikti; inceleme iki gerçek sorun buldu), yeniden koşuldu, geçti ve alındı: tip, lint, derleme 0; beş test dosyasında 30 test. Sızma denemesini ana oturum geçici kopyada yaptı: temiz kopya 0 ile derlendi, tarayıcı bileşeni sunucuya özel modülü içe aktarınca derleme 1 ile kırıldı.
+- 00:48 — GV-046 (testlerde derleme yarışı) alındı: derleme gerektiren testler ikişer ikişer yan yana koşturuldu (18 ve 11 test geçti), guard testi 42. Devamı GV-048 koşuyor (derleme klasörünün yeri, bağlantı sayımının tek yardımcıda toplanması).
+- 00:48 — GV-047 (giriş, çıkış, parola belirleme ekranları ve korumalı düzen) ilk incelemede tek kural yüzünden kaldı (KU-006: görevle ilgisiz bir renk değişikliği), yeniden koşuldu, geçti ve alındı: tip ve lint 0; derlemede dört rota; on bir test dosyasında 75 test; tarayıcıya giden dosyalarda sır ya da belirteç adı yok (aradım).
+- 00:48 — Gerçek tarayıcıyla uçtan uca deneme için yerel deneme betiği görevi açıldı ve başladı (GV-049): geçici veritabanları açar, anahtarları bellekte üretir, backend ve ön yüzü birlikte başlatır, kapanınca siler. Kalıcı veritabanlarına dokunmaz.
