@@ -20,7 +20,7 @@ export interface DenetimSatiri {
 export interface OturumDenetimiOkumaRepo {
   // Tek deyimle okunur (KR-010 Seçim 49). Oturum ya da genel sayaç satırı yoksa null.
   oku(oturumId: string): Promise<DenetimSatiri | null>;
-  // Kimlik feature'ının sistem aktörü (TS-002 AK-2); yoksa Prisma'nın "kayıt yok" hatası atılır.
+  // Kimlik feature'ının sistem aktörü (TS-002 AK-2); hiç ya da birden çok satır varsa hata atılır.
   kimlikSistemAktoru(): Promise<string>;
 }
 

@@ -35,11 +35,6 @@ import {
   KimlikKurulumGocu,
 } from './tohum/kimlik-kurulum.goc.js';
 import { KURULUM_REPO, kurulumRepo } from './tohum/kurulum.repository.js';
-import { KimlikYetkiVerisi } from './yetki-verisi/yetki-verisi.js';
-import {
-  YETKI_VERISI_REPO,
-  yetkiVerisiRepo,
-} from './yetki-verisi/yetki-verisi.repository.js';
 
 // Kimlik'in çekirdek modülü (TS-002 AK-30). Alt özelliklerin ortak kullandığı çekirdek parçalar burada
 // sağlanır ve alt modüllere dışa verilir; çekirdek repository'ler Unit of Work'e
@@ -54,16 +49,8 @@ import {
     TohumYardimcisi,
     KimlikKurulumGocu,
     ParolaBaglantisi,
-    KimlikYetkiVerisi,
   ],
-  exports: [
-    GenelSayac,
-    KisininSayisi,
-    KisiKilidi,
-    KokUyelik,
-    ParolaBaglantisi,
-    KimlikYetkiVerisi,
-  ],
+  exports: [GenelSayac, KisininSayisi, KisiKilidi, KokUyelik, ParolaBaglantisi],
 })
 export class KimlikCekirdekModule {
   constructor(
@@ -80,6 +67,5 @@ export class KimlikCekirdekModule {
       kurulumGocu.uygula(ad, islem),
     );
     registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
-    registrar.register(YETKI_VERISI_REPO, yetkiVerisiRepo);
   }
 }

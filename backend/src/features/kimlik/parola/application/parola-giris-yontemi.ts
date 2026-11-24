@@ -13,7 +13,7 @@ import { PAROLA_REPO } from '../domain/parola.repository.js';
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,
-} from '../presentation/parola-giris.schema.js';
+} from './parola-giris.schema.js';
 
 // Kişi yokken ya da parolası belirlenmemişken doğrulamanın karşılaştırıldığı sabit sahte özet (TS-002
 // AK-15): rastgele bir girdinin Argon2id özetidir, hiçbir parolaya uymaz. Ayarları ARGON2ID_AYARLARI

@@ -510,6 +510,30 @@ describe('a) yetki verisi', () => {
     expect(altGruplar[GRUP_A]).not.toContain(GRUP_B);
     expect(altGruplar[GRUP_B]).toEqual([GRUP_B]);
   });
+
+  // KR-008 Seçim 41; TS-002 AK-37: kapatılan birim üst birimin açılımında kalır.
+  it('silinmiş alt grup ve onun altındaki grup üst grubun açılımında yer alır', async () => {
+    const silinmis = '61000000-0000-4000-8000-0000000000a2';
+    const silinmisinAltindaki = '61000000-0000-4000-8000-000000000a2a';
+    await grupEkle(silinmis, GRUP_A);
+    await grupEkle(silinmisinAltindaki, silinmis);
+    await gozlemci.query(
+      'update grup set silinme_zamani = clock_timestamp() where id = $1',
+      [silinmis],
+    );
+    // Üst grup anahtarı RESTRICT'tir: önce alttaki silinir.
+    onTestFinished(async () => {
+      for (const id of [silinmisinAltindaki, silinmis]) {
+        await gozlemci.query('delete from grup where id = $1', [id]);
+      }
+    });
+
+    const { altGruplar } = await yetkiVerisi().kisininSatirlari(ALI);
+
+    expect([...(altGruplar[GRUP_A] ?? [])].sort()).toEqual(
+      [GRUP_A, GRUP_A1, GRUP_A1A, silinmis, silinmisinAltindaki].sort(),
+    );
+  });
 });
 
 describe('b) izin işaretli uç', () => {

@@ -1,12 +1,12 @@
 // Çekirdek repository: yetki verisini ve sürümleri yetki kapısından geçmeden okur (TS-002 "Çekirdek
 // yollar": yetki verisinin ve sürümlerin okunması; KR-010 Seçim 48'in adıyla istisnası). Yalnız
-// okur; her metot tek sorgudur ve metotlar arasında ortak anlık görüntü yoktur.
+// okur. Sürümler iki sorguyla (kişi, genel sayaç), öbür metotlar birer sorguyla okunur; sorgular
+// arasında ortak anlık görüntü yoktur.
 import {
   RepoBelirteci,
   type RepoIstemcisi,
 } from '../../../../shared/database/registrar.js';
 import type {
-  SartOgesi,
   UyelikSatiri,
   YetenekSatiri,
   YetkiSurumleri,
@@ -15,10 +15,15 @@ import type {
 // Genel sayaç tek satırdır; kimliği yalnız 1 olabilir (yetki_surumu_tek_satir_denetim).
 const GENEL_SAYAC_ID = 1;
 
-export interface CanliGrup {
+export interface GrupDugumu {
   readonly id: string;
   readonly ustGrupId: string | null;
 }
+
+// Saklandığı gibi okunan yetenek: şartın biçimi henüz doğrulanmamıştır (TS-002 AK-37).
+export type SaklananYetenek = Omit<YetenekSatiri, 'sart'> & {
+  readonly sart: unknown;
+};
 
 export interface YetkiVerisiOkumaRepo {
   // Kişi ya da genel sayaç satırı yoksa Prisma'nın "kayıt yok" hatası atılır.
@@ -26,12 +31,12 @@ export interface YetkiVerisiOkumaRepo {
   // Kişinin silinmemiş üyelikleri.
   uyelikler(kullaniciId: string): Promise<UyelikSatiri[]>;
   // Verilen (grup, rol) çiftlerinden birine bağlı silinmemiş yetenekler, izniyle (KR-008 Seçim 44:
-  // grup ve rol aynı üyelikten gelir).
+  // grup ve rol aynı üyelikten gelir). Boş şart null saklanır ve null döner.
   yetenekler(
     ciftler: readonly Pick<UyelikSatiri, 'grupId' | 'rolId'>[],
-  ): Promise<YetenekSatiri[]>;
-  // Silinmemiş grupların tamamı; alt gruplar bellekte hesaplanır.
-  canliGruplar(): Promise<CanliGrup[]>;
+  ): Promise<SaklananYetenek[]>;
+  // Silinmişler dahil grupların tamamı (KR-008 Seçim 41); alt gruplar bellekte hesaplanır.
+  gruplar(): Promise<GrupDugumu[]>;
 }
 
 export const YETKI_VERISI_REPO = new RepoBelirteci<
@@ -86,17 +91,13 @@ export function yetkiVerisiRepo(istemci: RepoIstemcisi): YetkiVerisiOkumaRepo {
         rolId: satir.rolId,
         kaynak: satir.izin.kaynak,
         eylem: satir.izin.eylem,
-        // Saklanan biçim öğelerin düz dizisidir (TS-002 "Veri modeli"); boş şart null saklanır.
-        sart: (satir.sart ?? []) as unknown as SartOgesi[],
+        sart: satir.sart,
         butunKayitlar: satir.butunKayitlar,
         butunBirimler: satir.butunBirimler,
         kolonlar: satir.kolonlar,
         butunKolonlar: satir.butunKolonlar,
       })),
-    canliGruplar: () =>
-      istemci.grup.findMany({
-        where: { silinmeZamani: null },
-        select: { id: true, ustGrupId: true },
-      }),
+    gruplar: () =>
+      istemci.grup.findMany({ select: { id: true, ustGrupId: true } }),
   };
 }

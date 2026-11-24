@@ -19,7 +19,7 @@ import { ParolaGirisYontemi } from '../../parola/application/parola-giris-yontem
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,
-} from '../../parola/presentation/parola-giris.schema.js';
+} from '../../parola/application/parola-giris.schema.js';
 import { CikisHandler } from '../application/cikis.handler.js';
 import type { GirisCevabi } from '../application/giris.command.js';
 import { GirisHandler, girisBasarisiz } from '../application/giris.handler.js';

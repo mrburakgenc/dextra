@@ -1,9 +1,6 @@
 import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
+import { kimlikSistemAktoru } from '../../_shared/cekirdek/sistem-aktoru.js';
 import type { ParolaRepo } from '../domain/parola.repository.js';
-
-// Kimlik feature'ının sistem aktörünün görünen adı (TS-002 AK-2); aktörün giriş bilgisi yoktur ve
-// tabloda onu ayıran başka bir alan bulunmaz.
-const KIMLIK_SISTEM_AKTORU_ADI = 'kimlik';
 
 export function parolaPrismaRepository(istemci: RepoIstemcisi): ParolaRepo {
   return {
@@ -14,13 +11,7 @@ export function parolaPrismaRepository(istemci: RepoIstemcisi): ParolaRepo {
       });
       return satir?.id ?? null;
     },
-    kimlikSistemAktoru: async () => {
-      const satir = await istemci.kullanici.findFirstOrThrow({
-        where: { sistemAktoru: true, gorunenAd: KIMLIK_SISTEM_AKTORU_ADI },
-        select: { id: true },
-      });
-      return satir.id;
-    },
+    kimlikSistemAktoru: () => kimlikSistemAktoru(istemci),
     girisSirri: async (kullaniciAdi) => {
       const satir = await istemci.kullanici.findUnique({
         where: { kullaniciAdi },
