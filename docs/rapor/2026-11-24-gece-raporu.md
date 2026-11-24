@@ -105,6 +105,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-016 | inceleme kaldı: bitiş kaydında bir satır yanlış bölümdeydi (kartıma eklediğim katı kural yüzünden) | inceleme kaydı | satır tamamlatıldı, yeniden incelendi; sonraki kartlarda kural yumuşatıldı |
 | GV-024 | işçi soruyla durdu: aracın okuma yasağı yüzünden .env.example dosyasına yazamadı; ayrıca dosya listesini boş bıraktı | bitiş kaydı | cevap verildi (dosya yazılmaz); araçta soru ile sorunun birlikte gelmesi ele alındı |
 | GV-031 | bitiş kaydındaki dosya listesinde yeni test dosyası eksikti; araç beyan uyuşmuyor dedi | aracın kaydı | 88 saniyede düzeltildi, incelemeden geçti |
+| GV-020 | işçi soruyla durdu: outbox-sema testi bütün tablo listesini sayıyor, on bir tablo eklenince kırılıyor ve dosya görevin kapsamında değil | bitiş kaydı | karar verildi (tam liste sınaması yazılmaz), cevaplandı, GV-036 açıldı |
 
 ## 6. Hatalarım
 
@@ -155,4 +156,3 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 22:06 — EP-002 bitti: on beş görevin on beşi alındı. Son üçü: GV-021 ve GV-022 (sertleştirme; yan yana koştu) ve GV-031 (onarım: kırmızı test düzeldi, süreç sinyalinde düzenli kapanış, dinamik içe aktarma yasağı). Kendi ölçümlerim: tip, lint ve derleme 0; tüketici 18, kuyruk 10, iz aktarıcısı dayanıklılığı 12, döngü 3, uçtan uca 7, ad denetimi 4, test-database 5 (artık hepsi yeşil), kapanış 1.
 - 22:06 — Kullanıcı izin sorulmasından ikinci kez şikâyet etti; proje ayarında kabuk komutlarının tamamına izin verildi (yalnız bu proje).
 - 22:06 — EP-003 başladı. GV-024 (belirteç ve adres imzası) alındı: 20 ve 21 birim testi geçti. GV-020 (on bir tablo) soruyla durdu: eski bir test bütün tablo listesini sayıyor; karar: tam tablo listesi sınaması yazılmaz (TS-003), cevap verildi, düzeltme görevi açıldı (GV-036). HTTP temeli (GV-023) yan yana koşuyor.
-- 22:06 — | GV-020 | işçi soruyla durdu: outbox-sema testi bütün tablo listesini sayıyor, on bir tablo eklenince kırılıyor ve dosya görevin kapsamında değil | bitiş kaydı | karar verildi (tam liste sınaması yazılmaz), cevaplandı, GV-036 açıldı |
