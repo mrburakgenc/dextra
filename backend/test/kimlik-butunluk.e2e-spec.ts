@@ -3,15 +3,15 @@
 //   pnpm -C backend test:e2e test/kimlik-butunluk.e2e-spec.ts --reporter=verbose
 // Uygulama ortak kurulum yardımcısıyla (kimlik-yardimci.ts) açılır; yardımcı böylece sınanmış olur.
 // Satırlar SQL ile hazırlanır; sorular Unit of Work'ün işleminde sorulur. "İsteyenin yeteneğinden
-// bağımsızdır" sınaması için yalnız kendisi işaretli bir sınama ucu, testin verdiği soruları isteğin
-// içinde, işlem açarak sorar ve isteğin derlenmiş kural sayısıyla birlikte döner.
+// bağımsızdır" sınaması için herkese açık bir sınama ucu, testin verdiği soruları isteğin
+// içinde, işlem açarak sorar ve isteğin derlenmiş kural sayısıyla birlikte döner (yetki yoksa -1).
 import { randomUUID } from 'node:crypto';
 import { Controller, Get } from '@nestjs/common';
 import pg from 'pg';
 import request from 'supertest';
 import { ButunlukSorusu } from '../src/features/kimlik/_shared/butunluk-sorusu.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { YalnizKendisi } from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
 import { istekBaglami } from '../src/shared/http/istek-baglami.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';
@@ -34,7 +34,7 @@ let adSayaci = 0;
 @Controller('butunluk-sinama')
 class ButunlukSinamaUcu {
   @Get('sor')
-  @YalnizKendisi()
+  @HerkeseAcik()
   async sor(): Promise<{
     kuralSayisi: number;
     cevaplar: Record<string, boolean>;
@@ -423,7 +423,7 @@ describe('şu grubu şu grubun altına taşımak döngü yapar mı', () => {
 });
 
 describe('sorular isteyenin yeteneğinden bağımsızdır', () => {
-  it('hiçbir yeteneği olmayan kişinin isteği içinde de doğru cevap verir', async () => {
+  it('yetkisi olmayan oturumsuz isteğin içinde de doğru cevap verir', async () => {
     // Kişinin tek üyeliği (Kök, Temel) kapatılır: derlenmiş kuralı kalmaz. Kişi henüz oturumlu istek
     // yapmadığı için yetki belleğinde eski kaydı yoktur.
     const yeteneksiz = await ortam.kullaniciAc(yeniAd());
@@ -469,12 +469,13 @@ describe('sorular isteyenin yeteneğinden bağımsızdır', () => {
       bosuDoluyaTasimakDongu: await s.tasimaDonguYaparMi(i, bos, dolu),
     });
     try {
-      const cevap = await request(ortam.app.getHttpServer())
-        .get('/butunluk-sinama/sor')
-        .set(ortam.basliklar(yeteneksiz.erisimBelirteci));
+      // Oturumsuz istek: bağlamda derlenmiş yetki hiç yoktur.
+      const cevap = await request(ortam.app.getHttpServer()).get(
+        '/butunluk-sinama/sor',
+      );
       expect(cevap.status).toBe(200);
       expect(cevap.body).toEqual({
-        kuralSayisi: 0,
+        kuralSayisi: -1,
         cevaplar: {
           superadminKokSuperAdmin: true,
           yeteneksizKokSuperAdmin: false,
