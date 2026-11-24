@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 82 görevin 70 tanesi alındı. Son koşuların ve incelemelerin toplamı: 769 dakika, 298.06 dolar.
+Kayıtlı 86 görevin 75 tanesi alındı. Son koşuların ve incelemelerin toplamı: 807 dakika, 314.64 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -84,13 +84,13 @@ Kayıtlı 82 görevin 70 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | alındı | 7.6 | 7.7 | 5.67 | 6 | 0 engel, 2 öneri | 0 |
 | GV-061 | EP-003 24 | Unit of Work'ün yazma işareti ve erişim kaydının salt okuma kuralı | alındı | 5.5 | 4.2 | 3.59 | 6 | 0 engel, 0 öneri | 0 |
 | GV-062 | EP-006 4.2 | Kullanıcı aç | alındı | 7.3 | 5.2 | 5.68 | 8 | 0 engel, 2 öneri | 0 |
-| GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | bekliyor | — | — | — | 0 | — | 0 |
+| GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | tamam | 6.8 | — | 3.15 | 8 | — | 0 |
 | GV-064 | EP-006 4.4 | Kullanıcıyı pasife al ve yeniden aç | bekliyor | — | — | — | 0 | — | 0 |
-| GV-065 | EP-006 5.2 | Rol: oluştur, adını değiştir ve sil | tamam | 5.9 | — | 2.51 | 7 | — | 1 |
+| GV-065 | EP-006 5.2 | Rol: oluştur, adını değiştir ve sil | alındı | 5.9 | 4.6 | 4.96 | 7 | 0 engel, 0 öneri | 1 |
 | GV-066 | EP-006 6.2 | Grup: oluştur ve adını değiştir | alındı | 6.0 | 5.8 | 5.62 | 8 | 0 engel, 3 öneri | 0 |
-| GV-067 | EP-006 6.3 | Grup: taşı ve sil | bekliyor | — | — | — | 0 | — | 0 |
+| GV-067 | EP-006 6.3 | Grup: taşı ve sil | alındı | 4.8 | 5.1 | 4.27 | 8 | 0 engel, 2 öneri | 0 |
 | GV-068 | EP-006 7.2 | Üyelik: ver ve kaldır | soru | 1.7 | — | 1.22 | 0 | — | 0 |
-| GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | tamam | 8.7 | — | 4.40 | 8 | — | 0 |
+| GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | tamam | 2.6 | 8.6 | 4.92 | 8 | — | 0 |
 | GV-070 | EP-006 8.3 | Yetenek: yenile | bekliyor | — | — | — | 0 | — | 0 |
 | GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | alındı | 1.8 | 2.0 | 1.38 | 1 | 0 engel, 0 öneri | 0 |
 | GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | alındı | 0.7 | 6.2 | 2.82 | 7 | 0 engel, 2 öneri | 1 |
@@ -101,9 +101,13 @@ Kayıtlı 82 görevin 70 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-077 | EP-005 8 | Rol listesinde canlılık süzgeci ve ortak yetki modülüne geçiş | alındı | 3.1 | 4.0 | 2.70 | 4 | 0 engel, 1 öneri | 0 |
 | GV-078 | EP-005 9 | Grup listesinde canlılık süzgeci ve ortak yetki modülüne geçiş | alındı | 2.9 | 3.4 | 2.47 | 3 | 0 engel, 0 öneri | 0 |
 | GV-079 | EP-006 9 | Çekirdek ekleri: bütünlük sorularına ekler, iki künye okuması ve parola sırrı parçası | alındı | 5.3 | 3.6 | 4.30 | 6 | 0 engel, 4 öneri | 0 |
-| GV-080 | EP-007 2 | Roller, gruplar ve izinler: liste ekranları ve ortak liste parçaları | sorunlu | 7.5 | — | 2.69 | 20 | — | 0 |
-| GV-081 | EP-003 26 | Yazma kapısı: silinmiş kayıt güncellenmez ve niyet eylemi almaz | bekliyor | — | — | — | 0 | — | 0 |
-| GV-082 | EP-006 7.3 | Üyelik: ver ve kaldır | bekliyor | — | — | — | 0 | — | 0 |
+| GV-080 | EP-007 2 | Roller, gruplar ve izinler: liste ekranları ve ortak liste parçaları | alındı | 1.5 | 3.7 | 2.33 | 20 | 0 engel, 1 öneri | 0 |
+| GV-081 | EP-003 26 | Yazma kapısı: silinmiş kayıt güncellenmez ve niyet eylemi almaz | alındı | 3.0 | 3.5 | 2.53 | 2 | 0 engel, 1 öneri | 0 |
+| GV-082 | EP-006 7.3 | Üyelik: ver ve kaldır | tamam | 1.0 | — | 0.45 | 8 | — | 1 |
+| GV-083 | EP-006 5.3 | Rol sil: açık sistem rolü denetimi | alındı | 2.1 | 2.8 | 1.93 | 2 | 0 engel, 0 öneri | 0 |
+| GV-084 | EP-007 3 | Kullanıcı işleri ekranları: aç, kayıt sayfası, güncelle, pasife al, yeniden aç, kod üret | bekliyor | — | — | — | 0 | — | 0 |
+| GV-085 | EP-003 27 | Derleyici: şart değerinin ve işlecin kolon tipine uyumu | soru | 3.6 | — | 1.64 | 0 | — | 1 |
+| GV-086 | EP-003 28 | Hata süzgeci: yabancı anahtar ihlali cakisma (409) olur | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -173,6 +177,9 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-065 | işçi soruyla durdu: 'sistem rolü mü' sorusu çekirdekte yok; silinmiş rolün adı değişebiliyor | bitiş kaydı | cevaplandı (AK-43); açık denetim sonraya |
 | GV-068 | işçi soruyla durdu: parola sırrı parçası ve üç soru çekirdekte yok | bitiş kaydı | çekirdek ekleri görevi açıldı (GV-079); GV-068 yerine yeni yaprak açılacak |
 | GV-080 | bitiş kaydındaki dosya listesi yeni dosyaları saymıyor; araç beyan uyuşmuyor dedi | aracın kaydı | yeniden koşuyor; neden kartımdaki cümle |
+| GV-069 | inceleme kaldı: boş liste şart değeri kabul ediliyor (KR-008 Seçim 11) | inceleme kaydı | bulguyla yeniden koşuyor |
+| GV-082 | işçi soruyla durdu: var olmayan kişiye üyelik 500 dönüyor | bitiş kaydı | karar AK-45; ortak süzgeç görevi açıldı, cevaplandı |
+| GV-085 | işçi soruyla durdu: üretilmiş istemci alan tipini ayırt etmiyor | bitiş kaydı | cevaplandı: derleyicinin doğruladığı tip tablosu |
 
 ## 6. Hatalarım
 
@@ -235,6 +242,8 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48: çekirdek liste kapalıdır): AK-43, bütünlük sorularına yedi soru, iki künye okuması (üyelik, izin) ve listede olup yazılmamış 'parola sırrı' parçası eklendi.
 - GV-068 atılmayı bekliyor (hiç dosya değiştirmedi; ağacı eski tabanda; yerine yeni yaprak açıldı): python3 harness/h.py gorev at GV-068
 - Araç boşluğu (bu gece en çok zaman alan): bir görevin ağacı ilk koşuda açılıyor ve taban bir daha yenilenmiyor. Soruyla duran ve hiç dosya değiştirmemiş bir görev, cevabı bir ön koşul görevi olduğunda o ön koşulu göremiyor; tek yol görevi atıp yenisini açmak ve atma sana soruluyor. Öneri: dosya değiştirmemiş görevin ağacı yeniden koşumda güncel tabandan yeniden açılsın.
+- Grup taşımada küçük tutarsızlık (GV-067 incelemesi): grup zaten hedefin altındaysa satır değişmiyor ama genel sayaç artıyor ve boş bir değişiklik notu yazılıyor.
+- Yönetim yazma depolarında yeni bir desen çıktı (GV-062 incelemesi): yazma arayüzü Unit of Work'e kayıtlı okuma arayüzünü genişletmek yerine ayrı bir soyut sınıf olarak bağlanıyor; KR-011 Seçim 6'nın amacı korunuyor ama metni bu deseni anlatmıyor.
 
 ## 9. PR'lar
 
@@ -309,3 +318,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 02:47 — GV-062 (kullanıcı aç) alındı: açma ve okuma testleri 42. GV-060 (yazma kapısının düzeltmesi, sistem alanları, iki lint yasağı) alındı: kapı ve yetki testleri 59; kullanıcı açma, uçtan uca ve kimlik kurulumu 46; birleşimde kırılan yok. GV-066 (grup oluştur ve adını değiştir) alındı: grup testleri 27. GV-079 (çekirdek ekleri) alındı: çekirdek testleri 52. Her alımdan sonra tip ve lint 0.
 - 02:47 — İki inceleme silinmiş rolün ve grubun adının değiştirilebildiğini söyledi; kural tek yerde, yetki kapısında kapatılıyor (GV-081: silinmiş kayıt güncellenmez ve niyet eylemi almaz; koşuyor).
 - 02:47 — Çekirdek ekleri alındıktan sonra, onlara ihtiyaç duyan yapraklar yeni ağaçlarla başlatıldı: GV-063 (kullanıcı güncelle ve bağlantı üret), GV-067 (grup taşı ve sil), GV-082 (üyelik ver ve kaldır; GV-068'in yerine). GV-065 (rol yaz) ve GV-069 (yetenek yaz) incelemede. Ön yüzde GV-080 (rol, grup, izin listeleri) kod olarak bitti, bitiş kaydındaki dosya listesi için yeniden koşuyor.
+- 02:58 — GV-065 (rol oluştur, adını değiştir, sil) ve GV-083 (rol silmede açık sistem rolü denetimi) alındı: rol yazma testi 15, rol okuma ile birlikte 25. GV-067 (grup taşı ve sil) alındı: üç grup testi 41. Rol ve grup alt özellikleri tamam. GV-081 (yazma kapısı: silinmiş kayıt güncellenmez) alındı: dört yazma testi 67. GV-080 (ön yüzde rol, grup, izin listeleri) alındı: altı test dosyasında 77 test. Her alımdan sonra tip ve lint 0.
+- 02:58 — GV-069 (yetenek yaz) incelemede kaldı: boş liste şart değeri kabul ediliyordu (KR-008 Seçim 11'e aykırı; böyle bir şart bütün kayıtları açar); bulguyla yeniden koşuyor. Aynı inceleme ortak kodda tip denetimi boşluğunu gösterdi; karar AK-44, görev GV-085 (işçi tip bilgisinin kaynağını sordu; cevap: derleyicinin doğruladığı tip tablosu ortak kodda, kataloğun imzası değişmez).
+- 02:58 — GV-082 (üyelik ver ve kaldır) tek açıkla soruyla durdu: var olmayan kişiye üyelik 500 dönüyor. Karar AK-45: yabancı anahtar ihlali ortak hata süzgecinde çakışma (409) olur; görev GV-086 koşuyor; GV-082 cevaplandı. Ön yüzde kullanıcı işleri ekranları (GV-084) koşuyor; kullanıcı güncelle ve bağlantı üret (GV-063) incelemede.
