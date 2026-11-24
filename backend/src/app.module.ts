@@ -15,6 +15,7 @@ import { OTURUM_DENETIMI } from './shared/kimlik/oturum-denetimi.contract.js';
 import { YETKI_VERISI } from './shared/kimlik/yetki-verisi.contract.js';
 import { MessagingModule } from './shared/messaging/messaging.module.js';
 import { OlayModule } from './shared/messaging/olay/olay.module.js';
+import { ErisimModule } from './shared/observability/erisim/erisim.module.js';
 import { IzModule } from './shared/observability/iz/iz.module.js';
 import {
   KAYNAK_KATALOGU,
@@ -31,6 +32,7 @@ import { YetkiGuard } from './shared/yetki/yetki.guard.js';
     MessagingModule,
     OlayModule,
     IzModule,
+    ErisimModule,
     KimlikModule,
     GuvenlikModule,
   ],
