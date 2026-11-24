@@ -123,4 +123,40 @@ describe('geçici test veritabanı yardımcısı', () => {
     const name = /dextra_test_\w+/.exec(silmeler[0] ?? '')?.[0] ?? '';
     expect(await databaseExists(name)).toBe(false);
   });
+
+  it('göç istenmeden açılan veritabanı boştur; göç istenince asıl şemanın tabloları kurulur', async ({
+    annotate,
+  }) => {
+    let baslangic = performance.now();
+    const bos = await createTestDatabase();
+    const gocsuzSure = performance.now() - baslangic;
+    try {
+      expect(await userObjects(bos.url)).toEqual([]);
+    } finally {
+      await bos.drop();
+    }
+
+    baslangic = performance.now();
+    const goclu = await createTestDatabase([], { migrations: true });
+    const gocluSure = performance.now() - baslangic;
+    try {
+      const tables = await query<{ name: string }>(
+        goclu.url,
+        "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
+      );
+      expect(tables.map((table) => table.name)).toEqual([
+        '_prisma_migrations',
+        'outbox_iz',
+        'outbox_olay',
+      ]);
+    } finally {
+      await goclu.drop();
+    }
+    expect(await databaseExists(bos.name)).toBe(false);
+    expect(await databaseExists(goclu.name)).toBe(false);
+
+    await annotate(
+      `açılış süresi: göçsüz ${gocsuzSure.toFixed(0)} ms, göçlü ${gocluSure.toFixed(0)} ms, göç uygulama yaklaşık ${(gocluSure - gocsuzSure).toFixed(0)} ms`,
+    );
+  });
 });
