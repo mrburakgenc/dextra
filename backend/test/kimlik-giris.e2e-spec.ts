@@ -1,7 +1,7 @@
 // Giriş ve çıkış (GV-030; TS-002 AK-6, AK-7, AK-9, AK-15, "İşlem sınırları"; KR-009 Seçim 10 ve 12,
 // Kural 12 ve 13). Koşturma:
 //   pnpm -C backend test:e2e test/kimlik-giris.e2e-spec.ts --reporter=verbose
-// Uygulama AppModule ve yalnız kendisi işaretli bir sınama ucuyla, göçleri uygulanmış asıl ve iz
+// Uygulama AppModule ile, göçleri uygulanmış asıl ve iz
 // geçici veritabanlarıyla açılır. Başlangıç gerçek yoldan kurulur: tohum koşucusu ilk kurulum göçünü
 // uygular, kurulum komutunun işi superadmin için bağlantı üretir ve parola o bağlantıyla uçtan
 // belirlenir. Pasif kişi ve giriş bilgisi verilmiş sistem aktörü, olağan yolla oluşamayacakları için
@@ -9,7 +9,7 @@
 // bağlantıdan (gözlemci) okunur. Belirteci ve adres imzasını test, e2e-setup'ın ortama koyduğu anahtar
 // ve sırla üretir ya da doğrular.
 import { createHash } from 'node:crypto';
-import { Controller, Get, type INestApplication } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import pg from 'pg';
 import request from 'supertest';
@@ -23,17 +23,13 @@ import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-oz
 import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici.argon2id.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
-import { YalnizKendisi } from '../src/shared/guvenlik/isaretler.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
 } from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
-import {
-  type IstekOturumu,
-  istekBaglami,
-} from '../src/shared/http/istek-baglami.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -45,7 +41,7 @@ const IP = '203.0.113.9';
 const TARAYICI = 'Mozilla/5.0 giris deneme';
 const GIRIS = '/kimlik/oturum/giris';
 const CIKIS = '/kimlik/oturum/cikis';
-const KENDISI = '/giris-sinama/kendisi';
+const KENDISI = '/kimlik/oturum/yetkilerim';
 const YEDI_GUN_MS = 7 * 24 * 60 * 60 * 1000;
 // Başarısızlığın her türünde dönen tek cevap (AK-11 tablosu: kimlik_gerekli 401).
 const RET_DURUMU = 401;
@@ -95,16 +91,6 @@ interface Not {
   kayit_id: string;
   eylem: string;
   degisen: Record<string, { eski?: unknown; yeni?: unknown }>;
-}
-
-// Yalnız kendisi işaretli sınama ucu: guard'ın bağlama yazdığı oturumu döner.
-@Controller('giris-sinama')
-class GirisSinamaUcu {
-  @Get('kendisi')
-  @YalnizKendisi()
-  kendisi(): IstekOturumu | undefined {
-    return istekBaglami().oturum;
-  }
 }
 
 let databases: AppDatabases;
@@ -301,7 +287,6 @@ beforeAll(async () => {
   try {
     const modul = await Test.createTestingModule({
       imports: [AppModule],
-      controllers: [GirisSinamaUcu],
     }).compile();
     app = modul.createNestApplication();
     await app.init();
@@ -418,11 +403,22 @@ describe('a) doğru kullanıcı adı ve parolayla giriş', () => {
 describe('b) dönen erişim belirteciyle oturumlu uç', () => {
   it('yalnız kendisi işaretli uca erişilir ve bağlamdaki oturum girişin oturumudur', async () => {
     const { erisimBelirteci, oturumId } = await girisYap();
+    // Yetki guard'ı yetkiyi, kimlik guard'ının bağlama yazdığı oturumla ister.
+    const yetkiAl = vi.spyOn(al(YetkiBellegi), 'al');
 
     const cevap = await kendisi(erisimBelirteci);
+    const belirtecsiz = await request(sunucu())
+      .get(KENDISI)
+      .set(adresBasliklari());
 
     expect(cevap.status).toBe(200);
-    expect(cevap.body).toMatchObject({ kullaniciId: superadmin, oturumId });
+    expect(yetkiAl).toHaveBeenCalledTimes(1);
+    expect(yetkiAl).toHaveBeenCalledWith(
+      superadmin,
+      expect.objectContaining({ kullaniciId: superadmin, oturumId }),
+    );
+    expect(belirtecsiz.status).toBe(401);
+    expect(belirtecsiz.body).toEqual(KIMLIK_GEREKLI);
   });
 });
 
