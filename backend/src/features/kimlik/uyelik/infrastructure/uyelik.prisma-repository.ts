@@ -1,0 +1,33 @@
+import type {
+  RepoFabrikasi,
+  RepoIstemcisi,
+} from '../../../../shared/database/registrar.js';
+import type { KosulOgesi } from '../../../../shared/yetki/sart-cevirici.js';
+import type { OkumaKapisi } from '../../../../shared/yetki/okuma-kapisi.js';
+import type { UyelikOkumaRepo } from '../domain/uyelik.repository.js';
+
+const KAYNAK = 'Uyelik';
+
+// Canlılık süzgecini kapı uygular (TS-002 AK-42); kişinin verdiği süzgeçler çağıranın koşuludur.
+export function uyelikPrismaRepository(
+  kapi: OkumaKapisi,
+): RepoFabrikasi<UyelikOkumaRepo> {
+  return (istemci: RepoIstemcisi) => ({
+    liste: ({ kullaniciId, grupId, rolId, siralama, atla, al }) =>
+      kapi.liste(istemci, KAYNAK, {
+        kosul: (
+          [
+            ['kullaniciId', kullaniciId],
+            ['grupId', grupId],
+            ['rolId', rolId],
+          ] as const
+        ).flatMap(([alan, deger]): KosulOgesi[] =>
+          deger === undefined ? [] : [{ alan, islec: 'esit', deger }],
+        ),
+        siralama: siralama === undefined ? [] : [siralama],
+        sayfa: { atla, al },
+        yalnizCanli: true,
+      }),
+    tek: (id) => kapi.tek(istemci, KAYNAK, id),
+  });
+}
