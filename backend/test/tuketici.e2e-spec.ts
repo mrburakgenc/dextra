@@ -41,6 +41,7 @@ import {
   type Zarf,
   tuketiciBaslat,
 } from '../src/shared/messaging/tuketici/tuketici-tabani.js';
+import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
@@ -179,15 +180,6 @@ async function sahiplenmeYaz(
      values ($1, $2, 'isleniyor', clock_timestamp() + $3::interval, $4)`,
     [tuketici, olayId, bitis, randomUUIDv7()],
   );
-}
-
-async function baglantiSayisi(): Promise<number> {
-  const { rows } = await gozlemci.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> pg_backend_pid()`,
-    [db.name],
-  );
-  return rows[0]?.sayi ?? -1;
 }
 
 beforeAll(async () => {
@@ -806,11 +798,10 @@ describe('i) kapanış', () => {
   it('i) taban durdurulunca dinleyicinin bağlantıları kapanır; uygulama da kapanınca geçici veritabanına açık bağlantı kalmaz', async ({
     annotate,
   }) => {
-    await bekle(
+    expect(
+      await kalanBaglantiSayisi(gozlemci, db.name, []),
       'önceki testlerin bağlantıları kapanır',
-      5_000,
-      async () => (await baglantiSayisi()) === 0,
-    );
+    ).toBe(0);
     const { uow, kuyruk, kapat } = await surecAc();
     try {
       // Yalnız taban: Unit of Work ve kuyruk henüz bağlanmadı; bağlantıların hepsi dinleyicinindir.
@@ -820,17 +811,16 @@ describe('i) kapanış', () => {
       await bekle(
         'dinleyici bağlanır',
         5_000,
-        async () => (await baglantiSayisi()) > 0,
+        async () => (await baglantiSayisi(gozlemci, db.name, [])) > 0,
       );
       await annotate(
-        `açık tabanın bağlantısı: ${String(await baglantiSayisi())}`,
+        `açık tabanın bağlantısı: ${String(await baglantiSayisi(gozlemci, db.name, []))}`,
       );
       await bos.durdur();
-      await bekle(
+      expect(
+        await kalanBaglantiSayisi(gozlemci, db.name, []),
         'taban durunca bağlantılar kapanır',
-        5_000,
-        async () => (await baglantiSayisi()) === 0,
-      );
+      ).toBe(0);
 
       // Olay işlemiş taban: durdurulur, sonra uygulama kapanır.
       const tuketici = await tuketiciBaslat(uow, kuyruk, 'i-isleyen', () =>
@@ -845,15 +835,14 @@ describe('i) kapanış', () => {
       );
       await tuketici.durdur();
       await annotate(
-        `durdurulduktan sonra Unit of Work ve kuyruk kapısının bağlantısı: ${String(await baglantiSayisi())}`,
+        `durdurulduktan sonra Unit of Work ve kuyruk kapısının bağlantısı: ${String(await baglantiSayisi(gozlemci, db.name, []))}`,
       );
     } finally {
       await kapat();
     }
-    await bekle(
+    expect(
+      await kalanBaglantiSayisi(gozlemci, db.name, []),
       'uygulama kapanınca bağlantılar kapanır',
-      5_000,
-      async () => (await baglantiSayisi()) === 0,
-    );
+    ).toBe(0);
   }, 30_000);
 });

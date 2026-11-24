@@ -224,14 +224,12 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  const acikKalan = {
-    asil: await kalanBaglantiSayisi(
-      asilSql,
-      databases.asil.name,
-      gozlemciPidleri,
-    ),
-    iz: await kalanBaglantiSayisi(asilSql, databases.iz.name, gozlemciPidleri),
-  };
+  // İki veritabanı aynı anda yoklanır: sızıntıda toplam bekleme kancanın süresini aşmaz.
+  const [asilKalan, izKalan] = await Promise.all([
+    kalanBaglantiSayisi(asilSql, databases.asil.name, gozlemciPidleri),
+    kalanBaglantiSayisi(asilSql, databases.iz.name, gozlemciPidleri),
+  ]);
+  const acikKalan = { asil: asilKalan, iz: izKalan };
   await asilSql.end();
   await izSql.end();
   await databases.drop();

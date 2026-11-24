@@ -21,6 +21,7 @@ import {
 } from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
 import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
 import { KuyrukModule } from '../src/shared/messaging/kuyruk/kuyruk.module.js';
+import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 // Süreçte açılan her TCP bağlantısı; Redis'e gidilmediğini göstermek için hedef portları okunur.
@@ -86,15 +87,6 @@ async function isSatirlari(
     [kuyruk],
   );
   return rows;
-}
-
-async function baglantiSayisi(): Promise<number> {
-  const { rows } = await gozlemci.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> pg_backend_pid()`,
-    [db.name],
-  );
-  return rows[0]?.sayi ?? -1;
 }
 
 beforeAll(async () => {
@@ -351,29 +343,27 @@ describe('f) kapanış', () => {
   }) => {
     const { kuyruk, kapat } = await kuyrukModuluAc();
     try {
-      await bekle(
+      expect(
+        await kalanBaglantiSayisi(gozlemci, db.name, []),
         'önceki testlerin bağlantıları kapanır',
-        5_000,
-        async () => (await baglantiSayisi()) === 0,
-      );
+      ).toBe(0);
       const dinleyici = await kuyruk.dinle('f-dinleyici', () =>
         Promise.resolve(),
       );
       await bekle(
         'dinleyici bağlanır',
         5_000,
-        async () => (await baglantiSayisi()) > 0,
+        async () => (await baglantiSayisi(gozlemci, db.name, [])) > 0,
       );
       await annotate(
-        `açık dinleyicinin bağlantısı: ${String(await baglantiSayisi())}`,
+        `açık dinleyicinin bağlantısı: ${String(await baglantiSayisi(gozlemci, db.name, []))}`,
       );
 
       await dinleyici.kapat();
-      await bekle(
+      expect(
+        await kalanBaglantiSayisi(gozlemci, db.name, []),
         'bağlantılar kapanır',
-        5_000,
-        async () => (await baglantiSayisi()) === 0,
-      );
+      ).toBe(0);
     } finally {
       await kapat();
     }
@@ -391,16 +381,15 @@ describe('f) kapanış', () => {
     await kuyruk.koy('f-uygulama', { kimlik: 'f-is', ad: 'is', veri: {} });
     await bekle('iş işlenir', 5_000, () => islenen === 1);
     expect(await kuyruk.basarisizSayisi('f-uygulama')).toBe(0);
-    const acik = await baglantiSayisi();
+    const acik = await baglantiSayisi(gozlemci, db.name, []);
     await annotate(`kapanıştan önce bağlantı: ${String(acik)}`);
     expect(acik).toBeGreaterThan(0);
 
     // Dinleyici ve kuyruk elle kapatılmaz; kapanış kancası kapatır.
     await kapat();
-    await bekle(
+    expect(
+      await kalanBaglantiSayisi(gozlemci, db.name, []),
       'bağlantılar kapanır',
-      5_000,
-      async () => (await baglantiSayisi()) === 0,
-    );
+    ).toBe(0);
   }, 20_000);
 });

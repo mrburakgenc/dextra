@@ -38,6 +38,7 @@ import {
   PARTI_HATASI_TABAN_BEKLEME_MS,
   PartiHatasi,
 } from '../src/shared/observability/iz/iz-aktarici.js';
+import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -71,20 +72,6 @@ function zamanlayiciSayisi(): number {
     .filter((kaynak) => kaynak === 'Timeout').length;
 }
 
-// Verilen veritabanına gözlemcilerin dışında açık istemci bağlantısı sayısı.
-async function baglantiSayisi(
-  gozlemci: pg.Client,
-  veritabani: string,
-  gozlemciPidleri: readonly number[],
-): Promise<number> {
-  const { rows } = await gozlemci.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> all($2::int[])`,
-    [veritabani, gozlemciPidleri],
-  );
-  return rows[0]?.sayi ?? -1;
-}
-
 // Uygulama kapandıktan sonra iki geçici veritabanında da gözlemcilerin dışında bağlantı kalmaz.
 async function baglantilarKapanir(
   gozlemci: pg.Client,
@@ -92,11 +79,10 @@ async function baglantilarKapanir(
   gozlemciPidleri: readonly number[],
 ): Promise<void> {
   for (const { name } of [databases.asil, databases.iz]) {
-    await bekle(
+    expect(
+      await kalanBaglantiSayisi(gozlemci, name, gozlemciPidleri),
       `${name} veritabanında uygulama bağlantısı kalmaz`,
-      5_000,
-      async () => (await baglantiSayisi(gozlemci, name, gozlemciPidleri)) === 0,
-    );
+    ).toBe(0);
   }
 }
 
