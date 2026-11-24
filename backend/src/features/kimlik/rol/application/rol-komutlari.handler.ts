@@ -41,13 +41,17 @@ export class RolKomutlariHandler {
     });
   }
 
-  // Yalnız boş rol silinir. Boşluk, kapı rolü sildikten sonra sorulur: isteyenin silemediği
-  // (görmediği) rol böylece dolu olsa da cakisma değil bulunamadi alır (TS-002 AK-39). Sistem rolleri
-  // hiçbir zaman boş olmadığı için bu denetimle silinemez. Dolu rolde hata yazmayı ve notu geri alır.
+  // Sistem rolü ve dolu rol silinmez. İkisi de kapı rolü sildikten sonra sorulur: isteyenin silemediği
+  // (görmediği) rol böylece cakisma değil bulunamadi alır (TS-002 AK-39). Sistem rolü, rol boş olsa da
+  // kodu bütünlük sorusuyla sorularak reddedilir (AK-43; kod okuma kapısından okunmaz). Hata yazmayı
+  // ve notu geri alır.
   async sil(id: string): Promise<void> {
     await this.uow.run(async (islem) => {
       await this.genelSayac.kilitle(islem, { artir: true });
       await this.yazici.sil(islem, SIL, id);
+      if (await this.butunluk.rolSistemRoluMu(islem, id)) {
+        throw new KodluHata('cakisma', 'Sistem rolü silinemez');
+      }
       if (!(await this.butunluk.rolBosMu(islem, id))) {
         throw new KodluHata(
           'cakisma',
