@@ -9,6 +9,7 @@
 // bağlantılarıyla (gözlemci) atılır.
 import { execFile } from 'node:child_process';
 import { randomUUIDv7 } from 'node:crypto';
+import { join } from 'node:path';
 import { setTimeout as uyu } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -27,6 +28,8 @@ import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
 import { OlayModule } from '../src/shared/messaging/olay/olay.module.js';
 import { tuketiciBaslat } from '../src/shared/messaging/tuketici/tuketici-tabani.js';
 import { tohumKomutu } from '../src/shared/tohum/tohum-komutu.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
+import { type Derleme, derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -58,6 +61,7 @@ interface NotDurumu {
   aktarildi: boolean;
 }
 
+let derleme: Derleme;
 let databases: AppDatabases;
 let asilSql: pg.Client;
 let izSql: pg.Client;
@@ -138,16 +142,6 @@ async function izdeSatirYok(): Promise<void> {
   expect(Object.values(sayilar).every((sayi) => sayi === 0)).toBe(true);
 }
 
-// Verilen veritabanına gözlemcilerin dışında açık istemci bağlantısı sayısı.
-async function baglantiSayisi(veritabani: string): Promise<number> {
-  const { rows } = await asilSql.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> all($2::int[])`,
-    [veritabani, gozlemciPidleri],
-  );
-  return rows[0]?.sayi ?? -1;
-}
-
 async function kalanVeritabanlari(adlar: readonly string[]): Promise<string[]> {
   const sunucu = new pg.Client({
     connectionString: localInfrastructure.databaseUrl,
@@ -182,11 +176,14 @@ function izGovdesi(): string {
 
 beforeAll(async () => {
   // Kurulum komutu derlenmiş hâliyle, alt süreç olarak koşar.
-  await kos(`${backendDir}node_modules/.bin/nest`, ['build'], {
-    cwd: backendDir,
-  });
-  databases = await createAppDatabases({ migrations: true });
-  // Kurulum yarıda kalırsa geçici veritabanları sunucuda kalmaz.
+  derleme = await derle();
+  // Kurulum yarıda kalırsa geçici derleme klasörü ve veritabanları geride kalmaz.
+  try {
+    databases = await createAppDatabases({ migrations: true });
+  } catch (error) {
+    await derleme.sil();
+    throw error;
+  }
   try {
     await kuyrukGocunuKos(databases.asil.url);
     asilSql = new pg.Client({ connectionString: databases.asil.url });
@@ -221,18 +218,24 @@ beforeAll(async () => {
     }
   } catch (error) {
     await databases.drop();
+    await derleme.sil();
     throw error;
   }
 }, 120_000);
 
 afterAll(async () => {
   const acikKalan = {
-    asil: await baglantiSayisi(databases.asil.name),
-    iz: await baglantiSayisi(databases.iz.name),
+    asil: await kalanBaglantiSayisi(
+      asilSql,
+      databases.asil.name,
+      gozlemciPidleri,
+    ),
+    iz: await kalanBaglantiSayisi(asilSql, databases.iz.name, gozlemciPidleri),
   };
   await asilSql.end();
   await izSql.end();
   await databases.drop();
+  await derleme.sil();
   expect(acikKalan).toEqual({ asil: 0, iz: 0 });
   expect(
     await kalanVeritabanlari([databases.asil.name, databases.iz.name]),
@@ -265,9 +268,11 @@ describe('komut bağlamı', () => {
 
   it('c) parola kurulum komutu (derlenmiş, alt süreç) başarıyla biter; ardından notlar aktarılmamış ve silinmemiştir, iz veritabanında satır yoktur', async () => {
     // Alt süreç, geçici veritabanlarını gösteren ortamı (createAppDatabases) devralır.
-    const { stdout } = await kos(process.execPath, ['dist/kurulum.js'], {
-      cwd: backendDir,
-    });
+    const { stdout } = await kos(
+      process.execPath,
+      [join(derleme.klasor, 'kurulum.js')],
+      { cwd: backendDir },
+    );
 
     expect(stdout).toContain('İlk SuperAdmin için parola bağlantısı kodu');
     await notlarDokunulmamis();

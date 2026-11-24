@@ -12,6 +12,7 @@ import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import type { YetenekSatiri } from '../src/shared/kimlik/yetki-verisi.contract.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
 import { yetenekleriDerle } from '../src/shared/yetki/yetenek-derleyici.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
@@ -143,14 +144,10 @@ beforeAll(async () => {
 afterAll(async () => {
   // Modülün kapanışı asıl istemciyi (burada test veritabanınınkini) kapatır.
   await moduleRef.close();
-  const [satir] = await satirlar<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> $2`,
-    [db.name, gozlemciPid],
-  );
+  const acikKalan = await kalanBaglantiSayisi(gozlemci, db.name, [gozlemciPid]);
   await gozlemci.end();
   await db.drop();
-  expect(satir?.sayi).toBe(0);
+  expect(acikKalan).toBe(0);
   expect(await sunucudaVarMi(db.name)).toBe(false);
 });
 
