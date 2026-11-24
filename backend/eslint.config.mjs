@@ -176,6 +176,22 @@ export default defineConfig(
           ],
         },
       ],
+      // no-restricted-imports dinamik içe aktarmaya (import(...)) bakmaz; paket adı düz metin ya da
+      // şablon metniyle verilen dinamik içe aktarma da yasaktır (TS-003 Onarım). \x2F, "/" demektir;
+      // seçici dili düzenli ifadede "/" kabul etmez.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression[source.type='Literal'][source.value=/^bullmq($|\\x2F)/]",
+          message: 'Feature kuyruk paketini içe aktaramaz.',
+        },
+        {
+          selector:
+            "ImportExpression[source.type='TemplateLiteral'][source.quasis.0.value.cooked=/^bullmq($|\\x2F)/]",
+          message: 'Feature kuyruk paketini içe aktaramaz.',
+        },
+      ],
     },
   },
 );
