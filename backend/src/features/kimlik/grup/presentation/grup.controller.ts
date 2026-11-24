@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,6 +18,8 @@ import { GrupListeleHandler } from '../application/grup-listele.handler.js';
 import type { GrupListesi } from '../application/grup-listele.query.js';
 import { GrupOkuHandler } from '../application/grup-oku.handler.js';
 import { GrupOlusturHandler } from '../application/grup-olustur.handler.js';
+import { GrupSilHandler } from '../application/grup-sil.handler.js';
+import { GrupTasiHandler } from '../application/grup-tasi.handler.js';
 import {
   type GrupListeleParametreleri,
   grupListeleSemasi,
@@ -24,12 +27,15 @@ import {
 import {
   type GrupGuncelleGovdesi,
   type GrupOlusturGovdesi,
+  type GrupTasiGovdesi,
   grupGuncelleSemasi,
   grupOlusturSemasi,
+  grupTasiSemasi,
 } from './grup-yaz.schema.js';
 
-// Grup yönetiminin uçları (TS-002 AK-39): okuma (Grup:oku), oluştur (Grup:olustur) ve adını
-// değiştir (Grup:guncelle). Liste düzdür; ağacı ekran kayıtların ustGrupId alanından kurar.
+// Grup yönetiminin uçları (TS-002 AK-39): okuma (Grup:oku), oluştur (Grup:olustur), adını
+// değiştir (Grup:guncelle), taşı (Grup:tasi) ve sil (Grup:sil). Liste düzdür; ağacı ekran kayıtların
+// ustGrupId alanından kurar.
 @Controller('kimlik/grup')
 export class GrupController {
   constructor(
@@ -37,6 +43,8 @@ export class GrupController {
     private readonly okuHandler: GrupOkuHandler,
     private readonly olusturHandler: GrupOlusturHandler,
     private readonly guncelleHandler: GrupGuncelleHandler,
+    private readonly tasiHandler: GrupTasiHandler,
+    private readonly silHandler: GrupSilHandler,
   ) {}
 
   @Get()
@@ -76,5 +84,22 @@ export class GrupController {
     @Body({ schema: grupGuncelleSemasi }) { ad }: GrupGuncelleGovdesi,
   ): Promise<void> {
     return this.guncelleHandler.calistir(id, ad);
+  }
+
+  @Post(':id/tasi')
+  @Izin('Grup', 'tasi')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  tasi(
+    @Param('id', { schema: z.uuid() }) id: string,
+    @Body({ schema: grupTasiSemasi }) { ustGrupId }: GrupTasiGovdesi,
+  ): Promise<void> {
+    return this.tasiHandler.calistir(id, ustGrupId);
+  }
+
+  @Delete(':id')
+  @Izin('Grup', 'sil')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  sil(@Param('id', { schema: z.uuid() }) id: string): Promise<void> {
+    return this.silHandler.calistir(id);
   }
 }

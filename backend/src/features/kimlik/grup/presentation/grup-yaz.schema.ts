@@ -14,5 +14,11 @@ export const grupGuncelleSemasi = z.strictObject({
   ad: grupAdi,
 });
 
+// POST kimlik/grup/:id/tasi gövdesi: yalnız yeni üst grup.
+export const grupTasiSemasi = z.strictObject({
+  ustGrupId: z.uuid(),
+});
+
+export type GrupTasiGovdesi = z.infer<typeof grupTasiSemasi>;
 export type GrupOlusturGovdesi = z.infer<typeof grupOlusturSemasi>;
 export type GrupGuncelleGovdesi = z.infer<typeof grupGuncelleSemasi>;

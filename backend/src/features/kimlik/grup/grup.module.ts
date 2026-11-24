@@ -7,6 +7,8 @@ import { GrupGuncelleHandler } from './application/grup-guncelle.handler.js';
 import { GrupListeleHandler } from './application/grup-listele.handler.js';
 import { GrupOkuHandler } from './application/grup-oku.handler.js';
 import { GrupOlusturHandler } from './application/grup-olustur.handler.js';
+import { GrupSilHandler } from './application/grup-sil.handler.js';
+import { GrupTasiHandler } from './application/grup-tasi.handler.js';
 import { GRUP_REPO, GrupYazmaRepo } from './domain/grup.repository.js';
 import {
   GrupKapiYazmaRepo,
@@ -24,6 +26,8 @@ import { GrupController } from './presentation/grup.controller.js';
     GrupOkuHandler,
     GrupOlusturHandler,
     GrupGuncelleHandler,
+    GrupTasiHandler,
+    GrupSilHandler,
     { provide: GrupYazmaRepo, useClass: GrupKapiYazmaRepo },
   ],
 })
