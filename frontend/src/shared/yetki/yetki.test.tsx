@@ -95,6 +95,71 @@ describe('kayıt düzeyi', () => {
   });
 });
 
+describe('değerlendirilemeyen koşul', () => {
+  const TANINMAYAN_ISLEC = { grupId: { benzer: 'g1' } };
+
+  it('yorumlayıcının tanımadığı işleçle kayıt düzeyindeki soru hata fırlatmaz, hayır çıkar', () => {
+    const yetki = yetkiKur([
+      { action: 'guncelle', subject: 'Kullanici', conditions: TANINMAYAN_ISLEC },
+    ]);
+
+    expect(
+      yetki.can('guncelle', kaydiEtiketle('Kullanici', { grupId: 'g1' })),
+    ).toBe(false);
+  });
+
+  it('<Can> bu koşulla hata fırlatmaz ve içerik görünmez', () => {
+    render(
+      <YetkiSaglayici
+        kurallar={[
+          {
+            action: 'guncelle',
+            subject: 'Kullanici',
+            conditions: TANINMAYAN_ISLEC,
+          },
+        ]}
+      >
+        <p>sayfa</p>
+        <Can I="guncelle" this={kaydiEtiketle('Kullanici', { grupId: 'g1' })}>
+          <p>g1 düzenlenir</p>
+        </Can>
+      </YetkiSaglayici>,
+    );
+
+    expect(screen.getByText('sayfa')).toBeDefined();
+    expect(screen.queryByText('g1 düzenlenir')).toBeNull();
+  });
+
+  it('kayıtta değerlendirilirken hata veren koşul hayır çıkar', () => {
+    // startsWith kolon değeri metin değilken yorumlayıcıda hata verir.
+    const yetki = yetkiKur([
+      {
+        action: 'guncelle',
+        subject: 'Kullanici',
+        conditions: { kullaniciAdi: { startsWith: 'a' } },
+      },
+    ]);
+
+    expect(
+      yetki.can('guncelle', kaydiEtiketle('Kullanici', { kullaniciAdi: 5 })),
+    ).toBe(false);
+    expect(
+      yetki.can('guncelle', kaydiEtiketle('Kullanici', { kullaniciAdi: 'ada' })),
+    ).toBe(true);
+  });
+
+  it('değerlendirilemeyen koşullu kural öbür kuralın evetini engellemez', () => {
+    const yetki = yetkiKur([
+      { action: 'guncelle', subject: 'Kullanici', conditions: { grupId: 'g1' } },
+      { action: 'guncelle', subject: 'Kullanici', conditions: TANINMAYAN_ISLEC },
+    ]);
+
+    expect(
+      yetki.can('guncelle', kaydiEtiketle('Kullanici', { grupId: 'g1' })),
+    ).toBe(true);
+  });
+});
+
 describe('kolon düzeyi', () => {
   it('kuraldaki kolon için evet, öbür kolon için hayır çıkar', () => {
     const yetki = yetkiKur([

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Can } from '../../shared/yetki/yetki-saglayici';
@@ -123,6 +123,37 @@ describe('PanelDuzeni', () => {
 
     expect(screen.getByText('içerik')).toBeDefined();
     expect(screen.queryByText('kullanıcı açabilir')).toBeNull();
+  });
+
+  it('Kullanici:oku kuralı varken menüde Kullanıcılar bağlantısı görünür', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValue(
+      jsonCevap(
+        { kurallar: [{ action: 'oku', subject: 'Kullanici', yetenekId: 'y1' }] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    const menu = screen.getByRole('navigation', { name: 'Ana menü' });
+    const baglanti = within(menu).getByRole('link', { name: 'Kullanıcılar' });
+    expect(baglanti.getAttribute('href')).toBe('/kullanicilar');
+  });
+
+  it('Kullanici:oku kuralı yokken menüde Kullanıcılar bağlantısı görünmez', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValue(
+      jsonCevap(
+        { kurallar: [{ action: 'olustur', subject: 'Kullanici', yetenekId: 'y1' }] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kullanıcılar' })).toBeNull();
   });
 
   it('backend 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
