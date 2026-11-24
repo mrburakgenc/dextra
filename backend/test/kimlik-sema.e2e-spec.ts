@@ -410,24 +410,27 @@ describe('a-b) kimlik tablolarının yapısı', () => {
     },
   );
 
-  it('a) public şemasında var olan dört tablo ve kimliğin on bir tablosundan başka tablo, tablo dışı tür de yoktur', async () => {
+  it('a) public şemasında kimliğin on bir tablosu vardır; kolonlarında tür yoktur', async () => {
     const tablo = await query<{ ad: string }>(
       database.url,
       "select table_name as ad from information_schema.tables where table_schema = 'public' order by 1",
     );
+    // Liste ve tür şemanın bütününde sayılmaz; başka görevin tablosu ya da türü bu testi kırmasın
+    // diye yalnız kimliğin tabloları ve kolonları sınanır (TS-003 Onarım).
     expect(tablo.map((row) => row.ad)).toEqual(
-      [
-        '_prisma_migrations',
-        'islenen_olay',
-        'outbox_iz',
-        'outbox_olay',
-        ...tabloAdlari,
-      ].sort(),
+      expect.arrayContaining(tabloAdlari),
     );
-    // Tablonun kendi satır türü ve onun dizi türü dışında tür (enum, alan, aralık) yoktur.
+    // Kimlik tablolarının kolonlarında tür (enum, alan, bileşik, aralık) ya da onların dizisi yoktur.
     const tur = await query(
       database.url,
-      "select typname from pg_type where typnamespace = 'public'::regnamespace and typrelid = 0 and typelem = 0",
+      `select tablo.relname, a.attname from pg_attribute a
+         join pg_class tablo on tablo.oid = a.attrelid
+         join pg_type t on t.oid = a.atttypid
+         left join pg_type e on e.oid = t.typelem
+        where tablo.relnamespace = 'public'::regnamespace and tablo.relname = any($1)
+          and a.attnum > 0 and not a.attisdropped
+          and (t.typtype <> 'b' or e.typtype <> 'b')`,
+      [tabloAdlari],
     );
     expect(tur).toEqual([]);
   });
@@ -679,7 +682,7 @@ describe('c-j) kısıtların davranışı', () => {
 });
 
 describe('k) göç', () => {
-  it('k) önceki göç dosyaları değişmemiştir; göç klasörü sayısı bir artmıştır, yenisi kimlik göçüdür ve hepsi uygulanmıştır', async ({
+  it('k) önceki göç dosyaları değişmemiştir; kimlik göçünün klasörü vardır ve göçlerin hepsi uygulanmıştır', async ({
     annotate,
   }) => {
     const klasorler = (await readdir(gocKlasoru, { withFileTypes: true }))
@@ -698,8 +701,8 @@ describe('k) göç', () => {
     );
     await annotate(`göç klasörleri: ${JSON.stringify(klasorler)}`);
     expect(ozetler).toEqual(oncekiGocOzetleri);
-    expect(klasorler).toHaveLength(Object.keys(oncekiGocOzetleri).length + 1);
-    expect(klasorler.at(-1)).toBe(kimlikGocu);
+    // Klasör sayısı ve son göçün adı sınanmaz; her yeni göçte kırılır (TS-003 Onarım).
+    expect(klasorler).toContain(kimlikGocu);
     expect(uygulanan.map((g) => g.migration_name)).toEqual(klasorler);
   });
 

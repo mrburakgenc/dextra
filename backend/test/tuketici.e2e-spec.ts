@@ -235,7 +235,7 @@ describe('a) göç', () => {
     expect(rows.map((r) => r.satir)).toEqual(islenenOlayKolonlari);
   });
 
-  it('a) birincil anahtar (tuketici, olay_id) ve adı islenen_olay_ba; başka dizin, kısıt, tablo ve tür yoktur', async () => {
+  it('a) birincil anahtar (tuketici, olay_id) ve adı islenen_olay_ba; başka dizin ve kısıt yoktur, tablo vardır ve kolonlarında tür yoktur', async () => {
     const { rows: kisitlar } = await gozlemci.query<{
       conname: string;
       tanim: string;
@@ -252,21 +252,21 @@ describe('a) göç', () => {
         where relnamespace = 'public'::regnamespace and relkind in ('r', 'p')
         order by 1`,
     );
-    // Tabloların satır türleri dışında public şemasında tür (enum, alan, bileşik) yoktur.
-    const { rows: turler } = await gozlemci.query<{ typname: string }>(
-      `select typname from pg_type
-        where typnamespace = 'public'::regnamespace and typtype <> 'b' and typrelid = 0`,
+    // Liste ve tür şemanın bütününde sayılmaz; başka görevin tablosu ya da türü bu testi kırmasın
+    // diye yalnız bu tablo ve kolonları sınanır (TS-003 Onarım). Kolonlarında tür (enum, alan,
+    // bileşik, aralık) ya da onların dizisi yoktur.
+    const { rows: turler } = await gozlemci.query<{ attname: string }>(
+      `select a.attname from pg_attribute a
+         join pg_type t on t.oid = a.atttypid
+         left join pg_type e on e.oid = t.typelem
+        where a.attrelid = 'islenen_olay'::regclass and a.attnum > 0 and not a.attisdropped
+          and (t.typtype <> 'b' or e.typtype <> 'b')`,
     );
     expect(kisitlar).toEqual([
       { conname: 'islenen_olay_ba', tanim: 'PRIMARY KEY (tuketici, olay_id)' },
     ]);
     expect(dizinler.map((d) => d.ad)).toEqual(['islenen_olay_ba']);
-    expect(tablolar.map((t) => t.relname)).toEqual([
-      '_prisma_migrations',
-      'islenen_olay',
-      'outbox_iz',
-      'outbox_olay',
-    ]);
+    expect(tablolar.map((t) => t.relname)).toContain('islenen_olay');
     expect(turler).toEqual([]);
   });
 
@@ -287,11 +287,11 @@ describe('a) göç', () => {
     );
     await annotate(`göç klasörleri: ${JSON.stringify(klasorler)}`);
     expect(ozet).toBe(ilkGocOzeti);
-    expect(klasorler.slice(0, 2)).toEqual([ilkGoc, yeniGoc]);
+    expect(klasorler).toEqual(expect.arrayContaining([ilkGoc, yeniGoc]));
     expect(uygulanan.map((g) => g.migration_name)).toEqual(klasorler);
   });
 
-  it('GV-021 c) önceki göç dosyaları değişmemiştir; göç klasörü sayısı bir artmıştır ve yenisi sahip_id göçüdür', async ({
+  it('GV-021 c) önceki göç dosyaları değişmemiştir; sahip_id göçünün klasörü vardır', async ({
     annotate,
   }) => {
     const klasorler = (await readdir(gocKlasoru, { withFileTypes: true }))
@@ -306,8 +306,8 @@ describe('a) göç', () => {
     }
     await annotate(`göç klasörleri: ${JSON.stringify(klasorler)}`);
     expect(ozetler).toEqual(oncekiGocOzetleri);
-    expect(klasorler).toHaveLength(Object.keys(oncekiGocOzetleri).length + 1);
-    expect(klasorler.at(-1)).toBe(sahipGocu);
+    // Klasör sayısı ve son göçün adı sınanmaz; her yeni göçte kırılır (TS-003 Onarım).
+    expect(klasorler).toContain(sahipGocu);
   });
 
   it("a) Prisma'nın migrate diff komutu şema ile göçleri uygulanmış veritabanı arasında fark görmez", async () => {
