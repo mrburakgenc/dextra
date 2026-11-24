@@ -349,6 +349,39 @@ describe('c) sistem rolü ve kod alanı', () => {
     }
   });
 
+  // Sistem rolü denetimi rolün boşluğuna değil koduna dayanır (GV-083; TS-002 AK-43).
+  it('kodu dolu ama hiç üyeliği ve yeteneği olmayan rol silinemez (409 cakisma); satır ve genel sayaç değişmez', async () => {
+    const rolId = randomUUID();
+    await ortam.db.query('insert into rol (id, kod, ad) values ($1, $2, $3)', [
+      rolId,
+      'bossistem',
+      'Boş sistem',
+    ]);
+    await degismezlik(rolId, async () => {
+      const cevap = await istek('delete', `/kimlik/rol/${rolId}`, yonetici());
+      expect(cevap.status).toBe(409);
+      expect(cevap.body).toMatchObject({ kod: 'cakisma' });
+    });
+    expect(await rolSatiri(rolId)).toEqual({
+      kod: 'bossistem',
+      ad: 'Boş sistem',
+      silinme_zamani: null,
+    });
+  });
+
+  it('kodu boş ve boş olan rol silinir (204); genel sayaç bir artar', async () => {
+    const rolId = randomUUID();
+    await ortam.db.query('insert into rol (id, ad) values ($1, $2)', [
+      rolId,
+      'Boş kodsuz',
+    ]);
+    const ilk = await sayac();
+    const cevap = await istek('delete', `/kimlik/rol/${rolId}`, yonetici());
+    expect(cevap.status).toBe(204);
+    expect((await rolSatiri(rolId))?.silinme_zamani).toBeInstanceOf(Date);
+    expect(await sayac()).toBe(ilk + 1);
+  });
+
   it('sistem rolünün adı değiştirilebilir; kodu yerinde kalır', async () => {
     const ad = (await rolSatiri(temelRol))?.ad;
     const cevap = await istek('patch', `/kimlik/rol/${temelRol}`, yonetici(), {
