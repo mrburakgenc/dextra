@@ -152,6 +152,32 @@ describe('olay notu', () => {
       'veri',
     ]);
   });
+
+  it('g) çağıranın verdiği fazladan anahtarlar (bir id dahil) gövdeye girmez; satırın kimliği yazma yüzeyinindir', async () => {
+    const korelasyon = randomUUIDv7();
+    const verilenId = randomUUIDv7();
+    // Değişkenden verilir: tipte olmayan anahtarlar böylece derleyiciden geçer.
+    const not = {
+      ad: 'kullanici.olusturuldu',
+      surum: 1,
+      veri: { kullanici_id: 'k1' },
+      korelasyon_id: korelasyon,
+      id: verilenId,
+      fazla: 'x',
+      aktarim_zamani: '2026-01-01T00:00:00Z',
+    };
+
+    const id = await uow.run((islem) => yazici.olay(islem, not));
+
+    const [satir] = await olaySatirlari();
+    expect(id).not.toBe(verilenId);
+    expect(satir?.id).toBe(id);
+    expect(satir?.aktarim_zamani).toBeNull();
+    expect(satir?.govde).toStrictEqual({
+      veri: { kullanici_id: 'k1' },
+      korelasyon_id: korelasyon,
+    });
+  });
 });
 
 describe('değişiklik kaydı notu', () => {

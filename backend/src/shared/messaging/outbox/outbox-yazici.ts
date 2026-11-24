@@ -62,8 +62,19 @@ export type DegisiklikKaydiNotu = z.input<typeof degisiklikKaydiSemasi>;
 @Injectable()
 export class OutboxYazici {
   // Kimlik, ad ve sürüm kolonlara yazılır; gövde yalnız veriyi ve verilen zincir alanlarını taşır.
+  // Gövde bilinen alanlardan kurulur; çağıranın verdiği fazladan anahtar gövdeye girmez.
   async olay(islem: Islem, not: OlayNotu): Promise<string> {
-    const { ad, surum, ...govde } = not;
+    const { ad, surum } = not;
+    const govde: Prisma.InputJsonObject = {
+      veri: not.veri,
+      korelasyon_id: not.korelasyon_id,
+      ...(not.neden_olay_id !== undefined && {
+        neden_olay_id: not.neden_olay_id,
+      }),
+      ...(not.baslatan_kullanici_id !== undefined && {
+        baslatan_kullanici_id: not.baslatan_kullanici_id,
+      }),
+    };
     const id = yeniKimlik();
     await islem.repo(OUTBOX_REPO).olayEkle({ id, ad, surum, govde });
     return id;
