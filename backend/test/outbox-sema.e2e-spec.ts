@@ -6,26 +6,27 @@ import pg from 'pg';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
-// Hedefteki kolon listesi, sırayla; her satır "ad | tür | boş olabilir mi | varsayılan"
-// biçimindedir, varsayılanı olmayan kolonda varsayılan "-" yazılır.
+// Hedefteki kolon listesi, sırayla; her satır "ad | tür | boş olabilir mi | varsayılan | hassasiyet"
+// biçimindedir, varsayılanı olmayan kolonda varsayılan "-" yazılır. Hassasiyet zaman kolonlarının
+// kesir hanesidir, ötekilerde "-"; Prisma'nın fark komutu hassasiyet farkını görmediği için burada sınanır.
 const outboxIzKolonlari = [
-  'id | uuid | NO | -',
-  'surum | integer | NO | -',
-  'govde | jsonb | NO | -',
-  'olusturma_zamani | timestamp with time zone | NO | clock_timestamp()',
-  'aktarim_zamani | timestamp with time zone | YES | -',
-  'deneme_sayisi | integer | NO | 0',
-  'sonraki_deneme_zamani | timestamp with time zone | YES | -',
-  'son_hata | text | YES | -',
+  'id | uuid | NO | - | -',
+  'surum | integer | NO | - | -',
+  'govde | jsonb | NO | - | -',
+  'olusturma_zamani | timestamp with time zone | NO | clock_timestamp() | 6',
+  'aktarim_zamani | timestamp with time zone | YES | - | 6',
+  'deneme_sayisi | integer | NO | 0 | -',
+  'sonraki_deneme_zamani | timestamp with time zone | YES | - | 6',
+  'son_hata | text | YES | - | -',
 ];
 
 const outboxOlayKolonlari = [
-  'id | uuid | NO | -',
-  'ad | text | NO | -',
-  'surum | integer | NO | -',
-  'govde | jsonb | NO | -',
-  'olusturma_zamani | timestamp with time zone | NO | clock_timestamp()',
-  'aktarim_zamani | timestamp with time zone | YES | -',
+  'id | uuid | NO | - | -',
+  'ad | text | NO | - | -',
+  'surum | integer | NO | - | -',
+  'govde | jsonb | NO | - | -',
+  'olusturma_zamani | timestamp with time zone | NO | clock_timestamp() | 6',
+  'aktarim_zamani | timestamp with time zone | YES | - | 6',
 ];
 
 // Kimlik verilmeden yazılan ekleme ve kimlik verilen iki ekleme; zaman hiçbirinde verilmez.
@@ -79,12 +80,13 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
   });
 
   it.each(tablolar)(
-    '$ad kolonları ad, tür, boş olabilirlik ve varsayılan olarak hedefle birebir aynıdır',
+    '$ad kolonları ad, tür, boş olabilirlik, varsayılan ve hassasiyet olarak hedefle birebir aynıdır',
     async ({ ad, kolonlar }) => {
       const rows = await query<{ kolon: string }>(
         database.url,
         `select concat_ws(' | ', column_name, data_type, is_nullable,
-                          coalesce(column_default, '-')) as kolon
+                          coalesce(column_default, '-'),
+                          coalesce(datetime_precision::text, '-')) as kolon
            from information_schema.columns
           where table_schema = 'public' and table_name = $1
           order by ordinal_position`,
@@ -102,14 +104,14 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
     );
     expect(rows).toEqual([
       {
-        indexname: 'outbox_iz_olusturma_zamani_idx',
+        indexname: 'outbox_iz_ba',
         indexdef:
-          'CREATE INDEX outbox_iz_olusturma_zamani_idx ON public.outbox_iz USING btree (olusturma_zamani) WHERE (aktarim_zamani IS NULL)',
+          'CREATE UNIQUE INDEX outbox_iz_ba ON public.outbox_iz USING btree (id)',
       },
       {
-        indexname: 'outbox_iz_pkey',
+        indexname: 'outbox_iz_olusturma_zamani_dizin',
         indexdef:
-          'CREATE UNIQUE INDEX outbox_iz_pkey ON public.outbox_iz USING btree (id)',
+          'CREATE INDEX outbox_iz_olusturma_zamani_dizin ON public.outbox_iz USING btree (olusturma_zamani) WHERE (aktarim_zamani IS NULL)',
       },
     ]);
   });
@@ -122,9 +124,9 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
     );
     expect(rows).toEqual([
       {
-        indexname: 'outbox_olay_pkey',
+        indexname: 'outbox_olay_ba',
         indexdef:
-          'CREATE UNIQUE INDEX outbox_olay_pkey ON public.outbox_olay USING btree (id)',
+          'CREATE UNIQUE INDEX outbox_olay_ba ON public.outbox_olay USING btree (id)',
       },
     ]);
   });

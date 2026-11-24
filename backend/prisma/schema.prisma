@@ -13,7 +13,7 @@ datasource db {
 
 // Değişiklik kaydı notu. Kimlik uygulamada üretilir; veritabanı varsayılanı yoktur (KR-011 Seçim 8).
 model OutboxIz {
-  id                  String    @id @db.Uuid
+  id                  String    @id(map: "outbox_iz_ba") @db.Uuid
   surum               Int
   govde               Json      @db.JsonB
   olusturmaZamani     DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
@@ -23,13 +23,13 @@ model OutboxIz {
   sonHata             String?   @map("son_hata")
 
   // Aktarılmayı bekleyen satırlar için kısmi dizin.
-  @@index([olusturmaZamani], where: raw("aktarim_zamani IS NULL"))
+  @@index([olusturmaZamani], map: "outbox_iz_olusturma_zamani_dizin", where: raw("aktarim_zamani IS NULL"))
   @@map("outbox_iz")
 }
 
 // Olay notu; bilerek en küçük hâliyle.
 model OutboxOlay {
-  id              String    @id @db.Uuid
+  id              String    @id(map: "outbox_olay_ba") @db.Uuid
   ad              String
   surum           Int
   govde           Json      @db.JsonB
