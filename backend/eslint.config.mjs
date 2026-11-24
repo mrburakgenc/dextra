@@ -111,6 +111,21 @@ export default defineConfig(
           ],
           category: 'olay-altyapisi',
         },
+        // Kimlik'in çekirdek repository belirteçleri ve onları içe aktaramayan yönetim alt
+        // özellikleri (TS-002 AK-27; KR-010 Seçim 48).
+        {
+          pattern: 'src/features/kimlik/_shared/cekirdek/**',
+          category: 'cekirdek-repo',
+        },
+        {
+          pattern: 'src/features/kimlik/{kullanici,grup,rol,uyelik,yetenek}/**',
+          category: 'yonetim',
+        },
+        // Feature içindeki katmanlar (TS-002 AK-36).
+        { pattern: 'src/features/**/presentation/**', category: 'sunum' },
+        { pattern: 'src/features/**/application/**', category: 'uygulama' },
+        { pattern: 'src/features/**/domain/**', category: 'alan' },
+        { pattern: 'src/features/**/infrastructure/**', category: 'altyapi' },
       ],
       'import/resolver': {
         typescript: { project: `${import.meta.dirname}/tsconfig.json` },
@@ -124,6 +139,9 @@ export default defineConfig(
         'error',
         {
           default: 'disallow',
+          // Aynı öğenin (feature) içindeki bağımlılıklar da politikalardan geçer; çekirdek sınırı ve
+          // katman yönü feature'ın içindedir.
+          checkInternals: true,
           policies: [
             {
               // Kök dosyalar her şeyi bağlar.
@@ -172,6 +190,24 @@ export default defineConfig(
               // Feature kuyruk bağdaştırıcısına, aktarıcılara ve tüketici repository'sine ulaşamaz.
               from: { element: { type: 'feature' } },
               disallow: { to: { file: { categories: 'olay-altyapisi' } } },
+            },
+            {
+              // Yönetim alt özellikleri çekirdek repository'lere ulaşamaz; kaynaklara yetki kapısından
+              // erişir (AK-27). _shared, oturum ve parola ulaşabilir.
+              from: { file: { categories: 'yonetim' } },
+              disallow: { to: { file: { categories: 'cekirdek-repo' } } },
+            },
+            {
+              // Uygulama ve alan katmanı sunum katmanını içe aktarmaz (AK-36).
+              from: { file: { categories: ['uygulama', 'alan'] } },
+              disallow: { to: { file: { categories: 'sunum' } } },
+            },
+            {
+              // Alan katmanı uygulama ve altyapı katmanlarını içe aktarmaz (AK-36).
+              from: { file: { categories: 'alan' } },
+              disallow: {
+                to: { file: { categories: ['uygulama', 'altyapi'] } },
+              },
             },
           ],
         },

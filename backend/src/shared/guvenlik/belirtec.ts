@@ -14,6 +14,8 @@ export const OZEL_ANAHTAR_DEGISKENI = 'KIMLIK_IMZA_OZEL_ANAHTAR';
 export const ACIK_ANAHTAR_DEGISKENI = 'KIMLIK_IMZA_ACIK_ANAHTAR';
 
 const ALGORITMA = 'RS256';
+// İmza anahtarının en küçük boyu (TS-002 AK-28).
+export const EN_AZ_ANAHTAR_BITI = 2048;
 
 export type BelirtecTuru = 'erisim' | 'yenileme';
 
@@ -70,7 +72,8 @@ export class BelirtecServisi {
   private readonly ozelAnahtar: KeyObject;
   private readonly acikAnahtar: KeyObject;
 
-  // Anahtarlar kurulurken okunur; eksik ya da bozuk anahtar burada hata verir.
+  // Anahtarlar kurulurken okunur; eksik ya da bozuk anahtar burada hata verir. Özel anahtar en az
+  // 2048 bit olmalı ve açık anahtar onun çifti olmalıdır (AK-28); hata anahtarın içeriğini taşımaz.
   constructor(ortam: Ortam) {
     this.ozelAnahtar = anahtarOku(
       ortam,
@@ -82,6 +85,17 @@ export class BelirtecServisi {
       ACIK_ANAHTAR_DEGISKENI,
       createPublicKey,
     );
+    const bit = this.ozelAnahtar.asymmetricKeyDetails?.modulusLength ?? 0;
+    if (bit < EN_AZ_ANAHTAR_BITI) {
+      throw new Error(
+        `${OZEL_ANAHTAR_DEGISKENI} en az ${String(EN_AZ_ANAHTAR_BITI)} bit olmalı; ${String(bit)} bit`,
+      );
+    }
+    if (!createPublicKey(this.ozelAnahtar).equals(this.acikAnahtar)) {
+      throw new Error(
+        `${OZEL_ANAHTAR_DEGISKENI} ile ${ACIK_ANAHTAR_DEGISKENI} bir anahtar çifti değil`,
+      );
+    }
   }
 
   erisimBelirteciUret(icerik: ErisimIcerigi): Promise<string> {

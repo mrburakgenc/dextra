@@ -12,19 +12,23 @@ import { YetkiBellegi } from './yetki-bellegi.js';
 // bağlanır. Oturumlu istekte kişinin derlenmiş yetkisini yetki belleğinden alır ve istek bağlamına
 // yazar. İzin işaretli uçta o kaynak ve eylem için en az bir kural yoksa yetki_yok döner (tür
 // düzeyinde soru); kayıt düzeyindeki sınırı yetki kapısı uygular. Oturumsuz istek (herkese açık uç)
-// buraya kimlik guard'ından geçerek gelir ve dokunulmadan geçer.
+// buraya kimlik guard'ından geçerek gelir ve dokunulmadan geçer. Kapalı düşme guard sırasına
+// bırakılmaz (AK-37): izin işaretli uçta bağlamda oturum yoksa yetki_yok döner.
 @Injectable()
 export class YetkiGuard implements CanActivate {
   constructor(private readonly bellek: YetkiBellegi) {}
 
   async canActivate(baglam: ExecutionContext): Promise<boolean> {
+    const [isaret] = isaretleriOku(baglam.getHandler());
     const { oturum } = istekBaglami();
     if (oturum === undefined) {
+      if (isaret?.tur === 'izin') {
+        throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+      }
       return true;
     }
     const yetki = await this.bellek.al(oturum.kullaniciId, oturum);
     istekYetkisiniYaz(yetki);
-    const [isaret] = isaretleriOku(baglam.getHandler());
     if (isaret?.tur !== 'izin') {
       return true;
     }
