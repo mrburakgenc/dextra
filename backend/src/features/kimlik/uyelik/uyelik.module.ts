@@ -1,8 +1,23 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../../../shared/database/database.module.js';
+import { Registrar } from '../../../shared/database/registrar.js';
+import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
+import { UyelikListeleHandler } from './application/uyelik-listele.handler.js';
+import { UyelikOkuHandler } from './application/uyelik-oku.handler.js';
+import { UYELIK_REPO } from './domain/uyelik.repository.js';
+import { uyelikPrismaRepository } from './infrastructure/uyelik.prisma-repository.js';
+import { UyelikController } from './presentation/uyelik.controller.js';
 
-// Üyelik alt özelliği (TS-002 AK-30); bugün boştur, yönetim görevleri dosyalarını buraya ekler.
+// Üyelik alt özelliği (TS-002 AK-30). Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez
+// kurulan genel YetkiModule verir (TS-002 AK-42).
 @Module({
-  imports: [KimlikCekirdekModule],
+  imports: [DatabaseModule, KimlikCekirdekModule],
+  controllers: [UyelikController],
+  providers: [UyelikListeleHandler, UyelikOkuHandler],
 })
-export class UyelikModule {}
+export class UyelikModule {
+  constructor(registrar: Registrar, kapi: OkumaKapisi) {
+    registrar.register(UYELIK_REPO, uyelikPrismaRepository(kapi));
+  }
+}
