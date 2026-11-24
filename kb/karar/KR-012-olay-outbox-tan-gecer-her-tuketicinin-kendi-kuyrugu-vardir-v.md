@@ -66,7 +66,7 @@ features/<dinleyen>/<alt özellik>/infrastructure/workers/<olay>.tuketici.ts
 - Kural 4. Her tüketici hangi olayı dinlediğini ortak koddaki kayıt defterine bildirir; aktarıcı işleri bu deftere göre dağıtır.
 - Kural 5. Zarf, kanondaki alanlara ek olarak olayı başlatan kişinin kimliğini taşır ve tüketicinin yazdığı değişiklik kaydı onu gösterir (kanondan sapma; kanondaki zarfta bu alan yoktur).
 
-- Kural 6. Aktarılan outbox satırı 3 gün sonra silinir; aktarılmamış satır silinmez (kullanıcı, 2026-11-24; kanonda 30 gündür, ajanın önerisi hemen silmekti). Neden: okuma kayıtları da outbox'tan geçer (KR-013) ve bekleyen satırlar asıl veritabanını büyütür.
+- Kural 6. Aktarılan outbox satırı 3 gün sonra silinir; aktarılmamış satır silinmez (kullanıcı, 2026-11-24; kanonda 30 gündür, ajanın önerisi hemen silmekti). Neden: okuma kayıtları da outbox'tan geçer (KR-013) ve bekleyen satırlar asıl veritabanını büyütür. Düzeltme (2026-11-24): okuma kayıtları artık outbox'tan geçmez (KR-013 Seçim 6); kural değişiklik kaydı ve olay notları için geçerlidir.
 
 Kanondan olduğu gibi alınacaklar (ayrıntıları kurala çevrilirken okunacak): zincirin izlenmesi (EVT-02), şema sürümü (EVT-03), tekrar güvenli tüketici ve kayıt tablosu (EVT-05, EVT-06), bekleme kuyruğu (EVT-07), artan aralıklı yeniden deneme (EVT-08), yeniden oynatma (EVT-09), dış sistemden gelen olayın çevrilmesi (EVT-11), saga (EVT-12).
 
