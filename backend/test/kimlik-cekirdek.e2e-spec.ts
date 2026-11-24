@@ -11,10 +11,13 @@ import { KisiKilidi } from '../src/features/kimlik/_shared/kisi-kilidi.js';
 import { KisininSayisi } from '../src/features/kimlik/_shared/kisinin-sayisi.js';
 import { KokUyelik } from '../src/features/kimlik/_shared/kok-uyelik.js';
 import { TohumYardimcisi } from '../src/features/kimlik/_shared/tohum-yardimcisi.js';
+import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
+import { YetkiModule } from '../src/shared/yetki/yetki.module.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 const KOK_GRUP = '10000000-0000-4000-8000-000000000001';
@@ -207,8 +210,14 @@ beforeAll(async () => {
     prisma = new PrismaClient({
       adapter: new PrismaPg({ connectionString: db.url }),
     });
-    // Çekirdek repository'leri Unit of Work'e KimlikModule'ün kendi kaydı tanıtır.
-    moduleRef = await Test.createTestingModule({ imports: [KimlikModule] })
+    // Çekirdek repository'leri Unit of Work'e KimlikModule'ün kendi kaydı tanıtır. Kapıları sağlayan
+    // ortak modül kök modüldeki gibi kimlik kaynaklarının kataloğuyla kurulur (TS-002 AK-42 eki).
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        KimlikModule,
+        YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
+      ],
+    })
       .overrideProvider(PRISMA_CLIENT)
       .useValue(prisma)
       .compile();
