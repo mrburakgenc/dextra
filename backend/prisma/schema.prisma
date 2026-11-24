@@ -53,6 +53,9 @@ model IslenenOlay {
   sahiplenmeBitisZamani DateTime  @map("sahiplenme_bitis_zamani") @db.Timestamptz
   tamamlanmaZamani      DateTime? @map("tamamlanma_zamani") @db.Timestamptz
   olusturmaZamani       DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+  // Satırı en son sahiplenen ya da devralan işçinin kimliği; tamamlama ve bırakma yalnız kendi
+  // kimliğini taşıyan satıra dokunur.
+  sahipId               String    @map("sahip_id") @db.Uuid
 
   @@id([tuketici, olayId], map: "islenen_olay_ba")
   @@map("islenen_olay")

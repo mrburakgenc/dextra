@@ -3,13 +3,18 @@
 // Testler kapıya yalnız arayüzden (IS_KUYRUGU) ulaşır; bullmq sınıfları burada kullanılmaz,
 // doğrulama sorguları pg ile atılır. Her şey createTestDatabase ile açılan geçici
 // veritabanlarında olur. Yeniden deneme aralığı testten değiştirilmez: testler ürün kodundaki
-// sabitlerle (5 deneme, 1 sn'den başlayan üstel aralık) koşar.
+// sabitlerle (8 deneme, 1 sn'den başlayan üstel aralık) koşar.
 import net from 'node:net';
 import { setTimeout as uyu } from 'node:timers/promises';
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import pg from 'pg';
-import { DENEME_SAYISI } from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
 import {
+  DENEME_SAYISI,
+  ILK_ARALIK_MS,
+} from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
+import {
+  GecersizIsKimligiHatasi,
   IS_KUYRUGU,
   type IsKuyrugu,
   type KuyrukIsi,
@@ -33,6 +38,11 @@ function baglanilanPortlar(): Set<unknown> {
     }),
   );
 }
+
+// Üstel yeniden deneme penceresi: ILK_ARALIK_MS * (1 + 2 + … + 2^(DENEME_SAYISI - 2)).
+const yenidenDenemePenceresiMs = ILK_ARALIK_MS * (2 ** (DENEME_SAYISI - 1) - 1);
+// Pencereye eklenen pay: işlerin alınması ve sorgu turları için.
+const pencerePayiMs = 10_000;
 
 async function bekle(
   ne: string,
@@ -251,10 +261,10 @@ describe('b-e) kuyruk davranışı', () => {
       });
       await kuyruk.koy('de-temizlik', { kimlik: 'tamam', ad: 'is', veri: {} });
       await kuyruk.koy('de-temizlik', { kimlik: 'hata', ad: 'is', veri: {} });
-      // Üstel aralık 1 + 2 + 4 + 8 sn: son deneme yaklaşık 15 sn sonra olur.
+      // Üstel aralık 1 + 2 + … + 64 sn: son deneme yaklaşık 127 sn sonra olur.
       await bekle(
         'başarısız sayısı 1 olur',
-        25_000,
+        yenidenDenemePenceresiMs + pencerePayiMs,
         async () => (await kuyruk.basarisizSayisi('de-temizlik')) === 1,
       );
       await annotate(
@@ -270,7 +280,69 @@ describe('b-e) kuyruk davranışı', () => {
     } finally {
       await kapat();
     }
-  }, 40_000);
+  }, yenidenDenemePenceresiMs + 3 * pencerePayiMs);
+});
+
+describe('GV-021) kimlik kısıtı ve hata olayı', () => {
+  it.each([
+    { hangisi: 'yalnız rakamlardan oluşan', kimlik: '123' },
+    { hangisi: 'iki nokta içeren', kimlik: 'olay:42' },
+  ])(
+    'GV-021 f) $hangisi kimlikle koyma kapının kendi hatasıyla reddedilir; paketin iletisi sızmaz, iş konmaz',
+    async ({ kimlik }) => {
+      const { kuyruk, kapat } = await kuyrukModuluAc();
+      try {
+        const koyma = kuyruk.koy('f-kimlik', { kimlik, ad: 'is', veri: {} });
+        await expect(koyma).rejects.toBeInstanceOf(GecersizIsKimligiHatasi);
+        await expect(koyma).rejects.not.toThrow(/Custom Id/);
+        expect(await isSatirlari('f-kimlik')).toEqual([]);
+      } finally {
+        await kapat();
+      }
+    },
+  );
+
+  it('GV-021 g) bağdaştırıcı kuyruğun ve dinleyicinin hata olayını dinler; hata kuyruğun adı ve sınıfıyla, işin verisi olmadan günlüğe yazılır', async ({
+    annotate,
+  }) => {
+    const gunlukCasusu = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { kuyruk, kapat } = await kuyrukModuluAc();
+    try {
+      const dinleyici = await kuyruk.dinle('g-hata', () => Promise.resolve());
+      await kuyruk.koy('g-hata', {
+        kimlik: 'g-is',
+        ad: 'is',
+        veri: { gizli: 'is-verisi' },
+      });
+      // Kuyruğun ve dinleyicinin havuzundaki bağlantılar sunucudan koparılır; havuzlar hata
+      // olayı yayar. Gözlemcinin kendi bağlantısı koparılmaz.
+      await gozlemci.query(
+        `select pg_terminate_backend(pid) from pg_stat_activity
+          where datname = $1 and backend_type = 'client backend' and pid <> pg_backend_pid()`,
+        [db.name],
+      );
+      const iletiler = (): string[] =>
+        gunlukCasusu.mock.calls.map((c) => String(c[0]));
+      await bekle('iki hata dinleyicisi de günlüğe yazar', 10_000, () => {
+        const yazilan = iletiler();
+        return (
+          yazilan.some((i) => i.startsWith('g-hata kuyruğunda hata: ')) &&
+          yazilan.some((i) =>
+            i.startsWith('g-hata kuyruğunun dinleyicisinde hata: '),
+          )
+        );
+      });
+      await annotate(`günlük: ${JSON.stringify([...new Set(iletiler())])}`);
+      await dinleyici.kapat();
+
+      expect(iletiler().join('\n')).not.toContain('is-verisi');
+    } finally {
+      await kapat();
+      gunlukCasusu.mockRestore();
+    }
+  }, 30_000);
 });
 
 describe('f) kapanış', () => {
