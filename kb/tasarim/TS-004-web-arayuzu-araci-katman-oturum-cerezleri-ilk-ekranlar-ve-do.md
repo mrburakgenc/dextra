@@ -57,6 +57,18 @@ frontend/
 - Hata eşleme: backend'in `{ kod, ileti, ayrinti }` gövdesi tek yerde okunur; `dogrulama_hatasi` alan hatalarına, `kimlik_gerekli` giriş ekranına dönüşe, öbür kodlar ekrandaki iletiye çevrilir.
 - Sahte istek koruması: değiştiren işler yalnız Server Action'dan geçer (çatının kaynak denetimi) ve çerezler SameSite=Lax'tır; çerezi başlığa çeviren başka bir yol (geçiş rotası) yazılmaz. KR-014 bulgu 8'in bu dilimdeki karşılığıdır; mobilin geçiş yolu tasarlanmadı.
 
+## İlk ekranların sözleşmesi
+Ajan kararı (2026-11-25 gecesi); backend'deki uçlar GV-028 ve GV-030'da yazıldığı gibidir. Backend'den hiçbir şey içe aktarılmaz; biçimler ön yüzde ayrı yazılır.
+- Backend uçları: `POST kimlik/oturum/giris` gövdesi `{ kullaniciAdi, parola }`, başarıda 200 ve `{ erisimBelirteci, yenilemeBelirteci, cihazSirri, oturumId }`, her başarısızlıkta 401 `kimlik_gerekli` (neden ayırt edilmez) · `POST kimlik/oturum/cikis` oturumludur, başarıda gövdesiz 204 · `POST kimlik/parola/belirle` gövdesi `{ kod, parola }`, başarıda gövdesiz 204; parola en az 15, en çok 128 karakterdir (Unicode kod noktasıyla sayılır; başka kural yok).
+- Ekranlar: `/giris` (kullanıcı adı ve parola) · `/parola-belirle?kod=…` (parola ve tekrarı; kod adresten okunur) · `/` korumalı karşılama (üstte uygulama adı ve Çıkış düğmesi).
+- Giriş: başarıda üç çerez yazılır ve `/` adresine gidilir; başarısızlıkta tek ileti gösterilir ("Kullanıcı adı ya da parola hatalı").
+- Çıkış: backend'e çıkış isteği atılır; sonuç ne olursa olsun çerezler silinir ve `/giris` adresine gidilir.
+- Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden `/giris` adresine yönlendirilir. Bu bir kolaylıktır, güvenlik denetimi değildir; kararı backend verir.
+- Oturum bitti yolu (GV-045 incelemesi): çatı, sunucu bileşeninin çerez değiştirmesine izin vermez. Backend 401 dönünce sunucu bileşeni `/oturum-bitti` rota işleyicisine yönlendirir; işleyici yalnız üç çerezi siler ve `/giris` adresine yönlendirir, backend'e istek atmaz. Server Action içindeki 401 çerezleri doğrudan siler. Değişmez 5 böyle uygulanır; bu rota "çerezi başlığa çeviren geçiş rotası" değildir.
+- Backend isteğinin yolu (GV-045 incelemesi): yol tek `/` ile başlar; `//` ile başlayan, şema taşıyan ya da çözümlendiğinde kökeni `BACKEND_ADRESI`'nin kökeninden farklı olan yol istek atılmadan reddedilir. Aksi hâlde belirteç ve imzalı başlıklar başka bir kökene gidebilir.
+- Bozuk `BACKEND_ADRESI` için fırlatılan hata adresin değerini taşımaz (çatı sunucu hatalarını günlüğe yazar).
+- Form kuralları: etiket girdiye bağlıdır; alan hatası alanın yanında, genel hata formun üstünde ve ekran okuyucuya duyurulacak biçimde gösterilir; gönderim sürerken düğme kapalıdır; form verisi tarayıcının kalıcı deposuna yazılmaz (KR-014).
+
 ## Seçenekler
 ### Veri çekme
 - A — Sunucu bileşeni ve Server Action (seçildi): tarayıcıdan backend'e giden yol yoktur; ek kitaplık gerekmez. Bedel: etkileşimli listelerde her değişiklik sunucuya gider.
