@@ -11,12 +11,17 @@ import { UnitOfWork } from './unit-of-work.js';
 // hem lock_timeout olarak verilir. Asıl işlemin 5 saniyelik sınırından kısadır; iz aktarıcısı tek tek
 // denemelerini bu değere göre o süreye sığdırır.
 export const IZ_YAZIM_SURE_SINIRI_MS = 1000;
+// İz havuzunun yeni bağlantı kurmaya (ve dolu havuzda boş bağlantı beklemeye) ayırdığı süre; varsayılan
+// sınırsızdır. Yalnız yeni bağlantıda harcanır; iz aktarıcısı en uzun denemeyi bu süre ile ifade
+// süresinin toplamı sayar.
+export const IZ_BAGLANMA_SURE_SINIRI_MS = 1000;
 
-// İz bağlantı havuzunun ayarı. Sınırlar bağlantının açılış parametresidir: node-postgres havuzun
-// her bağlantısına geçirir, sunucu her ifadeye uygular.
+// İz bağlantı havuzunun ayarı. İfade sınırları bağlantının açılış parametresidir: node-postgres havuzun
+// her bağlantısına geçirir, sunucu her ifadeye uygular. Bağlanma sınırını havuz uygular.
 export function izBaglantiAyari(connectionString: string): PoolConfig {
   return {
     connectionString,
+    connectionTimeoutMillis: IZ_BAGLANMA_SURE_SINIRI_MS,
     statement_timeout: IZ_YAZIM_SURE_SINIRI_MS,
     lock_timeout: IZ_YAZIM_SURE_SINIRI_MS,
   };

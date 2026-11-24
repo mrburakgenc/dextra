@@ -3,9 +3,13 @@
 // ürün koduyla aynı bağlantı ayarıyla (süre sınırlarıyla) kurulur.
 import { createHook } from 'node:async_hooks';
 import { randomUUID, randomUUIDv7 } from 'node:crypto';
+import net, { type AddressInfo } from 'node:net';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
-import { izBaglantiAyari } from '../src/shared/database/database.module.js';
+import {
+  IZ_BAGLANMA_SURE_SINIRI_MS,
+  izBaglantiAyari,
+} from '../src/shared/database/database.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
 import { RepoKayitlari } from '../src/shared/database/registrar.js';
@@ -261,6 +265,85 @@ describe('a) parti hatası', () => {
     expect(await notAlanlari()).toEqual(once);
 
     expect(await aktarici.gecis()).toBe(2);
+    expect(await aktarilmislar()).toEqual([...kimlikler].sort());
+  });
+
+  it('iz sunucusu bağlantıyı kabul edip hiç cevap vermezken (sessiz TCP sunucusu) geçiş 5 saniyeden kısa sürede PartiHatasi atar; asıl veritabanında açık işlem kalmaz; notlar değişmez', async ({
+    annotate,
+  }) => {
+    const kimlikler = await notEkle([{}, {}]);
+    const once = await notAlanlari();
+    // Engel: bu süreçte açılan bir TCP sunucusu bağlantıyı kabul eder ama PostgreSQL'in açılış
+    // cevabını hiç göndermez. Bağlanma süresi sınırsız olsaydı iz yazımı burada sonsuza dek beklerdi.
+    const soketler = new Set<net.Socket>();
+    const sessiz = net.createServer((soket) => {
+      soketler.add(soket);
+    });
+    await new Promise<void>((coz) => {
+      sessiz.listen(0, '127.0.0.1', coz);
+    });
+    const sessizAdres = new URL(iz.url);
+    sessizAdres.hostname = '127.0.0.1';
+    sessizAdres.port = String((sessiz.address() as AddressInfo).port);
+    const cevapsiz = new IzPrismaClient({
+      adapter: new PrismaPg(izBaglantiAyari(sessizAdres.toString())),
+    });
+    let sure: number;
+    let acikIslem: number;
+    try {
+      const baslangic = performance.now();
+      const hata = await new IzAktarici(uow, cevapsiz)
+        .gecis()
+        .catch((e: unknown) => e);
+      sure = performance.now() - baslangic;
+      expect(hata).toBeInstanceOf(PartiHatasi);
+      // Sunucuya bağlantı gerçekten açıldı: hata bağlanma süresinin dolmasından gelir.
+      expect(soketler.size).toBeGreaterThan(0);
+
+      const sonuc = await asilSql.query<{ sayi: number }>(
+        `select count(*)::int as sayi from pg_stat_activity
+          where datname = current_database() and pid <> pg_backend_pid()
+            and xact_start is not null`,
+      );
+      acikIslem = sonuc.rows[0]?.sayi ?? -1;
+      await annotate(
+        `cevapsız iz sunucusunda geçiş süresi: ${sure.toFixed(0)} ms (IZ_BAGLANMA_SURE_SINIRI_MS ${String(IZ_BAGLANMA_SURE_SINIRI_MS)} ms); neden: ${(hata as PartiHatasi).cause instanceof Error ? ((hata as PartiHatasi).cause as Error).name : '-'}; asıl veritabanında açık işlem: ${String(acikIslem)}`,
+      );
+    } finally {
+      await cevapsiz.$disconnect();
+      for (const soket of soketler) soket.destroy();
+      await new Promise((coz) => sessiz.close(coz));
+    }
+    expect(sure).toBeGreaterThanOrEqual(IZ_BAGLANMA_SURE_SINIRI_MS);
+    expect(sure).toBeLessThan(ISLEM_SURE_SINIRI_MS);
+    expect(acikIslem).toBe(0);
+    expect(await notAlanlari()).toEqual(once);
+
+    expect(await aktarici.gecis()).toBe(2);
+    expect(await aktarilmislar()).toEqual([...kimlikler].sort());
+  });
+
+  it('iz şeması kırıcı biçimde değişince (zorunlu yeni kolon) beş notun beşi de tek tek denemede aynı sınıfta (23502) düşer: parti hatasıdır, hiçbir notun alanı değişmez; engel kalkınca hepsi aktarılır', async () => {
+    const kimlikler = await notEkle([{}, {}, {}, {}, {}]);
+    const once = await notAlanlari();
+    // Engel: iz tablosuna varsayılansız, boş olamaz bir kolon eklenir; aktarıcının eklemesi onu
+    // doldurmadığı için her satır not_null_violation (23502) alır. Bu sınıf tek satırda satır hatasıdır.
+    await izSql.query(
+      'alter table degisiklik_kaydi add column yeni text not null',
+    );
+    let hata: unknown;
+    try {
+      hata = await aktarici.gecis().catch((e: unknown) => e);
+    } finally {
+      await izSql.query('alter table degisiklik_kaydi drop column yeni');
+    }
+    expect(hata).toBeInstanceOf(PartiHatasi);
+    expect(sqlstate(hata)).toBe('23502');
+    expect((hata as PartiHatasi).code).toBe('23502');
+    expect(await notAlanlari()).toEqual(once);
+    expect(await izKimlikleri()).toEqual([]);
+
+    expect(await aktarici.gecis()).toBe(5);
     expect(await aktarilmislar()).toEqual([...kimlikler].sort());
   });
 });
