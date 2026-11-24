@@ -507,6 +507,8 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
                "allowUnsandboxedCommands": False}
         if g.get("ag_izinli"):
             kum["network"] = {"allowedDomains": [str(a) for a in g["ag_izinli"]]}
+        if g.get("yerel_ag"):       # alan adı listesi vekilden geçmeyen yerel bağlantıyı (veritabanı sürücüsü) açmaz
+            kum.setdefault("network", {})["allowLocalBinding"] = True
         ek_ayar["sandbox"] = kum
     if ek_ayar:
         komut += ["--settings", json.dumps(ek_ayar)]
@@ -581,6 +583,12 @@ def kos(kok: pathlib.Path, kimlik: str) -> dict:
         import plan
         plan.onkosul_denetle(kok, d)
     agac = _agac_ac(kok, kimlik, d)
+    if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
+        r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL)
+        if r.returncode != 0:
+            raise h.HarnessHata("%s koşturulamadı: hazırlık komutu %d koduyla çıktı: %s"
+                                % (kimlik, r.returncode, (r.stderr or r.stdout)[-400:]))
     guncel = h.paket(kok, d["rol"], d["yollar"], d["konular"])["metin"]
     eski = h.PAKET.search(kart)
     if eski and eski.group(0) != guncel:   # kurallar kart yazıldıktan sonra değişmiş

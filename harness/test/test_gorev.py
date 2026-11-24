@@ -376,6 +376,25 @@ class IsciKomutu(Ortam):
         self.assertEqual(self._kum(self._argv(ag_izinli=["pypi.org"]))["network"]["allowedDomains"], ["pypi.org"])
         self.assertNotIn("network", self._kum(self._argv()))
 
+    def test_yerel_ag_izni_kum_havuzu_ayarina_girer(self):
+        self.assertEqual(self._kum(self._argv(yerel_ag=True))["network"], {"allowLocalBinding": True})
+        ag = self._kum(self._argv(yerel_ag=True, ag_izinli=["pypi.org"]))["network"]
+        self.assertEqual(ag, {"allowedDomains": ["pypi.org"], "allowLocalBinding": True})
+
+    def test_hazirlik_komutu_agacta_oturumdan_once_kosar(self):
+        yaz = "import pathlib; pathlib.Path('hazir.txt').write_text('x')"
+        kok = gorev_deposu(hazirlik=[sys.executable, "-c", yaz])
+        kimlik = dolu_kart(kok)
+        gorev.kos(kok, kimlik)
+        self.assertTrue((agac(kok, kimlik) / "hazir.txt").is_file())
+
+    def test_hazirlik_komutu_basarisizsa_oturum_baslamaz(self):
+        kok = gorev_deposu(hazirlik=[sys.executable, "-c", "import sys; sys.exit(3)"])
+        kimlik = dolu_kart(kok)
+        with self.assertRaises(h.HarnessHata):
+            gorev.kos(kok, kimlik)
+        self.assertFalse((agac(kok, kimlik) / ".harness/gorev" / kimlik / "argv-uygulayici.json").exists())
+
     def test_isci_girdi_beklemez(self):
         kok = gorev_deposu()
         kimlik = dolu_kart(kok)
