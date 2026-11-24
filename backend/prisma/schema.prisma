@@ -38,3 +38,17 @@ model OutboxOlay {
 
   @@map("outbox_olay")
 }
+
+// Tüketicinin "bu olayı işledim" kaydı. İşin işlemiyle aynı işlemde yazılmaz; süreli sahiplenmeyle
+// tutulur (KR-012 Kural 3 eki). Durum 'isleniyor' ya da 'tamamlandi'dır.
+model IslenenOlay {
+  tuketici              String
+  olayId                String    @map("olay_id") @db.Uuid
+  durum                 String
+  sahiplenmeBitisZamani DateTime  @map("sahiplenme_bitis_zamani") @db.Timestamptz
+  tamamlanmaZamani      DateTime? @map("tamamlanma_zamani") @db.Timestamptz
+  olusturmaZamani       DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  @@id([tuketici, olayId], map: "islenen_olay_ba")
+  @@map("islenen_olay")
+}
