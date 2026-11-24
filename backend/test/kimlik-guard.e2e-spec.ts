@@ -1,5 +1,5 @@
 // Uç işaretleri, oturum denetimi (GV-029) ve kimlik guard'ı (GV-043); TS-002 AK-6, AK-8, AK-9, AK-12,
-// AK-13, AK-14; KR-009 Kural 8; KR-010 Seçim 49. Koşturma:
+// AK-13, AK-18; KR-009 Kural 8; KR-010 Seçim 49. Koşturma:
 //   pnpm -C backend test:e2e test/kimlik-guard.e2e-spec.ts --reporter=verbose
 // İlk bölümler (GV-029) işaretlerin üst verisini doğrudan okur ve OturumDenetimi sözleşmesini AppModule
 // ile açılan uygulamadan alıp doğrudan çağırır. "guard" bölümleri aynı uygulamaya eklenen sınama
@@ -839,8 +839,11 @@ describe('guard: e) adres', () => {
   });
 });
 
+// GV-032: izin işaretli uç artık yetki guard'ından geçer (AK-18; AK-14'teki geçici kapalı düşme
+// kalktı). Ayşe'nin hiç üyeliği ve yeteneği yoktur; 403 bu yüzden döner. Yeteneği olan kişinin 200
+// aldığı sınama test/kimlik-yetki.e2e-spec.ts dosyasındadır.
 describe('guard: f) izin işaretli uç', () => {
-  it('geçerli oturumla 403 yetki_yok döner (yetki denetimi bağlanana kadar kapalı düşer)', async () => {
+  it('yeteneği olmayan kişi geçerli oturumla 403 yetki_yok alır', async () => {
     await oturumEkle(OTURUM);
 
     const cevap = await getir('izinli', await basliklar());

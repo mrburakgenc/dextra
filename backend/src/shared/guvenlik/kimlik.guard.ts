@@ -18,13 +18,13 @@ import { IstemciAdresiDogrulayici } from './istemci-adresi-imzasi.js';
 // Yetkilendirme şeması büyük-küçük harf duyarsızdır (RFC 7235); belirteç boşluk taşımaz.
 const BEARER = /^Bearer (\S+)$/i;
 
-// Kimlik guard'ı (TS-002 AK-12, AK-14): bütün uçlara bağlanır. Herkese açık uçta hiçbir şey istemez.
+// Kimlik guard'ı (TS-002 AK-12, AK-18): bütün uçlara bağlanır. Herkese açık uçta hiçbir şey istemez.
 // Öbürlerinde sırayla erişim belirtecini, istemci adresi imzasını ve oturumu (OturumDenetimi)
 // doğrular ve oturumu istek bağlamına yazar. Biri tutmazsa kimlik_gerekli döner; cevap nedeni
 // taşımaz. Adres imzası geçersizse oturuma gidilmez, adres uymazlığında oturumu sözleşmenin
-// uygulaması kapatır (KR-009 Kural 8). İzin işaretli uç, yetki denetimi bağlanana kadar oturum
-// doğrulansa da yetki_yok döner (AK-14). İşaretsiz uç açılışta reddedildiği için burada yalnız
-// kapalı düşer (oturum doğrulanır, sonra yetki_yok).
+// uygulaması kapatır (KR-009 Kural 8). İzin işaretli uçta yeteneği ardından çalışan yetki guard'ı
+// sorar. İşaretsiz uç açılışta reddedildiği için burada yalnız kapalı düşer (oturum doğrulanır,
+// sonra yetki_yok).
 @Injectable()
 export class KimlikGuard implements CanActivate {
   constructor(
@@ -42,7 +42,7 @@ export class KimlikGuard implements CanActivate {
     if (!(await this.oturumuDogrula(istek))) {
       throw new KodluHata('kimlik_gerekli', 'Kimlik doğrulanamadı');
     }
-    if (isaret?.tur === 'yalniz_kendisi') {
+    if (isaret !== undefined) {
       return true;
     }
     throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');

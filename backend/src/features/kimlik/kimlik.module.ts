@@ -39,6 +39,11 @@ import { oturumDenetimiPrismaRepository } from './oturum/infrastructure/oturum-d
 import { oturumPrismaRepository } from './oturum/infrastructure/oturum.prisma-repository.js';
 import { OturumController } from './oturum/presentation/oturum.controller.js';
 import { TohumYardimcisi } from './_shared/tohum-yardimcisi.js';
+import { KimlikYetkiVerisi } from './_shared/yetki-verisi/yetki-verisi.js';
+import {
+  YETKI_VERISI_REPO,
+  yetkiVerisiRepo,
+} from './_shared/yetki-verisi/yetki-verisi.repository.js';
 import {
   KIMLIK_KURULUM_GOCU,
   KimlikKurulumGocu,
@@ -77,9 +82,10 @@ import { ParolaController } from './parola/presentation/parola.controller.js';
     ParolaGirisYontemi,
     GirisHandler,
     CikisHandler,
+    KimlikYetkiVerisi,
   ],
-  // Sözleşmeyi uygulayan sınıf; sözleşmeye kök modülde bağlanır (TS-002 "Yapı").
-  exports: [OturumDenetimiHandler],
+  // Sözleşmeleri uygulayan sınıflar; sözleşmelere kök modülde bağlanır (TS-002 "Yapı").
+  exports: [OturumDenetimiHandler, KimlikYetkiVerisi],
 })
 export class KimlikModule {
   constructor(
@@ -99,5 +105,6 @@ export class KimlikModule {
     registrar.register(PAROLA_REPO, parolaPrismaRepository);
     registrar.register(OTURUM_DENETIMI_REPO, oturumDenetimiPrismaRepository);
     registrar.register(OTURUM_REPO, oturumPrismaRepository);
+    registrar.register(YETKI_VERISI_REPO, yetkiVerisiRepo);
   }
 }
