@@ -24,7 +24,8 @@ function gecersizBaglanti(): KodluHata {
 // 2. Parola işlemin dışında özetlenir.
 // 3. Tek işlemde kişi, ardından bağlantı satırı kilitlenir; bağlantı kullanıldı diye işaretlenir,
 //    sır yazılır ve kişinin bütün oturumları parola_degisimi nedeniyle kapatılır.
-// Notlar sırrın ve kodun değerini taşımaz (TS-003 değişmez 6).
+// Notların yazanı parolasını belirleyen kişidir (TS-002 AK-35). Notlar sırrın ve kodun değerini
+// taşımaz (TS-003 değişmez 6).
 @Injectable()
 export class ParolaBelirleHandler {
   constructor(
@@ -46,11 +47,8 @@ export class ParolaBelirleHandler {
       throw gecersizBaglanti();
     }
     const parolaOzeti = await this.ozetleyici.ozetle(parola);
-    const iz: IzBilgisi = {
-      yazanId: await this.uow.read(PAROLA_REPO).kimlikSistemAktoru(),
-      isAdi: IS_ADI,
-    };
     const { id, kullaniciId } = baglanti;
+    const iz: IzBilgisi = { yazanId: kullaniciId, isAdi: IS_ADI };
 
     await this.uow.run(async (islem) => {
       await this.kisiKilidi.kilitle(islem, kullaniciId);

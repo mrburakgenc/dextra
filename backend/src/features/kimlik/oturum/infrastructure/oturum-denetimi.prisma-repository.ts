@@ -1,12 +1,9 @@
 import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
+import { kimlikSistemAktoru } from '../../_shared/cekirdek/sistem-aktoru.js';
 import type {
   DenetimSatiri,
   OturumDenetimiRepo,
 } from '../domain/oturum-denetimi.repository.js';
-
-// Kimlik feature'ının sistem aktörünün görünen adı (TS-002 AK-2); parola alt özelliğindeki
-// repository'nin aradığı adla aynıdır.
-const KIMLIK_SISTEM_AKTORU_ADI = 'kimlik';
 
 export function oturumDenetimiPrismaRepository(
   istemci: RepoIstemcisi,
@@ -33,13 +30,7 @@ export function oturumDenetimiPrismaRepository(
          where o.id = ${oturumId}::uuid`;
       return satir ?? null;
     },
-    kimlikSistemAktoru: async () => {
-      const satir = await istemci.kullanici.findFirstOrThrow({
-        where: { sistemAktoru: true, gorunenAd: KIMLIK_SISTEM_AKTORU_ADI },
-        select: { id: true },
-      });
-      return satir.id;
-    },
+    kimlikSistemAktoru: () => kimlikSistemAktoru(istemci),
     // Tek oturuma dokunan yol kişiyi kilitlemez; yalnız bu satır "kapatılmamışsa kapat" diye
     // koşullu güncellenir (TS-002 "İşlem sınırları"). Zamanı uygulama saati verir (AK-21).
     adresleKapat: async (oturumId, kapatilmaZamani) => {

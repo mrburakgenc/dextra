@@ -23,6 +23,8 @@ export interface KullaniciCekirdekRepo {
   ekle(
     kullanici: YeniKullanici,
   ): Promise<{ yetkiSurumu: number; olusturmaZamani: Date }>;
+  // Verilen görünen adla bir sistem aktörü var mı.
+  sistemAktoruVarMi(gorunenAd: string): Promise<boolean>;
 }
 
 export const KULLANICI_CEKIRDEK_REPO = new RepoBelirteci<
@@ -54,5 +56,10 @@ export function kullaniciCekirdekRepo(
         data: kullanici,
         select: { yetkiSurumu: true, olusturmaZamani: true },
       }),
+    sistemAktoruVarMi: async (gorunenAd) =>
+      (await istemci.kullanici.findFirst({
+        where: { sistemAktoru: true, gorunenAd },
+        select: { id: true },
+      })) !== null,
   };
 }

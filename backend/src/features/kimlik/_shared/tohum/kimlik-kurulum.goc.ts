@@ -6,6 +6,7 @@ import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
 } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import { KIMLIK_SISTEM_AKTORU_ADI } from '../cekirdek/sistem-aktoru.js';
 import { type IzBilgisi, notunOrtakAlanlari } from '../iz.js';
 import { TohumYardimcisi } from '../tohum-yardimcisi.js';
 import { KURULUM_REPO, type YeniYetenek } from './kurulum.repository.js';
@@ -74,7 +75,7 @@ export class KimlikKurulumGocu {
         id: sistemAktoru,
         kullaniciAdi: null,
         telefon: null,
-        gorunenAd: 'kimlik',
+        gorunenAd: KIMLIK_SISTEM_AKTORU_ADI,
         sistemAktoru: true,
         uyelikler: [],
       },

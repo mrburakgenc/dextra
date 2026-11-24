@@ -17,7 +17,8 @@ export interface TohumKullanicisi extends YeniKullanici {
 // Çekirdek parça "tohum" (TS-002 "Yapı"; KR-008 Seçim 28 eki): yalnız tohum göçünden, göçün işleminde
 // çağrılır. Yalnız yeni kullanıcı yazar: giriş bilgisi zaten varsa tekil kısıt reddeder ve işlem
 // geri alınır. Kimliği çağıran ortak kimlik üreticiyle verir; böylece sistem aktörünü yazan iş, notun
-// yazanı olarak o aktörün kendi kimliğini verebilir.
+// yazanı olarak o aktörün kendi kimliğini verebilir. Aynı görünen adla ikinci bir sistem aktörü
+// yazılmaz: aktör görünen adıyla bulunur (kimlikSistemAktoru).
 @Injectable()
 export class TohumYardimcisi {
   constructor(
@@ -34,9 +35,18 @@ export class TohumYardimcisi {
   ): Promise<void> {
     // Kilit sırası: önce genel sayaç, sonra kişi (yeni satır yazılınca kilitlidir), sonra üyelikler.
     await this.genelSayac.kilitle(islem, { artir: true });
-    const { yetkiSurumu, olusturmaZamani } = await islem
-      .repo(KULLANICI_CEKIRDEK_REPO)
-      .ekle(kullanici);
+    const repo = islem.repo(KULLANICI_CEKIRDEK_REPO);
+    // Sistem aktörünü yalnız bu yardımcı yazar ve önce genel sayacı kilitler; denetim ile yazma
+    // arasına başka bir sistem aktörü yazması giremez.
+    if (
+      kullanici.sistemAktoru &&
+      (await repo.sistemAktoruVarMi(kullanici.gorunenAd))
+    ) {
+      throw new Error(
+        `Görünen adı "${kullanici.gorunenAd}" olan bir sistem aktörü zaten var`,
+      );
+    }
+    const { yetkiSurumu, olusturmaZamani } = await repo.ekle(kullanici);
     await this.yazici.degisiklikKaydi(islem, {
       ...notunOrtakAlanlari(iz, 'Kullanici', kullanici.id, kullanici.id),
       eylem: 'olusturma',

@@ -423,7 +423,7 @@ describe('g) kurulum komutunun işi', () => {
 });
 
 describe('h) değişiklik kaydı notları', () => {
-  it('notların gövdesinde ne parola özeti ne kod ne kod özeti vardır; yazan sistem aktörüdür', async () => {
+  it('notların gövdesinde ne parola özeti ne kod ne kod özeti vardır; kurulumda yazan sistem aktörü, parola belirlemede parolasını belirleyen kişidir', async () => {
     const kurulum = al(KurulumBaglantisiHandler);
     // Kullanılmamış bağlantının silinmesi, sırrın ilk yazılması ve güncellenmesi notlanır.
     const silinen = await kurulum.calistir();
@@ -465,8 +465,13 @@ describe('h) değişiklik kaydı notları', () => {
         'KullaniciSirri:guncelleme:kimlik:parola-belirle',
       ]),
     );
-    expect(new Set(butun.map((n) => n.kullanici_id))).toEqual(
-      new Set([SISTEM_AKTORU]),
+    // Sistemin kendi kararıyla yaptığı yazmada yazan sistem aktörü, kişinin kendi adına yaptığında
+    // kişinin kendisidir (TS-002 AK-35).
+    expect(new Set(butun.map((n) => `${n.is_adi}:${n.kullanici_id}`))).toEqual(
+      new Set([
+        `kimlik:kurulum:${SISTEM_AKTORU}`,
+        `kimlik:parola-belirle:${SUPERADMIN}`,
+      ]),
     );
   });
 });

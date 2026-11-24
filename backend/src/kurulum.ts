@@ -5,6 +5,7 @@
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { BAGLANTI_OMRU_MS } from './features/kimlik/_shared/baglanti/parola-baglantisi.js';
 import { KurulumBaglantisiHandler } from './features/kimlik/parola/application/kurulum-baglantisi.handler.js';
 import { KomutBaglamiModule } from './shared/messaging/komut-baglami.js';
 
@@ -20,6 +21,7 @@ type BaglamSecenekleri = NonNullable<
 const secenekler: Pick<BaglamSecenekleri, 'abortOnError'> = {
   abortOnError: false,
 };
+const SAAT_MS = 60 * 60 * 1000;
 
 try {
   const baglam = await NestFactory.createApplicationContext(
@@ -29,7 +31,7 @@ try {
   try {
     const kod = await baglam.get(KurulumBaglantisiHandler).calistir();
     process.stdout.write(
-      `İlk SuperAdmin için parola bağlantısı kodu (24 saat geçerli; yeniden gösterilmez):\n${kod}\n`,
+      `İlk SuperAdmin için parola bağlantısı kodu (${String(BAGLANTI_OMRU_MS / SAAT_MS)} saat geçerli; yeniden gösterilmez):\n${kod}\n`,
     );
   } finally {
     await baglam.close();
