@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 42 görevin 32 tanesi alındı. Son koşuların ve incelemelerin toplamı: 345 dakika, 123.13 dolar.
+Kayıtlı 45 görevin 33 tanesi alındı. Son koşuların ve incelemelerin toplamı: 345 dakika, 122.85 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -49,8 +49,8 @@ Kayıtlı 42 görevin 32 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | alındı | 13.4 | 8.3 | 6.56 | 10 | 0 engel, 5 öneri | 0 |
 | GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | alındı | 2.8 | 5.0 | 3.91 | 13 | 0 engel, 2 öneri | 1 |
 | GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | alındı | 1.0 | 5.9 | 3.25 | 4 | 0 engel, 2 öneri | 1 |
-| GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | incelendi | 13.0 | 5.9 | 8.59 | 18 | 0 engel, 2 öneri | 0 |
-| GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | bekliyor | — | — | — | 0 | — | 0 |
+| GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | alındı | 2.2 | 7.7 | 4.62 | 18 | 0 engel, 3 öneri | 0 |
+| GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | tamam | 9.5 | — | 3.68 | 10 | — | 1 |
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
 | GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | alındı | 1.5 | 6.1 | 2.52 | 4 | 0 engel, 1 öneri | 0 |
 | GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | bekliyor | — | — | — | 0 | — | 0 |
@@ -64,6 +64,9 @@ Kayıtlı 42 görevin 32 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-040 | EP-003 18 | İz aktarıcısı testinde yabancı anahtar yokluğu sınamasının daraltılması | alındı | 2.2 | 3.2 | 2.02 | 1 | 0 engel, 0 öneri | 0 |
 | GV-041 | EP-003 19 | HTTP temelinin sertleştirilmesi: karşılıksız 4xx, 5xx günlüğü ve sabit kod tablosuyla sına | alındı | 4.5 | 5.0 | 3.30 | 2 | 0 engel, 3 öneri | 0 |
 | GV-042 | EP-003 20 | Tohum ve komutların sertleştirilmesi: ada göre sıra, komut bağlamında döngülerin başlamama | bekliyor | — | — | — | 0 | — | 0 |
+| GV-043 | EP-003 21 | Kimlik guard'ı: belirteç, adres imzası ve oturum denetimiyle koruma; açılış denetimleri ve | bekliyor | — | — | — | 0 | — | 0 |
+| GV-044 | EP-004 1 | Ön yüz iskeleti: Next.js uygulaması, derleyici, lint, Tailwind, Vitest ve karşılama sayfas | bekliyor | — | — | — | 0 | — | 0 |
+| GV-045 | EP-004 2 | Aracı katman: backend isteği, istemci adresi imzası, oturum çerezleri, hata eşleme ve biçi | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -116,6 +119,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-026 | işçi iki soruyla durdu: genel sayacın değişiklik kaydı (kimliği uuid değil) ve feature içinde ham yazma deyimi | bitiş kaydı | iki karar verildi (AK-20, AK-21), cevapla sürdü |
 | GV-027 | işçi soruyla durdu: kimlik göçü bildirilince tohum koşucusunun kök modüllü testi kırılıyor | bitiş kaydı | karar AK-22, cevaplandı, GV-039 açıldı |
 | GV-028 | alma aşamasında birleştirme çakışması (kimlik.module.ts) | aracın çıktısı | elle çözüldü ve ölçüldü; kayıt için yeniden koşturuluyor |
+| GV-029 | işçi soruyla durdu: guard'ın dokunmak zorunda olduğu dosyalar kartta yok | bitiş kaydı | iş ikiye bölündü (AK-29); GV-029 daraltılmış kapsamla sürdü, GV-043 açıldı |
 
 ## 6. Hatalarım
 
@@ -130,6 +134,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - GV-020'nin kartına var olan outbox-sema testini kabul ölçütü olarak yazdım ama o testin yeni tablolarla kırılacağını görmedim; aynı sorunun ikinci örneği.
 - İzin sorusunu iki kez yanlış teşhis ettim: sorunun nereden geldiğine bakmadan proje ayarına izin kuralı yazdım ve artık sormaz dedim. Soru kişisel genel ayardaki her zaman sor kuralından geliyordu; proje ayarı onu geçemez. Yazdığım proje kuralı bu soruya hiç etki etmedi.
 - GV-027'nin yeniden koşumunu ve GV-028'i aynı anda başlattım; ikisi de kimlik.module.ts dosyasına dokunuyordu ve bu kartların dosya listesinde yazıyordu. Yürütme komutu kendi içinde çakışan yaprakları sıraya koyar, ama elle başlattığım görev bu korumanın dışındadır; dosya listelerine bakmadım. Sonuç: çakışma, elle çözüm ve bir yeniden koşum.
+- GV-029'un kartını eksik yazdım: uygulamanın bütününe kural getiren bir işi (genel guard, açılış denetimi) tek karta koydum ama o kuralın dokunduğu öbür uçları ve testleri dosya listesine almadım. Aynı sınıfın üçüncü örneği (GV-007, GV-020, GV-029). Ders AK-29'a yazıldı.
 
 ## 7. Araçta (harness) değişenler
 
@@ -156,6 +161,9 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Araç hatası (düzeltilmedi; düzeltmek harness.json değişikliği, o da sana soru gerektiriyor): alma çakışmayla yarıda kalınca araç görev ağacındaki dosyaları commit etmiş oluyor; işin imzası commit durumuna bağlı olduğu için sonraki alma ve inceleme iş değişmiş diye reddediyor. Öneri: gorev.py içindeki imza, tabandan sonra eklenen dosyaları commit edilmiş olsun olmasın adı ve içeriğiyle katsın.
 - Araç boşluğu: tabanı eskiyen görev için tabanı yenileme yolu yok; çakışmayı ana oturum elle çözmek zorunda kalıyor ve bu çözümü ikinci bir oturum incelemiyor (GV-028'de çözüm dört yerde iki tarafın birleşimiydi; testlerle ölçüldü).
 - Bilgi: kişisel genel ayardaki hook'lar bu projede de çalışıyor; test koşumu kapısı bir komutumu hedefsiz diye reddetti (aynı testleri tek tek yol vererek koşturdum). O hook'ların klasörüne bakmadım.
+- Araç boşluğu: bir kartın dosya listesi sonradan genişletilemiyor (liste ölçüm kaydında duruyor ve elle yazılamıyor); işçinin haklı sorusu ancak işi bölerek cevaplanabiliyor.
+- Ön yüzde lint aracı backend ile aynı ana sürümde tutuldu; çatının hazır lint paketi o sürümü desteklemeyen eklentiler getirdiği için kurulmadı. Erişilebilirlik lint kuralları bu yüzden yok; eklenti yeni sürümü destekleyince eklenmeli.
+- Ön yüzde yenileme yok: backend'de yenile ucu henüz yazılmadı; oturum 15 dakika sürer ve sonra giriş ekranına dönülür.
 
 ## 9. PR'lar
 
@@ -187,3 +195,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 23:29 — GV-027 (ilk kurulum göçü) alındı: 12/12. GV-039 (tohum koşucusu testi), GV-040 (iz testinde yabancı anahtar sınaması) ve GV-041 (HTTP sertleştirmesi) alındı; kendi ölçümlerim: iz aktarıcısı 9/9, HTTP temeli 35/35, sağlık 1/1, tip ve lint 0.
 - 23:29 — İncelemelerin açık bıraktığı öneriler altı karara çevrildi (TS-002 AK-23 … AK-28; TS-003; KR-011 taslağındaki iki bayat satır düzeltildi) ve üç sertleştirme görevi açıldı (GV-040, GV-041, GV-042).
 - 23:29 — GV-028 (parola) incelemeden geçti ama alınırken kimlik.module.ts dosyasında çakıştı. Çakışmayı elle çözdüm (iki tarafın eklemeleri birlikte tutuldu) ve ölçtüm: istemci üretimi, tip, lint, derleme 0; parola 10/10, ilk kurulum 12/12, tohum koşucusu 12/12, uçtan uca 7/7. Araç kaydı tamamlayamadı (aşağıdaki araç hatası); görev aracın istediği gibi yeniden koşturuluyor. Kimlik guard'ı (GV-029) koşuyor.
+- 23:46 — GV-028 (parola) aracın istediği gibi yeniden koşturuldu, ikinci incelemeden de geçti ve kaydı tamamlandı (birleştirme zaten yapılmıştı; yeni commit oluşmadı).
+- 23:46 — GV-029 (kimlik guard'ı) soruyla durdu: guard uygulamaya bağlanınca kartın dosya listesinde olmayan yerler de değişmek zorunda (parola ucunun işareti, başka testlerin sınama uçları, testlerin anahtar ortamı). Aracın bir kartın dosya listesini genişletme yolu yok. Karar AK-29: iş ikiye bölündü; GV-029 işaretleri ve oturum denetimini yazıyor, guard ile uygulamaya bağlama yeni görevde (GV-043). GV-042 (tohum ve komut sertleştirmesi) koşuyor.
+- 23:46 — Ön yüz başladı: tasarım kaydı yazıldı (TS-004, taslak; bütün seçimler ajan kararı). Paketler geçici bir klasörde çözüldü ve denendi (uyum uyarısı yok, en küçük uygulama ağsız derlendi), sonra paket ve kilit dosyası depoya alındı; backend'de lint, derleme ve sağlık testi yeniden ölçüldü (0, 0, 1/1). Planda web alanı ve EP-004 açıldı; iskelet (GV-044) koşuyor, aracı katman (GV-045) sırada.
