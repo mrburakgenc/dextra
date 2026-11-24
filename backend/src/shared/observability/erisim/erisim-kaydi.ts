@@ -13,10 +13,11 @@ import { istekBaglami } from '../../http/istek-baglami.js';
 import { okumaBirikimi } from '../../yetki/okuma-kapisi.js';
 
 // Erişim kaydının yazımı (KR-013 Seçim 2 ve 6; KR-011 Seçim 9; TS-003 Seçenek 1: A). Bütün uçlara
-// bağlanır. İstek oturumluysa ve yetki kapısından okuma yapmışsa, cevap gönderilmeden önce iz
-// veritabanına kendi istemcisiyle bir erişim kaydı yazar: kim, hangi istekte, hangi uçta, hangi rota
-// deseninde, kaç kayıt okudu ve okumada hangi yetenek ve üyelikler kullanıldı. İsteğin yazma yapıp
-// yapmadığına bakılmaz. Dönen kayıtların kimlikleri yazılmaz. Kayıt yazılamazsa hata uca döner ve okuma
+// bağlanır. İstek oturumluysa, yetki kapısından okuma yapmışsa ve yazma işareti yoksa (TS-002 AK-40),
+// cevap gönderilmeden önce iz veritabanına kendi istemcisiyle bir erişim kaydı yazar: kim, hangi
+// istekte, hangi uçta, hangi rota deseninde, kaç kayıt okudu ve okumada hangi yetenek ve üyelikler
+// kullanıldı. Yazma yapan istekte yazılmaz; o isteğin izi değişiklik kaydıdır. Dönen kayıtların
+// kimlikleri yazılmaz. Kayıt yazılamazsa hata uca döner ve okuma
 // reddedilir; veri cevaba çıkmaz.
 @Injectable()
 export class ErisimKaydiYazici implements NestInterceptor {
@@ -27,11 +28,15 @@ export class ErisimKaydiYazici implements NestInterceptor {
     // ile biten istekte veri çıkmamıştır.
     return sonraki.handle().pipe(
       concatMap(async (cevap: unknown) => {
-        const { istekKimligi, oturum } = istekBaglami();
+        const { istekKimligi, oturum, yazmaAcildi } = istekBaglami();
         const birikim = okumaBirikimi();
         // Kapı okumaya katılan her kuralın yeteneğini biriktirir. Yetenek yoksa ya kapıdan okuma
         // yapılmamıştır ya da okumaya hiçbir kural katılmadığı için hiçbir kayıt dönmemiştir.
-        if (oturum !== undefined && birikim.yetenekIdleri.length > 0) {
+        if (
+          oturum !== undefined &&
+          birikim.yetenekIdleri.length > 0 &&
+          !yazmaAcildi
+        ) {
           await this.iz.erisimKaydi.create({
             data: {
               id: yeniKimlik(),

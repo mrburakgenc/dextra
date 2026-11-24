@@ -5,7 +5,7 @@
 // Başlangıcı tohum koşucusu kurar (izin kataloğu); grup, rol, kullanıcı, üyelik, yetenek ve oturum
 // satırları SQL ile yazılır. Sınama uçları okumayı yetki kapısından yapar; repository'leri testte
 // kaydedilir. İz veritabanı ayrı bir bağlantıdan (iz gözlemcisi) okunur. Yazma yapan istekte kaydın
-// yazılmaması bu görevin değil, GV-061'in işidir; burada sınanmaz.
+// yazılmaması GV-061'de eklendi (TS-002 AK-40).
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -78,6 +78,8 @@ const OT_ALI = '85000000-0000-4000-8000-000000000001';
 
 // Listede dönen kişiler; isteyen (Ali) bunların arasında değildir.
 const LISTEDEKILER = [VELI, CEMIL, DENIZ];
+// Okuyup yazan ucun Deniz'in görünen adına yazdığı değer.
+const YAZILAN_AD = 'deniz yazildi';
 
 const BEKLENMEYEN_HATA = {
   kod: 'beklenmeyen_hata',
@@ -90,7 +92,11 @@ interface SinamaOkuma {
   tek(id: string): Promise<Kayit>;
 }
 
-const SINAMA_REPO = new RepoBelirteci<SinamaOkuma, SinamaOkuma>(
+interface SinamaTam extends SinamaOkuma {
+  adYaz(id: string, ad: string): Promise<void>;
+}
+
+const SINAMA_REPO = new RepoBelirteci<SinamaOkuma, SinamaTam>(
   'ErisimSinamaRepo',
 );
 const kapi = new OkumaKapisi(prismaKaynakKatalogu(['Kullanici']));
@@ -121,6 +127,17 @@ class ErisimSinamaUclari {
   @Izin('Kullanici', 'oku')
   ara(): Promise<Kayit[]> {
     return this.uow.read(SINAMA_REPO).liste();
+  }
+
+  // Aynı istekte yetki kapısından okur, sonra run ile yazar.
+  @Post('kullanicilar/oku-yaz')
+  @Izin('Kullanici', 'oku')
+  async okuYaz(): Promise<Kayit[]> {
+    const kayitlar = await this.uow.read(SINAMA_REPO).liste();
+    await this.uow.run((islem) =>
+      islem.repo(SINAMA_REPO).adYaz(DENIZ, YAZILAN_AD),
+    );
+    return kayitlar;
   }
 
   // Oturum ister ama yetki kapısından okumaz.
@@ -345,6 +362,9 @@ beforeAll(async () => {
           kosul: [{ alan: 'id', islec: 'listede', deger: LISTEDEKILER }],
         }),
       tek: (id) => kapi.tek(istemci, 'Kullanici', id),
+      adYaz: async (id, ad) => {
+        await istemci.$executeRaw`update kullanici set gorunen_ad = ${ad} where id = ${id}::uuid`;
+      },
     }));
     app = modul.createNestApplication();
     await app.init();
@@ -586,6 +606,22 @@ describe('c) erişim kaydı yazılmayan istekler', () => {
     expect(reddedilen.status).toBe(401);
     expect(await erisimKayitlari(istekKimligi(acik))).toEqual([]);
     expect(await erisimKayitlari(istekKimligi(reddedilen))).toEqual([]);
+  });
+
+  it('aynı istekte hem yetki kapısından okuma hem run ile yazma yapılınca erişim kaydı yoktur (TS-002 AK-40)', async () => {
+    const cevap = await aliIle('post', '/erisim-sinama/kullanicilar/oku-yaz');
+
+    expect(cevap.status).toBe(201);
+    expect(cevap.body).toHaveLength(LISTEDEKILER.length);
+    // Yazma gerçekten onaylanmıştır.
+    expect(
+      await tekDeger<string>(
+        gozlemci,
+        'select gorunen_ad as deger from kullanici where id = $1',
+        [DENIZ],
+      ),
+    ).toBe(YAZILAN_AD);
+    expect(await erisimKayitlari(istekKimligi(cevap))).toEqual([]);
   });
 });
 

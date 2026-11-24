@@ -1,6 +1,6 @@
 // Çekirdek parçaların değişiklik kaydı notları. Çekirdek yolda yetenek yoktur: not yetenek ve üyelik
 // yerine işin adını taşır (TS-002 "Çekirdek yolların izi"). Yazan ve işin adı çağırandan gelir.
-import { istekBaglami } from '../../../shared/http/istek-baglami.js';
+import { varsaIstekBaglami } from '../../../shared/http/istek-baglami.js';
 import type { DegisiklikKaydiNotu } from '../../../shared/messaging/outbox/outbox-yazici.js';
 
 export interface IzBilgisi {
@@ -19,7 +19,7 @@ export function notunOrtakAlanlari(
   veriSahibiId: string,
 ): NotunOrtakAlanlari {
   return {
-    istek_id: istekKimligi(),
+    istek_id: varsaIstekBaglami()?.istekKimligi ?? null,
     kullanici_id: iz.yazanId,
     uyelik_id: null,
     yetenek_id: null,
@@ -29,14 +29,4 @@ export function notunOrtakAlanlari(
     kaynak,
     kayit_id: kayitId,
   };
-}
-
-// Ortak kod bağlamın varlığını hatasız soran bir işlev vermiyor: istekBaglami yalnız bağlam yokken
-// hata verir, bu yüzden hata "bağlam yok" demektir.
-function istekKimligi(): string | null {
-  try {
-    return istekBaglami().istekKimligi;
-  } catch {
-    return null;
-  }
 }
