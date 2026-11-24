@@ -37,12 +37,24 @@ async function applyMigrations(url: string): Promise<void> {
   );
 }
 
-// Eşsiz adlı geçici bir veritabanı açar; istenirse önce asıl şemanın göçlerini, sonra verilen
-// SQL metinlerini sırayla uygular.
+// İz şemasının göçlerini aynı komutla, iz ayarıyla uygular.
+async function applyIzMigrations(url: string): Promise<void> {
+  await promisify(execFile)(
+    `${backendDir}node_modules/.bin/prisma`,
+    ['migrate', 'deploy', '--config', 'prisma.iz.config.ts'],
+    { cwd: backendDir, env: { ...process.env, IZ_DATABASE_URL: url } },
+  );
+}
+
+// Eşsiz adlı geçici bir veritabanı açar; istenirse önce asıl ya da iz şemasının göçlerini, sonra
+// verilen SQL metinlerini sırayla uygular. İki şema ayrı veritabanlarıdır; ikisi aynı çağrıda istenmez.
 // Testler tabloyu gerçek veritabanlarında değil burada kurar (TS-001); iş bitince drop() çağrılır.
 export async function createTestDatabase(
   sqls: readonly string[] = [],
-  { migrations = false }: { migrations?: boolean } = {},
+  {
+    migrations = false,
+    izMigrations = false,
+  }: { migrations?: boolean; izMigrations?: boolean } = {},
 ): Promise<TestDatabase> {
   const name = `dextra_test_${randomUUID().replaceAll('-', '')}`;
   await onServer(`CREATE DATABASE ${name}`);
@@ -60,6 +72,9 @@ export async function createTestDatabase(
   try {
     if (migrations) {
       await applyMigrations(database.url);
+    }
+    if (izMigrations) {
+      await applyIzMigrations(database.url);
     }
     await client.connect();
     for (const sql of sqls) {

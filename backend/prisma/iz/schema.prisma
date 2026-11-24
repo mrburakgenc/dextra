@@ -9,3 +9,24 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Değişiklik kaydı. Kimlik outbox_iz notunun kimliğidir; veritabanı varsayılanı yoktur.
+// Asıl veritabanı başka veritabanı olduğu için yabancı anahtar yoktur.
+model DegisiklikKaydi {
+  id                    String   @id @db.Uuid
+  istekId               String?  @map("istek_id") @db.Uuid
+  kullaniciId           String   @map("kullanici_id") @db.Uuid
+  uyelikId              String?  @map("uyelik_id") @db.Uuid
+  yetenekId             String?  @map("yetenek_id") @db.Uuid
+  isAdi                 String   @map("is_adi")
+  baslatanKullaniciId   String?  @map("baslatan_kullanici_id") @db.Uuid
+  veriSahibiKullaniciId String?  @map("veri_sahibi_kullanici_id") @db.Uuid
+  kaynak                String
+  kayitId               String   @map("kayit_id") @db.Uuid
+  eylem                 String
+  degisen               Json     @db.JsonB
+  olusmaZamani          DateTime @map("olusma_zamani") @db.Timestamptz
+  yazilmaZamani         DateTime @default(dbgenerated("clock_timestamp()")) @map("yazilma_zamani") @db.Timestamptz
+
+  @@map("degisiklik_kaydi")
+}

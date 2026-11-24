@@ -159,4 +159,29 @@ describe('geçici test veritabanı yardımcısı', () => {
       `açılış süresi: göçsüz ${gocsuzSure.toFixed(0)} ms, göçlü ${gocluSure.toFixed(0)} ms, göç uygulama yaklaşık ${(gocluSure - gocsuzSure).toFixed(0)} ms`,
     );
   });
+
+  it('iz göçü istenmeden açılan veritabanı boştur; iz göçü istenince yalnız iz şemasının tabloları kurulur', async () => {
+    const bos = await createTestDatabase([], { izMigrations: false });
+    try {
+      expect(await userObjects(bos.url)).toEqual([]);
+    } finally {
+      await bos.drop();
+    }
+
+    const izli = await createTestDatabase([], { izMigrations: true });
+    try {
+      const tables = await query<{ name: string }>(
+        izli.url,
+        "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
+      );
+      expect(tables.map((table) => table.name)).toEqual([
+        '_prisma_migrations',
+        'degisiklik_kaydi',
+      ]);
+    } finally {
+      await izli.drop();
+    }
+    expect(await databaseExists(bos.name)).toBe(false);
+    expect(await databaseExists(izli.name)).toBe(false);
+  });
 });
