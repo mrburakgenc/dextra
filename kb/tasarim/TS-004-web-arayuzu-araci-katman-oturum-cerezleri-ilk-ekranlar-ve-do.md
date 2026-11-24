@@ -78,6 +78,17 @@ Ajan kararı (2026-11-25 gecesi); backend ucu GV-032'de yazıldığı gibidir.
 - Sınır: ekran yalnız kaydın ekrana gelmiş kolonlarına bakan koşulu doğru değerlendirir; ekrana gelmeyen kolona bakan koşulda ekran "hayır" der ve kararı backend verir (KR-014 bulgu 4; ekran gizleyebilir, izin veremez).
 - Kurallar oturum boyunca her sayfa isteğinde yeniden çekilir (düzen sunucuda çalışır); ayrı bir tazeleme düzeni yazılmadı.
 
+## Yönetim ekranları
+Ajan kararı (2026-11-25 gecesi); backend uçları TS-002 AK-39'daki ortak sözleşmeyle yazılır.
+- Adresler: `/kullanicilar` (liste), `/kullanicilar/yeni` (aç), `/kullanicilar/[id]` (kayıt ve işleri). Öbür kaynaklar aynı kalıbı izler (`/gruplar`, `/roller`, `/uyelikler`, `/yetenekler`).
+- Liste ekranı sunucu bileşenidir: sayfa, sıralama ve süzgeç adresin sorgusunda durur (`?sayfa=2&sirala=-olusturmaZamani&pasif=false`); ekran backend'in `{ kayitlar, sayfa, boyut, sonrakiVar }` cevabını tabloya döker; toplam sayı yoktur, "Önceki" ve "Sonraki" bağlantıları vardır.
+- Kayıtta gelmeyen kolon (kişinin göremediği) tabloda boş işaretle ("—") gösterilir; ekran onu istemez ve tahmin etmez.
+- Menü korumalı düzendedir; her bağlantı `<Can>` ile sorulur (tür düzeyi: o kaynağı okuyabiliyor mu). İşi başlatan düğmeler de `<Can>` ile sorulur; kayıt düzeyindeki soru kayıt örneğiyle yapılır.
+- Backend `yetki_yok` (403) dönerse ekran "Bu sayfayı görme yetkin yok" iletisini, `bulunamadi` (404) dönerse "Kayıt bulunamadı" iletisini gösterir; `kimlik_gerekli` (401) oturum bitti yoluna gider.
+- Bilinen sınır (GV-051 incelemesi): korumalı düzen sayfalar arası gezintide yeniden çizilmez; kurallar tam sayfa yüklemesinde tazelenir. Yetkisi oturum sırasında değişen kişi, sayfayı yenileyene kadar eski menüyü görebilir; kararı yine backend verir. Kuralları tazeleme düzeni tasarlanmadı.
+- `<Can>` güvenli tarafta kalır: ekranın değerlendiremediği bir koşul (yorumlayıcının tanımadığı biçim) hata fırlatmaz, "hayır" sayılır.
+- Bir kez gösterilen kod (yeni kullanıcının ya da üretilen bağlantının parola belirleme kodu) işin cevabında ekranda bir kez gösterilir; adrese, çereze ya da tarayıcı deposuna yazılmaz; sayfa yenilenince kaybolur.
+
 ## Seçenekler
 ### Veri çekme
 - A — Sunucu bileşeni ve Server Action (seçildi): tarayıcıdan backend'e giden yol yoktur; ek kitaplık gerekmez. Bedel: etkileşimli listelerde her değişiklik sunucuya gider.
