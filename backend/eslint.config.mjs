@@ -66,6 +66,11 @@ export default defineConfig(
           ],
           category: 'ham-istemci',
         },
+        // Outbox repository'si ve belirteci; feature outbox'a yalnız yazma yüzeyinden ulaşır (KR-011).
+        {
+          pattern: 'src/shared/messaging/outbox/outbox-repo.ts',
+          category: 'outbox-repo',
+        },
       ],
       'import/resolver': {
         typescript: { project: `${import.meta.dirname}/tsconfig.json` },
@@ -117,6 +122,11 @@ export default defineConfig(
               // kapısından geçer (KR-011). Son eşleşen politika geçerli olduğundan sondadır.
               from: { element: { type: 'feature' } },
               disallow: { to: { file: { categories: 'ham-istemci' } } },
+            },
+            {
+              // Feature outbox repository'sine ve belirtecine ulaşamaz; notu yalnız yazma yüzeyi yazar.
+              from: { element: { type: 'feature' } },
+              disallow: { to: { file: { categories: 'outbox-repo' } } },
             },
           ],
         },
