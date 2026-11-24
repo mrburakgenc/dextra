@@ -19,6 +19,7 @@ import {
 import { KodluHata } from '../src/shared/http/kodlu-hata.js';
 import type {
   KisininSatirlari,
+  SartOgesi,
   UyelikSatiri,
   YetenekSatiri,
 } from '../src/shared/kimlik/yetki-verisi.contract.js';
@@ -65,6 +66,8 @@ const UY_A1 = '73000000-0000-4000-8000-000000000002';
 const UY_B = '73000000-0000-4000-8000-000000000003';
 const UY_KOK = '73000000-0000-4000-8000-000000000004';
 const UY_A_R2 = '73000000-0000-4000-8000-000000000005';
+// Yalnız canlılık testinde bulunan silinmiş üyelik.
+const UY_SILINMIS = '73000000-0000-4000-8000-000000000006';
 
 const Y1 = '74000000-0000-4000-8000-000000000001';
 const Y2 = '74000000-0000-4000-8000-000000000002';
@@ -625,6 +628,199 @@ describe('yetki kapısı - okuma', () => {
       yetenekIdleri: [Y1, Y2],
       uyelikIdleri: [UY_A, UY_A_R2],
       kayitSayisi: 4,
+    });
+  });
+
+  describe('k) yalnız canlı kayıtlar (TS-002 AK-42)', () => {
+    beforeEach(async () => {
+      await gozlemci.query(
+        'insert into uyelik (id, kullanici_id, grup_id, rol_id, silinme_zamani) values ($1, $2, $3, $4, now())',
+        [UY_SILINMIS, BANU, G_A, R2],
+      );
+    });
+
+    afterEach(async () => {
+      await gozlemci.query('delete from uyelik where id = $1', [UY_SILINMIS]);
+    });
+
+    it('seçenek açıkken silinmiş kayıt gelmez; silinme zamanını görmeyen yetenek de katılır ve yalnız kendi kolonlarını ve kimliği verir', async () => {
+      const dar = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ kaynak: 'Uyelik', butunKayitlar: true, kolonlar: ['grupId'] }),
+      ]);
+
+      await istekte(dar, async () => {
+        expect(
+          await kapi.liste(prisma, 'Uyelik', { yalnizCanli: true }),
+        ).toEqual([
+          { id: UY_A, grupId: G_A },
+          { id: UY_A1, grupId: G_A1 },
+          { id: UY_B, grupId: G_B },
+          { id: UY_KOK, grupId: G_KOK },
+          { id: UY_A_R2, grupId: G_A },
+        ]);
+        // Sayfa canlı kayıtlar üzerindedir.
+        expect(
+          kimlikler(
+            await kapi.liste(prisma, 'Uyelik', {
+              yalnizCanli: true,
+              sayfa: { atla: 4, al: 2 },
+            }),
+          ),
+        ).toEqual([UY_A_R2]);
+        // Seçenek kapalıyken silinmiş kayıt da gelir; tek kayıt okuması değişmez.
+        expect(kimlikler(await kapi.liste(prisma, 'Uyelik'))).toEqual([
+          UY_A,
+          UY_A1,
+          UY_B,
+          UY_KOK,
+          UY_A_R2,
+          UY_SILINMIS,
+        ]);
+        expect(await kapi.tek(prisma, 'Uyelik', UY_SILINMIS)).toEqual({
+          id: UY_SILINMIS,
+          grupId: G_A,
+        });
+      });
+    });
+
+    it('seçenek kapalıyken silinmiş kayıt silinme zamanıyla gelir', async () => {
+      const tam = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ kaynak: 'Uyelik', butunKayitlar: true, butunKolonlar: true }),
+      ]);
+
+      const kayitlar = await istekte(tam, () => kapi.liste(prisma, 'Uyelik'));
+
+      expect(kimlikler(kayitlar)).toContain(UY_SILINMIS);
+      expect(
+        kayitlar.find((k) => k['id'] === UY_SILINMIS)?.['silinmeZamani'],
+      ).toBeInstanceOf(Date);
+    });
+
+    it('silinme zamanı alanı olmayan kaynakta seçenek hatadır ve sorgu gitmez', async () => {
+      const yetki = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ butunKayitlar: true, butunKolonlar: true }),
+      ]);
+
+      await expect(
+        istekte(yetki, () =>
+          kapi.liste(prisma, 'Kullanici', { yalnizCanli: true }),
+        ),
+      ).rejects.toThrow('Silinme zamanı alanı olmayan kaynak: Kullanici');
+      expect(sorgular).toEqual([]);
+    });
+  });
+
+  describe('l) boş ve dolu işleçleri (TS-002 AK-42)', () => {
+    beforeEach(async () => {
+      await gozlemci.query(
+        'update kullanici set pasif_zamani = now() where id = $1',
+        [DENIZ],
+      );
+    });
+
+    afterEach(async () => {
+      await gozlemci.query('update kullanici set pasif_zamani = null');
+    });
+
+    it('çağıranın koşulunda boş ve dolu doğru süzer', async () => {
+      const yetki = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ butunKayitlar: true, butunKolonlar: true }),
+      ]);
+
+      await istekte(yetki, async () => {
+        expect(
+          adlar(
+            await kapi.liste(prisma, 'Kullanici', {
+              kosul: [{ alan: 'pasifZamani', islec: 'dolu' }],
+            }),
+          ),
+        ).toEqual(['Deniz']);
+        expect(
+          adlar(
+            await kapi.liste(prisma, 'Kullanici', {
+              kosul: [{ alan: 'pasifZamani', islec: 'bos' }],
+            }),
+          ),
+        ).toEqual(['Ayşe', 'Banu', 'Cem', 'Ece']);
+        // Değerli öğelerle "ve" ile bağlanır.
+        expect(
+          adlar(
+            await kapi.liste(prisma, 'Kullanici', {
+              kosul: [
+                { alan: 'pasifZamani', islec: 'bos' },
+                { alan: 'gorunenAd', islec: 'listede', deger: ['Ayşe', 'Deniz'] },
+              ],
+            }),
+          ),
+        ).toEqual(['Ayşe']);
+        await expect(
+          kapi.liste(prisma, 'Kullanici', {
+            kosul: [{ alan: 'parolaOzeti', islec: 'bos' }],
+          }),
+        ).rejects.toThrow('bilinmeyen alan: parolaOzeti');
+      });
+    });
+
+    it('baktıkları kolonu göremeyen yetenek okumaya katılmaz', async () => {
+      // Y1 yalnız adı, Y2 adı ve pasif zamanını görür.
+      const yetki = await yetkiAl(AYSE, [AYSE_A, ECE_A_R2], [
+        yetenek({ butunKayitlar: true, kolonlar: ['gorunenAd'] }),
+        yetenek({
+          yetenekId: Y2,
+          rolId: R2,
+          butunKayitlar: true,
+          kolonlar: ['gorunenAd', 'pasifZamani'],
+        }),
+      ]);
+
+      const { dolu, bos, birikim } = await istekte(yetki, async () => ({
+        dolu: await kapi.liste(prisma, 'Kullanici', {
+          kosul: [{ alan: 'pasifZamani', islec: 'dolu' }],
+        }),
+        bos: await kapi.liste(prisma, 'Kullanici', {
+          kosul: [{ alan: 'pasifZamani', islec: 'bos' }],
+        }),
+        birikim: okumaBirikimi(),
+      }));
+
+      expect(dolu).toEqual([
+        { id: DENIZ, gorunenAd: 'Deniz', pasifZamani: expect.any(Date) as Date },
+      ]);
+      expect(bos).toEqual(
+        ['Ayşe', 'Banu', 'Cem', 'Ece'].map((ad) => ({
+          id: expect.any(String) as string,
+          gorunenAd: ad,
+          pasifZamani: null,
+        })),
+      );
+      expect(birikim.yetenekIdleri).toEqual([Y2]);
+
+      const yalnizAd = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ butunKayitlar: true, kolonlar: ['gorunenAd'] }),
+      ]);
+      expect(
+        await istekte(yalnizAd, () =>
+          kapi.liste(prisma, 'Kullanici', {
+            kosul: [{ alan: 'pasifZamani', islec: 'dolu' }],
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('saklanan yetenek şartında boş ve dolu derlenmez', async () => {
+      // Saklanan şartın dilinde (Islec) bu işleçler yoktur; veri yine de gelirse derleyici reddeder.
+      const saklanan = (islec: string): SartOgesi =>
+        ({ alan: 'pasifZamani', islec, deger: true }) as unknown as SartOgesi;
+      const yetki = await yetkiAl(AYSE, [AYSE_A], [
+        yetenek({ sart: [saklanan('bos')], butunKolonlar: true }),
+        yetenek({ yetenekId: Y2, sart: [saklanan('dolu')], butunKolonlar: true }),
+      ]);
+
+      expect(yetki.kurallar).toEqual([]);
+      expect(yetki.derlenmeyenler).toEqual([
+        { yetenekId: Y1, neden: 'bilinmeyen işleç: bos' },
+        { yetenekId: Y2, neden: 'bilinmeyen işleç: dolu' },
+      ]);
     });
   });
 
