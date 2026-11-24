@@ -36,6 +36,19 @@ export class GrupKapiYazmaRepo extends GrupYazmaRepo {
   ): Promise<void> {
     return this.kapi.guncelle(islem, isAdi, KAYNAK, id, { ad });
   }
+
+  tasi(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    ustGrupId: string,
+  ): Promise<void> {
+    return this.kapi.niyet(islem, isAdi, KAYNAK, 'tasi', id, { ustGrupId });
+  }
+
+  sil(islem: Islem, isAdi: string, id: string): Promise<void> {
+    return this.kapi.sil(islem, isAdi, KAYNAK, id);
+  }
 }
 
 // Liste düzdür: her kayıt ustGrupId taşır, ağacı ekran kurar. Liste yalnız canlı kayıtları verir;

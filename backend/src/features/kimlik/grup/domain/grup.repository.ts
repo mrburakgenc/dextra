@@ -41,4 +41,15 @@ export abstract class GrupYazmaRepo {
     id: string,
     ad: string,
   ): Promise<void>;
+
+  // Üst grubu niyet eylemiyle (Grup:tasi) yazar; satırı tutan yetenek yoksa bulunamadi.
+  abstract tasi(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    ustGrupId: string,
+  ): Promise<void>;
+
+  // Yumuşak siler (Grup:sil); canlı ve tutan yetenekle görülen satır yoksa bulunamadi.
+  abstract sil(islem: Islem, isAdi: string, id: string): Promise<void>;
 }
