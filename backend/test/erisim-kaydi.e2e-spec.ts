@@ -30,11 +30,7 @@ import { DatabaseModule } from '../src/shared/database/database.module.js';
 import { Registrar, RepoBelirteci } from '../src/shared/database/registrar.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
-import {
-  HerkeseAcik,
-  Izin,
-  YalnizKendisi,
-} from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik, Izin } from '../src/shared/guvenlik/isaretler.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
@@ -142,7 +138,7 @@ class ErisimSinamaUclari {
 
   // Oturum ister ama yetki kapısından okumaz.
   @Get('oturumlu')
-  @YalnizKendisi()
+  @Izin('Kullanici', 'oku')
   oturumlu(): { durum: string } {
     return { durum: 'oturumlu' };
   }
