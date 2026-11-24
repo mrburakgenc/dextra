@@ -7,7 +7,7 @@ import type {
 } from './registrar.js';
 
 // İşlemin süre sınırı (KR-011); aşılırsa Prisma işlemi geri alır.
-const ISLEM_SURE_SINIRI_MS = 5000;
+export const ISLEM_SURE_SINIRI_MS = 5000;
 
 // Çağrı başına örnek; yalnız run verir ve tam arayüz yalnız buradan alınır.
 export interface Islem {
