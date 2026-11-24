@@ -8,7 +8,7 @@ export function rolPrismaRepository(
 ): RolOkumaRepo {
   return {
     roller: (siralama, sayfa) =>
-      kapi.liste(istemci, 'Rol', { siralama, sayfa }),
+      kapi.liste(istemci, 'Rol', { siralama, sayfa, yalnizCanli: true }),
     rol: (id) => kapi.tek(istemci, 'Rol', id),
     izinler: (siralama, sayfa) =>
       kapi.liste(istemci, 'Izin', { siralama, sayfa }),

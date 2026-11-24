@@ -9,7 +9,7 @@ export interface Sayfa {
 }
 
 export interface RolOkumaRepo {
-  // Silinmiş roller de gelir; canlılık süzgeci yetki kapısına eklenince bağlanır (TS-002 AK-42).
+  // Yalnız silinmemiş roller (TS-002 AK-39, AK-42); tek kayıt silinmiş rolü de verir.
   roller(siralama: readonly Siralama[], sayfa: Sayfa): Promise<Kayit[]>;
   // Görülemeyen ya da var olmayan rol için bulunamadi.
   rol(id: string): Promise<Kayit>;
