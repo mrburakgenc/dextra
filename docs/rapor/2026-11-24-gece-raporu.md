@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 38 görevin 25 tanesi alındı. Son koşuların ve incelemelerin toplamı: 258 dakika, 89.91 dolar.
+Kayıtlı 38 görevin 28 tanesi alındı. Son koşuların ve incelemelerin toplamı: 307 dakika, 107.48 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -46,9 +46,9 @@ Kayıtlı 38 görevin 25 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-022 | EP-002 14 | Sertleştirme: döngü parçası ve iz aktarıcısı (inceleme önerileri) | alındı | 8.9 | 9.7 | 5.96 | 5 | 0 engel, 5 öneri | 0 |
 | GV-023 | EP-003 2 | HTTP temeli: Zod doğrulama, tek biçimli hata cevabı, istek kimliği ve istek bağlamı | alındı | 9.1 | 6.0 | 5.25 | 7 | 0 engel, 5 öneri | 0 |
 | GV-024 | EP-003 3 | Belirteç üretici (RS256) ve istemci adresi imzası | alındı | 1.4 | 5.4 | 2.55 | 4 | 0 engel, 3 öneri | 1 |
-| GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | bekliyor | — | — | — | 0 | — | 0 |
-| GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | bekliyor | — | — | — | 0 | — | 0 |
-| GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | bekliyor | — | — | — | 0 | — | 0 |
+| GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | alındı | 13.4 | 8.3 | 6.56 | 10 | 0 engel, 5 öneri | 0 |
+| GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | alındı | 2.8 | 5.0 | 3.91 | 13 | 0 engel, 2 öneri | 1 |
+| GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | soru | 8.6 | — | 3.41 | 4 | — | 0 |
 | GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | bekliyor | — | — | — | 0 | — | 0 |
 | GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | bekliyor | — | — | — | 0 | — | 0 |
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
@@ -59,7 +59,7 @@ Kayıtlı 38 görevin 25 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | bekliyor | — | — | — | 0 | — | 0 |
 | GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | incelemede kaldı | 0.7 | 3.8 | 1.92 | 3 | 1 engel, 1 öneri | 1 |
 | GV-037 | EP-003 15 | İz aktarıcısı testindeki tam tablo listesi sınamasının kaldırılması | alındı | 1.2 | 1.8 | 1.20 | 1 | 0 engel, 0 öneri | 0 |
-| GV-038 | EP-003 16 | Kırılgan şema sınamalarının kaldırılması (bütün test klasörü) | bekliyor | — | — | — | 0 | — | 0 |
+| GV-038 | EP-003 16 | Kırılgan şema sınamalarının kaldırılması (bütün test klasörü) | alındı | 5.5 | 5.2 | 3.71 | 4 | 0 engel, 1 öneri | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -109,6 +109,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-031 | bitiş kaydındaki dosya listesinde yeni test dosyası eksikti; araç beyan uyuşmuyor dedi | aracın kaydı | 88 saniyede düzeltildi, incelemeden geçti |
 | GV-020 | işçi soruyla durdu: outbox-sema testi bütün tablo listesini sayıyor, on bir tablo eklenince kırılıyor ve dosya görevin kapsamında değil | bitiş kaydı | karar verildi (tam liste sınaması yazılmaz), cevaplandı, GV-036 açıldı |
 | GV-036 | inceleme kaldı: aynı sınama başka test dosyalarında da vardı ve işçinin araması kaçırmıştı | inceleme kaydı | karar genişletildi, GV-038 açıldı; GV-036 alınmadı |
+| GV-026 | işçi iki soruyla durdu: genel sayacın değişiklik kaydı (kimliği uuid değil) ve feature içinde ham yazma deyimi | bitiş kaydı | iki karar verildi (AK-20, AK-21), cevapla sürdü |
 
 ## 6. Hatalarım
 
@@ -163,3 +164,7 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 22:22 — GV-020 (on bir kimlik tablosu) alındı: şema sınaması 26/26, ad denetimi 4/4. GV-023 (HTTP temeli) alındı: 22/22; uçtan uca 7/7, sağlık 1/1. GV-037 (iz testi düzeltmesi) alındı.
 - 22:22 — GV-036 (üç dosyada tam liste sınaması) incelemede kaldı: inceleme dördüncü ve beşinci örnekleri ve aynı sınıftan iki kırılgan sınama türünü buldu (göç klasörü sayısı, şema genelinde tür yokluğu). Karar genişletildi (TS-003) ve bütün test klasörünü kapsayan tek görev açıldı (GV-038). GV-036 alınmadı.
 - 22:22 — Yan yana koşanlar: GV-025 (tohum göçü koşucusu), GV-026 (kimlik çekirdeği), GV-038 (kırılgan sınamaların temizliği). Ana dalda bilinen kırmızılar GV-038 alınana kadar: tuketici ve outbox-sema testlerindeki tam liste ve göç sayısı sınamaları.
+- 23:00 — GV-038 (kırılgan şema sınamalarının temizliği) alındı; ana dalda bilinen kırmızı test kalmadı (tüketici 18, outbox şeması 10, kimlik şeması 26, iz aktarıcısı 9: hepsini kendim koşturdum).
+- 23:00 — GV-025 (tohum göçü koşucusu ve tohum_gocu tablosu) alındı: 12/12; ad denetimi 4/4.
+- 23:00 — GV-026 (kimlik çekirdeği; depodaki ilk feature kodu) iki soruyla durdu, cevaplandı (AK-20: genel sayaç not bırakmaz; AK-21: feature içinde ham yazma da yazılmaz, kapatılma ve silinme zamanı uygulama saatiyle) ve alındı: 20/20; feature içinde ham sorgu yok (aradım).
+- 23:00 — Auth çekirdeğinin kalan sekiz görevi tek komutla yürütülmeye başladı (ilk kurulum göçü, parola, guard, giriş ve çıkış, yetki verisi, yetki kapısının okuması ve yazması, erişim kaydı).
