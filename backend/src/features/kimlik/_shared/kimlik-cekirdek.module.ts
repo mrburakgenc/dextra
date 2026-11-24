@@ -19,6 +19,10 @@ import {
   kullaniciCekirdekRepo,
 } from './cekirdek/kullanici.repository.js';
 import {
+  KULLANICI_SIRRI_CEKIRDEK_REPO,
+  kullaniciSirriCekirdekRepo,
+} from './cekirdek/kullanici-sirri.repository.js';
+import {
   OTURUM_CEKIRDEK_REPO,
   oturumCekirdekRepo,
 } from './cekirdek/oturum.repository.js';
@@ -34,6 +38,7 @@ import { GenelSayac } from './genel-sayac.js';
 import { KisiKilidi } from './kisi-kilidi.js';
 import { KisininSayisi } from './kisinin-sayisi.js';
 import { KokUyelik } from './kok-uyelik.js';
+import { ParolaSirri } from './parola-sirri.js';
 import { TohumYardimcisi } from './tohum-yardimcisi.js';
 import {
   KIMLIK_KURULUM_GOCU,
@@ -55,6 +60,7 @@ import { KURULUM_REPO, kurulumRepo } from './tohum/kurulum.repository.js';
     KimlikKurulumGocu,
     ParolaBaglantisi,
     ButunlukSorusu,
+    ParolaSirri,
   ],
   exports: [
     GenelSayac,
@@ -63,6 +69,7 @@ import { KURULUM_REPO, kurulumRepo } from './tohum/kurulum.repository.js';
     KokUyelik,
     ParolaBaglantisi,
     ButunlukSorusu,
+    ParolaSirri,
   ],
 })
 export class KimlikCekirdekModule {
@@ -81,5 +88,9 @@ export class KimlikCekirdekModule {
     );
     registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
     registrar.register(BUTUNLUK_CEKIRDEK_REPO, butunlukCekirdekRepo);
+    registrar.register(
+      KULLANICI_SIRRI_CEKIRDEK_REPO,
+      kullaniciSirriCekirdekRepo,
+    );
   }
 }
