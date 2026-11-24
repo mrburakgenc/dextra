@@ -4,6 +4,11 @@ import { Registrar } from '../../shared/database/registrar.js';
 import { MessagingModule } from '../../shared/messaging/messaging.module.js';
 import { TohumDefteri } from '../../shared/tohum/tohum-defteri.js';
 import { TohumModule } from '../../shared/tohum/tohum.module.js';
+import { ParolaBaglantisi } from './_shared/baglanti/parola-baglantisi.js';
+import {
+  PAROLA_BAGLANTISI_REPO,
+  parolaBaglantisiRepo,
+} from './_shared/baglanti/parola-baglantisi.repository.js';
 import {
   KULLANICI_CEKIRDEK_REPO,
   kullaniciCekirdekRepo,
@@ -33,12 +38,20 @@ import {
   KURULUM_REPO,
   kurulumRepo,
 } from './_shared/tohum/kurulum.repository.js';
+import { KurulumBaglantisiHandler } from './parola/application/kurulum-baglantisi.handler.js';
+import { ParolaBelirleHandler } from './parola/application/parola-belirle.handler.js';
+import { ParolaOzetleyici } from './parola/domain/parola-ozetleyici.port.js';
+import { PAROLA_REPO } from './parola/domain/parola.repository.js';
+import { Argon2idParolaOzetleyici } from './parola/infrastructure/parola-ozetleyici.argon2id.js';
+import { parolaPrismaRepository } from './parola/infrastructure/parola.prisma-repository.js';
+import { ParolaController } from './parola/presentation/parola.controller.js';
 
 // Kimlik feature'ı. Çekirdek repository'ler Unit of Work'e Registrar ile tanıtılır; çekirdek
 // parçalar yalnız bu feature'ın içinde kullanılır, dışa verilmez. Tohum göçleri tohum defterine
 // sırayla bildirilir.
 @Module({
   imports: [DatabaseModule, MessagingModule, TohumModule],
+  controllers: [ParolaController],
   providers: [
     GenelSayac,
     KisininSayisi,
@@ -46,6 +59,10 @@ import {
     KokUyelik,
     TohumYardimcisi,
     KimlikKurulumGocu,
+    ParolaBaglantisi,
+    { provide: ParolaOzetleyici, useClass: Argon2idParolaOzetleyici },
+    ParolaBelirleHandler,
+    KurulumBaglantisiHandler,
   ],
 })
 export class KimlikModule {
@@ -62,5 +79,7 @@ export class KimlikModule {
     defter.bildir(KIMLIK_KURULUM_GOCU, (ad, islem) =>
       kurulumGocu.uygula(ad, islem),
     );
+    registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
+    registrar.register(PAROLA_REPO, parolaPrismaRepository);
   }
 }
