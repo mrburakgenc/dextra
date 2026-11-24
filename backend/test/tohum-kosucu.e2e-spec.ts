@@ -53,8 +53,9 @@ const oncekiGocOzetleri: Record<string, string> = {
     'dbca07e47217c52a85db009a1f418189fe1ca73fa36a471ffc4a03ea926a84e1',
 };
 
-const BIR = '0001-sinama-bir';
-const IKI = '0002-sinama-iki';
+const BIR = '202611240001-sinama-bir';
+const IKI = '202611240002-sinama-iki';
+const UC = '202611240003-sinama-uc';
 
 interface SinamaRepo {
   ekle(ad: string): Promise<void>;
@@ -363,10 +364,45 @@ describe('b-g) koşucu ve defter', () => {
     }).toThrow(BIR);
     expect(defter.sirayla().map(([ad]) => ad)).toEqual([BIR]);
   });
+
+  it('i) sırasız bildirilen üç göç ada göre sırayla uygulanır ve deftere yazılır (GV-042; TS-002 AK-24)', async () => {
+    const defter = new TohumDefteri();
+    defter.bildir(UC, sinamaGocu());
+    defter.bildir(BIR, sinamaGocu());
+    defter.bildir(IKI, sinamaGocu());
+
+    expect(await new TohumKosucusu(yeniUow(), defter).kos()).toEqual([
+      BIR,
+      IKI,
+      UC,
+    ]);
+    expect(cagrilar).toEqual([BIR, IKI, UC]);
+    expect(await defterSatirlari()).toEqual([BIR, IKI, UC]);
+  });
+
+  it('i) adı YYYYAAGGSSDD-<feature>-<konu> biçimine uymayan göç bildirimde hata verir ve deftere girmez', () => {
+    const defter = new TohumDefteri();
+    for (const ad of [
+      '0001-sinama-bir',
+      '20261124000-sinama-bir',
+      '202611240000-sinama',
+      '202611240000-Sinama-bir',
+      '202611240000-sinama-bir2',
+      '202611240000-sinama--bir',
+      '202611240000-sinama-bir-',
+    ]) {
+      expect(() => {
+        defter.bildir(ad, sinamaGocu());
+      }).toThrow(
+        `${ad} tohum göçünün adı YYYYAAGGSSDD-<feature>-<konu> biçiminde değil`,
+      );
+    }
+    expect(defter.sirayla()).toEqual([]);
+  });
 });
 
 describe('h) komut', () => {
-  const KOMUT_GOCU = '0001-sinama-komut';
+  const KOMUT_GOCU = '202611240004-sinama-komut';
   let databases: AppDatabases | undefined;
 
   // Uygulamaya bir sınama göçü bildiren kök modül.

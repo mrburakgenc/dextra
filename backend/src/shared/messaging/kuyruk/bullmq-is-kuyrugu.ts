@@ -59,7 +59,12 @@ export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
   private readonly kuyruklar = new Map<string, Kuyruk>();
   private readonly dinleyiciler = new Set<Isci>();
 
-  constructor(connectionString: string) {
+  // dinlemez: uygulama komut olarak açıldı (TS-002 AK-25); dinle() dinleyici açmaz, kapatması bir
+  // şey yapmayan dinleyici döner.
+  constructor(
+    connectionString: string,
+    private readonly dinlemez = false,
+  ) {
     this.baglanti = { connectionString, schema: KUYRUK_SEMASI };
   }
 
@@ -71,6 +76,9 @@ export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
   }
 
   async dinle(kuyruk: string, isleyici: IsIsleyici): Promise<Dinleyici> {
+    if (this.dinlemez) {
+      return { kapat: () => Promise.resolve() };
+    }
     const worker = new Worker(
       kuyruk,
       (job: Job<Veri>) =>

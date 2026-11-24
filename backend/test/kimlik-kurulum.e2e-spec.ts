@@ -1,4 +1,4 @@
-// İlk kurulum göçü 0001-kimlik-kurulum (GV-027; TS-002 AK-2, AK-3). Koşturma:
+// İlk kurulum göçü 202611240000-kimlik-kurulum (GV-027, GV-042; TS-002 AK-2, AK-3). Koşturma:
 //   pnpm -C backend test:e2e test/kimlik-kurulum.e2e-spec.ts --reporter=verbose
 // Göçleri uygulanmış boş geçici veritabanında, uygulamanın KimlikModule'üyle kurulmuş tohum koşucusu
 // çalıştırılır. Önce kuru koşu, sonra gerçek koşu yapılır; satırlar ayrı bir pg bağlantısından okunur.
@@ -15,7 +15,8 @@ import { yetenekleriDerle } from '../src/shared/yetki/yetenek-derleyici.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
-const IS_ADI = 'tohum:0001-kimlik-kurulum';
+const GOC_ADI = '202611240000-kimlik-kurulum';
+const IS_ADI = `tohum:${GOC_ADI}`;
 
 // TS-002 "Uçlar ve izinler", yönetim listesi: 27 (kaynak, eylem) çifti.
 const YONETIM_IZINLERI = [
@@ -173,11 +174,15 @@ describe('kurulum', () => {
     sureMs = performance.now() - baslangic;
   });
 
-  it('l) göç uygulanır; ölçülen süresi 5 saniyenin altındadır', async ({
+  it('l) göç uygulanır ve deftere 202611240000-kimlik-kurulum adıyla yazılır; ölçülen süresi 5 saniyenin altındadır', async ({
     annotate,
   }) => {
     await annotate(`göçün süresi: ${sureMs.toFixed(0)} ms`);
     expect(uygulanan).toEqual([KIMLIK_KURULUM_GOCU]);
+    expect(KIMLIK_KURULUM_GOCU).toBe(GOC_ADI);
+    expect(await satirlar('select ad from tohum_gocu')).toEqual([
+      { ad: GOC_ADI },
+    ]);
     expect(sureMs).toBeLessThan(5000);
   });
 
@@ -379,7 +384,7 @@ describe('kurulum', () => {
     expect(await satirSayilari()).toEqual(once);
   });
 
-  it('j) her yazma için işin adı tohum:0001-kimlik-kurulum olan ve yazanı sistem aktörü olan bir not vardır', async () => {
+  it('j) her yazma için işin adı tohum:202611240000-kimlik-kurulum olan ve yazanı sistem aktörü olan bir not vardır', async () => {
     const aktor = await sistemAktoru();
     // Her kaynak satırı bir oluşturma notu; tohum yardımcısı her kullanıcının sayısını artırır.
     const beklenen: string[] = [];
