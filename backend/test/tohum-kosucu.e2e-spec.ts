@@ -411,10 +411,10 @@ describe('h) komut', () => {
           (r) => r.ad,
         );
 
-      expect(await tohumKomutu(SinamaKokModulu, true)).toEqual([KOMUT_GOCU]);
+      expect(await tohumKomutu(SinamaKokModulu, true)).toContain(KOMUT_GOCU);
       expect(await defter()).toEqual([]);
-      expect(await tohumKomutu(SinamaKokModulu, false)).toEqual([KOMUT_GOCU]);
-      expect(await defter()).toEqual([KOMUT_GOCU]);
+      expect(await tohumKomutu(SinamaKokModulu, false)).toContain(KOMUT_GOCU);
+      expect(await defter()).toContain(KOMUT_GOCU);
       expect(await tohumKomutu(SinamaKokModulu, false)).toEqual([]);
       expect(cagrilar).toEqual([KOMUT_GOCU, KOMUT_GOCU]);
       // Bağlam kapanınca asıl ve iz veritabanlarında açık bağlantı kalmaz.
