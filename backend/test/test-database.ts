@@ -46,8 +46,9 @@ export async function createTestDatabase(
       await client.query(sql);
     }
   } catch (error) {
-    // SQL uygulanamazsa yarım veritabanı sunucuda kalmaz.
-    await database.drop();
+    // SQL uygulanamazsa yarım veritabanı sunucuda kalmaz. Silme de hata verirse çağırana
+    // yine asıl SQL hatası ulaşır; silmenin hatası onu örtmesin diye bırakılır.
+    await database.drop().catch(() => undefined);
     throw error;
   } finally {
     await client.end();

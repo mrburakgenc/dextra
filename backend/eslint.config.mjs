@@ -55,7 +55,18 @@ export default defineConfig(
         },
       ],
       // Kök dosyalar (main.ts, app.module.ts) bir klasör öğesi değildir; dosya olarak sınıflanır.
-      'boundaries/files': [{ pattern: 'src/*.ts', category: 'app' }],
+      'boundaries/files': [
+        { pattern: 'src/*.ts', category: 'app' },
+        // Ham Prisma istemcisine götüren dosyalar: belirteçler ve üretilen istemci modülleri.
+        {
+          pattern: [
+            'src/shared/database/istemci-belirtecleri.ts',
+            'src/shared/database/generated/**',
+            'src/shared/database/iz/generated/**',
+          ],
+          category: 'ham-istemci',
+        },
+      ],
       'import/resolver': {
         typescript: { project: `${import.meta.dirname}/tsconfig.json` },
       },
@@ -100,6 +111,12 @@ export default defineConfig(
                   },
                 ],
               },
+            },
+            {
+              // Feature ham istemciye ulaşamaz; veri erişimi yalnız Unit of Work'ün iki
+              // kapısından geçer (KR-011). Son eşleşen politika geçerli olduğundan sondadır.
+              from: { element: { type: 'feature' } },
+              disallow: { to: { file: { categories: 'ham-istemci' } } },
             },
           ],
         },

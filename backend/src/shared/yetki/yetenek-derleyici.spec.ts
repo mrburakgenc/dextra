@@ -172,6 +172,25 @@ describe('yetenek derleyici', () => {
       expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
     });
 
+    it('kolonlarının hepsi bilinmeyen satırda da şarttaki bilinmeyen alan kimliğiyle bildirilir ve kural üretmez', () => {
+      const sonuc = derle([
+        satir({
+          yetenekId: 'bozuk',
+          sart: [{ alan: 'yok', islec: 'esit', deger: 'x' }],
+          butunKolonlar: false,
+          kolonlar: ['olmayan'],
+        }),
+      ]);
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        { yetenekId: 'bozuk', neden: 'bilinmeyen alan: yok' },
+      ]);
+      expect(sonuc.kurallar).toEqual([]);
+      expect(accessibleBy(sonuc.yetenek, 'oku').ofType('Talep')).toEqual({
+        OR: [],
+      });
+    });
+
     it('bilinmeyen kaynağın satırı derlenmez ve bildirilir', () => {
       const sonuc = derle([satir({ kaynak: 'Yok', butunKayitlar: true })]);
 
@@ -257,6 +276,37 @@ describe('yetenek derleyici', () => {
       expect(sonuc.derlenmeyenler).toEqual([
         { yetenekId: 'y1', neden: 'yer tutucu çözülemedi: grupId' },
       ]);
+    });
+  });
+
+  // Sözleşme: alt grup listesi grubun kendisini içerir. Derleyici listeyi olduğu gibi kullanır.
+  describe('alt grup listesi', () => {
+    const grupVeAltiSarti = [
+      {
+        alan: 'grupId',
+        islec: 'listede' as const,
+        deger: { yerTutucu: 'yetenek_grubu_ve_alti' as const },
+      },
+    ];
+
+    it('grubun kendisini içeren liste kapsamı grubun kendisi ve altındakiler yapar', () => {
+      const sonuc = derle([satir({ sart: grupVeAltiSarti })], {
+        g1: ['g1', 'g2'],
+      });
+
+      expect(sonuc.derlenmeyenler).toEqual([]);
+      expect(sonuc.kurallar[0]?.conditions).toEqual({
+        AND: [{ grupId: { in: ['g1', 'g2'] } }],
+      });
+    });
+
+    it('grubun kendisini içermeyen liste de derlenir; derleyici grubu eklemez, kapsam yalnız listedekilerdir', () => {
+      const sonuc = derle([satir({ sart: grupVeAltiSarti })], { g1: ['g2'] });
+
+      expect(sonuc.derlenmeyenler).toEqual([]);
+      expect(sonuc.kurallar[0]?.conditions).toEqual({
+        AND: [{ grupId: { in: ['g2'] } }],
+      });
     });
   });
 
