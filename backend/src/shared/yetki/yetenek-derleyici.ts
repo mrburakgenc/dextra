@@ -32,6 +32,8 @@ export interface DerlemeSonucu {
   readonly yetenek: YetkiYetenegi;
   readonly kurallar: readonly YetenekKurali[];
   readonly derlenmeyenler: readonly DerlenmeyenYetenek[];
+  // Yetenek kimliğinden onu kişiye veren üyeliğin kimliğine; erişim kaydı için (KR-010 Seçim 40).
+  readonly uyelikler: Readonly<Record<string, string>>;
 }
 
 type SatirSonucu =
@@ -43,7 +45,7 @@ export function yetenekleriDerle(
   veri: Pick<KisininSatirlari, 'yetenekler' | 'altGruplar'>,
   isteyenId: string,
   katalog: KaynakKatalogu,
-): DerlemeSonucu {
+): Omit<DerlemeSonucu, 'uyelikler'> {
   const kurallar: YetenekKurali[] = [];
   const derlenmeyenler: DerlenmeyenYetenek[] = [];
   for (const satir of veri.yetenekler) {

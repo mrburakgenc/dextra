@@ -6,6 +6,31 @@ import boundaries from 'eslint-plugin-boundaries';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+// Yetki kütüphanesinin kayıt üzerinde karar veren çağrıları backend'de yasaktır (KR-010 "Derleme
+// eşlemesi"; TS-002 AK-19): veri kararını sorgudaki şartla veritabanı verir. Yöntem çağrısı, köşeli
+// parantezle erişim, yalın adla çağrı ve adın içe aktarılması yakalanır.
+const YETKI_KARAR_CAGRISI = '^(can|cannot|throwUnlessCan|permittedFieldsOf)$';
+const YETKI_KARAR_ILETISI =
+  "Kayıt üzerinde karar veren yetki çağrısı backend'de yazılmaz; yetki kapısını kullanın.";
+const YETKI_KARAR_YASAKLARI = [
+  {
+    selector: `MemberExpression[computed=false][property.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `MemberExpression[computed=true][property.value=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `CallExpression[callee.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `ImportSpecifier[imported.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+];
+
 export default defineConfig(
   {
     ignores: [
@@ -154,6 +179,10 @@ export default defineConfig(
     },
   },
   {
+    files: ['**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...YETKI_KARAR_YASAKLARI] },
+  },
+  {
     // Kuyruk paketi feature'a kapalıdır (KR-012 Yükümlülük 2). Sınır kuralı dış paketlere yalnız
     // checkAllOrigins ile bakar; o ayar her dış paketi izin listesine almayı gerektirdiğinden paket
     // yasağı ESLint'in kendi kuralıyla verilir.
@@ -178,9 +207,11 @@ export default defineConfig(
       ],
       // no-restricted-imports dinamik içe aktarmaya (import(...)) bakmaz; paket adı düz metin ya da
       // şablon metniyle verilen dinamik içe aktarma da yasaktır (TS-003 Onarım). \x2F, "/" demektir;
-      // seçici dili düzenli ifadede "/" kabul etmez.
+      // seçici dili düzenli ifadede "/" kabul etmez. Aynı kural adı üstteki bloğu ezdiğinden yetki
+      // çağrısı yasakları burada da verilir.
       'no-restricted-syntax': [
         'error',
+        ...YETKI_KARAR_YASAKLARI,
         {
           selector:
             "ImportExpression[source.type='Literal'][source.value=/^bullmq($|\\x2F)/]",
