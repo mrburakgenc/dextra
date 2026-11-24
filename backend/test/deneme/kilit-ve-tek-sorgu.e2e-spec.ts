@@ -121,10 +121,16 @@ async function islemAcikkenGozle(
 
 beforeAll(async () => {
   db = await createTestDatabase(TABLOLAR);
-  havuz = kaydedenHavuz(db.url);
-  prisma = new PrismaClient({ adapter: new PrismaPg(havuz) });
-  gozlemci = new pg.Client({ connectionString: db.url });
-  await gozlemci.connect();
+  // Kurulum burada yarıda kalırsa geçici veritabanı sunucuda kalmaz.
+  try {
+    havuz = kaydedenHavuz(db.url);
+    prisma = new PrismaClient({ adapter: new PrismaPg(havuz) });
+    gozlemci = new pg.Client({ connectionString: db.url });
+    await gozlemci.connect();
+  } catch (error) {
+    await db.drop();
+    throw error;
+  }
 });
 
 afterAll(async () => {
@@ -188,6 +194,7 @@ describe('satır kilidi (model API, ham SQL yok)', () => {
       KULLANICI_ID,
     );
 
+    expect(deyimler).toHaveLength(3);
     expect(deyimler[1]).toMatch(
       /^UPDATE "public"\."kullanici" SET "kullanici_adi" = \$1 WHERE/,
     );

@@ -78,12 +78,49 @@ describe('geçici test veritabanı yardımcısı', () => {
 
   it('her çağrıda eşsiz ad verir', async () => {
     const first = await createTestDatabase();
-    const second = await createTestDatabase();
+    // İkinci açılış hata verirse ilki sunucuda kalmaz.
     try {
-      expect(first.name).not.toBe(second.name);
+      const second = await createTestDatabase();
+      try {
+        expect(first.name).not.toBe(second.name);
+      } finally {
+        await second.drop();
+      }
     } finally {
       await first.drop();
-      await second.drop();
     }
+  });
+
+  it('SQL hatasında silme de hata verirse çağırana asıl SQL hatası ulaşır', async () => {
+    const asil = Reflect.get(pg.Client.prototype, 'query') as (
+      ...args: unknown[]
+    ) => unknown;
+    const silmeler: string[] = [];
+    // Yalnız silme deyimi düşürülür; öbür deyimler sunucuya gider.
+    const casus = vi
+      .spyOn(pg.Client.prototype, 'query')
+      .mockImplementation(function (this: pg.Client, ...args: unknown[]) {
+        const sql = args[0];
+        if (typeof sql === 'string' && sql.startsWith('DROP DATABASE')) {
+          silmeler.push(sql);
+          throw new Error('silme başarısız');
+        }
+        return asil.apply(this, args);
+      });
+    try {
+      // 42P01: tablo yok.
+      await expect(
+        createTestDatabase(['select * from olmayan_tablo']),
+      ).rejects.toMatchObject({ code: '42P01' });
+      expect(silmeler).toHaveLength(1);
+    } finally {
+      casus.mockRestore();
+      // Silme düşürüldüğü için veritabanı sunucuda kaldı; aynı deyimle kaldırılır.
+      for (const sql of silmeler) {
+        await query(localInfrastructure.databaseUrl, sql);
+      }
+    }
+    const name = /dextra_test_\w+/.exec(silmeler[0] ?? '')?.[0] ?? '';
+    expect(await databaseExists(name)).toBe(false);
   });
 });
