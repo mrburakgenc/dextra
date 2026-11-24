@@ -15,8 +15,20 @@ export interface Dinleyici {
   kapat(): Promise<void>;
 }
 
+// Kapının kabul etmediği iş kimliğinde koy() bu hatayı atar.
+export class GecersizIsKimligiHatasi extends Error {
+  constructor() {
+    super(
+      'Kuyruk işinin kimliği yalnız rakamlardan oluşamaz ve iki nokta (:) içeremez',
+    );
+    this.name = 'GecersizIsKimligiHatasi';
+  }
+}
+
 export interface IsKuyrugu {
   // Aynı kimlikle konan iş, ilki kuyrukta dururken yeni iş üretmez.
+  // Kimlik kısıtı: yalnız rakamlardan oluşan ("123") ya da iki nokta (:) içeren kimlik kabul
+  // edilmez; koy() GecersizIsKimligiHatasi atar ve iş kuyruğa konmaz.
   koy(kuyruk: string, is: KuyrukIsi): Promise<void>;
   dinle(kuyruk: string, isleyici: IsIsleyici): Promise<Dinleyici>;
   basarisizSayisi(kuyruk: string): Promise<number>;

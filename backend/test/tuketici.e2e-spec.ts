@@ -3,22 +3,28 @@
 // Her şey göçleri ve kuyruk göçü uygulanmış tek bir geçici veritabanında olur. Olaylar kuyruğa
 // kuyruk kapısıyla (IS_KUYRUGU) konur; doğrulama sorguları pg ile atılır. Her test kendi kuyruk
 // (tüketici) adını kullanır.
-// Yeniden deneme aralığı testte KISALTILMAZ: kuyruk klasörü değişmez ve ürünün sabitleri olduğu
-// gibi kullanılır. İlk yeniden deneme ILK_ARALIK_MS (1 sn) sonradır; bekleme sınırları ondan kurulur.
+// Yeniden deneme aralığı testte KISALTILMAZ: ürünün sabitleri olduğu gibi kullanılır. İlk yeniden
+// deneme ILK_ARALIK_MS (1 sn) sonradır; bekleme sınırları ondan kurulur. Sahiplenme süresi de ürün
+// kodunda değişmez; testte kısa süre gereken yerde satır, kısa bitişle doğrudan yazılır.
 import { execFile } from 'node:child_process';
 import { createHash, randomUUIDv7 } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { setTimeout as uyu } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import pg from 'pg';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
 import { Registrar } from '../src/shared/database/registrar.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { ILK_ARALIK_MS } from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
+import {
+  DENEME_SAYISI,
+  ILK_ARALIK_MS,
+} from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
 import {
   IS_KUYRUGU,
+  type IsIsleyici,
   type IsKuyrugu,
   type KuyrukIsi,
 } from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
@@ -26,6 +32,7 @@ import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
 import { KuyrukModule } from '../src/shared/messaging/kuyruk/kuyruk.module.js';
 import {
   ISLENEN_OLAY_REPO,
+  type IslenenOlayRepo,
   islenenOlayRepoKaydet,
   type SahiplenmeSonucu,
 } from '../src/shared/messaging/tuketici/islenen-olay.repository.js';
@@ -44,6 +51,15 @@ const ilkGoc = '20261124163457_outbox';
 const ilkGocOzeti =
   'a32d08e15b19ddc59eb92d90620aff9af00083d3a85aa7c85f134f9f7c8706e8';
 const yeniGoc = '20261124200000_islenen_olay';
+// GV-021'den önce var olan göçlerin özetleri (o günkü dosyalardan); biri değişirse test kırılır.
+const oncekiGocOzetleri: Record<string, string> = {
+  [ilkGoc]: ilkGocOzeti,
+  [yeniGoc]: '801b7652b3af1c89d23113aa37b51cf09edadb8f261954571725630b12000e81',
+  '20261124210000_outbox_olay_deneme':
+    '4bdf4ea2d6e1344e317110536b281abd52e323424614c99a29225885fd1a8644',
+};
+// GV-021'in göçü: sahip_id kolonu.
+const sahipGocu = '20261124220000_islenen_olay_sahip_id';
 
 // Hedefteki kolon listesi, sırayla: "ad | tür | boş olabilir mi | varsayılan" ("-": varsayılan yok).
 const islenenOlayKolonlari = [
@@ -53,6 +69,7 @@ const islenenOlayKolonlari = [
   'sahiplenme_bitis_zamani | timestamp with time zone | NO | -',
   'tamamlanma_zamani | timestamp with time zone | YES | -',
   'olusturma_zamani | timestamp with time zone | NO | clock_timestamp()',
+  'sahip_id | uuid | NO | -',
 ];
 
 interface IslenenSatir {
@@ -150,16 +167,17 @@ async function isSatirlari(kuyruk: string): Promise<
   return rows;
 }
 
-// Sahiplenme satırını doğrudan yazar; bitiş veritabanının saatine göre verilir.
+// Sahiplenme satırını başka bir işçinin sahip kimliğiyle doğrudan yazar; bitiş veritabanının
+// saatine göre verilir.
 async function sahiplenmeYaz(
   tuketici: string,
   olayId: string,
   bitis: string,
 ): Promise<void> {
   await gozlemci.query(
-    `insert into islenen_olay (tuketici, olay_id, durum, sahiplenme_bitis_zamani)
-     values ($1, $2, 'isleniyor', clock_timestamp() + $3::interval)`,
-    [tuketici, olayId, bitis],
+    `insert into islenen_olay (tuketici, olay_id, durum, sahiplenme_bitis_zamani, sahip_id)
+     values ($1, $2, 'isleniyor', clock_timestamp() + $3::interval, $4)`,
+    [tuketici, olayId, bitis, randomUUIDv7()],
   );
 }
 
@@ -271,6 +289,25 @@ describe('a) göç', () => {
     expect(ozet).toBe(ilkGocOzeti);
     expect(klasorler.slice(0, 2)).toEqual([ilkGoc, yeniGoc]);
     expect(uygulanan.map((g) => g.migration_name)).toEqual(klasorler);
+  });
+
+  it('GV-021 c) önceki göç dosyaları değişmemiştir; göç klasörü sayısı bir artmıştır ve yenisi sahip_id göçüdür', async ({
+    annotate,
+  }) => {
+    const klasorler = (await readdir(gocKlasoru, { withFileTypes: true }))
+      .filter((g) => g.isDirectory())
+      .map((g) => g.name)
+      .sort();
+    const ozetler: Record<string, string> = {};
+    for (const goc of Object.keys(oncekiGocOzetleri)) {
+      ozetler[goc] = createHash('sha256')
+        .update(await readFile(`${gocKlasoru}/${goc}/migration.sql`))
+        .digest('hex');
+    }
+    await annotate(`göç klasörleri: ${JSON.stringify(klasorler)}`);
+    expect(ozetler).toEqual(oncekiGocOzetleri);
+    expect(klasorler).toHaveLength(Object.keys(oncekiGocOzetleri).length + 1);
+    expect(klasorler.at(-1)).toBe(sahipGocu);
   });
 
   it("a) Prisma'nın migrate diff komutu şema ile göçleri uygulanmış veritabanı arasında fark görmez", async () => {
@@ -529,7 +566,7 @@ describe('b-h) tüketici davranışı', () => {
       uow.run((islem) =>
         islem
           .repo(ISLENEN_OLAY_REPO)
-          .sahiplen('g-adim', olayId, SAHIPLENME_SURESI_SN),
+          .sahiplen('g-adim', olayId, randomUUIDv7(), SAHIPLENME_SURESI_SN),
       );
     try {
       const yeni = Array.from({ length: 20 }, () => randomUUIDv7());
@@ -600,6 +637,169 @@ describe('b-h) tüketici davranışı', () => {
       await kapat();
     }
   }, 15_000);
+});
+
+describe('GV-021) sertleştirme', () => {
+  it(`GV-021 a) kuyruğun deneme sayısı 8'dir; iki sabitten hesaplanan yeniden deneme penceresi sahiplenme süresinden (${String(SAHIPLENME_SURESI_SN)} sn) uzundur`, async ({
+    annotate,
+  }) => {
+    // Üstel aralık: k. yeniden deneme önceki denemeden ILK_ARALIK_MS * 2^(k-1) sonradır; ilk
+    // denemeden sonra DENEME_SAYISI - 1 yeniden deneme vardır.
+    const pencereMs = Array.from(
+      { length: DENEME_SAYISI - 1 },
+      (_, k) => ILK_ARALIK_MS * 2 ** k,
+    ).reduce((toplam, aralik) => toplam + aralik, 0);
+    await annotate(
+      `DENEME_SAYISI=${String(DENEME_SAYISI)}, ILK_ARALIK_MS=${String(ILK_ARALIK_MS)}, pencere=${String(pencereMs)} ms, sahiplenme=${String(SAHIPLENME_SURESI_SN * 1000)} ms`,
+    );
+    expect(DENEME_SAYISI).toBe(8);
+    expect(pencereMs).toBeGreaterThan(SAHIPLENME_SURESI_SN * 1000);
+  });
+
+  it("GV-021 b) işçisi ölen olay: 'isleniyor' satırının süresi dolduktan sonraki bir denemede işlenir ve 'tamamlandi' olur; iş başarısızlar arasına düşmez", async ({
+    annotate,
+  }) => {
+    // Sahiplenme süresi testte KISALTILIR: ölen işçinin satırı ürünün SAHIPLENME_SURESI_SN'si yerine
+    // bu süreyle doğrudan yazılır. Süre eski 5 denemelik pencereden (1 + 2 + 4 + 8 = 15 sn)
+    // uzundur: eski kuyrukta iş bütün denemelerini satır dolmadan tüketirdi.
+    const olenIsciSahiplenmeSn = 20;
+    const eskiDenemeSayisi = 5;
+    const { uow, kuyruk, kapat } = await surecAc();
+    let cagri = 0;
+    let enCokDeneme = 0;
+    try {
+      const is = olay();
+      const baslangic = Date.now();
+      await sahiplenmeYaz(
+        'b-olen-isci',
+        is.kimlik,
+        `${String(olenIsciSahiplenmeSn)} seconds`,
+      );
+      const tuketici = await tuketiciBaslat(uow, kuyruk, 'b-olen-isci', () => {
+        cagri += 1;
+        return Promise.resolve();
+      });
+      await kuyruk.koy('b-olen-isci', is);
+      await bekle('olay tamamlanır', 60_000, async () => {
+        const isler = await isSatirlari('b-olen-isci');
+        enCokDeneme = Math.max(enCokDeneme, isler[0]?.attempts_made ?? 0);
+        return (
+          (await durum('b-olen-isci', is.kimlik)) === 'tamamlandi' &&
+          isler.length === 0
+        );
+      });
+      const gecen = Date.now() - baslangic;
+      await uyu(500);
+      await tuketici.durdur();
+
+      await annotate(
+        `satır ${String(olenIsciSahiplenmeSn)} sn'de doldu; olay ${String(gecen)} ms'de tamamlandı; başarısız deneme: ${String(enCokDeneme)}`,
+      );
+      expect(cagri).toBe(1);
+      expect(gecen).toBeGreaterThanOrEqual(olenIsciSahiplenmeSn * 1000);
+      // Eski deneme sayısıyla iş burada başarısız olurdu.
+      expect(enCokDeneme).toBeGreaterThanOrEqual(eskiDenemeSayisi);
+      expect(await kuyruk.basarisizSayisi('b-olen-isci')).toBe(0);
+    } finally {
+      await kapat();
+    }
+  }, 90_000);
+
+  it("GV-021 d) sahiplenmesi devralınmış ilk sahibin bırakması devralanın satırını silmez, tamamlaması 'tamamlandi' yazmaz; devralan kendi çağrısıyla tamamlar", async () => {
+    const { uow, kapat } = await surecAc();
+    const adim = <T>(is: (repo: IslenenOlayRepo) => Promise<T>): Promise<T> =>
+      uow.run((islem) => is(islem.repo(ISLENEN_OLAY_REPO)));
+    const olayId = randomUUIDv7();
+    const satir = async (): Promise<
+      { durum: string; sahip_id: string } | undefined
+    > =>
+      (
+        await gozlemci.query<{ durum: string; sahip_id: string }>(
+          'select durum, sahip_id from islenen_olay where tuketici = $1 and olay_id = $2',
+          ['d-sahiplik', olayId],
+        )
+      ).rows[0];
+    try {
+      const ilk = randomUUIDv7();
+      const devralan = randomUUIDv7();
+      expect(
+        await adim((r) =>
+          r.sahiplen('d-sahiplik', olayId, ilk, SAHIPLENME_SURESI_SN),
+        ),
+      ).toBe('sahiplenildi');
+      // İlk sahibin işleyicisi sahiplenme süresinden uzun sürer: bitiş geçmişe çekilir.
+      await gozlemci.query(
+        `update islenen_olay set sahiplenme_bitis_zamani = clock_timestamp() - interval '1 second'
+          where tuketici = $1 and olay_id = $2`,
+        ['d-sahiplik', olayId],
+      );
+      expect(
+        await adim((r) =>
+          r.sahiplen('d-sahiplik', olayId, devralan, SAHIPLENME_SURESI_SN),
+        ),
+      ).toBe('sahiplenildi');
+      expect(await satir()).toEqual({ durum: 'isleniyor', sahip_id: devralan });
+
+      await adim((r) => r.birak('d-sahiplik', olayId, ilk));
+      expect(await satir()).toEqual({ durum: 'isleniyor', sahip_id: devralan });
+
+      await adim((r) => r.tamamla('d-sahiplik', olayId, ilk));
+      expect(await satir()).toEqual({ durum: 'isleniyor', sahip_id: devralan });
+
+      await adim((r) => r.tamamla('d-sahiplik', olayId, devralan));
+      expect(await satir()).toEqual({
+        durum: 'tamamlandi',
+        sahip_id: devralan,
+      });
+    } finally {
+      await kapat();
+    }
+  });
+
+  it('GV-021 e) işleyici hata atıp bırakma adımı da hata verirse çağırana işleyicinin özgün hatası ulaşır; bırakma hatası gövdesiz günlüğe yazılır', async () => {
+    const { uow, kapat } = await surecAc();
+    // Kuyruk yerine işleyiciyi yakalayan sahte kapı: çağıranın gördüğü hata doğrudan okunur.
+    const yakalanan: { isleyici?: IsIsleyici } = {};
+    const sahteKuyruk: IsKuyrugu = {
+      koy: () => Promise.reject(new Error('kullanılmaz')),
+      dinle: (_kuyruk, isleyici) => {
+        yakalanan.isleyici = isleyici;
+        return Promise.resolve({ kapat: () => Promise.resolve() });
+      },
+      basarisizSayisi: () => Promise.resolve(0),
+    };
+    class BirakmaHatasi extends Error {}
+    const ozgunHata = new Error('işleyicinin özgün hatası');
+    const runCasusu = vi.spyOn(uow, 'run');
+    const gunlukCasusu = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      await tuketiciBaslat(uow, sahteKuyruk, 'e-birakma', () => {
+        // İşleyiciden sonraki ilk Unit of Work çağrısı bırakma adımıdır; o hata verir.
+        runCasusu.mockRejectedValueOnce(new BirakmaHatasi('bırakma bozuk'));
+        return Promise.reject(ozgunHata);
+      });
+      const is: KuyrukIsi = {
+        kimlik: randomUUIDv7(),
+        ad: 'ornek.olustu',
+        veri: { surum: 1, govde: { gizli: 'govde-degeri' } },
+      };
+
+      await expect(yakalanan.isleyici?.(is)).rejects.toBe(ozgunHata);
+      const iletiler = gunlukCasusu.mock.calls.map((c) => String(c[0]));
+      expect(iletiler).toEqual([
+        `e-birakma tüketicisi ${is.kimlik} olayının sahiplenmesini bırakamadı: BirakmaHatasi`,
+      ]);
+      expect(iletiler.join('\n')).not.toContain('govde-degeri');
+      // Bırakılamayan satır kalır; sahiplenme dolunca devralınır.
+      expect(await durum('e-birakma', is.kimlik)).toBe('isleniyor');
+    } finally {
+      gunlukCasusu.mockRestore();
+      runCasusu.mockRestore();
+      await kapat();
+    }
+  });
 });
 
 describe('i) kapanış', () => {
