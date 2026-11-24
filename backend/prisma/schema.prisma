@@ -1,0 +1,11 @@
+// Asıl veritabanının (dextra) şeması. Bağlantı adresi prisma.config.ts içinde verilir.
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/shared/database/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

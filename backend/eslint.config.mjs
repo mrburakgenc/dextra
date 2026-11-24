@@ -8,7 +8,13 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'eslint.config.mjs'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'coverage/**',
+      'eslint.config.mjs',
+      '**/generated/**',
+    ],
   },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
