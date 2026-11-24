@@ -12,7 +12,7 @@ CREATE TABLE "outbox_iz" (
     "sonraki_deneme_zamani" TIMESTAMPTZ,
     "son_hata" TEXT,
 
-    CONSTRAINT "outbox_iz_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "outbox_iz_ba" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -24,9 +24,9 @@ CREATE TABLE "outbox_olay" (
     "olusturma_zamani" TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     "aktarim_zamani" TIMESTAMPTZ,
 
-    CONSTRAINT "outbox_olay_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "outbox_olay_ba" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE INDEX "outbox_iz_olusturma_zamani_idx" ON "outbox_iz"("olusturma_zamani") WHERE (aktarim_zamani IS NULL);
+CREATE INDEX "outbox_iz_olusturma_zamani_dizin" ON "outbox_iz"("olusturma_zamani") WHERE (aktarim_zamani IS NULL);
 

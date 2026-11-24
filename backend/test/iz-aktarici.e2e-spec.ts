@@ -207,9 +207,9 @@ describe('a) iz şemasının ilk göçü', () => {
     );
     expect(dizinler.rows).toEqual([
       {
-        indexname: 'degisiklik_kaydi_pkey',
+        indexname: 'degisiklik_kaydi_ba',
         indexdef:
-          'CREATE UNIQUE INDEX degisiklik_kaydi_pkey ON public.degisiklik_kaydi USING btree (id)',
+          'CREATE UNIQUE INDEX degisiklik_kaydi_ba ON public.degisiklik_kaydi USING btree (id)',
       },
     ]);
     const yabanciAnahtarlar = await izSql.query(

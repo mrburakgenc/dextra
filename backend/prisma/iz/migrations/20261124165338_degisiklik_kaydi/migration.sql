@@ -18,5 +18,6 @@ CREATE TABLE "degisiklik_kaydi" (
     "olusma_zamani" TIMESTAMPTZ NOT NULL,
     "yazilma_zamani" TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 
-    CONSTRAINT "degisiklik_kaydi_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "degisiklik_kaydi_ba" PRIMARY KEY ("id")
 );
+
