@@ -20,7 +20,7 @@
     "max_tur": 80,
     "zaman_asimi_sn": 1800,
     "izin_modu": "bypassPermissions",
-    "onay": "baslangic",
+    "onay": "yok",
     "butce_usd": null,
     "izinli_araclar": [],
     "inceleme": "zorunlu",

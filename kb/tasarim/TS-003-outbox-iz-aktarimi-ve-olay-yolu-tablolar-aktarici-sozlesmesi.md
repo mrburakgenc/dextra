@@ -135,6 +135,10 @@ Görevlerin gerçekleşen dökümü ve kartlarda verilen tasarım kararları (20
   - Döngü parçası (GV-015): başlatma, süren adım varken ikinci bir zincir kurmaz; adımın hatası yutulmaz — son hata ve ardışık hata sayısı okunabilir ve her hata günlüğe yazılır (değer taşımadan: hata sınıfı ve kodu).
   - İz bağlantısı (GV-015): havuzun bağlantı kurma süresi de sınırlanır ve iz aktarıcısının süre bütçesine girer.
   - İz aktarıcısının hata sınıfı (GV-015): tek tek denemede partinin bütün satırları aynı sınıfta hata veriyorsa bu satır hatası değil parti hatası sayılır (iz şeması kırıcı biçimde değişmişse her satır aynı hatayı alır; hepsine "bozuk" damgası vurulmaz).
+- Onarım (GV-019 incelemesinin bulguları, 2026-11-24 gecesi; ajan kararı):
+  - Ana dalda kırmızı test: `test/test-database.e2e-spec.ts`, göçleri uygulanmış veritabanındaki tablo listesini birebir sayıyordu ve GV-017 `islenen_olay` tablosunu ekleyince kırıldı; ana oturum o dosyayı GV-017 alındıktan sonra koşturmadığı için fark edilmedi (ana oturumun hatası). Karar: test tablo listesini birebir saymaz, yardımcının işini gösteren tabloların varlığına bakar; şema değiştiren her kart, tablo sayan testleri arayıp bulmayı ve koşturmayı açıkça ister.
+  - Düzenli kapanış: `main.ts` süreç sinyallerini dinlemiyordu; gerçek süreçte kapanış kancaları koşmaz, döngüler ve dinleyiciler düzenli durmaz. Karar: uygulama kapanış kancalarını açar ve bu, derlenmiş uygulamaya sinyal gönderilerek sınanır.
+  - `bullmq` yasağı feature kodunda yalnız statik içe aktarmayı tutuyordu; dinamik içe aktarma da yasaklanır.
 - İncelemelerin açık bıraktıkları: kuyruk kapısının kimlik kısıtı (salt sayı ve iki nokta reddedilir) arayüzde yazmıyor; kuyruk bağdaştırıcısında hata olayına dinleyici bağlı değil; test veritabanının silinememesi iz bırakmadan yutuluyor.
 
 ## Doğrulama

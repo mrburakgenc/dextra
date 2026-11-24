@@ -1,4 +1,4 @@
-import type { OnApplicationShutdown } from '@nestjs/common';
+import { Logger, type OnApplicationShutdown } from '@nestjs/common';
 import {
   Queue,
   Worker,
@@ -8,19 +8,25 @@ import {
   type PostgresConnectionOptions,
   type PostgresQueueBackend,
 } from 'bullmq';
-import type {
-  Dinleyici,
-  IsIsleyici,
-  IsKuyrugu,
-  KuyrukIsi,
+import {
+  type Dinleyici,
+  GecersizIsKimligiHatasi,
+  type IsIsleyici,
+  type IsKuyrugu,
+  type KuyrukIsi,
 } from './is-kuyrugu.js';
 
 // Kuyruk tabloları asıl veritabanında bu şemada durur (TS-003 Seçenek 2).
 export const KUYRUK_SEMASI = 'kuyruk';
-// Kanondaki değer; uyarlaması ayrıca kararlaştırılacak.
-export const DENEME_SAYISI = 5;
-// Üstel aralığın ilk adımı: 1, 2, 4, 8 sn.
+// Yeniden deneme penceresi (1 + 2 + … + 64 = 127 sn) tüketici tabanının sahiplenme süresinden
+// uzun olsun diye 8'dir (TS-003 Sertleştirme); işçisi ölen olay, sahiplenme dolunca işlenir.
+export const DENEME_SAYISI = 8;
+// Üstel aralığın ilk adımı: 1, 2, 4, …, 64 sn.
 export const ILK_ARALIK_MS = 1000;
+
+// Kapının kimlik kısıtı (is-kuyrugu.ts): bullmq salt sayı ve iki nokta içeren özel kimliği kendi
+// iletisiyle reddeder; kapı onu paketten önce, kendi hatasıyla reddeder.
+const GECERSIZ_KIMLIK = /^[0-9]+$|:/;
 
 type Veri = KuyrukIsi['veri'];
 // Tip parametrelerinin varsayılanı Redis arka ucudur; PostgreSQL arka ucu açıkça yazılır.
@@ -45,7 +51,10 @@ type Isci = Worker<
 
 // İş kuyruğu kapısının bullmq ve PostgreSQL üzerindeki gerçeklemesi. Kuyruk ve dinleyiciler ilk
 // kullanımda açılır; uygulama kapanırken açılanların hepsi kapatılır.
+// Kuyruğun ve dinleyicinin hata olayı dinlenir ve günlüğe yazılır (kuyruğun adı ve hatanın
+// sınıfı; işin verisi yazılmaz).
 export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
+  private readonly gunluk = new Logger(BullmqIsKuyrugu.name);
   private readonly baglanti: { connectionString: string; schema: string };
   private readonly kuyruklar = new Map<string, Kuyruk>();
   private readonly dinleyiciler = new Set<Isci>();
@@ -55,6 +64,9 @@ export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
   }
 
   async koy(kuyruk: string, is: KuyrukIsi): Promise<void> {
+    if (GECERSIZ_KIMLIK.test(is.kimlik)) {
+      throw new GecersizIsKimligiHatasi();
+    }
     await this.kuyruk(kuyruk).add(is.ad, is.veri, { jobId: is.kimlik });
   }
 
@@ -66,6 +78,11 @@ export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
       { connection: this.baglanti },
       createPostgresBackend,
     );
+    worker.on('error', (hata) => {
+      this.gunluk.error(
+        `${kuyruk} kuyruğunun dinleyicisinde hata: ${hata.constructor.name}`,
+      );
+    });
     this.dinleyiciler.add(worker);
     await worker.waitUntilReady();
     return {
@@ -104,6 +121,9 @@ export class BullmqIsKuyrugu implements IsKuyrugu, OnApplicationShutdown {
         },
         createPostgresBackend,
       );
+      kuyruk.on('error', (hata) => {
+        this.gunluk.error(`${ad} kuyruğunda hata: ${hata.constructor.name}`);
+      });
       this.kuyruklar.set(ad, kuyruk);
     }
     return kuyruk;

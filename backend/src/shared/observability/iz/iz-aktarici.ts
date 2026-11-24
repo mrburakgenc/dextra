@@ -1,4 +1,7 @@
-import { IZ_YAZIM_SURE_SINIRI_MS } from '../../database/database.module.js';
+import {
+  IZ_BAGLANMA_SURE_SINIRI_MS,
+  IZ_YAZIM_SURE_SINIRI_MS,
+} from '../../database/database.module.js';
 import {
   type PrismaClient as IzPrismaClient,
   Prisma as IzPrisma,
@@ -28,26 +31,27 @@ export const TEMIZLIK_PARTI_BOYU = 1000;
 // İşlemin sonunda asıl veritabanındaki işaretlemelere ayrılan süre.
 const ISARETLEME_PAYI_MS = 1000;
 // Geçişin başından bu kadar süre geçtiyse yeni bir tek tek deneme başlatılmaz: en uzun deneme
-// (iz süre sınırı) ve işaretleme payı asıl işlemin süre sınırına sığar (TS-003 sözleşme 6).
+// (yeni bağlantı kurma süresi + ifade süresi) ve işaretleme payı asıl işlemin süre sınırına sığar
+// (TS-003 sözleşme 6). Değerler: 5000 - (1000 + 1000) - 1000 = 2000 ms.
+const EN_UZUN_DENEME_MS = IZ_BAGLANMA_SURE_SINIRI_MS + IZ_YAZIM_SURE_SINIRI_MS;
 const TEK_TEK_DENEME_SINIRI_MS =
-  ISLEM_SURE_SINIRI_MS - IZ_YAZIM_SURE_SINIRI_MS - ISARETLEME_PAYI_MS;
+  ISLEM_SURE_SINIRI_MS - EN_UZUN_DENEME_MS - ISARETLEME_PAYI_MS;
 
 // Partinin tamamını etkileyen hata: işlem geri alındı, hiçbir notun alanı değişmedi.
-// Asıl hata `cause` içindedir.
+// Asıl hata `cause` içindedir; `code` onun SQLSTATE'idir (yoksa undefined). Döngü günlüğe yalnız
+// sınıfı ve bu kodu yazar.
 export class PartiHatasi extends Error {
+  readonly code: string | undefined;
+
   constructor(cause: unknown) {
     super('İz aktarımında parti hatası; işlem geri alındı', { cause });
     this.name = 'PartiHatasi';
+    this.code = surucuKodu(cause);
   }
 }
 
-// Hata sınıflama kuralı (TS-003 sözleşme 4). Satır hatası yalnız şudur: Prisma'nın ham sorgu hatası
-// (P2010) ve sürücünün taşıdığı SQLSTATE ya 22 sınıfındadır (data exception: gövdedeki değer kolon
-// türüne uymuyor, ör. 22P02 bozuk uuid) ya da 23502'dir (not_null_violation: gövdede zorunlu alan
-// yok). İkisi de yalnız satırın verisinden doğar. Bağlantı hatası (SQLSTATE yoktur), süre aşımı
-// (57014, 55P03), tablo ya da kolon yok (42P01, 42703) ve tanınmayan her hata parti hatasıdır.
-// Satır hatasıysa SQLSTATE'i döner, değilse undefined.
-function satirHatasiKodu(hata: unknown): string | undefined {
+// Prisma'nın ham sorgu hatasında (P2010) sürücünün taşıdığı SQLSTATE; yoksa undefined.
+function surucuKodu(hata: unknown): string | undefined {
   if (
     !(hata instanceof IzPrisma.PrismaClientKnownRequestError) ||
     hata.code !== 'P2010'
@@ -57,7 +61,18 @@ function satirHatasiKodu(hata: unknown): string | undefined {
   const surucuHatasi = hata.meta?.['driverAdapterError'] as
     { cause?: { originalCode?: unknown } } | undefined;
   const kod = surucuHatasi?.cause?.originalCode;
-  if (typeof kod !== 'string') {
+  return typeof kod === 'string' ? kod : undefined;
+}
+
+// Hata sınıflama kuralı (TS-003 sözleşme 4). Satır hatası yalnız şudur: Prisma'nın ham sorgu hatası
+// (P2010) ve sürücünün taşıdığı SQLSTATE ya 22 sınıfındadır (data exception: gövdedeki değer kolon
+// türüne uymuyor, ör. 22P02 bozuk uuid) ya da 23502'dir (not_null_violation: gövdede zorunlu alan
+// yok). İkisi de yalnız satırın verisinden doğar. Bağlantı hatası (SQLSTATE yoktur), süre aşımı
+// (57014, 55P03), tablo ya da kolon yok (42P01, 42703) ve tanınmayan her hata parti hatasıdır.
+// Satır hatasıysa SQLSTATE'i döner, değilse undefined.
+function satirHatasiKodu(hata: unknown): string | undefined {
+  const kod = surucuKodu(hata);
+  if (kod === undefined) {
     return undefined;
   }
   return kod.startsWith('22') || kod === '23502' ? kod : undefined;
@@ -65,16 +80,24 @@ function satirHatasiKodu(hata: unknown): string | undefined {
 
 type IzSatiri = Record<string, unknown> & { id: string };
 
+// Satır hatası: SQLSTATE ve sürücünün asıl hatası.
+interface SatirHatasi {
+  kod: string;
+  hata: unknown;
+}
+
 // outbox_iz notlarını iz veritabanının degisiklik_kaydi tablosuna taşır (TS-003 sözleşme 1–6, 9).
 // İz veritabanına Unit of Work değil, bu parça kendi istemcisiyle yazar (KR-011).
 export class IzAktarici {
   private readonly aktarimDongusu = new Dongu({
+    ad: 'iz-aktarim',
     adim: async () => (await this.gecis()) === PARTI_BOYU,
     bosBeklemeMs: BOS_BEKLEME_MS,
     hataBeklemeTabanMs: PARTI_HATASI_TABAN_BEKLEME_MS,
     hataBeklemeUstMs: PARTI_HATASI_UST_BEKLEME_MS,
   });
   private readonly temizlikDongusu = new Dongu({
+    ad: 'iz-temizlik',
     adim: async () => (await this.temizle()) === TEMIZLIK_PARTI_BOYU,
     bosBeklemeMs: TEMIZLIK_ARALIGI_MS,
     hataBeklemeTabanMs: PARTI_HATASI_TABAN_BEKLEME_MS,
@@ -127,22 +150,41 @@ export class IzAktarici {
         // Toplu yazımı bir satırın verisi bozdu; satırlar tek tek denenir. Süreye sığmayanlar
         // dokunulmadan sonraki geçişe kalır.
         const aktarilanlar: string[] = [];
-        let sonuclanan = 0;
+        const hatalilar: (SatirHatasi & { id: string })[] = [];
         for (const satir of satirlar) {
           if (performance.now() - baslangic > TEK_TEK_DENEME_SINIRI_MS) {
             break;
           }
-          const kod = await this.izeYaz([satir]);
-          if (kod === undefined) {
+          const satirHatasi = await this.izeYaz([satir]);
+          if (satirHatasi === undefined) {
             aktarilanlar.push(satir.id);
           } else {
-            // Yalnız sınıf yazılır; hatanın metni gövdedeki değeri taşıyabilir.
-            await repo.satirHatasiIsaretle(satir.id, `SQLSTATE ${kod}`);
+            hatalilar.push({ id: satir.id, ...satirHatasi });
           }
-          sonuclanan += 1;
+        }
+        // Parti mi, satır mı: birden çok satırlı partinin bütün satırları denendi ve hepsi aynı
+        // SQLSTATE ile düştüyse sorun satırların verisinde değil iz tarafındadır (ör. iz şeması
+        // kırıcı biçimde değişti); hiçbir satıra damga vurulmaz, asıl hata atılır, işlem geri
+        // alınır. Hiçbir satır yazılmadığı için iz tarafında da geri alınacak bir şey yoktur.
+        // Sınır: tek satırlık partide bu ayrım yapılamaz; o satır satır hatası sayılıp ertelenir.
+        const [ilkHata] = hatalilar;
+        if (
+          satirlar.length > 1 &&
+          ilkHata !== undefined &&
+          hatalilar.length === satirlar.length &&
+          hatalilar.every((satirHatasi) => satirHatasi.kod === ilkHata.kod)
+        ) {
+          throw ilkHata.hata;
+        }
+        for (const satirHatasi of hatalilar) {
+          // Yalnız sınıf yazılır; hatanın metni gövdedeki değeri taşıyabilir.
+          await repo.satirHatasiIsaretle(
+            satirHatasi.id,
+            `SQLSTATE ${satirHatasi.kod}`,
+          );
         }
         await repo.aktarildiIsaretle(aktarilanlar);
-        return sonuclanan;
+        return aktarilanlar.length + hatalilar.length;
       });
     } catch (hata) {
       throw new PartiHatasi(hata);
@@ -161,10 +203,10 @@ export class IzAktarici {
   }
 
   // Tek ifade, açık işleme sarılmaz, kendi başına onaylanır. Aynı kimlik ikinci kez yazılmaz, hata
-  // da vermez. Başarıda undefined, satır hatasında SQLSTATE döner; parti hatası atılır.
+  // da vermez. Başarıda undefined, satır hatasında SQLSTATE ve asıl hata döner; parti hatası atılır.
   private async izeYaz(
     satirlar: readonly IzSatiri[],
-  ): Promise<string | undefined> {
+  ): Promise<SatirHatasi | undefined> {
     try {
       await this.izIstemci.$executeRaw`
         insert into degisiklik_kaydi (
@@ -183,7 +225,7 @@ export class IzAktarici {
       if (kod === undefined) {
         throw hata;
       }
-      return kod;
+      return { kod, hata };
     }
   }
 }

@@ -3,13 +3,18 @@
 // işleyiciyi çağır → tamamlandı yaz; işleyici hata atarsa sahiplenme bırakılır.
 // Kabul edilen sınır: işleyici başarıyla bitip "tamamlandı" yazılamadan süreç ölürse süre dolunca
 // olay yeniden işlenir. Bu yüzden işleyicinin çağırdığı komut tekrar güvenli yazılır.
+import { Logger } from '@nestjs/common';
 import { z } from 'zod';
+import { yeniKimlik } from '../../database/kimlik.js';
 import type { UnitOfWork } from '../../database/unit-of-work.js';
 import type { IsKuyrugu, KuyrukIsi } from '../kuyruk/is-kuyrugu.js';
 import { ISLENEN_OLAY_REPO } from './islenen-olay.repository.js';
 
-// Sahiplenmenin süresi; dolunca başka işçi devralabilir.
+// Sahiplenmenin süresi; dolunca başka işçi devralabilir. Kuyruğun yeniden deneme penceresi bundan
+// uzun tutulur (testle): işçisi ölen olay, sahiplenme dolduktan sonraki bir denemede işlenir.
 export const SAHIPLENME_SURESI_SN = 60;
+
+const gunluk = new Logger('TuketiciTabani');
 
 // İşleyiciye verilen zarf. Kuyruk işinin kimliği olayın kimliği, adı olayın adıdır; sürüm ve
 // gövde işin verisindedir.
@@ -54,11 +59,13 @@ async function olayiIsle(
 ): Promise<void> {
   const { surum, govde } = isVerisi.parse(is.veri);
   const zarf: Zarf = { id: is.kimlik, ad: is.ad, surum, govde };
+  // Her sahiplenme denemesi yeni sahip kimliğiyle yapılır; devralma da yeni kimlik yazar.
+  const sahipId = yeniKimlik();
 
   const sonuc = await uow.run((islem) =>
     islem
       .repo(ISLENEN_OLAY_REPO)
-      .sahiplen(tuketici, zarf.id, SAHIPLENME_SURESI_SN),
+      .sahiplen(tuketici, zarf.id, sahipId, SAHIPLENME_SURESI_SN),
   );
   if (sonuc === 'tamamlandi') {
     return;
@@ -73,12 +80,24 @@ async function olayiIsle(
   try {
     await isleyici(zarf);
   } catch (error) {
-    await uow.run((islem) =>
-      islem.repo(ISLENEN_OLAY_REPO).birak(tuketici, zarf.id),
-    );
+    // Bırakma da hata verirse çağırana işleyicinin özgün hatası gider; bırakma hatası yalnız
+    // günlüğe yazılır (olayın gövdesi yazılmaz). Satır kalırsa sahiplenme dolunca devralınır.
+    await uow
+      .run((islem) =>
+        islem.repo(ISLENEN_OLAY_REPO).birak(tuketici, zarf.id, sahipId),
+      )
+      .catch((birakmaHatasi: unknown) => {
+        gunluk.error(
+          `${tuketici} tüketicisi ${zarf.id} olayının sahiplenmesini bırakamadı: ${hataSinifi(birakmaHatasi)}`,
+        );
+      });
     throw error;
   }
   await uow.run((islem) =>
-    islem.repo(ISLENEN_OLAY_REPO).tamamla(tuketici, zarf.id),
+    islem.repo(ISLENEN_OLAY_REPO).tamamla(tuketici, zarf.id, sahipId),
   );
+}
+
+function hataSinifi(hata: unknown): string {
+  return hata instanceof Error ? hata.constructor.name : typeof hata;
 }
