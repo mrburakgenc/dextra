@@ -29,6 +29,9 @@ import { GenelSayac } from './_shared/genel-sayac.js';
 import { KisiKilidi } from './_shared/kisi-kilidi.js';
 import { KisininSayisi } from './_shared/kisinin-sayisi.js';
 import { KokUyelik } from './_shared/kok-uyelik.js';
+import { OturumDenetimiHandler } from './oturum/application/oturum-denetimi.handler.js';
+import { OTURUM_DENETIMI_REPO } from './oturum/domain/oturum-denetimi.repository.js';
+import { oturumDenetimiPrismaRepository } from './oturum/infrastructure/oturum-denetimi.prisma-repository.js';
 import { TohumYardimcisi } from './_shared/tohum-yardimcisi.js';
 import {
   KIMLIK_KURULUM_GOCU,
@@ -63,7 +66,10 @@ import { ParolaController } from './parola/presentation/parola.controller.js';
     { provide: ParolaOzetleyici, useClass: Argon2idParolaOzetleyici },
     ParolaBelirleHandler,
     KurulumBaglantisiHandler,
+    OturumDenetimiHandler,
   ],
+  // Sözleşmeyi uygulayan sınıf; sözleşmeye kök modülde bağlanır (TS-002 "Yapı").
+  exports: [OturumDenetimiHandler],
 })
 export class KimlikModule {
   constructor(
@@ -81,5 +87,6 @@ export class KimlikModule {
     );
     registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
     registrar.register(PAROLA_REPO, parolaPrismaRepository);
+    registrar.register(OTURUM_DENETIMI_REPO, oturumDenetimiPrismaRepository);
   }
 }
