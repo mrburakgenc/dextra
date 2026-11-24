@@ -39,6 +39,10 @@ import {
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
 } from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+import {
+  YALNIZ_KENDISI_LISTESI,
+  YALNIZ_KENDISI_UCLARI,
+} from '../src/shared/guvenlik/yalniz-kendisi-listesi.js';
 import { HealthController } from '../src/shared/health/health.controller.js';
 import {
   type IstekOturumu,
@@ -209,10 +213,14 @@ async function kalanVeritabanlari(adlar: readonly string[]): Promise<string[]> {
 beforeAll(async () => {
   databases = await createAppDatabases({ migrations: true });
   try {
+    // Yalnız kendisi sınama ucu sayılı listeye yalnız bu testte eklenir (AK-33).
     const modul = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [GuardSinamaUclari],
-    }).compile();
+    })
+      .overrideProvider(YALNIZ_KENDISI_LISTESI)
+      .useValue([...YALNIZ_KENDISI_UCLARI, 'GuardSinamaUclari.kendisi'])
+      .compile();
     app = modul.createNestApplication();
     await app.init();
     gozlemci = new pg.Client({ connectionString: databases.asil.url });
