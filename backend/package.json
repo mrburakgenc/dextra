@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "prisma:generate": "prisma generate && prisma generate --config prisma.iz.config.ts"
+    "prisma:generate": "prisma generate && prisma generate --config prisma.iz.config.ts && prisma generate --config test/deneme/prisma.config.ts"
   },
   "dependencies": {
     "@casl/ability": "^7.1.3",
