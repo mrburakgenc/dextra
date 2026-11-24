@@ -453,6 +453,30 @@ class IsciKomutu(Ortam):
         self.assertEqual(sorted(argv[i + 1:i + 4]), ["Agent", "Task", "Workflow"])   # web açılır, alt ajan yine kapalı
         self.assertEqual(json.loads(self._deger(argv, "--settings"))["permissions"]["deny"], ["Read(~/ozel/**)"])
 
+    def _yasaklar(self, argv):
+        i = argv.index("--disallowedTools") + 1
+        j = next((k for k in range(i, len(argv)) if argv[k].startswith("--")), len(argv))
+        return sorted(argv[i:j])
+
+    def test_orkestrasyon_acilirsa_alt_ajan_ve_is_akisi_yasagi_kalkar(self):
+        self.assertEqual(self._yasaklar(self._argv()), ["Agent", "Task", "WebFetch", "WebSearch", "Workflow"])
+        self.assertEqual(self._yasaklar(self._argv(orkestrasyon=True)), ["WebFetch", "WebSearch"])
+        self.assertNotIn("--disallowedTools", self._argv(orkestrasyon=True, ag_araclari=True))
+
+    def test_efor_ayari_isciye_bayrakla_gecer(self):
+        self.assertEqual(self._deger(self._argv(efor="xhigh"), "--effort"), "xhigh")
+        self.assertNotIn("--effort", self._argv())
+
+    def test_inceleyici_orkestrasyon_yapamaz_ve_kendi_eforunu_alir(self):
+        kok = gorev_deposu(orkestrasyon=True, efor="xhigh", inceleme_efor="high")
+        kimlik = dolu_kart(kok)
+        gorev.kos(kok, kimlik)
+        gorev.incele(kok, kimlik)
+        yol = agac(kok, kimlik) / ".harness/gorev" / kimlik / "argv-inceleyici.json"
+        argv = json.loads(yol.read_text(encoding="utf-8"))
+        self.assertEqual(self._yasaklar(argv), ["Agent", "Task", "WebFetch", "WebSearch", "Workflow"])
+        self.assertEqual(self._deger(argv, "--effort"), "high")
+
     def test_isci_ust_oturumun_ortamini_devralmaz(self):
         ust = {"CLAUDE_CODE_SESSION_ID": "ust-oturum", "CLAUDE_EFFORT": "high", "CLAUDECODE": "1",
                "CLAUDE_PROJECT_DIR": "/baska/yer"}
