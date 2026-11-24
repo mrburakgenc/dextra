@@ -28,6 +28,7 @@ const PRISMA_KODLARI: Readonly<Record<string, 'cakisma' | 'yeniden_dene'>> = {
 };
 
 const SABIT_ILETILER = {
+  dogrulama_hatasi: 'İstek doğrulanamadı',
   cakisma: 'Kayıt başka bir kayıtla çakışıyor',
   yeniden_dene: 'İşlem tamamlanamadı; yeniden deneyin',
   beklenmeyen_hata: 'Beklenmeyen bir hata oluştu',
@@ -41,8 +42,8 @@ const DURUM_KODLARI = new Map<number, HataKodu>(
   ]),
 );
 
-// Bütün uçların tek hata süzgeci (TS-002 AK-11). Kodlu olmayan hata beklenmeyen_hata olur;
-// cevap iç ayrıntı taşımaz, hata günlüğe yazılır.
+// Bütün uçların tek hata süzgeci (TS-002 AK-11, AK-26). Kodlu olmayan hata beklenmeyen_hata olur;
+// cevap iç ayrıntı taşımaz. 5xx üreten her hata istek kimliğiyle günlüğe yazılır; 4xx yazılmaz.
 @Catch()
 export class HataSuzgeci implements ExceptionFilter {
   private readonly gunluk = new Logger(HataSuzgeci.name);
@@ -57,7 +58,14 @@ export class HataSuzgeci implements ExceptionFilter {
     if (!yanit.hasHeader(ISTEK_KIMLIGI_BASLIGI)) {
       yanit.setHeader(ISTEK_KIMLIGI_BASLIGI, yeniKimlik());
     }
-    this.adaptor.httpAdapter.reply(yanit, cevap, HATA_DURUMLARI[cevap.kod]);
+    const durum = HATA_DURUMLARI[cevap.kod];
+    if (durum >= 500) {
+      const istekKimligi = String(yanit.getHeader(ISTEK_KIMLIGI_BASLIGI));
+      this.gunluk.error(
+        `istek ${istekKimligi}: ${String(hata instanceof Error ? hata.stack : hata)}`,
+      );
+    }
+    this.adaptor.httpAdapter.reply(yanit, cevap, durum);
   }
 
   private cevir(hata: unknown): HataCevabi {
@@ -75,12 +83,20 @@ export class HataSuzgeci implements ExceptionFilter {
       }
     }
     if (hata instanceof HttpException) {
-      const kod = DURUM_KODLARI.get(hata.getStatus());
+      const durum = hata.getStatus();
+      const kod = DURUM_KODLARI.get(durum);
       if (kod !== undefined && kod !== 'beklenmeyen_hata') {
         return { kod, ileti: hata.message, ayrinti: null };
       }
+      // Tabloda karşılığı olmayan istemci hatası (ör. gövde çok büyük, 413) 500 dönmez (AK-26).
+      if (durum >= 400 && durum < 500) {
+        return {
+          kod: 'dogrulama_hatasi',
+          ileti: SABIT_ILETILER.dogrulama_hatasi,
+          ayrinti: null,
+        };
+      }
     }
-    this.gunluk.error(hata instanceof Error ? hata.stack : String(hata));
     return {
       kod: 'beklenmeyen_hata',
       ileti: SABIT_ILETILER.beklenmeyen_hata,

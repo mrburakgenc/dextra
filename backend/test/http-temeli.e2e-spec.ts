@@ -48,6 +48,23 @@ const hataKoduSemasi = z.enum(
   Object.keys(HATA_DURUMLARI) as [HataKodu, ...HataKodu[]],
 );
 
+// TS-002 AK-11 tablosu, testte sabit yazılmıştır (AK-26): beklenen durumlar uygulamanın tablosundan
+// okunmaz; uygulamada bir kodun durumu değişirse test kırmızıya döner.
+const AK_11_TABLOSU = [
+  ['dogrulama_hatasi', 400],
+  ['kimlik_gerekli', 401],
+  ['yetki_yok', 403],
+  ['bulunamadi', 404],
+  ['cakisma', 409],
+  ['beklenmeyen_hata', 500],
+  ['yeniden_dene', 503],
+] as const;
+
+// Süzgecin günlüğü Nest Logger'ının örnek yöntemiyle yazılır; hata düzeyi Logger.prototype.error'dır.
+function hataGunluguGozle() {
+  return vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+}
+
 @Controller('sinama')
 class SinamaController {
   constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
@@ -221,7 +238,7 @@ describe('HTTP temeli', () => {
   });
 
   describe('b) kodlu hata', () => {
-    it.each(Object.entries(HATA_DURUMLARI))(
+    it.each(AK_11_TABLOSU)(
       '%s kodu %i durumunu ve { kod, ileti, ayrinti } gövdesini üretir',
       async (kod, durum) => {
         const cevap = await request(sunucu()).get(`/sinama/kodlu/${kod}`);
@@ -362,6 +379,93 @@ describe('HTTP temeli', () => {
 
     it('istek dışında bağlam okunursa hata verir', () => {
       expect(() => istekBaglami()).toThrow('İstek bağlamı yok');
+    });
+  });
+
+  describe('f) sertleştirme (AK-26)', () => {
+    let hataGunlugu: ReturnType<typeof hataGunluguGozle>;
+
+    beforeEach(() => {
+      hataGunlugu = hataGunluguGozle();
+    });
+
+    afterEach(() => {
+      hataGunlugu.mockRestore();
+    });
+
+    it("100 kB'tan büyük JSON gövdesi (413) 400 dogrulama_hatasi döner; ileti iç ayrıntı taşımaz, hata günlüğüne yazılmaz", async () => {
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .send({ ad: 'a'.repeat(101 * 1024) });
+
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toEqual({
+        kod: 'dogrulama_hatasi',
+        ileti: 'İstek doğrulanamadı',
+        ayrinti: null,
+      });
+      expect(cevap.text).not.toMatch(/large|entity|limit/i);
+      expect(hataGunlugu).not.toHaveBeenCalled();
+    });
+
+    it('desteklenmeyen içerik türüyle gönderilen gövde 400 dogrulama_hatasi döner; 500 dönmez', async () => {
+      // Ölçülen: hiçbir ayrıştırıcı eşleşmez, gövde tanımsız kalır ve hatayı doğrulama borusu
+      // verir (ayrıntıda alan ''); 415 üretilmez.
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .set('content-type', 'application/xml')
+        .send('<ad>Ada</ad>');
+
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toMatchObject({ kod: 'dogrulama_hatasi' });
+      expect(hataGunlugu).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['yeniden_dene', '/sinama/kilitlenme', 503],
+      ['kodla atılan beklenmeyen_hata', '/sinama/kodlu/beklenmeyen_hata', 500],
+      ['kodsuz hata', '/sinama/beklenmeyen', 500],
+    ])(
+      '%s (%s) %i döner ve günlüğe istek kimliğini taşıyan bir kayıt düşer',
+      async (_dal, yol, durum) => {
+        const cevap = await request(sunucu()).get(yol);
+
+        expect(cevap.status).toBe(durum);
+        const istekKimligi = cevap.headers[ISTEK_KIMLIGI_BASLIGI];
+        expect(istekKimligi).toMatch(UUID_V7);
+        expect(hataGunlugu).toHaveBeenCalledTimes(1);
+        expect(hataGunlugu).toHaveBeenCalledWith(
+          expect.stringContaining(String(istekKimligi)),
+        );
+      },
+    );
+
+    it.each([
+      ['kodlu dogrulama_hatasi', 'get', '/sinama/kodlu/dogrulama_hatasi', 400],
+      ['kodlu kimlik_gerekli', 'get', '/sinama/kodlu/kimlik_gerekli', 401],
+      ['kodlu yetki_yok', 'get', '/sinama/kodlu/yetki_yok', 403],
+      ['kodlu bulunamadi', 'get', '/sinama/kodlu/bulunamadi', 404],
+      ['kodlu cakisma', 'get', '/sinama/kodlu/cakisma', 409],
+      ['eşleşmeyen yol', 'get', '/yok', 404],
+      ['tekil kısıt', 'post', '/sinama/tekil', 409],
+    ] as const)(
+      '%s (%s %s) %i döner ve hata düzeyinde günlüğe yazılmaz',
+      async (_dal, yontem, yol, durum) => {
+        const cevap = await request(sunucu())[yontem](yol);
+
+        expect(cevap.status).toBe(durum);
+        expect(hataGunlugu).not.toHaveBeenCalled();
+      },
+    );
+
+    it('bozuk JSON gövdesi 400 döner ve hata düzeyinde günlüğe yazılmaz', async () => {
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .set('content-type', 'application/json')
+        .send('{"ad":');
+
+      expect(cevap.status).toBe(400);
+      expect(hataGunlugu).not.toHaveBeenCalled();
     });
   });
 });
