@@ -2,6 +2,8 @@ import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/client.js';
 import { PrismaClient as IzPrismaClient } from './iz/generated/client.js';
+import { Registrar, RepoKayitlari } from './registrar.js';
+import { UnitOfWork } from './unit-of-work.js';
 
 // Asıl veritabanının (dextra) istemcisi bu belirteçle enjekte edilir.
 export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
@@ -37,8 +39,20 @@ export const IZ_PRISMA_CLIENT = Symbol('IZ_PRISMA_CLIENT');
         });
       },
     },
+    RepoKayitlari,
+    // Dışa yalnız kayıt yüzü verilir; kuran yüz (RepoKayitlari) modülün içinde kalır.
+    { provide: Registrar, useExisting: RepoKayitlari },
+    {
+      // Unit of Work yalnız asıl veritabanının istemcisini alır (KR-011).
+      provide: UnitOfWork,
+      useFactory: (
+        istemci: PrismaClient,
+        kayitlar: RepoKayitlari,
+      ): UnitOfWork => new UnitOfWork(istemci, kayitlar),
+      inject: [PRISMA_CLIENT, RepoKayitlari],
+    },
   ],
-  exports: [PRISMA_CLIENT, IZ_PRISMA_CLIENT],
+  exports: [PRISMA_CLIENT, IZ_PRISMA_CLIENT, Registrar, UnitOfWork],
 })
 export class DatabaseModule implements OnApplicationShutdown {
   constructor(

@@ -568,6 +568,18 @@ def _agac_ac(kok: pathlib.Path, kimlik: str, d: dict) -> pathlib.Path:
     return agac
 
 
+def _onceki_bulgular(kayit: pathlib.Path) -> str:
+    """Yeniden koşuda işçiye, işini geri çeviren incelemenin bulgularını verir; öyle bir inceleme yoksa boş metin."""
+    yol = kayit / "inceleme.json"
+    onceki = _json_oku(yol) if yol.is_file() else {}
+    if onceki.get("hukum") != "kaldi":
+        return ""
+    satirlar = ["- [%s] %s:%s — %s" % (b["onem"], b["dosya"], b["satir"], b["aciklama"]) for b in onceki["bulgular"]]
+    return ("\n\n## Önceki incelemenin bulguları\nBu görev daha önce koştu ve inceleme geçirmedi. Önceki koşunun işi "
+            "çalışma ağacında duruyor; baştan yazma, şu bulguları kapat (engel olanlar zorunludur):\n"
+            + "\n".join(satirlar) + "\n")
+
+
 def kos(kok: pathlib.Path, kimlik: str) -> dict:
     """Görevi kendi çalışma ağacında koşturur, sonra kapsamı, bitiş kaydını ve zinciri ölçer."""
     kok = pathlib.Path(kok)
@@ -604,7 +616,7 @@ def kos(kok: pathlib.Path, kimlik: str) -> dict:
 
     basla = datetime.datetime.now()
     komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
-    cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart, agac, kimlik, d["rol"], g["model"])
+    cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit), agac, kimlik, d["rol"], g["model"])
     (kayit / "sonuc.json").write_text(cikti or "", encoding="utf-8")
     uyarilar = []
     for komsu, once in komsular.items():   # işçi kendi ağacından çıkıp orchestrator'ın ya da ana ağacın dosyasına yazdı mı
