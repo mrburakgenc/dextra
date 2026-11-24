@@ -90,3 +90,50 @@ export async function createTestDatabase(
   }
   return database;
 }
+
+export interface AppDatabases {
+  readonly asil: TestDatabase;
+  readonly iz: TestDatabase;
+  // Adresleri geri yükler ve iki veritabanını siler.
+  drop(): Promise<void>;
+}
+
+function restoreEnv(name: string, saved: string | undefined): void {
+  if (saved === undefined) {
+    Reflect.deleteProperty(process.env, name);
+  } else {
+    process.env[name] = saved;
+  }
+}
+
+// Uygulamayı bütünüyle açan testler için asıl ve iz geçici veritabanlarını açar (istenirse iki
+// şemanın göçleriyle) ve uygulamanın okuduğu adresleri (DATABASE_URL, IZ_DATABASE_URL) onlara
+// çevirir; uygulama kalıcı veritabanlarına (dextra, dextra_iz) bağlanmaz.
+export async function createAppDatabases({
+  migrations,
+}: {
+  migrations: boolean;
+}): Promise<AppDatabases> {
+  const asil = await createTestDatabase([], { migrations });
+  let iz: TestDatabase;
+  try {
+    iz = await createTestDatabase([], { izMigrations: migrations });
+  } catch (error) {
+    await asil.drop();
+    throw error;
+  }
+  const savedUrl = process.env['DATABASE_URL'];
+  const savedIzUrl = process.env['IZ_DATABASE_URL'];
+  process.env['DATABASE_URL'] = asil.url;
+  process.env['IZ_DATABASE_URL'] = iz.url;
+  return {
+    asil,
+    iz,
+    drop: async () => {
+      restoreEnv('DATABASE_URL', savedUrl);
+      restoreEnv('IZ_DATABASE_URL', savedIzUrl);
+      await asil.drop();
+      await iz.drop();
+    },
+  };
+}
