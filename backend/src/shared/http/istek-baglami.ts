@@ -21,14 +21,19 @@ export interface IstekBaglami {
   readonly istekKimligi: string;
   readonly oturum?: IstekOturumu;
   readonly yetki?: DerlemeSonucu;
+  // Yazma işareti (TS-002 AK-40): bu istekte Unit of Work'ün run kapısı çağrıldıysa doğrudur; işlem
+  // sonradan geri alınsa da doğru kalır. Yalnız Unit of Work yazar; erişim kaydı salt okuma isteğini
+  // bununla tanır (KR-013 Seçim 6).
+  readonly yazmaAcildi: boolean;
 }
 
-// Depodaki nesne; oturum alanını yalnız istekOturumunuYaz, yetki alanını yalnız istekYetkisiniYaz
-// doldurur, dışarıya IstekBaglami olarak verilir.
+// Depodaki nesne; oturum alanını yalnız istekOturumunuYaz, yetki alanını yalnız istekYetkisiniYaz,
+// yazma işaretini yalnız istekteYazmaAcildi doldurur, dışarıya IstekBaglami olarak verilir.
 interface DepodakiBaglam {
   istekKimligi: string;
   oturum?: IstekOturumu;
   yetki?: DerlemeSonucu;
+  yazmaAcildi: boolean;
 }
 
 const depo = new AsyncLocalStorage<DepodakiBaglam>();
@@ -40,7 +45,10 @@ export function istekBaglamiAraKatmani(
   cevap: ServerResponse,
   sonraki: () => void,
 ): void {
-  const baglam: DepodakiBaglam = { istekKimligi: yeniKimlik() };
+  const baglam: DepodakiBaglam = {
+    istekKimligi: yeniKimlik(),
+    yazmaAcildi: false,
+  };
   cevap.setHeader(ISTEK_KIMLIGI_BASLIGI, baglam.istekKimligi);
   depo.run(baglam, sonraki);
 }
@@ -48,6 +56,20 @@ export function istekBaglamiAraKatmani(
 // Koşan isteğin bağlamı; bir isteğin dışında (ör. arka plan döngüsünde) çağrılırsa hata verir.
 export function istekBaglami(): IstekBaglami {
   return yazilabilirBaglam();
+}
+
+// Koşan isteğin bağlamı; bir isteğin dışında çağrılırsa hata vermez, tanımsız döner.
+export function varsaIstekBaglami(): IstekBaglami | undefined {
+  return depo.getStore();
+}
+
+// Yazma işaretini koyar; yalnız Unit of Work'ün run kapısı çağırır. İstek dışında (arka plan döngüsü,
+// komut, tohum) hiçbir şey yapmaz.
+export function istekteYazmaAcildi(): void {
+  const baglam = depo.getStore();
+  if (baglam !== undefined) {
+    baglam.yazmaAcildi = true;
+  }
 }
 
 // Doğrulanan oturumu bağlama yazar; yalnız kimlik guard'ı çağırır.
