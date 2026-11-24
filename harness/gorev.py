@@ -611,16 +611,23 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
     d = _durum_oku(kok, kimlik, kayit)
     if d.get("alindi") or d["durum"] == "atildi":
         raise h.HarnessHata("%s kapanmış (%s); yeniden koşturulamaz" % (kimlik, asama(d, {}, True)[1]))
-    onceki_kayit = ""
-    if cevap:                       # soruyla duran işçi cevabı ve kendi önceki bitiş kaydını alır; kayıt aşağıda silinir
-        onceki = _json_oku(kayit / "bitis.json")
+    onceki = _json_oku(kayit / "bitis.json")    # aşağıda silinir; soru ya da sorun varsa işçiye geri verilir
+    onceki_sorunlar = _json_oku(kayit / "rapor.json").get("sorunlar") or []
+    if cevap:
         if d["durum"] != "soru" or not onceki.get("soru"):
             raise h.HarnessHata("%s soruyla durmadı; --cevap yalnız soruyla duran göreve verilir" % kimlik)
         eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
         _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [{"soru": onceki["soru"], "cevap": cevap}]})
-        onceki_kayit = ("\n\n## Önceki bitiş kaydın\nBu görev daha önce koştu ve soruyla durdu. Önceki koşunun işi "
-                        "çalışma ağacında duruyor; baştan yazma, cevaba göre sürdür ve bitiş kaydını yeniden yaz.\n"
-                        "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
+    onceki_kayit = ""
+    if onceki_sorunlar:             # araç sorun ölçtüyse işçi neyi gidereceğini bilir; iş baştan yapılmaz
+        onceki_kayit += ("\n\n## Önceki koşuda aracın ölçtüğü sorunlar\nBu görev daha önce koştu ve araç şu sorunları "
+                         "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
+                         "ve bitiş kaydını yeniden yaz:\n"
+                         + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
+    if onceki and (cevap or onceki_sorunlar):
+        onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
+                         "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
+                         "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
     kart = (kayit / "kart.md").read_text(encoding="utf-8")
     if HEDEF_YERTUTUCU in kart or OLCUT_YERTUTUCU in kart:
         raise h.HarnessHata("%s kartında hedef ya da kabul ölçütü doldurulmamış" % kimlik)

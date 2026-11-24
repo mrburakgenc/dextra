@@ -604,6 +604,16 @@ class Inceleme(Ortam):
         inceleyici_istemi = self._inceleyici_argv(kok, kimlik)
         self.assertIn("Cevap: CEVAP-ISARETI-8804", inceleyici_istemi[inceleyici_istemi.index("-p") + 1])
 
+    def test_sorunlu_kosumdan_sonra_isci_olculen_sorunu_ve_onceki_kaydini_alir(self):
+        os.environ["SAHTE_MOD"] = "kapsam-disi"
+        kok, kimlik = self._kosmus()
+        self.assertNotIn("aracın ölçtüğü sorunlar", self._isci_istemi(kok, kimlik))
+        os.environ["SAHTE_MOD"] = "tamam"
+        gorev.kos(kok, kimlik)
+        istem = self._isci_istemi(kok, kimlik)
+        for beklenen in ("aracın ölçtüğü sorunlar", "[kapsam-disi]", "Önceki bitiş kaydın", "OZET-ISARETI-7391"):
+            self.assertIn(beklenen, istem)
+
     def test_soruyla_durmayan_goreve_cevap_verilemez(self):
         kok, kimlik = self._kosmus()
         with self.assertRaises(h.HarnessHata):
