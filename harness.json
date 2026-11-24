@@ -28,6 +28,8 @@
     "yalitim": "proje",
     "kum_havuzu": true,
     "ag_izinli": [],
+    "yerel_ag": true,
+    "hazirlik": ["pnpm", "install", "--offline", "--frozen-lockfile"],
     "ag_araclari": false
   }
 }

@@ -67,6 +67,9 @@ VARSAYILAN_AYAR = {
               # yalitim "proje": oturum yalnız projenin ayarlarını yükler (kişisel CLAUDE.md, hook, izin, MCP gitmez)
               # kum_havuzu: komutlar işletim sistemi kum havuzunda koşar; yalnız kendi ağacına ve geçici klasöre yazar
               "yalitim": "proje", "kum_havuzu": True, "ag_izinli": [],
+              # yerel_ag: kum havuzundaki komutlar yerel adresteki kapılara bağlanabilir (macOS); dinleyen bütün
+              # yerel servisleri kapsar · hazirlik: ağaç açılınca, kum havuzunun dışında koşan komut (argüman listesi)
+              "yerel_ag": False, "hazirlik": [],
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",
