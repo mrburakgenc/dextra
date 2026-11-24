@@ -24,6 +24,7 @@ import {
   PartiHatasi,
 } from '../src/shared/observability/iz/iz-aktarici.js';
 import { outboxIzRepoKaydet } from '../src/shared/observability/iz/outbox-iz.repository.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
@@ -186,13 +187,13 @@ afterAll(async () => {
   try {
     // Silmeden önce: test veritabanlarına açık bağlantı kalmamıştır (sunucu süreci kapanışı
     // istemciden az sonra bitirebilir; kısa süre yoklanır).
-    const baglantiYok = await bekle(async () => {
-      const acik = await sunucu.query(
-        'select 1 from pg_stat_activity where datname = any($1)',
-        [adlar],
-      );
-      return acik.rows.length === 0;
-    }, 2000);
+    // İki veritabanı aynı anda yoklanır: sızıntıda toplam bekleme kancanın süresini aşmaz.
+    const kalanlar = await Promise.all(
+      adlar
+        .filter((ad) => ad !== undefined)
+        .map((ad) => kalanBaglantiSayisi(sunucu, ad, [])),
+    );
+    const baglantiYok = kalanlar.every((sayi) => sayi === 0);
     for (const veritabani of veritabanlari) {
       await veritabani?.drop();
     }

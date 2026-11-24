@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { setTimeout as uyu } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { type Derleme, derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
@@ -42,20 +43,6 @@ async function bosPort(): Promise<number> {
   sunucu.close();
   await once(sunucu, 'close');
   return port;
-}
-
-// Verilen veritabanına gözlemcinin dışında açık istemci bağlantısı sayısı.
-async function baglantiSayisi(
-  gozlemci: pg.Client,
-  veritabani: string,
-  gozlemciPid: number,
-): Promise<number> {
-  const { rows } = await gozlemci.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> $2`,
-    [veritabani, gozlemciPid],
-  );
-  return rows[0]?.sayi ?? -1;
 }
 
 async function saglikCevapVerir(adres: string): Promise<boolean> {
@@ -156,7 +143,8 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
       'uygulama asıl veritabanına bağlanır',
       5_000,
       async () =>
-        (await baglantiSayisi(gozlemci, databases.asil.name, gozlemciPid)) > 0,
+        (await baglantiSayisi(gozlemci, databases.asil.name, [gozlemciPid])) >
+        0,
     );
 
     const cikis = once(calisan, 'exit', {
@@ -173,11 +161,10 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
     expect({ kod, sinyal }, cikti).toEqual({ kod: 0, sinyal: null });
     expect(sure).toBeLessThan(KAPANIS_SINIRI_MS);
     for (const { name } of [databases.asil, databases.iz]) {
-      await bekle(
+      expect(
+        await kalanBaglantiSayisi(gozlemci, name, [gozlemciPid]),
         `${name} veritabanında uygulama bağlantısı kalmaz`,
-        5_000,
-        async () => (await baglantiSayisi(gozlemci, name, gozlemciPid)) === 0,
-      );
+      ).toBe(0);
     }
   }, 40_000);
 });
