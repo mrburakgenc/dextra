@@ -6,12 +6,15 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/tohum/kimlik-kurulum.goc.js';
+import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import type { YetenekSatiri } from '../src/shared/kimlik/yetki-verisi.contract.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
 import { yetenekleriDerle } from '../src/shared/yetki/yetenek-derleyici.js';
+import { YetkiModule } from '../src/shared/yetki/yetki.module.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
@@ -123,8 +126,14 @@ beforeAll(async () => {
     const prisma = new PrismaClient({
       adapter: new PrismaPg({ connectionString: db.url }),
     });
-    // Göçü tohum defterine KimlikModule'ün kendisi bildirir.
-    moduleRef = await Test.createTestingModule({ imports: [KimlikModule] })
+    // Göçü tohum defterine KimlikModule'ün kendisi bildirir. Kapıları sağlayan ortak modül kök
+    // modüldeki gibi kimlik kaynaklarının kataloğuyla kurulur (TS-002 AK-42 eki).
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        KimlikModule,
+        YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
+      ],
+    })
       .overrideProvider(PRISMA_CLIENT)
       .useValue(prisma)
       .compile();
