@@ -2,7 +2,8 @@
 //   pnpm -C backend test:e2e test/kimlik-grup-oku.e2e-spec.ts --reporter=verbose
 // Uygulama ortak kurulum yardımcısıyla (kimlik-yardimci.ts) göçleri uygulanmış geçici veritabanlarında
 // açılır: tohum, giriş yapmış ilk yönetici (superadmin). Alt gruplar, rol, üyelik ve yetenek satırları
-// SQL ile yazılır. Canlılık süzgeci bu görevde yoktur (TS-002 AK-42); silinmiş grup burada sınanmaz.
+// SQL ile yazılır. Canlılık süzgeci (GV-078; TS-002 AK-42): liste yalnız silinmemiş grupları verir,
+// tek kayıt ucu silinmiş grubu kimliğiyle okur.
 import pg from 'pg';
 import request from 'supertest';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
@@ -26,9 +27,12 @@ const ALT_C = '90000000-0000-4000-8000-00000000000c';
 const TORUN = '90000000-0000-4000-8000-0000000000aa';
 const KOK_ALTI = [ALT_A, ALT_B, ALT_C];
 const YOK = '90000000-0000-4000-8000-0000000000ff';
+// B'nin altında silinmiş işaretli grup; yalnız "e) canlılık" bölümünde eklenir.
+const SILINMIS = '90000000-0000-4000-8000-0000000000bb';
 
 const ROL_SARTLI = '92000000-0000-4000-8000-000000000001';
 const ROL_AD = '92000000-0000-4000-8000-000000000002';
+const ROL_SILINMEYI_GORMEYEN = '92000000-0000-4000-8000-000000000003';
 
 type Kayit = Record<string, unknown>;
 
@@ -255,6 +259,57 @@ describe('d) tek kayıt', () => {
     const cevap = await al(`${LISTE}/abc`, ortam.superadmin.erisimBelirteci);
     expect(cevap.status).toBe(400);
     expect(cevap.body).toMatchObject({ kod: 'dogrulama_hatasi' });
+  });
+});
+
+describe('e) canlılık', () => {
+  beforeAll(async () => {
+    await ortam.db.query(
+      `insert into grup (id, ust_grup_id, ad, silinme_zamani)
+       values ($1, $2, 'Silinmiş', now())`,
+      [SILINMIS, ALT_B],
+    );
+  });
+
+  it('silinmiş işaretli grup listede yoktur; tek kayıt ucunda kimliğiyle okunur', async () => {
+    const butun = await liste('boyut=100');
+    expect(kimlikler(butun.kayitlar)).toEqual(
+      expect.arrayContaining([kok, ...KOK_ALTI, TORUN]),
+    );
+    expect(kimlikler(butun.kayitlar)).not.toContain(SILINMIS);
+    const bnin = await liste(`ustGrupId=${ALT_B}&boyut=100`);
+    expect(bnin.kayitlar).toEqual([]);
+
+    const tek = await al(
+      `${LISTE}/${SILINMIS}`,
+      ortam.superadmin.erisimBelirteci,
+    );
+    expect(tek.status).toBe(200);
+    expect(alanlar(tek.body as Kayit)).toEqual(GRUP_ALANLARI);
+    expect(tek.body).toMatchObject({ id: SILINMIS, ad: 'Silinmiş' });
+    expect((tek.body as Kayit)['silinmeZamani']).not.toBeNull();
+  });
+
+  it('silinme zamanını görmeyen yetenekle liste canlı kayıtları yalnız o yeteneğin kolonlarıyla verir', async () => {
+    const kisi = await ortam.kullaniciAc('silinmeyi-gormeyen');
+    await grupOkumaVer(kisi.id, kok, ROL_SILINMEYI_GORMEYEN, {
+      kolonlar: ['ad', 'ustGrupId'],
+    });
+
+    const cevap = await liste('boyut=100', kisi.erisimBelirteci);
+    expect(kimlikler(cevap.kayitlar)).toEqual(
+      expect.arrayContaining([kok, ...KOK_ALTI, TORUN]),
+    );
+    expect(kimlikler(cevap.kayitlar)).not.toContain(SILINMIS);
+    for (const kayit of cevap.kayitlar) {
+      expect(alanlar(kayit)).toEqual(['ad', 'id', 'ustGrupId']);
+    }
+    const anin = await liste(`ustGrupId=${ALT_A}`, kisi.erisimBelirteci);
+    expect(anin.kayitlar).toEqual([
+      { id: TORUN, ad: 'Torun', ustGrupId: ALT_A },
+    ]);
+    const bnin = await liste(`ustGrupId=${ALT_B}`, kisi.erisimBelirteci);
+    expect(bnin.kayitlar).toEqual([]);
   });
 });
 
