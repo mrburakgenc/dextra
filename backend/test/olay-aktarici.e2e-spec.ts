@@ -201,7 +201,11 @@ describe('b-f) olay aktarıcısının tek geçişi', () => {
     const birinci = await sinamaIsleyicisi('b-tuketici-1');
     const ikinci = await sinamaIsleyicisi('b-tuketici-2');
     try {
-      expect(await aktarici.gecis()).toEqual({ aktarilan: 1, kalan: 0 });
+      expect(await aktarici.gecis()).toEqual({
+        aktarilan: 1,
+        kalan: 0,
+        konamayanlar: [],
+      });
       await bekle(
         'iki işleyici işi alır',
         5_000,
@@ -230,7 +234,11 @@ describe('b-f) olay aktarıcısının tek geçişi', () => {
     const aktarici = new OlayAktarici(uow, defter, kuyruk);
     const [id = ''] = await notBirak('c.olay');
 
-    expect(await aktarici.gecis()).toEqual({ aktarilan: 1, kalan: 0 });
+    expect(await aktarici.gecis()).toEqual({
+      aktarilan: 1,
+      kalan: 0,
+      konamayanlar: [],
+    });
 
     const { rows } = await gozlemci.query<{ sayi: number }>(
       'select count(*)::int as sayi from kuyruk.job where id = $1',
@@ -261,14 +269,29 @@ describe('b-f) olay aktarıcısının tek geçişi', () => {
     const [takilan = ''] = await notBirak('d.olay');
     const [oteki = ''] = await notBirak('d.diger-olay');
 
-    expect(await aktarici.gecis()).toEqual({ aktarilan: 1, kalan: 1 });
+    expect(await aktarici.gecis()).toEqual({
+      aktarilan: 1,
+      kalan: 1,
+      konamayanlar: [
+        { olayId: takilan, kuyruk: 'd-tuketici-2', hataSinifi: 'Error' },
+      ],
+    });
     expect(await aktarilmislar()).toEqual([oteki]);
     expect(await isKimlikleri('d-tuketici-1')).toEqual([takilan]);
     expect(await isKimlikleri('d-tuketici-2')).toEqual([]);
     expect(await isKimlikleri('d-tuketici-3')).toEqual([oteki]);
 
     engel = false;
-    expect(await aktarici.gecis()).toEqual({ aktarilan: 1, kalan: 0 });
+    // Konamayan not ertelendi (GV-018); yeniden denemenin zamanı SQL ile şimdiye çekilir.
+    await gozlemci.query(
+      'update outbox_olay set sonraki_deneme_zamani = clock_timestamp() where id = $1',
+      [takilan],
+    );
+    expect(await aktarici.gecis()).toEqual({
+      aktarilan: 1,
+      kalan: 0,
+      konamayanlar: [],
+    });
     expect((await aktarilmislar()).sort()).toEqual([takilan, oteki].sort());
     // İlk kuyrukta önceki geçişin işi duruyordu; aynı kimlikli ikinci iş üretilmedi.
     expect(await isKimlikleri('d-tuketici-1')).toEqual([takilan]);
@@ -334,8 +357,16 @@ describe('b-f) olay aktarıcısının tek geçişi', () => {
     const aktarici = new OlayAktarici(uow, defter, kuyruk);
     const [id = ''] = await notBirak('f.olay');
 
-    expect(await aktarici.gecis()).toEqual({ aktarilan: 1, kalan: 0 });
-    expect(await aktarici.gecis()).toEqual({ aktarilan: 0, kalan: 0 });
+    expect(await aktarici.gecis()).toEqual({
+      aktarilan: 1,
+      kalan: 0,
+      konamayanlar: [],
+    });
+    expect(await aktarici.gecis()).toEqual({
+      aktarilan: 0,
+      kalan: 0,
+      konamayanlar: [],
+    });
     expect(await isKimlikleri('f-tuketici')).toEqual([id]);
   });
 });
