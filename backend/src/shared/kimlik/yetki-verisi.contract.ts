@@ -54,7 +54,9 @@ export interface YetkiSurumleri {
 export interface KisininSatirlari extends YetkiSurumleri {
   readonly uyelikler: readonly UyelikSatiri[];
   readonly yetenekler: readonly YetenekSatiri[];
-  // Grup kimliğinden o grubun kendisi ve altındaki bütün grupların kimliklerine.
+  // Anahtar bir grubun kimliğidir; değer, o grubun kendi kimliğini ve altındaki bütün grupların
+  // kimliklerini içeren listedir: liste grubun kendisini her zaman içerir. Derleyici listeyi
+  // olduğu gibi kullanır, grubu kendisi eklemez.
   readonly altGruplar: Readonly<Record<string, readonly string[]>>;
 }
 

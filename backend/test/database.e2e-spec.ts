@@ -4,7 +4,7 @@ import { AppModule } from '../src/app.module.js';
 import {
   IZ_PRISMA_CLIENT,
   PRISMA_CLIENT,
-} from '../src/shared/database/database.module.js';
+} from '../src/shared/database/istemci-belirtecleri.js';
 import type { PrismaClient } from '../src/shared/database/generated/client.js';
 import type { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
 

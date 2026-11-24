@@ -84,9 +84,9 @@ function satiriDerle(
     return null;
   }
   const kolonlar = satir.kolonlar.filter((kolon) => alanlar.includes(kolon));
-  if (!satir.butunKolonlar && kolonlar.length === 0) {
-    return null;
-  }
+  // Kolon dizisi boşalan satır kural üretmez; şartı yine de önce çevrilir ki şarttaki
+  // bilinmeyen ad her durumda bildirilsin (KR-010 Derleme eşlemesi).
+  const kolonYok = !satir.butunKolonlar && kolonlar.length === 0;
 
   const kural: YetenekKurali = {
     yetenekId: satir.yetenekId,
@@ -95,7 +95,7 @@ function satiriDerle(
     ...(satir.butunKolonlar ? {} : { fields: kolonlar }),
   };
   if (satir.butunKayitlar) {
-    return { kural };
+    return kolonYok ? null : { kural };
   }
 
   const cozulmus: CozulmusSartOgesi[] = [];
@@ -114,6 +114,9 @@ function satiriDerle(
   const ceviri = sartiCevir(cozulmus, alanlar);
   if ('neden' in ceviri) {
     return ceviri;
+  }
+  if (kolonYok) {
+    return null;
   }
   return { kural: { ...kural, conditions: ceviri.kosul as YetkiKosulu } };
 }

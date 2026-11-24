@@ -1,15 +1,10 @@
 import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/client.js';
+import { IZ_PRISMA_CLIENT, PRISMA_CLIENT } from './istemci-belirtecleri.js';
 import { PrismaClient as IzPrismaClient } from './iz/generated/client.js';
 import { Registrar, RepoKayitlari } from './registrar.js';
 import { UnitOfWork } from './unit-of-work.js';
-
-// Asıl veritabanının (dextra) istemcisi bu belirteçle enjekte edilir.
-export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
-
-// İz veritabanının (dextra_iz) istemcisi bu belirteçle enjekte edilir; yalnız ortak altyapı kodu kullanır (KR-013).
-export const IZ_PRISMA_CLIENT = Symbol('IZ_PRISMA_CLIENT');
 
 @Module({
   providers: [
