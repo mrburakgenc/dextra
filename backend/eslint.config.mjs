@@ -9,7 +9,8 @@ import tseslint from 'typescript-eslint';
 // Yetki kütüphanesinin kayıt üzerinde karar veren çağrıları backend'de yasaktır (KR-010 "Derleme
 // eşlemesi"; TS-002 AK-19): veri kararını sorgudaki şartla veritabanı verir. Yöntem çağrısı, köşeli
 // parantezle erişim, yalın adla çağrı ve adın içe aktarılması yakalanır.
-const YETKI_KARAR_CAGRISI = '^(can|cannot|throwUnlessCan|permittedFieldsOf)$';
+const YETKI_KARAR_CAGRISI =
+  '^(can|cannot|throwUnlessCan|permittedFieldsOf|relevantRuleFor|matchesConditions)$';
 const YETKI_KARAR_ILETISI =
   "Kayıt üzerinde karar veren yetki çağrısı backend'de yazılmaz; yetki kapısını kullanın.";
 const YETKI_KARAR_YASAKLARI = [

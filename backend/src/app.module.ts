@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { KimlikModule } from './features/kimlik/kimlik.module.js';
 import {
   KIMLIK_KAYNAKLARI,
+  KIMLIK_SISTEM_ALANLARI,
   KimlikYetkiVerisi,
 } from './features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
 import { OturumDenetimiHandler } from './features/kimlik/oturum/application/oturum-denetimi.handler.js';
@@ -34,7 +35,9 @@ import { YetkiModule } from './shared/yetki/yetki.module.js';
     KimlikModule,
     GuvenlikModule,
     // Kaynak kataloğu uygulamada yalnız burada kurulur (TS-002 AK-42).
-    YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
+    YetkiModule.forRoot(
+      prismaKaynakKatalogu(KIMLIK_KAYNAKLARI, KIMLIK_SISTEM_ALANLARI),
+    ),
   ],
   // Ortak koddaki sözleşmeler burada uygulayan feature sınıfına bağlanır (TS-002 "Yapı"). Kimlik
   // guard'ı ve ardından yetki guard'ı bütün uçlara burada bağlanır; genel guard'lar bu sırayla

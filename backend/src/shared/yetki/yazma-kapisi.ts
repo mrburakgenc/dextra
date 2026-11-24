@@ -65,8 +65,9 @@ type JsonDegeri = Extract<
 // alanlar bulunur ve yazma sorgusu yine aynı koşulu taşır. Hiçbir yetenek satırı kilitleyemezse
 // bulunamadi. Düz güncellemede yazılan alanlar (istekle gelen ve değeri değişen alanlar) yeteneğin
 // kolon listesinde olmalıdır; koşulu tutan ama alanları kapsamayan yetenek atlanır ve hiçbiri
-// kapsamıyorsa yetki_yok. Düz güncellemede yeni hâl aynı koşulla yeniden okunur; görünmüyorsa
-// yetki_yok (iki hâl kuralı). Niyet eyleminde şart yalnız önceki hâle bakar ve kolon sınırı aranmaz:
+// kapsamıyorsa yetki_yok. Düz güncellemede iki hâli ve kolonları aynı yetenek tutar (KR-008 Seçim
+// 18): yeni hâl, önceki hâli tutan ve kolonları kapsayan adayların koşuluyla sırayla yeniden okunur;
+// ilk gören yazmanın yeteneğidir, hiçbiri görmüyorsa yetki_yok (iki hâl kuralı). Niyet eyleminde şart yalnız önceki hâle bakar ve kolon sınırı aranmaz:
 // yazılacak değerleri istek değil komutun kodu verir.
 //
 // Oluşturma: alanları kapsayan yetenekler aday olur; satır yazılır ve adayların koşuluyla sırayla
@@ -209,48 +210,71 @@ export class YazmaKapisi {
     },
   ): Promise<void> {
     const { isAdi, kaynak, eylem, id, veri, duz } = istek;
-    let eski: Record<string, unknown> | undefined;
-    let kolonDisi = false;
+    // Yeni hâl yetenekten bağımsızdır (aynı veri aynı satıra yazılır); bu yüzden önce önceki hâli
+    // tutan ve kolonları kapsayan yetenekler sırayla toplanır, satır bir kez yazılır ve adaylar
+    // sırayla yeni hâlde denenir. Önceki hâl yazmadan sonra sorulamayacağı için adaylar yazmadan önce
+    // toplanır. Niyet eyleminde ilk aday yeter.
+    let onceki: Record<string, unknown> | undefined;
+    let degisen: Record<string, unknown> = {};
+    const adaylar: YetenekKurali[] = [];
     for (const kural of kurallar(kaynak, eylem)) {
-      const kosul = kayitKosulu(id, kural);
-      if (!(await kilitle(vekil, id, kosul))) {
+      if (!(await kilitle(vekil, id, kayitKosulu(id, kural)))) {
         continue;
       }
       // Satır kilitli olduğu için bundan sonraki denemelerde eski hâl değişmez.
-      const onceki = (eski ??= await vekil.findUniqueOrThrow({
-        where: { id },
-      }));
-      const degisen = Object.fromEntries(
-        Object.entries(veri).filter(
-          ([alan, deger]) => jsonMetni(onceki[alan]) !== jsonMetni(deger),
-        ),
-      );
+      if (onceki === undefined) {
+        const eski = await vekil.findUniqueOrThrow({ where: { id } });
+        onceki = eski;
+        degisen = Object.fromEntries(
+          Object.entries(veri).filter(
+            ([alan, deger]) => jsonMetni(eski[alan]) !== jsonMetni(deger),
+          ),
+        );
+      }
       if (duz && !kolonlariKapsar(kural, Object.keys(degisen))) {
-        kolonDisi = true;
         continue;
       }
-      if (Object.keys(degisen).length > 0) {
-        await vekil.updateMany({ where: kosul, data: degisen });
-        if (duz && (await vekil.count({ where: kosul })) === 0) {
-          throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
-        }
+      adaylar.push(kural);
+      if (!duz) {
+        break;
       }
-      await this.yazici.degisiklikKaydi(islem, {
-        ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
-        eylem: 'guncelleme',
-        degisen: Object.fromEntries(
-          Object.entries(degisen).map(([alan, yeni]) => [
-            kolonAdi(alan),
-            { eski: jsonDegeri(onceki[alan]), yeni: jsonDegeri(yeni) },
-          ]),
-        ),
-      });
-      return;
     }
-    if (kolonDisi) {
+    const [ilk] = adaylar;
+    if (onceki === undefined) {
+      throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
+    }
+    if (ilk === undefined) {
       throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
     }
-    throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
+    // Değişen alan yoksa yeni hâl önceki hâldir ve ilk aday iki hâli de tutar. Düz güncellemede
+    // yazmanın yeteneği yeni hâli de tutan ilk adaydır (KR-008 Seçim 10 ve 18); hiçbiri tutmazsa
+    // yetki_yok atılır ve run'dan çıkan hata yazmayı işin bütünüyle geri alır.
+    let yazan: YetenekKurali | undefined = ilk;
+    if (Object.keys(degisen).length > 0) {
+      await vekil.updateMany({ where: kayitKosulu(id, ilk), data: degisen });
+      if (duz) {
+        yazan = undefined;
+        for (const kural of adaylar) {
+          if ((await vekil.count({ where: kayitKosulu(id, kural) })) > 0) {
+            yazan = kural;
+            break;
+          }
+        }
+      }
+    }
+    if (yazan === undefined) {
+      throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+    }
+    await this.yazici.degisiklikKaydi(islem, {
+      ...notunOrtakAlanlari(isAdi, kaynak, id, yazan),
+      eylem: 'guncelleme',
+      degisen: Object.fromEntries(
+        Object.entries(degisen).map(([alan, yeni]) => [
+          kolonAdi(alan),
+          { eski: jsonDegeri(onceki[alan]), yeni: jsonDegeri(yeni) },
+        ]),
+      ),
+    });
   }
 
   private kaynak(

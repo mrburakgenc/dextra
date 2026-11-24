@@ -10,6 +10,7 @@ import type {
   YetkiSurumleri,
   YetkiVerisi,
 } from '../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SistemAlanlari } from '../../../../shared/yetki/kaynak-katalogu.js';
 import {
   type GrupDugumu,
   type SaklananYetenek,
@@ -27,6 +28,28 @@ export const KIMLIK_KAYNAKLARI = [
   'Uyelik',
   'Yetenek',
 ] as const;
+
+// Kimlik kaynaklarına özgü, yalnız sistemin yazdığı alanlar (TS-002 "Veri modeli", çürütme 17; KR-008
+// Seçim 34); kaynak kataloğu kök modülde bunlarla kurulur ve istek verisinden kabul edilmezler. Onları
+// yalnız niyet eylemleri ve çekirdek parçalar yazar. Oturumun ortak sistem alanları dışındaki bütün
+// alanları sistemindir. Düz güncellemeye kapalı öbür kolonlar (kullanıcı adı, telefon, üst grup)
+// oluşturmada yazıldığı için burada değildir; onları uçların şemaları korur.
+export const KIMLIK_SISTEM_ALANLARI: SistemAlanlari = {
+  Kullanici: ['sistemAktoru', 'yetkiSurumu', 'pasifZamani', 'unutulmaZamani'],
+  Rol: ['kod'],
+  Yetenek: ['sistemSatiri', 'tohumAnahtari'],
+  Oturum: [
+    'kullaniciId',
+    'girisYontemi',
+    'baslangicZamani',
+    'mutlakBitisZamani',
+    'sonDondurmeZamani',
+    'ipAdresi',
+    'tarayiciBilgisi',
+    'kapatilmaZamani',
+    'kapatilmaNedeni',
+  ],
+};
 
 // Saklanan şartın biçimi (TS-002 "Veri modeli"): öğelerin düz dizisi; her öğe tam olarak alan,
 // işleç ve değer taşır.

@@ -505,6 +505,58 @@ describe('yetki kapısı - yazma', () => {
     ]);
   });
 
+  it('c2) yetenek sırası: önceki hâli tutup yeni hâli tutmayan yetenek yazmayı kalıcı kılmaz, iki hâli tutan sıradaki yetenek yazar; sıra tersken de aynı; yalnız ilki varken yetki_yok', async () => {
+    const y1 = yetenek({
+      sart: [{ alan: 'gorunenAd', islec: 'esit', deger: 'Banu' }],
+      kolonlar: ['gorunenAd'],
+    });
+    const y2 = yetenek({
+      yetenekId: Y2,
+      butunKayitlar: true,
+      kolonlar: ['gorunenAd'],
+    });
+    const guncelle = async (
+      yetenekler: readonly YetenekSatiri[],
+    ): Promise<void> => {
+      const yetki = await yetkiAl(AYSE, [AYSE_A], yetenekler);
+      await yaz(AYSE, yetki, (islem) =>
+        kapi.guncelle(islem, 'kullanici.guncelle', 'Kullanici', BANU, {
+          gorunenAd: 'Banu Nur',
+        }),
+      );
+    };
+
+    for (const yetenekler of [
+      [y1, y2],
+      [y2, y1],
+    ]) {
+      await gozlemci.query('delete from outbox_iz');
+      await gozlemci.query(
+        "update kullanici set gorunen_ad = 'Banu' where id = $1",
+        [BANU],
+      );
+
+      await guncelle(yetenekler);
+
+      expect((await kisiSatiri(BANU))?.gorunen_ad).toBe('Banu Nur');
+      expect(await notlar()).toEqual([
+        expect.objectContaining({
+          yetenek_id: Y2,
+          degisen: { gorunen_ad: { eski: 'Banu', yeni: 'Banu Nur' } },
+        }),
+      ]);
+    }
+
+    await gozlemci.query('delete from outbox_iz');
+    await gozlemci.query(
+      "update kullanici set gorunen_ad = 'Banu' where id = $1",
+      [BANU],
+    );
+    await expect(guncelle([y1])).rejects.toMatchObject({ kod: 'yetki_yok' });
+    expect((await kisiSatiri(BANU))?.gorunen_ad).toBe('Banu');
+    expect(await notlar()).toEqual([]);
+  });
+
   describe('d) silme', () => {
     const SILINECEK = '70000000-0000-4000-8000-000000000006';
     const KALACAK = '70000000-0000-4000-8000-000000000007';

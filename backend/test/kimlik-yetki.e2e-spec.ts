@@ -7,6 +7,7 @@
 // ile yazılır: bu satırları yazan yönetim komutları henüz yoktur. Her test kendi kişisiyle çalışır,
 // çünkü yetki belleği süreç boyunca yaşar. Belirteci ve adres imzasını test, e2e-setup'ın ortama
 // koyduğu anahtar ve sırla kendisi üretir; satırlar ayrı bir bağlantıdan (gözlemci) yazılır ve okunur.
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Controller, Get, type INestApplication, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import pg from 'pg';
@@ -14,6 +15,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/tohum/kimlik-kurulum.goc.js';
+import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
 import { Izin } from '../src/shared/guvenlik/isaretler.js';
 import {
@@ -22,11 +24,18 @@ import {
   istemciImzasiUret,
 } from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
 import {
+  istekBaglamiAraKatmani,
+  istekOturumunuYaz,
+  istekYetkisiniYaz,
+} from '../src/shared/http/istek-baglami.js';
+import {
   YETKI_VERISI,
   type YetkiVerisi,
 } from '../src/shared/kimlik/yetki-verisi.contract.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
 import type { YetenekKurali } from '../src/shared/yetki/yetenek-derleyici.js';
+import { YazmaKapisi } from '../src/shared/yetki/yazma-kapisi.js';
+import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
@@ -690,5 +699,110 @@ describe('f) şartı bozuk yetenek', () => {
       `Yetenek derlenmedi: yetenek=${Y_EMRE_BOZUK} neden=bilinmeyen alan: yok`,
     );
     expect(await kurallari(EMRE, OT_EMRE)).toEqual([]);
+  });
+});
+
+// Yazma kapısı uygulamanın kataloğuyla (GV-060; TS-002 "Veri modeli", çürütme 17; KR-008 Seçim 34):
+// yazan SuperAdmin'dir; her kaynak ve eylem için koşulsuz ve «bütün kolonlar» kuralı taşır.
+describe('g) uygulamanın kataloğunda sistem alanları', () => {
+  const GOKHAN = '60000000-0000-4000-8000-000000000007';
+
+  // İşi SuperAdmin'in oturumu ve derlenmiş yetkisi yazılmış bir istek bağlamında, kendi run'ında
+  // koşturur.
+  async function superadminYazar<T>(
+    is: (kapi: YazmaKapisi, islem: Islem) => Promise<T>,
+  ): Promise<T> {
+    const surumler = await yetkiVerisi().surumler(superadmin);
+    const yetki = await uygulama().get(YetkiBellegi).al(superadmin, surumler);
+    const kapi = uygulama().get(YazmaKapisi);
+    const uow = uygulama().get(UnitOfWork);
+    return new Promise<T>((coz, reddet) => {
+      istekBaglamiAraKatmani(
+        {} as unknown as IncomingMessage,
+        { setHeader: () => undefined } as unknown as ServerResponse,
+        () => {
+          istekOturumunuYaz({
+            kullaniciId: superadmin,
+            oturumId: OT_SUPERADMIN,
+            ...surumler,
+          });
+          istekYetkisiniYaz(yetki);
+          uow.run((islem) => is(kapi, islem)).then(coz, reddet);
+        },
+      );
+    });
+  }
+
+  it("Kullanici'nin sistem alanları düz güncellemede istekle yazılamaz, satır değişmez; görünen ad yazılır ve oluşturmada kullanıcı adı yazılır", async () => {
+    await kisiEkle(GOKHAN, 'gokhan');
+    const satir = (): Promise<Record<string, unknown>> =>
+      tekSatir(
+        `select gorunen_ad, sistem_aktoru, yetki_surumu, pasif_zamani, unutulma_zamani
+           from kullanici where id = $1`,
+        [GOKHAN],
+      );
+    const once = await satir();
+
+    for (const veri of [
+      { pasifZamani: new Date() },
+      { sistemAktoru: true },
+      { yetkiSurumu: 7 },
+      { unutulmaZamani: new Date() },
+    ]) {
+      await expect(
+        superadminYazar((kapi, islem) =>
+          kapi.guncelle(islem, 'kullanici.guncelle', 'Kullanici', GOKHAN, veri),
+        ),
+      ).rejects.toMatchObject({ kod: 'yetki_yok' });
+      expect(await satir()).toEqual(once);
+    }
+
+    await superadminYazar((kapi, islem) =>
+      kapi.guncelle(islem, 'kullanici.guncelle', 'Kullanici', GOKHAN, {
+        gorunenAd: 'Gökhan',
+      }),
+    );
+    expect(await satir()).toEqual({ ...once, gorunen_ad: 'Gökhan' });
+
+    const id = await superadminYazar((kapi, islem) =>
+      kapi.olustur(islem, 'kullanici.ac', 'Kullanici', {
+        kullaniciAdi: 'hale',
+        gorunenAd: 'Hale',
+      }),
+    );
+    expect(
+      await tekSatir('select kullanici_adi from kullanici where id = $1', [id]),
+    ).toEqual({ kullanici_adi: 'hale' });
+  });
+
+  it('Rol.kod düz güncellemede, Yetenek.sistemSatiri oluşturmada istekle yazılamaz', async () => {
+    const yetenekSayisi = (): Promise<{ sayi: number }> =>
+      tekSatir('select count(*)::int as sayi from yetenek');
+    const yetenekOnce = await yetenekSayisi();
+    const izin = await izinId('Kullanici', 'oku');
+
+    await expect(
+      superadminYazar((kapi, islem) =>
+        kapi.guncelle(islem, 'rol.guncelle', 'Rol', ROL_1, { kod: 'rol_1' }),
+      ),
+    ).rejects.toMatchObject({ kod: 'yetki_yok' });
+    expect(
+      await tekSatir('select kod from rol where id = $1', [ROL_1]),
+    ).toEqual({ kod: null });
+
+    await expect(
+      superadminYazar((kapi, islem) =>
+        kapi.olustur(islem, 'yetenek.olustur', 'Yetenek', {
+          grupId: kokGrup,
+          rolId: temelRol,
+          izinId: izin.id,
+          butunKayitlar: true,
+          butunKolonlar: true,
+          koken: 'yonetici',
+          sistemSatiri: true,
+        }),
+      ),
+    ).rejects.toMatchObject({ kod: 'yetki_yok' });
+    expect(await yetenekSayisi()).toEqual(yetenekOnce);
   });
 });
