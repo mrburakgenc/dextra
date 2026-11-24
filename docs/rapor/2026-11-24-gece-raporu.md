@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 31 görevin 18 tanesi alındı. Son koşuların ve incelemelerin toplamı: 182 dakika, 62.99 dolar.
+Kayıtlı 36 görevin 22 tanesi alındı. Son koşuların ve incelemelerin toplamı: 237 dakika, 81.17 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -41,18 +41,23 @@ Kayıtlı 31 görevin 18 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-017 | EP-002 10 | Tüketici tabanı ve işlenen olay kaydı (süreli sahiplenme) | alındı | 7.8 | 5.8 | 4.54 | 5 | 0 engel, 3 öneri | 0 |
 | GV-018 | EP-002 11 | Olay aktarıcısının dayanıklılığı: erteleme, süre bütçesi, döngü, temizlik, ölçüler | alındı | 7.6 | 7.3 | 5.12 | 7 | 0 engel, 4 öneri | 0 |
 | GV-019 | EP-002 12 | Bağlama ve bütünün sınaması: parçalar uygulamaya bağlanır, uçtan uca sınanır | alındı | 13.6 | 9.8 | 7.55 | 8 | 0 engel, 5 öneri | 0 |
-| GV-020 | EP-003 1 | Kimlik tabloları ve göçü: on bir tablo, kısıtları ve adlarıyla | bekliyor | — | — | — | 0 | — | 0 |
-| GV-021 | EP-002 13 | Sertleştirme: tüketici tabanı ve kuyruk kapısı (inceleme önerileri) | bekliyor | — | — | — | 0 | — | 0 |
-| GV-022 | EP-002 14 | Sertleştirme: döngü parçası ve iz aktarıcısı (inceleme önerileri) | bekliyor | — | — | — | 0 | — | 0 |
+| GV-020 | EP-003 1 | Kimlik tabloları ve göçü: on bir tablo, kısıtları ve adlarıyla | soru | 7.9 | — | 2.59 | 3 | — | 1 |
+| GV-021 | EP-002 13 | Sertleştirme: tüketici tabanı ve kuyruk kapısı (inceleme önerileri) | alındı | 10.2 | 5.6 | 5.12 | 8 | 0 engel, 2 öneri | 0 |
+| GV-022 | EP-002 14 | Sertleştirme: döngü parçası ve iz aktarıcısı (inceleme önerileri) | alındı | 8.9 | 9.7 | 5.96 | 5 | 0 engel, 5 öneri | 0 |
 | GV-023 | EP-003 2 | HTTP temeli: Zod doğrulama, tek biçimli hata cevabı, istek kimliği ve istek bağlamı | bekliyor | — | — | — | 0 | — | 0 |
-| GV-024 | EP-003 3 | Belirteç üretici (RS256) ve istemci adresi imzası | tamam | 1.4 | — | 0.55 | 4 | — | 1 |
+| GV-024 | EP-003 3 | Belirteç üretici (RS256) ve istemci adresi imzası | alındı | 1.4 | 5.4 | 2.55 | 4 | 0 engel, 3 öneri | 1 |
 | GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | bekliyor | — | — | — | 0 | — | 0 |
 | GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | bekliyor | — | — | — | 0 | — | 0 |
 | GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | bekliyor | — | — | — | 0 | — | 0 |
 | GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | bekliyor | — | — | — | 0 | — | 0 |
 | GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | bekliyor | — | — | — | 0 | — | 0 |
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
-| GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | bekliyor | — | — | — | 0 | — | 0 |
+| GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | alındı | 1.5 | 6.1 | 2.52 | 4 | 0 engel, 1 öneri | 0 |
+| GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | bekliyor | — | — | — | 0 | — | 0 |
+| GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | bekliyor | — | — | — | 0 | — | 0 |
+| GV-034 | EP-003 12 | Yetki kapısı - yazma: şartlı yazma, kolon sınırı, oluşturma denetimi ve değişiklik kaydı | bekliyor | — | — | — | 0 | — | 0 |
+| GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | bekliyor | — | — | — | 0 | — | 0 |
+| GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -99,6 +104,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-014 | işçi soruyla durdu: PostgreSQL'in "boş olamaz" kısıt adları | bitiş kaydı | cevap verildi (ad kuralının dışında) |
 | GV-016 | inceleme kaldı: bitiş kaydında bir satır yanlış bölümdeydi (kartıma eklediğim katı kural yüzünden) | inceleme kaydı | satır tamamlatıldı, yeniden incelendi; sonraki kartlarda kural yumuşatıldı |
 | GV-024 | işçi soruyla durdu: aracın okuma yasağı yüzünden .env.example dosyasına yazamadı; ayrıca dosya listesini boş bıraktı | bitiş kaydı | cevap verildi (dosya yazılmaz); araçta soru ile sorunun birlikte gelmesi ele alındı |
+| GV-031 | bitiş kaydındaki dosya listesinde yeni test dosyası eksikti; araç beyan uyuşmuyor dedi | aracın kaydı | 88 saniyede düzeltildi, incelemeden geçti |
 
 ## 6. Hatalarım
 
@@ -110,6 +116,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - Kartlara eklediğim katı "bitiş kaydı" kuralı doğru bir işi incelemede bıraktırdı (GV-016).
 - Araca MCP ayarını eklerken bir satırı yanlış bloğa kaydırdım; aracın iki testi yakaladı, düzeltildi.
 - GV-017 alındıktan sonra tablo listesini sayan testi (test-database) koşturmadım; kırmızı test ana dalda bir saatten uzun kaldı ve onu ben değil GV-019'un incelemesi yakaladı. Bundan sonra şema değiştiren her kartta tablo sayan testlerin aranıp koşturulması yazılı.
+- GV-020'nin kartına var olan outbox-sema testini kabul ölçütü olarak yazdım ama o testin yeni tablolarla kırılacağını görmedim; aynı sorunun ikinci örneği.
 
 ## 7. Araçta (harness) değişenler
 
@@ -144,3 +151,8 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 21:33 — GV-019'un incelemesi ana dalda kırmızı bir test buldu (test-database: tablo listesi birebir sayılıyordu, GV-017 yeni tablo ekleyince kırıldı); doğruladım: 1 kırmızı, 4 yeşil. Onarım görevi açıldı (GV-031): testi düzeltir, süreç sinyalinde düzenli kapanışı ekler, dinamik içe aktarma yasağını tamamlar.
 - 21:33 — Auth çekirdeği: on beş ajan kararı TS-002'ye yazıldı (AK-1 … AK-15); dokuz görev plana eklendi. jose 6.2.17 kuruldu. Belirteç görevi (GV-024) outbox'ın kalanıyla yan yana koştu; işçi .env.example dosyasına yazamadığı için soruyla durdu (aracın okuma yasağı); cevap verildi: dosya yazılmaz, adlar kodda durur.
 - 21:33 — Araç: soru başka bir sorunla birlikte geldiğinde de cevaplanabilir hâle getirildi.
+- 22:06 — PR #13 birleşti (bağlama, iki sertleştirme, belirteç ve adres imzası, auth planı, rapor): https://github.com/mrburakgenc/dextra/pull/13
+- 22:06 — EP-002 bitti: on beş görevin on beşi alındı. Son üçü: GV-021 ve GV-022 (sertleştirme; yan yana koştu) ve GV-031 (onarım: kırmızı test düzeldi, süreç sinyalinde düzenli kapanış, dinamik içe aktarma yasağı). Kendi ölçümlerim: tip, lint ve derleme 0; tüketici 18, kuyruk 10, iz aktarıcısı dayanıklılığı 12, döngü 3, uçtan uca 7, ad denetimi 4, test-database 5 (artık hepsi yeşil), kapanış 1.
+- 22:06 — Kullanıcı izin sorulmasından ikinci kez şikâyet etti; proje ayarında kabuk komutlarının tamamına izin verildi (yalnız bu proje).
+- 22:06 — EP-003 başladı. GV-024 (belirteç ve adres imzası) alındı: 20 ve 21 birim testi geçti. GV-020 (on bir tablo) soruyla durdu: eski bir test bütün tablo listesini sayıyor; karar: tam tablo listesi sınaması yazılmaz (TS-003), cevap verildi, düzeltme görevi açıldı (GV-036). HTTP temeli (GV-023) yan yana koşuyor.
+- 22:06 — | GV-020 | işçi soruyla durdu: outbox-sema testi bütün tablo listesini sayıyor, on bir tablo eklenince kırılıyor ve dosya görevin kapsamında değil | bitiş kaydı | karar verildi (tam liste sınaması yazılmaz), cevaplandı, GV-036 açıldı |
