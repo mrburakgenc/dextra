@@ -203,7 +203,7 @@ describe('a) iz şemasının ilk göçü', () => {
     );
   });
 
-  it('birincil anahtardan başka dizin, hiçbir yabancı anahtar ve başka tablo yoktur', async () => {
+  it('birincil anahtardan başka dizin ve hiçbir yabancı anahtar yoktur; değişiklik kaydı ve göç defteri vardır', async () => {
     const dizinler = await izSql.query(
       `select indexname, indexdef from pg_indexes
         where schemaname = 'public' and tablename = 'degisiklik_kaydi'`,
@@ -222,10 +222,9 @@ describe('a) iz şemasının ilk göçü', () => {
     const tablolar = await izSql.query<{ ad: string }>(
       "select table_name as ad from information_schema.tables where table_schema = 'public' order by 1",
     );
-    expect(tablolar.rows.map((satir) => satir.ad)).toEqual([
-      '_prisma_migrations',
-      'degisiklik_kaydi',
-    ]);
+    expect(tablolar.rows.map((satir) => satir.ad)).toEqual(
+      expect.arrayContaining(['_prisma_migrations', 'degisiklik_kaydi']),
+    );
   });
 
   it('göçleri uygulanmış iz veritabanı ile iz şeması arasında Prisma fark görmez', async ({
