@@ -9,6 +9,15 @@ export interface ParolaOkumaRepo {
   // Çekirdek yolların notlarında yazan olarak geçen, kimlik feature'ının sistem aktörünün kimliği
   // (TS-002 AK-2); yoksa Prisma'nın "kayıt yok" hatası atılır.
   kimlikSistemAktoru(): Promise<string>;
+  // Girişin okuduğu sır: kullanıcı adı verilen kişinin kimliği, parola özeti ve sırrın güncelleme
+  // zamanı. Kişi yoksa ya da parolası belirlenmemişse null.
+  girisSirri(kullaniciAdi: string): Promise<GirisSirri | null>;
+}
+
+export interface GirisSirri {
+  readonly kullaniciId: string;
+  readonly parolaOzeti: string;
+  readonly guncellemeZamani: Date;
 }
 
 export interface ParolaRepo extends ParolaOkumaRepo {
