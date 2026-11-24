@@ -73,6 +73,8 @@ VARSAYILAN_AYAR = {
               # orkestrasyon: işçi alt ajan ve iş akışı başlatabilir (inceleyici başlatamaz) · efor, inceleme_efor:
               # oturuma --effort ile verilen düzey; boşsa bayrak komuta girmez
               "orkestrasyon": False, "efor": "", "inceleme_efor": "",
+              # mcp: oturuma verilen MCP sunucuları (ad → ayar); boşsa oturum MCP sunucusu olmadan başlar
+              "mcp": {},
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",

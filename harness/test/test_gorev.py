@@ -472,6 +472,13 @@ class IsciKomutu(Ortam):
         self.assertEqual(self._yasaklar(self._argv(orkestrasyon=True)), ["WebFetch", "WebSearch"])
         self.assertNotIn("--disallowedTools", self._argv(orkestrasyon=True, ag_araclari=True))
 
+    def test_mcp_sunuculari_yalniz_ayarda_sayilanlardir(self):
+        sunucu = {"belge": {"type": "http", "url": "https://belge.example/mcp"}}
+        argv = self._argv(mcp=sunucu)
+        self.assertEqual(json.loads(self._deger(argv, "--mcp-config")), {"mcpServers": sunucu})
+        self.assertIn("--strict-mcp-config", argv)
+        self.assertNotIn("--mcp-config", self._argv())
+
     def test_efor_ayari_isciye_bayrakla_gecer(self):
         self.assertEqual(self._deger(self._argv(efor="xhigh"), "--effort"), "xhigh")
         self.assertNotIn("--effort", self._argv())

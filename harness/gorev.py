@@ -508,6 +508,8 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
         # Talimat dosyaları ayrıca üst klasörlerden de toplanır (ev klasöründeki kişisel dosya dahil);
         # oturumun kendi ağacının üstündeki her biri adıyla hariç tutulur.
         ek_ayar["claudeMdExcludes"] = _ust_talimat_dosyalari(agac)
+    if g.get("mcp"):                # yalnız ayarda sayılan MCP sunucuları; MCP sunucusu kum havuzunun dışında çalışır
+        komut += ["--mcp-config", json.dumps({"mcpServers": g["mcp"]})]
     if g.get("kum_havuzu", True):
         # Komutlar sormadan koşar ama işletim sistemi kum havuzunda: yalnız kendi ağacına ve geçici klasöre yazar.
         kum = {"enabled": True, "failIfUnavailable": True, "autoAllowBashIfSandboxed": True,
