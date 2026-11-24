@@ -102,4 +102,25 @@ export default defineConfig(
       ],
     },
   },
+  {
+    // Tarih ve sayı yalnız src/shared/bicim içinde biçimlenir (KR-014; TS-004 Yapı).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/bicim/**'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        ...['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].map(
+          (property) => ({
+            property,
+            message: 'Tarih ve sayı src/shared/bicim yardımcılarıyla biçimlenir.',
+          }),
+        ),
+        ...['DateTimeFormat', 'NumberFormat'].map((property) => ({
+          object: 'Intl',
+          property,
+          message: 'Tarih ve sayı src/shared/bicim yardımcılarıyla biçimlenir.',
+        })),
+      ],
+    },
+  },
 );
