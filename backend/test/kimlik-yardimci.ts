@@ -20,6 +20,7 @@ import {
   istemciImzasiUret,
 } from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
 // Yardımcının açtığı her kişinin parolası; parola kuralını geçen uzun bir cümle.
@@ -44,7 +45,7 @@ export interface KimlikOrtami {
   basliklar(erisimBelirteci: string): Record<string, string>;
   // SQL ile kullanıcı açar, parola verir ve uçtan oturum açtırır.
   kullaniciAc(kullaniciAdi: string): Promise<Oturumlu>;
-  // Uygulamayı kapatır, asıl veritabanında kalan öbür bağlantıları sayar, veritabanlarını siler.
+  // Uygulamayı kapatır, asıl ve iz veritabanlarında kalan öbür bağlantıları toplar, veritabanlarını siler.
   kapat(): Promise<{ kalanBaglanti: number }>;
 }
 
@@ -155,14 +156,12 @@ export async function kimlikOrtamiKur({
       kapat: async () => {
         try {
           await acikApp.close();
-          const {
-            rows: [sayim],
-          } = await db.query<{ sayi: number }>(
-            `select count(*)::int as sayi from pg_stat_activity
-              where datname = $1 and backend_type = 'client backend' and pid <> pg_backend_pid()`,
-            [databases.asil.name],
-          );
-          return { kalanBaglanti: sayim?.sayi ?? -1 };
+          // İki veritabanı aynı anda yoklanır; art arda yoklama temizlik kancasının süresini aşabilir.
+          const [asil, iz] = await Promise.all([
+            kalanBaglantiSayisi(db, databases.asil.name, []),
+            kalanBaglantiSayisi(db, databases.iz.name, []),
+          ]);
+          return { kalanBaglanti: asil + iz };
         } finally {
           await db.end();
           await databases.drop();
