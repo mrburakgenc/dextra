@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { KimlikModule } from './features/kimlik/kimlik.module.js';
 import { DatabaseModule } from './shared/database/database.module.js';
 import { HealthModule } from './shared/health/health.module.js';
 import { HttpTemeliModule } from './shared/http/http-temeli.module.js';
@@ -14,6 +15,7 @@ import { IzModule } from './shared/observability/iz/iz.module.js';
     MessagingModule,
     OlayModule,
     IzModule,
+    KimlikModule,
   ],
 })
 export class AppModule {}
