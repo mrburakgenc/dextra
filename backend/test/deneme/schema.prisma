@@ -1,0 +1,39 @@
+// GV-003 denemesinin şeması: yalnız test/deneme/kilit-ve-tek-sorgu.e2e-spec.ts kullanır.
+// Tablolar geçici test veritabanında testin içinde ham SQL ile açılır; bu şema yalnız istemci üretir.
+generator client {
+  provider            = "prisma-client"
+  output              = "./generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Kullanici {
+  id           String    @id @db.Uuid
+  kullaniciAdi String?   @unique @map("kullanici_adi")
+  yetkiSurumu  Int       @map("yetki_surumu")
+  pasifZamani  DateTime? @map("pasif_zamani") @db.Timestamptz
+  oturumlar    Oturum[]
+
+  @@map("kullanici")
+}
+
+model Oturum {
+  id              String    @id @db.Uuid
+  kullaniciId     String    @map("kullanici_id") @db.Uuid
+  ipAdresi        String    @map("ip_adresi")
+  kapatilmaZamani DateTime? @map("kapatilma_zamani") @db.Timestamptz
+  kullanici       Kullanici @relation(fields: [kullaniciId], references: [id])
+
+  @@map("oturum")
+}
+
+model YetkiSurumu {
+  id    Int @id
+  sayac Int
+
+  @@map("yetki_surumu")
+}
