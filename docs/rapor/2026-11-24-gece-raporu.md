@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 74 görevin 53 tanesi alındı. Son koşuların ve incelemelerin toplamı: 622 dakika, 234.42 dolar.
+Kayıtlı 74 görevin 57 tanesi alındı. Son koşuların ve incelemelerin toplamı: 657 dakika, 247.54 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -74,15 +74,15 @@ Kayıtlı 74 görevin 53 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-050 | EP-006 1 | Kimlik modülünün alt modüllere bölünmesi | alındı | 5.0 | 5.7 | 3.55 | 9 | 0 engel, 1 öneri | 0 |
 | GV-051 | EP-004 4 | Yetki kurallarının ekrana taşınması: yetkilerim, yetki sağlayıcısı ve <Can> | alındı | 5.0 | 4.0 | 3.92 | 5 | 0 engel, 2 öneri | 0 |
 | GV-052 | EP-006 2 | Kimlik sertleştirmesi (feature içi): notlar, sistem aktörü, yetki verisi ve katman yönü | alındı | 12.8 | 5.4 | 8.55 | 23 | 0 engel, 1 öneri | 0 |
-| GV-053 | EP-003 22 | Ortak kod sertleştirmesi: anahtar denetimi, yalnız kendisi listesi, yetki guard'ı ve iki l | sorunlu | 10.5 | — | 4.05 | 8 | — | 1 |
+| GV-053 | EP-003 22 | Ortak kod sertleştirmesi: anahtar denetimi, yalnız kendisi listesi, yetki guard'ı ve iki l | alındı | 1.0 | 6.2 | 2.92 | 8 | 0 engel, 2 öneri | 1 |
 | GV-054 | EP-006 3 | Çekirdek parça: bütünlük soruları ve yönetim testlerinin ortak kurulumu | alındı | 8.4 | 4.4 | 5.65 | 5 | 0 engel, 2 öneri | 0 |
 | GV-055 | EP-006 4.1 | Kullanıcı: listele ve tek kayıt | alındı | 6.9 | 5.9 | 5.94 | 9 | 0 engel, 2 öneri | 0 |
-| GV-056 | EP-006 5.1 | Rol ve izin: listele ve tek kayıt | sorunlu | 1.0 | 4.8 | 2.63 | 8 | 1 engel, 1 öneri | 1 |
-| GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | soru | 2.8 | — | 1.54 | 0 | — | 1 |
+| GV-056 | EP-006 5.1 | Rol ve izin: listele ve tek kayıt | alındı | 2.1 | 5.8 | 3.53 | 8 | 0 engel, 0 öneri | 1 |
+| GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | alındı | 4.7 | 4.5 | 4.15 | 9 | 0 engel, 0 öneri | 1 |
 | GV-058 | EP-006 7.1 | Üyelik: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
 | GV-059 | EP-006 8.1 | Yetenek: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
 | GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | bekliyor | — | — | — | 0 | — | 0 |
-| GV-061 | EP-003 24 | Unit of Work'ün yazma işareti ve erişim kaydının salt okuma kuralı | bekliyor | — | — | — | 0 | — | 0 |
+| GV-061 | EP-003 24 | Unit of Work'ün yazma işareti ve erişim kaydının salt okuma kuralı | tamam | 5.5 | — | 1.81 | 6 | — | 0 |
 | GV-062 | EP-006 4.2 | Kullanıcı aç | bekliyor | — | — | — | 0 | — | 0 |
 | GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | bekliyor | — | — | — | 0 | — | 0 |
 | GV-064 | EP-006 4.4 | Kullanıcıyı pasife al ve yeniden aç | bekliyor | — | — | — | 0 | — | 0 |
@@ -93,9 +93,9 @@ Kayıtlı 74 görevin 53 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | bekliyor | — | — | — | 0 | — | 0 |
 | GV-070 | EP-006 8.3 | Yetenek: yenile | bekliyor | — | — | — | 0 | — | 0 |
 | GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | alındı | 1.8 | 2.0 | 1.38 | 1 | 0 engel, 0 öneri | 0 |
-| GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | bekliyor | — | — | — | 0 | — | 0 |
-| GV-073 | EP-007 1 | Kullanıcılar ekranı: liste, sayfalama ve menü | bekliyor | — | — | — | 0 | — | 0 |
-| GV-074 | EP-005 5 | İki testin sınama uçları yalnız kendisi işaretini bırakır | bekliyor | — | — | — | 0 | — | 0 |
+| GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | tamam | 9.8 | — | 3.34 | 7 | — | 0 |
+| GV-073 | EP-007 1 | Kullanıcılar ekranı: liste, sayfalama ve menü | tamam | 7.0 | — | 2.63 | 8 | — | 0 |
+| GV-074 | EP-005 5 | İki testin sınama uçları yalnız kendisi işaretini bırakır | alındı | 4.3 | 3.1 | 2.96 | 2 | 0 engel, 1 öneri | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -215,6 +215,7 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Parola belirlendikten sonra giriş ekranında başarı iletisi gösterilmiyor (kartta istemedim).
 - TEYİDİNİ BEKLEYEN KARAR (KR-008 Seçim 5 ve 21'e dokunur): AK-38, bir kaydı okuyabilen her yetenek o kaydın kimliğini de görür. Bedeli: kimlik zaman sıralı olduğu için kaydın kabaca ne zaman oluşturulduğu da görünür. Öbür yol: kimliği göremeyen yetenek okumaya hiç katılmaz.
 - Lint yasak listesi, kütüphanenin şartı bellekte değerlendiren iki çağrısını daha kapsamalı (GV-033 incelemesi); sertleştirme kartına sonradan yazılamadı, ayrı küçük iş.
+- Erişim kaydının açık bıraktıkları (GV-035 incelemesi): oluşma zamanı yazılma zamanının neredeyse kopyası; iş adı denetleyici ve yöntem adından üretiliyor, değişiklik kaydındaki elle verilen adlarla aynı düzende değil; hiçbir kuralın katılmadığı okuma kayıtsız kalıyor.
 
 ## 9. PR'lar
 
@@ -277,3 +278,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 02:03 — Karar AK-42: canlılık süzgecini kapı kendisi uygular ve kişinin baktığı kolonlar hesabına girmez; koşul diline boş ve dolu işleçleri eklenir; kapılar ve katalog tek modülden sağlanır. Ortak kod görevi GV-072 açıldı ve koşuyor. GV-056 ve GV-057 cevaplandı: bu iki görevde canlılık süzgeci yazılmıyor, GV-072'den sonra ayrı görev bağlayacak.
 - 02:03 — GV-053 (ortak kod sertleştirmesi) soruyla durdu: yalnız kendisi listesi, kendi sınama uçlarını o işaretle işaretleyen iki var olan testi kırıyor. Karar: güvenlik listesi testler için genişletilmez; iki test gerçek ucu kullanacak biçimde değiştiriliyor (GV-074, koşuyor); GV-053 ondan sonra alınacak.
 - 02:03 — Ön yüzde yönetim ekranları epic'i açıldı (EP-007); kullanıcı listesi ekranı (GV-073) koşuyor. Tasarım kaydına 'Yönetim ekranları' bölümü yazıldı.
+- 02:11 — GV-035 (erişim kaydı) cevaplarımla ikinci turda alındı: erişim kaydı ve ad denetimi 16, uçtan uca ve iz aktarıcısı 16 test. GV-057 (grup oku) ve GV-056 (rol oku) cevaplarımla alındı: üç okuma testi birlikte 40 test. GV-074 (iki testin sınama uçları) alındı, ardından GV-053 (ortak kod sertleştirmesi) alındı: sertleştirme ve guard testleri 50, giriş ve bütünlük 30, uçtan uca, HTTP temeli ve yetki 62; tip ve lint 0.
+- 02:11 — Alımdan sonraki ölçümde ana dalda kırmızı bir test buldum: test/erisim-kaydi.e2e-spec.ts. İki ayrı incelenmiş görevin birleşiminden doğdu: erişim kaydı testi kendi sınama ucunu yalnız kendisi işaretiyle işaretliyor, ortak kod sertleştirmesi ise o işareti sayılı listeye bağladı; uygulama o uçla açılmıyor. Erişim kaydı testi yazma işareti görevinde (GV-061, incelemede) zaten değişiyor; o alınınca sınama ucunu izin işaretine çeviren küçük görev koşacak.
