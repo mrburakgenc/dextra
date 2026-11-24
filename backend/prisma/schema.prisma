@@ -61,6 +61,14 @@ model IslenenOlay {
   @@map("islenen_olay")
 }
 
+// Tohum göçü defteri: uygulanmış her tohum göçünün adı, göçle aynı işlemde yazılır (TS-002 AK-1).
+model TohumGocu {
+  ad              String   @id(map: "tohum_gocu_ba")
+  uygulanmaZamani DateTime @default(dbgenerated("clock_timestamp()")) @map("uygulanma_zamani") @db.Timestamptz
+
+  @@map("tohum_gocu")
+}
+
 // Kimlik feature'ının tabloları (TS-002 "Veri modeli"). Kimlikler uygulamada üretilir; veritabanı
 // varsayılanı yoktur. Bütün yabancı anahtarlarda silme kuralı RESTRICT'tir. Şema dilinde yazılamayan
 // nesneler (denetim kısıtları, kök grubun tekilliği) göç dosyasının sonunda elle yazılıdır.
