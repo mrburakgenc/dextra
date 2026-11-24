@@ -10,7 +10,14 @@
       "Bash(git fetch *)",
       "Bash(git merge *)",
       "Bash(gh pr create *)",
-      "Bash(gh pr merge *)"
+      "Bash(gh pr merge *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(python3 *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Edit(./**)"
     ]
   },
   "hooks": {
