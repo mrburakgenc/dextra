@@ -4,9 +4,9 @@ import { type IstekBaglami, istekBaglami } from '../http/istek-baglami.js';
 import { KodluHata } from '../http/kodlu-hata.js';
 import { KAYNAK_KATALOGU, type KaynakKatalogu } from './kaynak-katalogu.js';
 import {
-  type CozulmusSartOgesi,
+  type KosulOgesi,
+  kosuluCevir,
   type PrismaKosulu,
-  sartiCevir,
 } from './sart-cevirici.js';
 import type { YetenekKurali } from './yetenek-derleyici.js';
 
@@ -19,10 +19,14 @@ export interface Siralama {
 }
 
 // Çağıranın listeye verdiği koşul, sıralama ve sayfa; koşul yetkinin satır süzgeciyle "ve" ile birleşir.
+// yalnizCanli açıkken yalnız silinme zamanı boş kayıtlar gelir (TS-002 AK-42); bu süzgeç kapınındır,
+// çağıranın koşulu değildir: baktığı kolon, katılan yetenekler hesabına girmez. Silinme zamanı alanı
+// olmayan kaynakta hatadır.
 export interface ListeIstegi {
-  readonly kosul?: readonly CozulmusSartOgesi[];
+  readonly kosul?: readonly KosulOgesi[];
   readonly siralama?: readonly Siralama[];
   readonly sayfa?: { readonly atla: number; readonly al: number };
+  readonly yalnizCanli?: boolean;
 }
 
 // Bu istekteki okumalarda kullanılan yetenek ve üyelik kimlikleri ve dönen kayıt sayısı (erişim kaydı
@@ -34,6 +38,7 @@ export interface OkumaBirikimi {
 }
 
 const OKUMA_EYLEMI = 'oku';
+const SILINME_ALANI = 'silinmeZamani';
 
 interface Birikim {
   readonly yetenekIdleri: Set<string>;
@@ -100,7 +105,7 @@ export class OkumaKapisi {
     istek: ListeIstegi = {},
   ): Promise<Kayit[]> {
     const { alanlar, vekil } = this.kaynak(istemci, kaynak);
-    const ceviri = sartiCevir(istek.kosul ?? [], alanlar);
+    const ceviri = kosuluCevir(istek.kosul ?? [], alanlar);
     if ('neden' in ceviri) {
       throw new Error(`Okuma koşulu çevrilemedi: ${ceviri.neden}`);
     }
@@ -110,8 +115,14 @@ export class OkumaKapisi {
         throw new Error(`Sıralama için bilinmeyen alan: ${alan}`);
       }
     }
+    if (istek.yalnizCanli === true && !alanlar.includes(SILINME_ALANI)) {
+      throw new Error(`Silinme zamanı alanı olmayan kaynak: ${kaynak}`);
+    }
     return this.oku(kaynak, alanlar, vekil, {
-      kosul: ceviri.kosul,
+      kosul:
+        istek.yalnizCanli === true
+          ? { AND: [ceviri.kosul, { [SILINME_ALANI]: null }] }
+          : ceviri.kosul,
       bakilan: [
         ...(istek.kosul ?? []).map((oge) => oge.alan),
         ...siralama.map((oge) => oge.alan),

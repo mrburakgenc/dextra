@@ -16,12 +16,10 @@ import { YETKI_VERISI } from './shared/kimlik/yetki-verisi.contract.js';
 import { MessagingModule } from './shared/messaging/messaging.module.js';
 import { OlayModule } from './shared/messaging/olay/olay.module.js';
 import { IzModule } from './shared/observability/iz/iz.module.js';
-import {
-  KAYNAK_KATALOGU,
-  prismaKaynakKatalogu,
-} from './shared/yetki/kaynak-katalogu.js';
+import { prismaKaynakKatalogu } from './shared/yetki/kaynak-katalogu.js';
 import { YetkiBellegi } from './shared/yetki/yetki-bellegi.js';
 import { YetkiGuard } from './shared/yetki/yetki.guard.js';
+import { YetkiModule } from './shared/yetki/yetki.module.js';
 
 @Module({
   imports: [
@@ -33,6 +31,8 @@ import { YetkiGuard } from './shared/yetki/yetki.guard.js';
     IzModule,
     KimlikModule,
     GuvenlikModule,
+    // Kaynak kataloğu uygulamada yalnız burada kurulur (TS-002 AK-42).
+    YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
   ],
   // Ortak koddaki sözleşmeler burada uygulayan feature sınıfına bağlanır (TS-002 "Yapı"). Kimlik
   // guard'ı ve ardından yetki guard'ı bütün uçlara burada bağlanır; genel guard'lar bu sırayla
@@ -40,10 +40,6 @@ import { YetkiGuard } from './shared/yetki/yetki.guard.js';
   providers: [
     { provide: OTURUM_DENETIMI, useExisting: OturumDenetimiHandler },
     { provide: YETKI_VERISI, useExisting: KimlikYetkiVerisi },
-    {
-      provide: KAYNAK_KATALOGU,
-      useValue: prismaKaynakKatalogu(KIMLIK_KAYNAKLARI),
-    },
     YetkiBellegi,
     { provide: APP_GUARD, useClass: KimlikGuard },
     { provide: APP_GUARD, useClass: YetkiGuard },
