@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { z } from 'zod';
@@ -6,7 +7,7 @@ import { kimlikGerekliyseOturumuBitir } from '../../shared/backend/hata';
 import { backendIstegi } from '../../shared/backend/istek';
 import { erisimBelirteciniOku } from '../../shared/oturum/cerezler';
 import { GonderDugmesi } from '../../shared/ui/gonder-dugmesi';
-import { YetkiSaglayici } from '../../shared/yetki/yetki-saglayici';
+import { Can, YetkiSaglayici } from '../../shared/yetki/yetki-saglayici';
 
 // "yetkilerim" cevabının ekrana giden kısmı; yetenekId ekranda kullanılmadığı için atılır.
 const YetkilerimCevabi = z.object({
@@ -35,9 +36,11 @@ export default async function PanelDuzeni({
     oturumlu: true,
   });
   let icerik: ReactNode;
+  // Hatada kural yoktur; menüdeki bağlantılar görünmez.
+  let kurallar: z.infer<typeof YetkilerimCevabi>['kurallar'] = [];
   if (sonuc.basarili) {
-    const { kurallar } = YetkilerimCevabi.parse(sonuc.govde);
-    icerik = <YetkiSaglayici kurallar={kurallar}>{children}</YetkiSaglayici>;
+    kurallar = YetkilerimCevabi.parse(sonuc.govde).kurallar;
+    icerik = children;
   } else {
     // 401 çerezleri silen /oturum-bitti yoluna gider; öbür hatalarda (ulaşılamadı dahil)
     // içerik yerine ileti gösterilir ve çerezler silinmez.
@@ -48,15 +51,30 @@ export default async function PanelDuzeni({
       </main>
     );
   }
+  // Menünün her bağlantısı <Can> ile tür düzeyinde sorulur (TS-004 "Yönetim ekranları").
   return (
-    <>
+    <YetkiSaglayici kurallar={kurallar}>
       <header className="flex items-center justify-between border-b border-gray-300 px-8 py-4">
         <p className="text-xl font-bold">Dextra</p>
+        <nav aria-label="Ana menü">
+          <ul className="flex gap-4">
+            <Can I="oku" a="Kullanici">
+              <li>
+                <Link
+                  href="/kullanicilar"
+                  className="text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                >
+                  Kullanıcılar
+                </Link>
+              </li>
+            </Can>
+          </ul>
+        </nav>
         <form action={cikisYap}>
           <GonderDugmesi>Çıkış</GonderDugmesi>
         </form>
       </header>
       {icerik}
-    </>
+    </YetkiSaglayici>
   );
 }
