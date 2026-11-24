@@ -512,11 +512,15 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
         # Komutlar sormadan koşar ama işletim sistemi kum havuzunda: yalnız kendi ağacına ve geçici klasöre yazar.
         kum = {"enabled": True, "failIfUnavailable": True, "autoAllowBashIfSandboxed": True,
                "allowUnsandboxedCommands": False}
-        if g.get("ag_izinli"):
-            kum["network"] = {"allowedDomains": [str(a) for a in g["ag_izinli"]]}
+        # strictAllowlist olmadan, soru sormayan izin modunda liste dışındaki adresler sormadan açılır (ölçüldü:
+        # boş listeyle işçi dış ağa çıkabiliyordu); onunla liste dışı her adres her modda reddedilir.
+        kum["network"] = {"allowedDomains": [str(a) for a in g.get("ag_izinli") or []], "strictAllowlist": True}
         if g.get("yerel_ag"):       # alan adı listesi vekilden geçmeyen yerel bağlantıyı (veritabanı sürücüsü) açmaz
-            kum.setdefault("network", {})["allowLocalBinding"] = True
+            kum["network"]["allowLocalBinding"] = True
         ek_ayar["sandbox"] = kum
+        # Kum havuzu yalnız kabuk komutlarını kapsar; dosya araçları onun dışında çalışır. Ağacın dışına yazmayı
+        # hook'un yanında bu ayar da reddeder.
+        ek_ayar.setdefault("permissions", {})["blockWritesOutsideWorkingDirectories"] = True
     if ek_ayar:
         komut += ["--settings", json.dumps(ek_ayar)]
     # Oturum bağımsızdır: üst oturumun kimliği, eforu, proje dizini ve bağlantıları devralınmaz.

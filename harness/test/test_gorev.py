@@ -374,12 +374,21 @@ class IsciKomutu(Ortam):
 
     def test_izinli_ag_alanlari_kum_havuzu_ayarina_girer(self):
         self.assertEqual(self._kum(self._argv(ag_izinli=["pypi.org"]))["network"]["allowedDomains"], ["pypi.org"])
-        self.assertNotIn("network", self._kum(self._argv()))
+
+    def test_liste_disi_adresler_her_izin_modunda_reddedilir(self):
+        # Boş liste tek başına ağı kapatmaz: soru sormayan modda liste dışı adres sormadan açılır.
+        self.assertEqual(self._kum(self._argv())["network"], {"allowedDomains": [], "strictAllowlist": True})
+        self.assertTrue(self._kum(self._argv(ag_izinli=["pypi.org"]))["network"]["strictAllowlist"])
+
+    def test_dosya_araclari_agacin_disina_yazamaz(self):
+        izinler = json.loads(self._deger(self._argv(), "--settings"))["permissions"]
+        self.assertTrue(izinler["blockWritesOutsideWorkingDirectories"])
+        self.assertNotIn("permissions", json.loads(self._deger(self._argv(kum_havuzu=False, okunmaz=[]), "--settings")))
 
     def test_yerel_ag_izni_kum_havuzu_ayarina_girer(self):
-        self.assertEqual(self._kum(self._argv(yerel_ag=True))["network"], {"allowLocalBinding": True})
-        ag = self._kum(self._argv(yerel_ag=True, ag_izinli=["pypi.org"]))["network"]
-        self.assertEqual(ag, {"allowedDomains": ["pypi.org"], "allowLocalBinding": True})
+        ag = self._kum(self._argv(yerel_ag=True))["network"]
+        self.assertEqual(ag, {"allowedDomains": [], "strictAllowlist": True, "allowLocalBinding": True})
+        self.assertNotIn("allowLocalBinding", self._kum(self._argv())["network"])
 
     def test_hazirlik_komutu_agacta_oturumdan_once_kosar(self):
         yaz = "import pathlib; pathlib.Path('hazir.txt').write_text('x')"
