@@ -3,6 +3,8 @@ packages:
   - backend
   - frontend
 # Kurulum betiği çalıştırmasına izin verilen paketler. Kapalı doğar; açmak kullanıcı kararıdır.
+# İkisi 2026-11-24'te kullanıcı onayıyla açıldı: @prisma/engines veritabanı motorunu indirir,
+# prisma yalnız Node sürümünü denetler.
 allowBuilds:
-  '@prisma/engines': false
-  prisma: false
+  '@prisma/engines': true
+  prisma: true
