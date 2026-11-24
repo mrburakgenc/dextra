@@ -30,6 +30,7 @@
     "ag_izinli": [],
     "yerel_ag": true,
     "hazirlik": ["pnpm", "install", "--offline", "--frozen-lockfile"],
+    "orkestrasyon": true,
     "ag_araclari": false
   }
 }

@@ -374,12 +374,21 @@ class IsciKomutu(Ortam):
 
     def test_izinli_ag_alanlari_kum_havuzu_ayarina_girer(self):
         self.assertEqual(self._kum(self._argv(ag_izinli=["pypi.org"]))["network"]["allowedDomains"], ["pypi.org"])
-        self.assertNotIn("network", self._kum(self._argv()))
+
+    def test_liste_disi_adresler_her_izin_modunda_reddedilir(self):
+        # Boş liste tek başına ağı kapatmaz: soru sormayan modda liste dışı adres sormadan açılır.
+        self.assertEqual(self._kum(self._argv())["network"], {"allowedDomains": [], "strictAllowlist": True})
+        self.assertTrue(self._kum(self._argv(ag_izinli=["pypi.org"]))["network"]["strictAllowlist"])
+
+    def test_dosya_araclari_agacin_disina_yazamaz(self):
+        izinler = json.loads(self._deger(self._argv(), "--settings"))["permissions"]
+        self.assertTrue(izinler["blockWritesOutsideWorkingDirectories"])
+        self.assertNotIn("permissions", json.loads(self._deger(self._argv(kum_havuzu=False, okunmaz=[]), "--settings")))
 
     def test_yerel_ag_izni_kum_havuzu_ayarina_girer(self):
-        self.assertEqual(self._kum(self._argv(yerel_ag=True))["network"], {"allowLocalBinding": True})
-        ag = self._kum(self._argv(yerel_ag=True, ag_izinli=["pypi.org"]))["network"]
-        self.assertEqual(ag, {"allowedDomains": ["pypi.org"], "allowLocalBinding": True})
+        ag = self._kum(self._argv(yerel_ag=True))["network"]
+        self.assertEqual(ag, {"allowedDomains": [], "strictAllowlist": True, "allowLocalBinding": True})
+        self.assertNotIn("allowLocalBinding", self._kum(self._argv())["network"])
 
     def test_hazirlik_komutu_agacta_oturumdan_once_kosar(self):
         yaz = "import pathlib; pathlib.Path('hazir.txt').write_text('x')"
@@ -452,6 +461,30 @@ class IsciKomutu(Ortam):
         i = argv.index("--disallowedTools")
         self.assertEqual(sorted(argv[i + 1:i + 4]), ["Agent", "Task", "Workflow"])   # web açılır, alt ajan yine kapalı
         self.assertEqual(json.loads(self._deger(argv, "--settings"))["permissions"]["deny"], ["Read(~/ozel/**)"])
+
+    def _yasaklar(self, argv):
+        i = argv.index("--disallowedTools") + 1
+        j = next((k for k in range(i, len(argv)) if argv[k].startswith("--")), len(argv))
+        return sorted(argv[i:j])
+
+    def test_orkestrasyon_acilirsa_alt_ajan_ve_is_akisi_yasagi_kalkar(self):
+        self.assertEqual(self._yasaklar(self._argv()), ["Agent", "Task", "WebFetch", "WebSearch", "Workflow"])
+        self.assertEqual(self._yasaklar(self._argv(orkestrasyon=True)), ["WebFetch", "WebSearch"])
+        self.assertNotIn("--disallowedTools", self._argv(orkestrasyon=True, ag_araclari=True))
+
+    def test_efor_ayari_isciye_bayrakla_gecer(self):
+        self.assertEqual(self._deger(self._argv(efor="xhigh"), "--effort"), "xhigh")
+        self.assertNotIn("--effort", self._argv())
+
+    def test_inceleyici_orkestrasyon_yapamaz_ve_kendi_eforunu_alir(self):
+        kok = gorev_deposu(orkestrasyon=True, efor="xhigh", inceleme_efor="high")
+        kimlik = dolu_kart(kok)
+        gorev.kos(kok, kimlik)
+        gorev.incele(kok, kimlik)
+        yol = agac(kok, kimlik) / ".harness/gorev" / kimlik / "argv-inceleyici.json"
+        argv = json.loads(yol.read_text(encoding="utf-8"))
+        self.assertEqual(self._yasaklar(argv), ["Agent", "Task", "WebFetch", "WebSearch", "Workflow"])
+        self.assertEqual(self._deger(argv, "--effort"), "high")
 
     def test_isci_ust_oturumun_ortamini_devralmaz(self):
         ust = {"CLAUDE_CODE_SESSION_ID": "ust-oturum", "CLAUDE_EFFORT": "high", "CLAUDECODE": "1",

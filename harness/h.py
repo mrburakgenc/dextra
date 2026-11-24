@@ -70,6 +70,9 @@ VARSAYILAN_AYAR = {
               # yerel_ag: kum havuzundaki komutlar yerel adresteki kapılara bağlanabilir (macOS); dinleyen bütün
               # yerel servisleri kapsar · hazirlik: ağaç açılınca, kum havuzunun dışında koşan komut (argüman listesi)
               "yerel_ag": False, "hazirlik": [],
+              # orkestrasyon: işçi alt ajan ve iş akışı başlatabilir (inceleyici başlatamaz) · efor, inceleme_efor:
+              # oturuma --effort ile verilen düzey; boşsa bayrak komuta girmez
+              "orkestrasyon": False, "efor": "", "inceleme_efor": "",
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",

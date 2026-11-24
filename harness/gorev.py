@@ -492,7 +492,14 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
     ek_ayar = {}
     # Görev oturumu tek ajandır: alt ajan ve workflow başlatamaz (onlar kendi araç listeleriyle doğar ve sınırı aşar).
     # Web araçları kum havuzunun dışında çalışır; ayar açmadıkça kapalıdır.
-    komut += ["--disallowedTools", "Agent", "Task", "Workflow"] + ([] if g.get("ag_araclari") else ["WebFetch", "WebSearch"])
+    # "orkestrasyon" açıksa işçi alt ajan ve iş akışı başlatabilir (deneme ayarı); inceleyici her zaman tek ajandır.
+    orkestrasyon = bool(g.get("orkestrasyon")) and rol != "inceleyici"
+    yasak = ([] if orkestrasyon else ["Agent", "Task", "Workflow"]) + ([] if g.get("ag_araclari") else ["WebFetch", "WebSearch"])
+    if yasak:
+        komut += ["--disallowedTools"] + yasak
+    efor = g.get("inceleme_efor") if rol == "inceleyici" else g.get("efor")
+    if efor:                        # üst oturumun eforu devralınmaz; ayarda yazıyorsa bayrakla verilir
+        komut += ["--effort", str(efor)]
     if g.get("okunmaz"):            # ret kuralı izinleri atlayan modda da geçerlidir; kum havuzu komutlara da uygular
         ek_ayar["permissions"] = {"deny": ["Read(%s)" % y for y in g["okunmaz"]]}
     if g.get("yalitim", "proje") == "proje":
@@ -505,11 +512,15 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
         # Komutlar sormadan koşar ama işletim sistemi kum havuzunda: yalnız kendi ağacına ve geçici klasöre yazar.
         kum = {"enabled": True, "failIfUnavailable": True, "autoAllowBashIfSandboxed": True,
                "allowUnsandboxedCommands": False}
-        if g.get("ag_izinli"):
-            kum["network"] = {"allowedDomains": [str(a) for a in g["ag_izinli"]]}
+        # strictAllowlist olmadan, soru sormayan izin modunda liste dışındaki adresler sormadan açılır (ölçüldü:
+        # boş listeyle işçi dış ağa çıkabiliyordu); onunla liste dışı her adres her modda reddedilir.
+        kum["network"] = {"allowedDomains": [str(a) for a in g.get("ag_izinli") or []], "strictAllowlist": True}
         if g.get("yerel_ag"):       # alan adı listesi vekilden geçmeyen yerel bağlantıyı (veritabanı sürücüsü) açmaz
-            kum.setdefault("network", {})["allowLocalBinding"] = True
+            kum["network"]["allowLocalBinding"] = True
         ek_ayar["sandbox"] = kum
+        # Kum havuzu yalnız kabuk komutlarını kapsar; dosya araçları onun dışında çalışır. Ağacın dışına yazmayı
+        # hook'un yanında bu ayar da reddeder.
+        ek_ayar.setdefault("permissions", {})["blockWritesOutsideWorkingDirectories"] = True
     if ek_ayar:
         komut += ["--settings", json.dumps(ek_ayar)]
     # Oturum bağımsızdır: üst oturumun kimliği, eforu, proje dizini ve bağlantıları devralınmaz.
