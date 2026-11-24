@@ -11,6 +11,8 @@ dist/
 coverage/
 *.tsbuildinfo
 *.log
+# Prisma'nın ürettiği istemci; pnpm -C backend prisma:generate ile yeniden üretilir
+generated/
 
 # Ortam dosyaları: gerçek değer taşıyan dosya depoya girmez
 .env
