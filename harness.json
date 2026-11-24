@@ -17,8 +17,8 @@
   "gorev": {
     "komut": "claude",
     "model": "opus",
-    "max_tur": 40,
-    "zaman_asimi_sn": 1200,
+    "max_tur": 80,
+    "zaman_asimi_sn": 1800,
     "izin_modu": "bypassPermissions",
     "onay": "baslangic",
     "butce_usd": null,

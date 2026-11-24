@@ -593,7 +593,17 @@ def _onceki_bulgular(kayit: pathlib.Path) -> str:
             + "\n".join(satirlar) + "\n")
 
 
-def kos(kok: pathlib.Path, kimlik: str) -> dict:
+def _cevaplar(kayit: pathlib.Path) -> str:
+    """İşçinin sorduğu sorular ve görevi verenin cevapları; işçiye de inceleyiciye de verilir. Yoksa boş metin."""
+    cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
+    if not cevaplar:
+        return ""
+    return ("\n\n## Sorulan sorular ve cevapları\nİşçi daha önce soruyla durdu; görevi veren oturum şu cevapları verdi. "
+            "Cevap kabul ölçütünün nasıl sınanacağını açıklıyorsa ölçüt o cevapla birlikte okunur.\n"
+            + "\n".join("- Soru: %s\n  Cevap: %s" % (c["soru"], c["cevap"]) for c in cevaplar) + "\n")
+
+
+def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
     """Görevi kendi çalışma ağacında koşturur, sonra kapsamı, bitiş kaydını ve zinciri ölçer."""
     kok = pathlib.Path(kok)
     g = h.ayar_oku(kok)["gorev"]
@@ -601,6 +611,16 @@ def kos(kok: pathlib.Path, kimlik: str) -> dict:
     d = _durum_oku(kok, kimlik, kayit)
     if d.get("alindi") or d["durum"] == "atildi":
         raise h.HarnessHata("%s kapanmış (%s); yeniden koşturulamaz" % (kimlik, asama(d, {}, True)[1]))
+    onceki_kayit = ""
+    if cevap:                       # soruyla duran işçi cevabı ve kendi önceki bitiş kaydını alır; kayıt aşağıda silinir
+        onceki = _json_oku(kayit / "bitis.json")
+        if d["durum"] != "soru" or not onceki.get("soru"):
+            raise h.HarnessHata("%s soruyla durmadı; --cevap yalnız soruyla duran göreve verilir" % kimlik)
+        eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
+        _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [{"soru": onceki["soru"], "cevap": cevap}]})
+        onceki_kayit = ("\n\n## Önceki bitiş kaydın\nBu görev daha önce koştu ve soruyla durdu. Önceki koşunun işi "
+                        "çalışma ağacında duruyor; baştan yazma, cevaba göre sürdür ve bitiş kaydını yeniden yaz.\n"
+                        "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
     kart = (kayit / "kart.md").read_text(encoding="utf-8")
     if HEDEF_YERTUTUCU in kart or OLCUT_YERTUTUCU in kart:
         raise h.HarnessHata("%s kartında hedef ya da kabul ölçütü doldurulmamış" % kimlik)
@@ -629,7 +649,8 @@ def kos(kok: pathlib.Path, kimlik: str) -> dict:
 
     basla = datetime.datetime.now()
     komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
-    cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit), agac, kimlik, d["rol"], g["model"])
+    cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + onceki_kayit,
+                                               agac, kimlik, d["rol"], g["model"])
     (kayit / "sonuc.json").write_text(cikti or "", encoding="utf-8")
     uyarilar = []
     for komsu, once in komsular.items():   # işçi kendi ağacından çıkıp orchestrator'ın ya da ana ağacın dosyasına yazdı mı
@@ -693,6 +714,7 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
     istem = INCELEME.format(kimlik=kimlik, baslik=d["baslik"], hedef=_bolum(kart, "Hedef"),
                             olcut=_bolum(kart, "Kabul ölçütü"), dosyalar=_dosya_listesi(d["yollar"]),
                             degisen=_dosya_listesi(degisen), paket=paket["metin"], fark=_fark(agac, d["taban"]))
+    istem += _cevaplar(kayit)
     yerel = _yerel(agac, kimlik)
     yerel.mkdir(parents=True, exist_ok=True)
     for hedef in (kayit, yerel):
@@ -860,7 +882,7 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         print("kart açıldı: %s\nsıradaki: python3 harness/h.py gorev kos %s" % (kart, kart.parent.name))
         return 0
     if arg[:1] == ["kos"] and len(arg) > 1:
-        rapor = kos(kok, arg[1])
+        rapor = kos(kok, arg[1], cevap=(h._secenek(arg, "--cevap") or [None])[0])
         _rapor_yaz(rapor)
         return 0 if not rapor["sorunlar"] else 1
     if arg[:1] == ["incele"] and len(arg) > 1:
@@ -885,4 +907,5 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                 d["kimlik"], asama(d, _json_oku(p.parent / "rapor.json"), zorunlu)[1], d["rol"], d["baslik"],
                 (" · %s %s" % (d["plan"], d["adim"])) if d.get("plan") else ""))
         return 0
-    raise h.HarnessHata("kullanım: h.py gorev <yeni | kos GV-NNN | incele GV-NNN | al GV-NNN | at GV-NNN | durum>")
+    raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] | incele GV-NNN | al GV-NNN | '
+                        'at GV-NNN | durum>')

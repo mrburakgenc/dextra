@@ -74,6 +74,8 @@ kurallar = re.findall(r"^(?:\[ \] )?((?:KU)-\d{3,}@\d+) ", kart, re.M)
 bitis = {"gorev": gv, "durum": "tamam", "ozet": "OZET-ISARETI-7391", "dokunulan": ["src/siparis/iptal.ts"],
          "kararlar": [], "reddedilenler": [], "testler": [], "kalan": None, "soru": None, "denenmedi": [],
          "kurallar": [] if mod == "hukumsuz" else [{"kimlik": k, "hukum": "uyuyor", "not": ""} for k in kurallar]}
+if mod == "soru":
+    bitis.update(durum="soru", soru="SORU-ISARETI-5521")
 if mod == "denenmedisiz":
     del bitis["denenmedi"]
 if mod != "sozlesmesiz":
@@ -587,6 +589,26 @@ class Inceleme(Ortam):
         gorev.incele(kok, kimlik)
         gorev.kos(kok, kimlik)
         self.assertNotIn("Önceki incelemenin bulguları", self._isci_istemi(kok, kimlik))
+
+    def test_soruyla_duran_isci_cevabi_ve_onceki_kaydini_alir_inceleyici_de_cevabi_gorur(self):
+        os.environ["SAHTE_MOD"] = "soru"
+        kok, kimlik = self._kosmus()
+        self.assertEqual(durum(kok, kimlik)["durum"], "soru")
+        os.environ["SAHTE_MOD"] = "tamam"
+        gorev.kos(kok, kimlik, cevap="CEVAP-ISARETI-8804")
+        istem = self._isci_istemi(kok, kimlik)
+        for beklenen in ("Soru: SORU-ISARETI-5521", "Cevap: CEVAP-ISARETI-8804", "Önceki bitiş kaydın",
+                         "OZET-ISARETI-7391"):
+            self.assertIn(beklenen, istem)
+        gorev.incele(kok, kimlik)
+        inceleyici_istemi = self._inceleyici_argv(kok, kimlik)
+        self.assertIn("Cevap: CEVAP-ISARETI-8804", inceleyici_istemi[inceleyici_istemi.index("-p") + 1])
+
+    def test_soruyla_durmayan_goreve_cevap_verilemez(self):
+        kok, kimlik = self._kosmus()
+        with self.assertRaises(h.HarnessHata):
+            gorev.kos(kok, kimlik, cevap="CEVAP-ISARETI-8804")
+        self.assertNotIn("Sorulan sorular", self._isci_istemi(kok, kimlik))
 
     def test_iscinin_hukmuyle_celisen_inceleme_celiskiyi_listeler(self):
         kok, kimlik = self._kosmus(kesin=True)
