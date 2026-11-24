@@ -16,6 +16,7 @@ Bağımlılık yok: Python 3.9+ standart kütüphanesi.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import datetime
 import os
 import pathlib
@@ -398,50 +399,72 @@ def guncelle(kok: pathlib.Path, ep: str) -> None:
 
 # ── Yürütme ──────────────────────────────────────────────────────────────────────────
 
+def _kesisir(a: list, b: list) -> bool:
+    """İki yaprağın dosya desenleri aynı dosyaya düşebilir mi. Desenin joker öncesindeki sabit kısmına bakar:
+    biri öbürünün başıysa kesişir sayılır (temkinli; yanlış "kesişir" yalnız yan yana koşuyu engeller)."""
+    sabit = [re.split(r"[*?\[]", d, maxsplit=1)[0] for d in a], [re.split(r"[*?\[]", d, maxsplit=1)[0] for d in b]
+    return not a or not b or any(x.startswith(y) or y.startswith(x) for x in sabit[0] for y in sabit[1])
+
+
+def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir) -> tuple | None:
+    """Bir yaprağı koşturur ve inceletir: temizse None, değilse (aşama, neden). Yan yana çağrılabilir."""
+    kimlik = y["gorev"]
+    bildir("%s %s (%s) — %s: işçi koşuyor" % (ep, y["no"], kimlik, y["baslik"]))
+    try:
+        rapor = gorev.kos(kok, kimlik)
+    except h.HarnessHata as e:
+        return "kosum", str(e)
+    adlar = sorted({s["ad"] for s in rapor["sorunlar"]} | {u["ad"] for u in rapor.get("uyarilar") or []})
+    if rapor["durum"] != "tamam" or adlar:
+        return "kosum", ", ".join(adlar) or "işçi işi bitirmedi (%s)" % rapor["durum"]
+    if zorunlu:
+        bildir("%s %s (%s): inceleniyor" % (ep, y["no"], kimlik))
+        inc = gorev.incele(kok, kimlik)
+        if inc["sonuc"] != "gecti":
+            ayrinti = sorted({s["ad"] for s in inc["sorunlar"]}) + [
+                "%s:%s %s" % (b.get("dosya"), b.get("satir"), b.get("aciklama")) for b in inc["bulgular"]
+                if b.get("onem") == "engel"] + ["%s uymuyor" % k.get("kimlik") for k in inc["kurallar"]
+                                                if k.get("hukum") == "uymuyor"]
+            return "inceleme", "inceleme %s: %s" % (
+                "kaldı" if inc["sonuc"] == "kaldi" else "sorunlu", "; ".join(ayrinti) or "ayrıntı raporda")
+    return None
+
+
 def yurut(kok: pathlib.Path, ep: str, en_cok: int | None = None, bildir=None) -> dict:
-    """Epic'in hazır yapraklarını sırayla yürütür: koştur → incelet → al. İlk sorunda durur.
+    """Epic'in hazır yapraklarını yürütür: koştur → incelet → al. İlk sorunda durur.
 
     Kullanıcı bu komutu bir kez onaylar; yapraklar için ayrıca sorulmaz. Sorunlu, uyarılı ya da incelemede
-    kalan iş alınmaz: yürütme orada durur ve nedeni döner; karar kullanıcınındır."""
+    kalan iş alınmaz: yürütme orada durur ve nedeni döner; karar kullanıcınındır.
+    `gorev.paralel` 1'den büyükse dosya desenleri kesişmeyen hazır yapraklar yan yana koşar ve incelenir;
+    alma her zaman sırayladır (birleştirme aynı dala yapılır). Aynı turda temiz çıkan yaprak alınır, sorunlu
+    olan durdurur."""
     bildir = bildir or (lambda _: None)
     zorunlu = _zorunlu(kok)
+    paralel = max(1, int(h.ayar_oku(pathlib.Path(kok))["gorev"].get("paralel") or 1))
     alinan, duran = [], None
-    while en_cok is None or len(alinan) < en_cok:
+    while duran is None and (en_cok is None or len(alinan) < en_cok):
         hazirlar = hazir(kok, ep)
         if not hazirlar:
             break
-        y = hazirlar[0]
-        kimlik = y["gorev"]
-        dur = lambda asama, neden: {"no": y["no"], "gorev": kimlik, "baslik": y["baslik"],   # noqa: E731
-                                    "asama": asama, "neden": neden}
-        bildir("%s %s (%s) — %s: işçi koşuyor" % (ep, y["no"], kimlik, y["baslik"]))
-        try:
-            rapor = gorev.kos(kok, kimlik)
-        except h.HarnessHata as e:
-            duran = dur("kosum", str(e))
-            break
-        adlar = sorted({s["ad"] for s in rapor["sorunlar"]} | {u["ad"] for u in rapor.get("uyarilar") or []})
-        if rapor["durum"] != "tamam" or adlar:
-            duran = dur("kosum", ", ".join(adlar) or "işçi işi bitirmedi (%s)" % rapor["durum"])
-            break
-        if zorunlu:
-            bildir("%s %s (%s): inceleniyor" % (ep, y["no"], kimlik))
-            inc = gorev.incele(kok, kimlik)
-            if inc["sonuc"] != "gecti":
-                ayrinti = sorted({s["ad"] for s in inc["sorunlar"]}) + [
-                    "%s:%s %s" % (b.get("dosya"), b.get("satir"), b.get("aciklama")) for b in inc["bulgular"]
-                    if b.get("onem") == "engel"] + ["%s uymuyor" % k.get("kimlik") for k in inc["kurallar"]
-                                                    if k.get("hukum") == "uymuyor"]
-                duran = dur("inceleme", "inceleme %s: %s" % (
-                    "kaldı" if inc["sonuc"] == "kaldi" else "sorunlu", "; ".join(ayrinti) or "ayrıntı raporda"))
-                break
-        try:
-            gorev.al(kok, kimlik)
-        except h.HarnessHata as e:
-            duran = dur("alma", str(e))
-            break
-        alinan.append(kimlik)
-        bildir("%s %s (%s): alındı" % (ep, y["no"], kimlik))
+        sinir = paralel if en_cok is None else min(paralel, en_cok - len(alinan))
+        tur = []
+        for y in hazirlar:
+            yollar = gorev._durum_oku(kok, y["gorev"], gorev._kayit(kok, y["gorev"]))["yollar"]
+            if len(tur) < sinir and not any(_kesisir(yollar, o["yollar"]) for o in tur):
+                tur.append(dict(y, yollar=yollar))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(tur)) as havuz:
+            nedenler = list(havuz.map(lambda y: _kos_incele(kok, ep, y, zorunlu, bildir), tur))
+        for y, neden in zip(tur, nedenler):
+            if neden is None:
+                try:
+                    gorev.al(kok, y["gorev"])
+                except h.HarnessHata as e:
+                    neden = ("alma", str(e))
+                else:
+                    alinan.append(y["gorev"])
+                    bildir("%s %s (%s): alındı" % (ep, y["no"], y["gorev"]))
+            if neden is not None and duran is None:
+                duran = {"no": y["no"], "gorev": y["gorev"], "baslik": y["baslik"], "asama": neden[0], "neden": neden[1]}
     return {"epic": ep, "alinan": alinan, "duran": duran, "kalan": [y["no"] for y in hazir(kok, ep)],
             "bitti": oku(kok, ep)["isaret"]}
 
@@ -455,6 +478,8 @@ def yurutme_ozeti(kok: pathlib.Path, ep: str) -> str:
            else "KUM HAVUZU KAPALI (komutlar diskin her yerine yazabilir)")
     adimlar = "işçi oturumu → inceleyici oturumu → bu dala birleştirme" if _zorunlu(kok) \
         else "işçi oturumu → bu dala birleştirme (inceleme kapalı)"
+    if int(g.get("paralel") or 1) > 1:
+        adimlar += "; dosyaları kesişmeyen en çok %s yaprak yan yana koşar, birleştirme sırayladır" % g["paralel"]
     return ("%s — %s (space: %s)\n%d yaprak koşturulacak; her biri sırayla: %s\n%s\n"
             "model: %s · yaprak başına en çok %s tur, %s sn%s\nizin modu: %s · %s\n"
             "Dal: %s. İlk sorunda durur ve sana döner; yapraklar için ayrıca sorulmaz."

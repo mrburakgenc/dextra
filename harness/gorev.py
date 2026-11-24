@@ -22,6 +22,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import threading
 
 import h
 
@@ -545,13 +546,17 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
     return cikti, sorunlar, zaman_asimi
 
 
+_ORTAK_KILIT = threading.Lock()   # yan yana koşan görevlerin paylaştığı yerler: epic dosyası ve git'in ağaç kaydı
+
+
 def _plani_guncelle(kok: pathlib.Path, d: dict) -> None:
     if d.get("plan"):
         import plan  # aynı dizinde; döngüsel yüklemeyi önlemek için burada
-        try:
-            plan.guncelle(kok, d["plan"])
-        except h.HarnessHata:
-            pass   # plan silinmişse görev kaydı yine de geçerlidir
+        with _ORTAK_KILIT:
+            try:
+                plan.guncelle(kok, d["plan"])
+            except h.HarnessHata:
+                pass   # plan silinmişse görev kaydı yine de geçerlidir
 
 
 def _agac_ac(kok: pathlib.Path, kimlik: str, d: dict) -> pathlib.Path:
@@ -634,7 +639,8 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
     if d.get("plan"):
         import plan
         plan.onkosul_denetle(kok, d)
-    agac = _agac_ac(kok, kimlik, d)
+    with _ORTAK_KILIT:
+        agac = _agac_ac(kok, kimlik, d)
     if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
         r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, capture_output=True, text=True,
                            stdin=subprocess.DEVNULL)

@@ -75,6 +75,8 @@ VARSAYILAN_AYAR = {
               "orkestrasyon": False, "efor": "", "inceleme_efor": "",
               # mcp: oturuma verilen MCP sunucuları (ad → ayar); boşsa oturum MCP sunucusu olmadan başlar
               "mcp": {},
+              # paralel: epic yürütülürken dosyaları kesişmeyen en çok kaç yaprak yan yana koşar; 1 = sırayla
+              "paralel": 1,
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",

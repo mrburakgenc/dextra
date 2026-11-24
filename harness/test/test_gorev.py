@@ -60,18 +60,23 @@ if rol == "inceleyici":
         (gd / "inceleme.json").write_text(json.dumps(kayit, ensure_ascii=False), encoding="utf-8")
     print(cikti)
     sys.exit(0)
-mod = os.environ.get("SAHTE_MOD", "tamam")
+mod = os.environ.get("SAHTE_MOD_" + gv, os.environ.get("SAHTE_MOD", "tamam"))   # göreve özel kip, yoksa ortak kip
+zaman = os.environ.get("SAHTE_ZAMAN_DIZINI")   # yan yana koşu testleri: başlangıç ve bitiş anı buraya yazılır
+basla = time.time()
+if zaman:
+    time.sleep(0.6)
+dosya = "src/%s/a.ts" % gv.lower() if mod == "ayri" else "src/siparis/iptal.ts"   # ayri: her görev kendi dosyasına yazar
 if mod == "yavas":
     time.sleep(10)
 if mod == "agac-disi":   # kendi ağacından çıkıp ana ağaca yazar
     (kok.parents[2] / "src/siparis/disarida.ts").write_text("export const y = 1\n", encoding="utf-8")
 if mod != "dokunmaz":
-    hedef = kok / ("src/odeme/a.ts" if mod == "kapsam-disi" else "src/siparis/iptal.ts")
+    hedef = kok / ("src/odeme/a.ts" if mod == "kapsam-disi" else dosya)
     hedef.parent.mkdir(parents=True, exist_ok=True)
     hedef.write_text("export const x = 2\n" + ("" if gv == "GV-001" else "// %s\n" % gv), encoding="utf-8")
 kart = (gd / "kart.md").read_text(encoding="utf-8")
 kurallar = re.findall(r"^(?:\[ \] )?((?:KU)-\d{3,}@\d+) ", kart, re.M)
-bitis = {"gorev": gv, "durum": "tamam", "ozet": "OZET-ISARETI-7391", "dokunulan": ["src/siparis/iptal.ts"],
+bitis = {"gorev": gv, "durum": "tamam", "ozet": "OZET-ISARETI-7391", "dokunulan": [dosya],
          "kararlar": [], "reddedilenler": [], "testler": [], "kalan": None, "soru": None, "denenmedi": [],
          "kurallar": [] if mod == "hukumsuz" else [{"kimlik": k, "hukum": "uyuyor", "not": ""} for k in kurallar]}
 if mod == "soru":
@@ -80,6 +85,8 @@ if mod == "denenmedisiz":
     del bitis["denenmedi"]
 if mod != "sozlesmesiz":
     (gd / "bitis.json").write_text(json.dumps(bitis, ensure_ascii=False), encoding="utf-8")
+if zaman:
+    pathlib.Path(zaman, gv + ".json").write_text(json.dumps([basla, time.time()]), encoding="utf-8")
 print(cikti)
 '''
 
