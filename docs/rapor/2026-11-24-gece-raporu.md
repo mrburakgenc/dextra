@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 22 görevin 17 tanesi alındı. Son koşuların ve incelemelerin toplamı: 157 dakika, 54.89 dolar.
+Kayıtlı 31 görevin 18 tanesi alındı. Son koşuların ve incelemelerin toplamı: 182 dakika, 62.99 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -40,10 +40,19 @@ Kayıtlı 22 görevin 17 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-016 | EP-002 9 | Olay aktarıcısının tek geçişi ve abone defteri | alındı | 1.6 | 5.4 | 2.62 | 6 | 0 engel, 3 öneri | 0 |
 | GV-017 | EP-002 10 | Tüketici tabanı ve işlenen olay kaydı (süreli sahiplenme) | alındı | 7.8 | 5.8 | 4.54 | 5 | 0 engel, 3 öneri | 0 |
 | GV-018 | EP-002 11 | Olay aktarıcısının dayanıklılığı: erteleme, süre bütçesi, döngü, temizlik, ölçüler | alındı | 7.6 | 7.3 | 5.12 | 7 | 0 engel, 4 öneri | 0 |
-| GV-019 | EP-002 12 | Bağlama ve bütünün sınaması: parçalar uygulamaya bağlanır, uçtan uca sınanır | bekliyor | — | — | — | 0 | — | 0 |
+| GV-019 | EP-002 12 | Bağlama ve bütünün sınaması: parçalar uygulamaya bağlanır, uçtan uca sınanır | alındı | 13.6 | 9.8 | 7.55 | 8 | 0 engel, 5 öneri | 0 |
 | GV-020 | EP-003 1 | Kimlik tabloları ve göçü: on bir tablo, kısıtları ve adlarıyla | bekliyor | — | — | — | 0 | — | 0 |
 | GV-021 | EP-002 13 | Sertleştirme: tüketici tabanı ve kuyruk kapısı (inceleme önerileri) | bekliyor | — | — | — | 0 | — | 0 |
 | GV-022 | EP-002 14 | Sertleştirme: döngü parçası ve iz aktarıcısı (inceleme önerileri) | bekliyor | — | — | — | 0 | — | 0 |
+| GV-023 | EP-003 2 | HTTP temeli: Zod doğrulama, tek biçimli hata cevabı, istek kimliği ve istek bağlamı | bekliyor | — | — | — | 0 | — | 0 |
+| GV-024 | EP-003 3 | Belirteç üretici (RS256) ve istemci adresi imzası | tamam | 1.4 | — | 0.55 | 4 | — | 1 |
+| GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | bekliyor | — | — | — | 0 | — | 0 |
+| GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | bekliyor | — | — | — | 0 | — | 0 |
+| GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | bekliyor | — | — | — | 0 | — | 0 |
+| GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | bekliyor | — | — | — | 0 | — | 0 |
+| GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | bekliyor | — | — | — | 0 | — | 0 |
+| GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
+| GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -89,6 +98,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-012 | inceleme kaldı: bir test yaklaşık on koşuda bir kırılacak biçimde yazılmıştı | inceleme kaydı | test düzeltildi, yeniden incelendi |
 | GV-014 | işçi soruyla durdu: PostgreSQL'in "boş olamaz" kısıt adları | bitiş kaydı | cevap verildi (ad kuralının dışında) |
 | GV-016 | inceleme kaldı: bitiş kaydında bir satır yanlış bölümdeydi (kartıma eklediğim katı kural yüzünden) | inceleme kaydı | satır tamamlatıldı, yeniden incelendi; sonraki kartlarda kural yumuşatıldı |
+| GV-024 | işçi soruyla durdu: aracın okuma yasağı yüzünden .env.example dosyasına yazamadı; ayrıca dosya listesini boş bıraktı | bitiş kaydı | cevap verildi (dosya yazılmaz); araçta soru ile sorunun birlikte gelmesi ele alındı |
 
 ## 6. Hatalarım
 
@@ -99,6 +109,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - Tasarım kararlarını ve görev sırasını sohbette tablo olarak gösterip yalnız geçici klasörde tuttum; uyardın, bilgi tabanına işlendi.
 - Kartlara eklediğim katı "bitiş kaydı" kuralı doğru bir işi incelemede bıraktırdı (GV-016).
 - Araca MCP ayarını eklerken bir satırı yanlış bloğa kaydırdım; aracın iki testi yakaladı, düzeltildi.
+- GV-017 alındıktan sonra tablo listesini sayan testi (test-database) koşturmadım; kırmızı test ana dalda bir saatten uzun kaldı ve onu ben değil GV-019'un incelemesi yakaladı. Bundan sonra şema değiştiren her kartta tablo sayan testlerin aranıp koşturulması yazılı.
 
 ## 7. Araçta (harness) değişenler
 
@@ -129,3 +140,7 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 (Zaman damgaları makinenin saatidir.)
 
 - 21:25 — Rapor açıldı. EP-002: 11 görev alındı; bağlama ve uçtan uca sınama (GV-019) koşuyor; iki sertleştirme görevi sırada. EP-003 (auth çekirdeği): ilk görevin kartı hazır, on karar bilgi tabanında.
+- 21:33 — PR #12 birleşti (adlandırma, olay aktarıcısı, tüketici tabanı, iki aktarıcının dayanıklılığı). GV-019 (bağlama ve uçtan uca sınama) alındı; kendi ölçümüm: tip, lint ve derleme 0, uçtan uca sınama 7/7, sağlık 1/1, veritabanı bağlantısı 5/5.
+- 21:33 — GV-019'un incelemesi ana dalda kırmızı bir test buldu (test-database: tablo listesi birebir sayılıyordu, GV-017 yeni tablo ekleyince kırıldı); doğruladım: 1 kırmızı, 4 yeşil. Onarım görevi açıldı (GV-031): testi düzeltir, süreç sinyalinde düzenli kapanışı ekler, dinamik içe aktarma yasağını tamamlar.
+- 21:33 — Auth çekirdeği: on beş ajan kararı TS-002'ye yazıldı (AK-1 … AK-15); dokuz görev plana eklendi. jose 6.2.17 kuruldu. Belirteç görevi (GV-024) outbox'ın kalanıyla yan yana koştu; işçi .env.example dosyasına yazamadığı için soruyla durdu (aracın okuma yasağı); cevap verildi: dosya yazılmaz, adlar kodda durur.
+- 21:33 — Araç: soru başka bir sorunla birlikte geldiğinde de cevaplanabilir hâle getirildi.
