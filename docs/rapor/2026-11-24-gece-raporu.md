@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 49 görevin 42 tanesi alındı. Son koşuların ve incelemelerin toplamı: 485 dakika, 177.61 dolar.
+Kayıtlı 50 görevin 43 tanesi alındı. Son koşuların ve incelemelerin toplamı: 509 dakika, 185.54 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -54,7 +54,7 @@ Kayıtlı 49 görevin 42 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | alındı | 10.5 | 9.0 | 8.99 | 16 | 0 engel, 4 öneri | 0 |
 | GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | alındı | 1.5 | 6.1 | 2.52 | 4 | 0 engel, 1 öneri | 0 |
 | GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | alındı | 12.5 | 6.9 | 9.82 | 12 | 0 engel, 4 öneri | 0 |
-| GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | bekliyor | — | — | — | 0 | — | 0 |
+| GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | tamam | 13.0 | — | 4.56 | 5 | — | 0 |
 | GV-034 | EP-003 12 | Yetki kapısı - yazma: şartlı yazma, kolon sınırı, oluşturma denetimi ve değişiklik kaydı | bekliyor | — | — | — | 0 | — | 0 |
 | GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | bekliyor | — | — | — | 0 | — | 0 |
 | GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | incelemede kaldı | 0.7 | 3.8 | 1.92 | 3 | 1 engel, 1 öneri | 1 |
@@ -69,8 +69,9 @@ Kayıtlı 49 görevin 42 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-045 | EP-004 2 | Aracı katman: backend isteği, istemci adresi imzası, oturum çerezleri, hata eşleme ve biçi | alındı | 2.9 | 5.4 | 3.29 | 11 | 0 engel, 3 öneri | 1 |
 | GV-046 | EP-005 1 | Testlerde derleme yarışı: derleme gerektiren test kendi geçici klasörüne derler | alındı | 8.6 | 7.5 | 5.21 | 8 | 0 engel, 4 öneri | 0 |
 | GV-047 | EP-004 3 | Giriş, çıkış, parola belirleme ekranları ve korumalı düzen | alındı | 2.7 | 5.5 | 3.66 | 25 | 0 engel, 4 öneri | 0 |
-| GV-048 | EP-005 2 | Test derleme klasörünün yeri ve bağlantı sayımının tek yardımcıya toplanması | tamam | 15.6 | — | 3.06 | 10 | — | 0 |
-| GV-049 | EP-005 3 | Yerel deneme betiği: geçici veritabanlarıyla backend ve ön yüzü birlikte açar | bekliyor | — | — | — | 0 | — | 0 |
+| GV-048 | EP-005 2 | Test derleme klasörünün yeri ve bağlantı sayımının tek yardımcıya toplanması | tamam | 8.2 | 11.8 | 4.06 | 11 | — | 0 |
+| GV-049 | EP-005 3 | Yerel deneme betiği: geçici veritabanlarıyla backend ve ön yüzü birlikte açar | alındı | 0.9 | 6.1 | 2.37 | 2 | 0 engel, 1 öneri | 0 |
+| GV-050 | EP-006 1 | Kimlik modülünün alt modüllere bölünmesi | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -142,6 +143,8 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - İzin sorusunu iki kez yanlış teşhis ettim: sorunun nereden geldiğine bakmadan proje ayarına izin kuralı yazdım ve artık sormaz dedim. Soru kişisel genel ayardaki her zaman sor kuralından geliyordu; proje ayarı onu geçemez. Yazdığım proje kuralı bu soruya hiç etki etmedi.
 - GV-027'nin yeniden koşumunu ve GV-028'i aynı anda başlattım; ikisi de kimlik.module.ts dosyasına dokunuyordu ve bu kartların dosya listesinde yazıyordu. Yürütme komutu kendi içinde çakışan yaprakları sıraya koyar, ama elle başlattığım görev bu korumanın dışındadır; dosya listelerine bakmadım. Sonuç: çakışma, elle çözüm ve bir yeniden koşum.
 - GV-029'un kartını eksik yazdım: uygulamanın bütününe kural getiren bir işi (genel guard, açılış denetimi) tek karta koydum ama o kuralın dokunduğu öbür uçları ve testleri dosya listesine almadım. Aynı sınıfın üçüncü örneği (GV-007, GV-020, GV-029). Ders AK-29'a yazıldı.
+- AK-16'da alt grup açılımını yalnız canlı gruplarla tanımladım; bu, kullanıcının KR-008 Seçim 41'deki seçimine aykırıydı ve kod o yanlış cümleye göre yazıldı. İnceleme yakaladı; düzeltme sertleştirme görevinde.
+- Tarayıcı aracını kullanırken aracın çalışma ağacına bıraktığı klasörü önceden düşünmedim; birkaç saniye çalışma ağacı kirli kaldı. Klasörü sildim ve deponun yerel yok sayma listesine ekledim (aracın kendi klasörü için kullandığı aynı dosya).
 
 ## 7. Araçta (harness) değişenler
 
@@ -174,6 +177,8 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Ön yüzde next-env.d.ts dosyası depoda; geliştirme sunucusu koşunca çatı bu dosyayı yeniden yazıyor ve izlenen dosya değişmiş görünüyor. Kalıcı çözüm dosyayı .gitignore'a almak; o değişiklik sana soru çıkardığı için yapılmadı.
 - KR-006 kökte ortak derleyici ve lint taban ayarı ister; ön yüzde sıkılık seçenekleri ve biçim ayarı backend'den kopyalandı. Ya ortak taban ayarı için görev açılmalı ya da KR-006'nın o cümlesi değişmeli.
 - Tohum ve kurulum komutları artık belirteç anahtarları ve aracı katman sırrı ortamda olmadan çalışmıyor (guard kök modüle bağlı; AK-34).
+- Ön yüzde site simgesi yok; tarayıcı her sayfada bulunamadı hatası yazıyor.
+- Parola belirlendikten sonra giriş ekranında başarı iletisi gösterilmiyor (kartta istemedim).
 
 ## 9. PR'lar
 
@@ -217,3 +222,7 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 00:48 — GV-046 (testlerde derleme yarışı) alındı: derleme gerektiren testler ikişer ikişer yan yana koşturuldu (18 ve 11 test geçti), guard testi 42. Devamı GV-048 koşuyor (derleme klasörünün yeri, bağlantı sayımının tek yardımcıda toplanması).
 - 00:48 — GV-047 (giriş, çıkış, parola belirleme ekranları ve korumalı düzen) ilk incelemede tek kural yüzünden kaldı (KU-006: görevle ilgisiz bir renk değişikliği), yeniden koşuldu, geçti ve alındı: tip ve lint 0; derlemede dört rota; on bir test dosyasında 75 test; tarayıcıya giden dosyalarda sır ya da belirteç adı yok (aradım).
 - 00:48 — Gerçek tarayıcıyla uçtan uca deneme için yerel deneme betiği görevi açıldı ve başladı (GV-049): geçici veritabanları açar, anahtarları bellekte üretir, backend ve ön yüzü birlikte başlatır, kapanınca siler. Kalıcı veritabanlarına dokunmaz.
+- 01:06 — GV-032 (yetki verisi, yetki belleği, yetki guard'ı, yetkilerim) alındı: yetki testi 19, guard testi 42, giriş testi 10; tip ve lint 0. İncelemenin üç bulgusu karara bağlandı (AK-37); biri benim AK-16'daki yanlışım: kullanıcının KR-008 Seçim 41'deki seçimiyle çelişiyordu.
+- 01:06 — GV-049 (yerel deneme betiği) alındı; ilk koşusu bitiş kaydındaki dosya listesi boş olduğu için sorunlu sayıldı, yeniden koşuldu ve geçti.
+- 01:06 — Gerçek tarayıcıyla uçtan uca deneme (ana oturum; yerel deneme betiğiyle, geçici veritabanlarında): kodla parola belirleme giriş ekranına yönlendirdi; yanlış parolada tek ileti göründü; doğru parolayla panele girildi (görsel: docs/rapor/gorsel/2026-11-25-panel.png); tarayıcı betiği çerezleri okuyamadı ve kalıcı depoda hiçbir şey yoktu; çıkış giriş ekranına döndürdü ve çıkıştan sonra panel adresi giriş ekranına yönlendi. Tarayıcı günlüğündeki tek hata site simgesinin bulunamamasıydı. Betik kapatılınca iki geçici veritabanı silindi ve iki kapı boşaldı (ölçtüm).
+- 01:06 — Yönetim epic'i açıldı (EP-006); ilk görevi kimlik modülünü alt modüllere bölüyor (GV-050, koşuyor). Yetki kapısının okuma görevi (GV-033) koşuyor.
