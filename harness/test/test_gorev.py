@@ -527,6 +527,27 @@ class Inceleme(Ortam):
         self.assertEqual(rapor["sonuc"], "kaldi")
         self.assertEqual(rapor["bulgular"][0]["onem"], "engel")
 
+    def _isci_istemi(self, kok, kimlik):
+        yol = agac(kok, kimlik) / ".harness/gorev" / kimlik / "argv-uygulayici.json"
+        argv = json.loads(yol.read_text(encoding="utf-8"))
+        return argv[argv.index("-p") + 1]
+
+    def test_incelemede_kalan_gorev_yeniden_kosunca_isci_bulgulari_gorur(self):
+        kok, kimlik = self._kosmus()
+        self.assertNotIn("Önceki incelemenin bulguları", self._isci_istemi(kok, kimlik))
+        os.environ["SAHTE_INCELEME"] = "kaldi"
+        gorev.incele(kok, kimlik)
+        gorev.kos(kok, kimlik)
+        istem = self._isci_istemi(kok, kimlik)
+        self.assertIn("Önceki incelemenin bulguları", istem)
+        self.assertIn("[engel] src/siparis/iptal.ts:1 — neden kodu denetlenmiyor", istem)
+
+    def test_gecen_incelemeden_sonra_yeniden_kosan_isciye_bulgu_gitmez(self):
+        kok, kimlik = self._kosmus()
+        gorev.incele(kok, kimlik)
+        gorev.kos(kok, kimlik)
+        self.assertNotIn("Önceki incelemenin bulguları", self._isci_istemi(kok, kimlik))
+
     def test_iscinin_hukmuyle_celisen_inceleme_celiskiyi_listeler(self):
         kok, kimlik = self._kosmus(kesin=True)
         os.environ["SAHTE_INCELEME"] = "celiski"
