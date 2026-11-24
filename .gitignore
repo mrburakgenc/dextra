@@ -22,3 +22,5 @@ generated/
 # İşletim sistemi
 .DS_Store
 .claude/worktrees/
+# Kişisel Claude Code ayarı (izin kuralları); depoya girmez
+.claude/settings.local.json
