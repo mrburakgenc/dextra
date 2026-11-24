@@ -27,6 +27,9 @@ const outboxOlayKolonlari = [
   'govde | jsonb | NO | - | -',
   'olusturma_zamani | timestamp with time zone | NO | clock_timestamp() | 6',
   'aktarim_zamani | timestamp with time zone | YES | - | 6',
+  'deneme_sayisi | integer | NO | 0 | -',
+  'sonraki_deneme_zamani | timestamp with time zone | YES | - | 6',
+  'son_hata | text | YES | - | -',
 ];
 
 // Kimlik verilmeden yazılan ekleme ve kimlik verilen iki ekleme; zaman hiçbirinde verilmez.
@@ -116,11 +119,11 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
     ]);
   });
 
-  it('outbox_olay üzerinde birincil anahtardan başka dizin yoktur', async () => {
+  it('outbox_olay üzerinde birincil anahtardan başka tek dizin vardır: aktarılmamış satırlar için kısmi dizin', async () => {
     const rows = await query<{ indexname: string; indexdef: string }>(
       database.url,
       `select indexname, indexdef from pg_indexes
-        where schemaname = 'public' and tablename = 'outbox_olay'`,
+        where schemaname = 'public' and tablename = 'outbox_olay' order by indexname`,
     );
     expect(rows).toEqual([
       {
@@ -128,16 +131,22 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
         indexdef:
           'CREATE UNIQUE INDEX outbox_olay_ba ON public.outbox_olay USING btree (id)',
       },
+      {
+        indexname: 'outbox_olay_olusturma_zamani_dizin',
+        indexdef:
+          'CREATE INDEX outbox_olay_olusturma_zamani_dizin ON public.outbox_olay USING btree (olusturma_zamani) WHERE (aktarim_zamani IS NULL)',
+      },
     ]);
   });
 
-  it('public şemasında iki outbox tablosu ve göç aracının kendi tablosundan başka tablo yoktur', async () => {
+  it('public şemasında iki outbox tablosu, işlenen olay tablosu ve göç aracının kendi tablosundan başka tablo yoktur', async () => {
     const rows = await query<{ name: string }>(
       database.url,
       "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
     );
     expect(rows.map((row) => row.name)).toEqual([
       '_prisma_migrations',
+      'islenen_olay',
       'outbox_iz',
       'outbox_olay',
     ]);
