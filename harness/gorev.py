@@ -629,7 +629,7 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
                          "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
                          "ve bitiş kaydını yeniden yaz:\n"
                          + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
-    if onceki and (cevap or onceki_sorunlar):
+    if onceki and (cevap or onceki_sorunlar or _onceki_bulgular(kayit)):
         onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
                          "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
                          "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))

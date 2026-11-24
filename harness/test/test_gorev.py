@@ -590,6 +590,7 @@ class Inceleme(Ortam):
         istem = self._isci_istemi(kok, kimlik)
         self.assertIn("Önceki incelemenin bulguları", istem)
         self.assertIn("[engel] src/siparis/iptal.ts:1 — neden kodu denetlenmiyor", istem)
+        self.assertIn("Önceki bitiş kaydın", istem)   # iş baştan yapılmaz: işçi kendi kaydını geri alır
 
     def test_gecen_incelemeden_sonra_yeniden_kosan_isciye_bulgu_gitmez(self):
         kok, kimlik = self._kosmus()
