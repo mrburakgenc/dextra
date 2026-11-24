@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 71 görevin 50 tanesi alındı. Son koşuların ve incelemelerin toplamı: 604 dakika, 226.87 dolar.
+Kayıtlı 74 görevin 53 tanesi alındı. Son koşuların ve incelemelerin toplamı: 622 dakika, 234.42 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -56,7 +56,7 @@ Kayıtlı 71 görevin 50 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | alındı | 12.5 | 6.9 | 9.82 | 12 | 0 engel, 4 öneri | 0 |
 | GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | alındı | 2.5 | 7.0 | 4.07 | 5 | 0 engel, 2 öneri | 1 |
 | GV-034 | EP-003 12 | Yetki kapısı - yazma: şartlı yazma, kolon sınırı, oluşturma denetimi ve değişiklik kaydı | alındı | 14.3 | 7.0 | 9.06 | 3 | 0 engel, 2 öneri | 0 |
-| GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | soru | 2.7 | 7.3 | 3.51 | 6 | 1 engel, 3 öneri | 1 |
+| GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | alındı | 3.4 | 5.5 | 3.42 | 6 | 0 engel, 4 öneri | 1 |
 | GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | incelemede kaldı | 0.7 | 3.8 | 1.92 | 3 | 1 engel, 1 öneri | 1 |
 | GV-037 | EP-003 15 | İz aktarıcısı testindeki tam tablo listesi sınamasının kaldırılması | alındı | 1.2 | 1.8 | 1.20 | 1 | 0 engel, 0 öneri | 0 |
 | GV-038 | EP-003 16 | Kırılgan şema sınamalarının kaldırılması (bütün test klasörü) | alındı | 5.5 | 5.2 | 3.71 | 4 | 0 engel, 1 öneri | 0 |
@@ -74,11 +74,11 @@ Kayıtlı 71 görevin 50 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-050 | EP-006 1 | Kimlik modülünün alt modüllere bölünmesi | alındı | 5.0 | 5.7 | 3.55 | 9 | 0 engel, 1 öneri | 0 |
 | GV-051 | EP-004 4 | Yetki kurallarının ekrana taşınması: yetkilerim, yetki sağlayıcısı ve <Can> | alındı | 5.0 | 4.0 | 3.92 | 5 | 0 engel, 2 öneri | 0 |
 | GV-052 | EP-006 2 | Kimlik sertleştirmesi (feature içi): notlar, sistem aktörü, yetki verisi ve katman yönü | alındı | 12.8 | 5.4 | 8.55 | 23 | 0 engel, 1 öneri | 0 |
-| GV-053 | EP-003 22 | Ortak kod sertleştirmesi: anahtar denetimi, yalnız kendisi listesi, yetki guard'ı ve iki l | bekliyor | — | — | — | 0 | — | 0 |
+| GV-053 | EP-003 22 | Ortak kod sertleştirmesi: anahtar denetimi, yalnız kendisi listesi, yetki guard'ı ve iki l | sorunlu | 10.5 | — | 4.05 | 8 | — | 1 |
 | GV-054 | EP-006 3 | Çekirdek parça: bütünlük soruları ve yönetim testlerinin ortak kurulumu | alındı | 8.4 | 4.4 | 5.65 | 5 | 0 engel, 2 öneri | 0 |
-| GV-055 | EP-006 4.1 | Kullanıcı: listele ve tek kayıt | tamam | 6.9 | — | 3.34 | 9 | — | 0 |
-| GV-056 | EP-006 5.1 | Rol ve izin: listele ve tek kayıt | tamam | 7.8 | — | 3.01 | 8 | — | 0 |
-| GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | soru | 2.8 | — | 1.54 | 0 | — | 0 |
+| GV-055 | EP-006 4.1 | Kullanıcı: listele ve tek kayıt | alındı | 6.9 | 5.9 | 5.94 | 9 | 0 engel, 2 öneri | 0 |
+| GV-056 | EP-006 5.1 | Rol ve izin: listele ve tek kayıt | sorunlu | 1.0 | 4.8 | 2.63 | 8 | 1 engel, 1 öneri | 1 |
+| GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | soru | 2.8 | — | 1.54 | 0 | — | 1 |
 | GV-058 | EP-006 7.1 | Üyelik: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
 | GV-059 | EP-006 8.1 | Yetenek: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
 | GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | bekliyor | — | — | — | 0 | — | 0 |
@@ -92,7 +92,10 @@ Kayıtlı 71 görevin 50 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-068 | EP-006 7.2 | Üyelik: ver ve kaldır | bekliyor | — | — | — | 0 | — | 0 |
 | GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | bekliyor | — | — | — | 0 | — | 0 |
 | GV-070 | EP-006 8.3 | Yetenek: yenile | bekliyor | — | — | — | 0 | — | 0 |
-| GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | bekliyor | — | — | — | 0 | — | 0 |
+| GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | alındı | 1.8 | 2.0 | 1.38 | 1 | 0 engel, 0 öneri | 0 |
+| GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | bekliyor | — | — | — | 0 | — | 0 |
+| GV-073 | EP-007 1 | Kullanıcılar ekranı: liste, sayfalama ve menü | bekliyor | — | — | — | 0 | — | 0 |
+| GV-074 | EP-005 5 | İki testin sınama uçları yalnız kendisi işaretini bırakır | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -154,6 +157,9 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-049 | bitiş kaydındaki dosya listesi boştu; araç beyan uyuşmuyor dedi | aracın kaydı | yeniden koşuldu, geçti |
 | GV-033 | ikinci inceleme kaldı: karar çelişkisi (kararlı sayfalama ile kimlik kolonunun gizlenebilmesi) | inceleme kaydı | karar AK-38; işçi soruyla durdu, cevaplandı, üçüncü turda geçti |
 | GV-035 | inceleme kaldı: Unit of Work'ün özelliği başka modülden sarılmış | inceleme kaydı | karar AK-40; iş bölündü, sorular cevaplandı, yeniden koşuyor |
+| GV-056 | inceleme kaldı, sonra soru: canlılık süzgeci dar kolonlu yeteneği listeden düşürüyor | inceleme kaydı, bitiş kaydı | karar AK-42; cevaplandı, süzgeç ayrı göreve taşındı |
+| GV-057 | işçi soruyla durdu: aynı çelişki ve koşul dilinde boş değer yok | bitiş kaydı | karar AK-42; cevaplandı |
+| GV-053 | işçi soruyla durdu: yalnız kendisi listesi iki var olan testi kırıyor | bitiş kaydı | testler GV-074'te değiştiriliyor; cevaplandı |
 
 ## 6. Hatalarım
 
@@ -172,6 +178,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - AK-16'da alt grup açılımını yalnız canlı gruplarla tanımladım; bu, kullanıcının KR-008 Seçim 41'deki seçimine aykırıydı ve kod o yanlış cümleye göre yazıldı. İnceleme yakaladı; düzeltme sertleştirme görevinde.
 - Tarayıcı aracını kullanırken aracın çalışma ağacına bıraktığı klasörü önceden düşünmedim; birkaç saniye çalışma ağacı kirli kaldı. Klasörü sildim ve deponun yerel yok sayma listesine ekledim (aracın kendi klasörü için kullandığı aynı dosya).
 - GV-035'in kartını da eksik yazdım: isteğin yazma yapıp yapmadığını bilmek için Unit of Work'e dokunmak gerekiyordu, kart o dosyayı kapsamıyordu ve 'başka yol yoksa soruyla dur' diyordu. İşçi durmadı, yan kanal yazdı; inceleme yakaladı. Aynı sınıfın dördüncü örneği.
+- Yönetim okuma kartlarını yazarken canlılık süzgecinin kolon görünürlüğüyle çakışacağını fark ettim ama 'tasarım gereği' deyip geçtim; iki işçi ve bir inceleyici aynı noktada durdu. Kullanıcının KR-010 Seçim 26'daki seçimiyle çeliştiğini kart yazarken görmeliydim.
 
 ## 7. Araçta (harness) değişenler
 
@@ -266,3 +273,7 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 01:57 — GV-035 (erişim kaydı) incelemede kaldı: işçi Unit of Work'ü başka bir modülden çalışma anında sarmıştı. Karar AK-40 (Unit of Work yazma işlemini istek bağlamına kendisi işaretler); iş ikiye bölündü, işçinin üç sorusu cevaplandı, görev yeniden koşuyor. İşaret ve salt okuma kuralı GV-061'de.
 - 01:57 — Yazma kapısının incelemesinden iki düzeltme çıktı (AK-41; biri açık tarafa düşüyordu: sistemin yazdığı kolonlar istek verisiyle yazılabiliyordu); düzeltme görevi GV-060 plana girdi.
 - 01:57 — Yönetim epic'inde beş okuma yaprağı yürütülüyor (üçü koşuyor); dokuz yazma yaprağı plana eklendi (GV-062 … GV-070). Ortak kod sertleştirmesi (GV-053) ve ortak test kurulumundaki bağlantı sayımı düzeltmesi (GV-071) koşuyor.
+- 02:03 — GV-055 (kullanıcı: listele ve tek kayıt) alındı. GV-071 (ortak test kurulumunda bağlantı sayımı) alındı. Yönetim epic'inin yürütmesi iki okuma yaprağında durdu: GV-056 (rol) incelemede kaldı, GV-057 (grup) soruyla durdu; ikisi de aynı çelişkiyi gösterdi: canlılık süzgeci çağıranın koşulu sayılınca, silinme zamanı kolonunu göremeyen yetenek listede hiçbir şey görmüyor (KR-010 Seçim 26 ile çelişir).
+- 02:03 — Karar AK-42: canlılık süzgecini kapı kendisi uygular ve kişinin baktığı kolonlar hesabına girmez; koşul diline boş ve dolu işleçleri eklenir; kapılar ve katalog tek modülden sağlanır. Ortak kod görevi GV-072 açıldı ve koşuyor. GV-056 ve GV-057 cevaplandı: bu iki görevde canlılık süzgeci yazılmıyor, GV-072'den sonra ayrı görev bağlayacak.
+- 02:03 — GV-053 (ortak kod sertleştirmesi) soruyla durdu: yalnız kendisi listesi, kendi sınama uçlarını o işaretle işaretleyen iki var olan testi kırıyor. Karar: güvenlik listesi testler için genişletilmez; iki test gerçek ucu kullanacak biçimde değiştiriliyor (GV-074, koşuyor); GV-053 ondan sonra alınacak.
+- 02:03 — Ön yüzde yönetim ekranları epic'i açıldı (EP-007); kullanıcı listesi ekranı (GV-073) koşuyor. Tasarım kaydına 'Yönetim ekranları' bölümü yazıldı.
