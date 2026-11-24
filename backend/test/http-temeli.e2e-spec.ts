@@ -1,0 +1,367 @@
+// HTTP temelinin sınaması (GV-023; TS-002 AK-11). Koşturma:
+//   pnpm -C backend test:e2e test/http-temeli.e2e-spec.ts --reporter=verbose
+// Uygulama AppModule ile, göçleri uygulanmış asıl ve iz geçici veritabanlarıyla açılır; temel,
+// burada tanımlanan sınama uçlarıyla denenir. Tekil kısıt ve süre aşımı gerçek Prisma hatasıdır.
+import { setTimeout as uyu } from 'node:timers/promises';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  type INestApplication,
+  Logger,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import pg from 'pg';
+import request from 'supertest';
+import type { App } from 'supertest/types.js';
+import { z } from 'zod';
+import { AppModule } from '../src/app.module.js';
+import { DatabaseModule } from '../src/shared/database/database.module.js';
+import {
+  Prisma,
+  type PrismaClient,
+} from '../src/shared/database/generated/client.js';
+import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
+import { yeniKimlik } from '../src/shared/database/kimlik.js';
+import {
+  ISTEK_KIMLIGI_BASLIGI,
+  istekBaglami,
+} from '../src/shared/http/istek-baglami.js';
+import {
+  HATA_DURUMLARI,
+  type HataKodu,
+  KodluHata,
+} from '../src/shared/http/kodlu-hata.js';
+import { localInfrastructure } from './local-infrastructure.js';
+import { type AppDatabases, createAppDatabases } from './test-database.js';
+
+const UUID_V7 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+const govdeSemasi = z.object({ ad: z.string().min(1) });
+const sorguSemasi = z.object({ sayi: z.coerce.number().int() });
+const hataKoduSemasi = z.enum(
+  Object.keys(HATA_DURUMLARI) as [HataKodu, ...HataKodu[]],
+);
+
+@Controller('sinama')
+class SinamaController {
+  constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
+
+  @Post('dogrulama/:id')
+  dogrulama(
+    @Param('id', { schema: z.uuid() }) id: string,
+    @Query({ schema: sorguSemasi }) sorgu: z.infer<typeof sorguSemasi>,
+    @Body({ schema: govdeSemasi }) govde: z.infer<typeof govdeSemasi>,
+  ): object {
+    return {
+      id,
+      sayi: sorgu.sayi,
+      sayiTipi: typeof sorgu.sayi,
+      ad: govde.ad,
+    };
+  }
+
+  @Get('kodlu/:kod')
+  kodlu(@Param('kod', { schema: hataKoduSemasi }) kod: HataKodu): never {
+    throw new KodluHata(kod, `sınama iletisi: ${kod}`, { ornek: kod });
+  }
+
+  @Get('ayrintisiz')
+  ayrintisiz(): never {
+    throw new KodluHata('bulunamadi', 'Kayıt yok');
+  }
+
+  @Get('beklenmeyen')
+  beklenmeyen(): never {
+    throw new Error(
+      'gizli ileti: select * from kullanici; /Users/biri/proje/src/gizli.ts',
+    );
+  }
+
+  @Post('tekil')
+  async tekil(): Promise<void> {
+    const id = yeniKimlik();
+    for (let i = 0; i < 2; i++) {
+      await this.prisma.outboxIz.create({
+        data: { id, surum: 1, govde: {} },
+      });
+    }
+  }
+
+  @Get('sure-asimi')
+  async sureAsimi(): Promise<void> {
+    await this.prisma.$transaction(
+      async (tx) => {
+        await uyu(300);
+        await tx.outboxIz.count();
+      },
+      { timeout: 50 },
+    );
+  }
+
+  @Get('kilitlenme')
+  kilitlenme(): never {
+    // Kilitlenme döngüsü kararlı üretilemediği için adaptörün verdiği kodla kurulur (40P01 → P2034).
+    throw new Prisma.PrismaClientKnownRequestError(
+      'Transaction failed due to a write conflict or a deadlock',
+      { code: 'P2034', clientVersion: Prisma.prismaVersion.client },
+    );
+  }
+
+  @Get('kimlik')
+  async kimlik(): Promise<{ istekKimligi: string }> {
+    // Bekleme, eşzamanlı isteklerin kendi bağlamlarını iç içe geçmiş sırayla okumasını sağlar.
+    await uyu(Math.floor(Math.random() * 30));
+    return { istekKimligi: istekBaglami().istekKimligi };
+  }
+}
+
+async function kalanVeritabanlari(adlar: readonly string[]): Promise<string[]> {
+  const sunucu = new pg.Client({
+    connectionString: localInfrastructure.databaseUrl,
+  });
+  await sunucu.connect();
+  try {
+    const { rows } = await sunucu.query<{ datname: string }>(
+      'select datname from pg_database where datname = any($1)',
+      [adlar],
+    );
+    return rows.map((satir) => satir.datname);
+  } finally {
+    await sunucu.end();
+  }
+}
+
+describe('HTTP temeli', () => {
+  let databases: AppDatabases;
+  let app: INestApplication<App> | undefined;
+
+  // Açılmış uygulamanın HTTP sunucusu; testler yalnız beforeAll başarılıysa koşar.
+  function sunucu(): App {
+    if (app === undefined) {
+      throw new Error('uygulama açılmadı');
+    }
+    return app.getHttpServer();
+  }
+
+  beforeAll(async () => {
+    databases = await createAppDatabases({ migrations: true });
+    try {
+      const modul = await Test.createTestingModule({
+        // Sınama ucu ham istemciyi alır; belirteci DatabaseModule dışa verir.
+        imports: [AppModule, DatabaseModule],
+        controllers: [SinamaController],
+      }).compile();
+      app = modul.createNestApplication();
+      await app.init();
+    } catch (error) {
+      await databases.drop();
+      throw error;
+    }
+  });
+
+  afterAll(async () => {
+    // Kurulum yarıda kaldıysa uygulama açılmamıştır.
+    await app?.close();
+    await databases.drop();
+    expect(
+      await kalanVeritabanlari([databases.asil.name, databases.iz.name]),
+    ).toEqual([]);
+  });
+
+  describe('a) doğrulama', () => {
+    const gecerliId = yeniKimlik();
+
+    it('geçerli gövde, sorgu ve yol parametresi şemanın ürettiği tiple uca ulaşır', async () => {
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${gecerliId}?sayi=42`)
+        .send({ ad: 'Ada', fazla: 'atılır' });
+
+      expect(cevap.status).toBe(201);
+      expect(cevap.body).toEqual({
+        id: gecerliId,
+        sayi: 42,
+        sayiTipi: 'number',
+        ad: 'Ada',
+      });
+    });
+
+    it.each([
+      ['gövde', `/sinama/dogrulama/${gecerliId}?sayi=1`, { ad: '' }, 'ad'],
+      [
+        'sorgu',
+        `/sinama/dogrulama/${gecerliId}?sayi=bir`,
+        { ad: 'Ada' },
+        'sayi',
+      ],
+      [
+        'yol parametresi',
+        '/sinama/dogrulama/kimlik-degil?sayi=1',
+        { ad: 'Ada' },
+        'id',
+      ],
+    ])(
+      'geçersiz %s 400 dogrulama_hatasi döner; ayrıntıda alanın yolu ve nedeni vardır',
+      async (_ad, yol, govde, alan) => {
+        const cevap = await request(sunucu()).post(yol).send(govde);
+
+        expect(cevap.status).toBe(400);
+        expect(cevap.body).toEqual({
+          kod: 'dogrulama_hatasi',
+          ileti: 'İstek doğrulanamadı',
+          ayrinti: [{ alan, neden: expect.any(String) as string }],
+        });
+      },
+    );
+  });
+
+  describe('b) kodlu hata', () => {
+    it.each(Object.entries(HATA_DURUMLARI))(
+      '%s kodu %i durumunu ve { kod, ileti, ayrinti } gövdesini üretir',
+      async (kod, durum) => {
+        const cevap = await request(sunucu()).get(`/sinama/kodlu/${kod}`);
+
+        expect(cevap.status).toBe(durum);
+        expect(cevap.body).toEqual({
+          kod,
+          ileti: `sınama iletisi: ${kod}`,
+          ayrinti: { ornek: kod },
+        });
+      },
+    );
+
+    it('ayrıntısız kodlu hatada ayrinti null olur', async () => {
+      const cevap = await request(sunucu()).get('/sinama/ayrintisiz');
+
+      expect(cevap.status).toBe(404);
+      expect(cevap.body).toEqual({
+        kod: 'bulunamadi',
+        ileti: 'Kayıt yok',
+        ayrinti: null,
+      });
+    });
+
+    it('eşleşmeyen yol 404 bulunamadi döner', async () => {
+      const cevap = await request(sunucu()).get('/yok');
+
+      expect(cevap.status).toBe(404);
+      expect(cevap.body).toMatchObject({ kod: 'bulunamadi', ayrinti: null });
+    });
+  });
+
+  it('c) kodlu olmayan hata 500 beklenmeyen_hata döner; gövde iç ayrıntı taşımaz, hata günlüğe yazılır', async () => {
+    const gunluk = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const cevap = await request(sunucu()).get('/sinama/beklenmeyen');
+
+      expect(cevap.status).toBe(500);
+      expect(cevap.body).toEqual({
+        kod: 'beklenmeyen_hata',
+        ileti: 'Beklenmeyen bir hata oluştu',
+        ayrinti: null,
+      });
+      expect(cevap.text).not.toContain('gizli');
+      expect(cevap.text).not.toContain('select');
+      expect(cevap.text).not.toContain('.ts');
+      expect(cevap.text).not.toContain('/');
+      expect(cevap.text).not.toMatch(/\bat /);
+      expect(gunluk).toHaveBeenCalledWith(
+        expect.stringContaining('gizli ileti'),
+      );
+    } finally {
+      gunluk.mockRestore();
+    }
+  });
+
+  describe('d) veritabanı hataları', () => {
+    it('tekil kısıt hatası 409 cakisma olur', async () => {
+      const cevap = await request(sunucu()).post('/sinama/tekil');
+
+      expect(cevap.status).toBe(409);
+      expect(cevap.body).toEqual({
+        kod: 'cakisma',
+        ileti: 'Kayıt başka bir kayıtla çakışıyor',
+        ayrinti: null,
+      });
+    });
+
+    it('işlem süre aşımı 503 yeniden_dene olur', async () => {
+      const cevap = await request(sunucu()).get('/sinama/sure-asimi');
+
+      expect(cevap.status).toBe(503);
+      expect(cevap.body).toEqual({
+        kod: 'yeniden_dene',
+        ileti: 'İşlem tamamlanamadı; yeniden deneyin',
+        ayrinti: null,
+      });
+    });
+
+    it('kilitlenme döngüsü (P2034) 503 yeniden_dene olur', async () => {
+      const cevap = await request(sunucu()).get('/sinama/kilitlenme');
+
+      expect(cevap.status).toBe(503);
+      expect(cevap.body).toMatchObject({ kod: 'yeniden_dene' });
+    });
+  });
+
+  describe('e) istek kimliği ve bağlam', () => {
+    it('başarılı ve hatalı cevap x-istek-kimligi başlığını taşır; değer UUID v7 dir ve iki istekte farklıdır', async () => {
+      const birinci = await request(sunucu()).get('/health');
+      const ikinci = await request(sunucu()).get('/yok');
+
+      const a = birinci.headers[ISTEK_KIMLIGI_BASLIGI];
+      const b = ikinci.headers[ISTEK_KIMLIGI_BASLIGI];
+      expect(a).toMatch(UUID_V7);
+      expect(b).toMatch(UUID_V7);
+      expect(a).not.toBe(b);
+    });
+
+    it('ucun içinden okunan istek kimliği başlıktakiyle aynıdır', async () => {
+      const cevap = await request(sunucu()).get('/sinama/kimlik');
+
+      expect(cevap.status).toBe(200);
+      expect(cevap.body).toEqual({
+        istekKimligi: cevap.headers[ISTEK_KIMLIGI_BASLIGI],
+      });
+    });
+
+    it('eşzamanlı yirmi istekte her uç kendi kimliğini okur; kimlikler karışmaz', async () => {
+      const cevaplar = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          request(sunucu()).get('/sinama/kimlik'),
+        ),
+      );
+
+      const kimlikler = cevaplar.map((cevap) => {
+        const baslik = cevap.headers[ISTEK_KIMLIGI_BASLIGI];
+        expect(baslik).toMatch(UUID_V7);
+        expect(cevap.body).toEqual({ istekKimligi: baslik });
+        return baslik;
+      });
+      expect(new Set(kimlikler).size).toBe(20);
+    });
+
+    it('bozuk JSON gövdesi 400 dogrulama_hatasi döner ve cevap kimlik başlığını taşır', async () => {
+      // Gövde ayrıştırıcısı istek bağlamı ara katmanından önce koşar; kimliği süzgeç verir.
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .set('content-type', 'application/json')
+        .send('{"ad":');
+
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toMatchObject({ kod: 'dogrulama_hatasi' });
+      expect(cevap.headers[ISTEK_KIMLIGI_BASLIGI]).toMatch(UUID_V7);
+    });
+
+    it('istek dışında bağlam okunursa hata verir', () => {
+      expect(() => istekBaglami()).toThrow('İstek bağlamı yok');
+    });
+  });
+});
