@@ -1,0 +1,11 @@
+// İz veritabanının (dextra_iz) şeması. Bağlantı adresi prisma.iz.config.ts içinde verilir.
+generator client {
+  provider            = "prisma-client"
+  output              = "../../src/shared/database/iz/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
