@@ -13,7 +13,7 @@ datasource db {
 
 // Değişiklik kaydı notu. Kimlik uygulamada üretilir; veritabanı varsayılanı yoktur (KR-011 Seçim 8).
 model OutboxIz {
-  id                  String    @id @db.Uuid
+  id                  String    @id(map: "outbox_iz_ba") @db.Uuid
   surum               Int
   govde               Json      @db.JsonB
   olusturmaZamani     DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
@@ -23,18 +23,37 @@ model OutboxIz {
   sonHata             String?   @map("son_hata")
 
   // Aktarılmayı bekleyen satırlar için kısmi dizin.
-  @@index([olusturmaZamani], where: raw("aktarim_zamani IS NULL"))
+  @@index([olusturmaZamani], map: "outbox_iz_olusturma_zamani_dizin", where: raw("aktarim_zamani IS NULL"))
   @@map("outbox_iz")
 }
 
 // Olay notu; bilerek en küçük hâliyle.
 model OutboxOlay {
-  id              String    @id @db.Uuid
-  ad              String
-  surum           Int
-  govde           Json      @db.JsonB
-  olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
-  aktarimZamani   DateTime? @map("aktarim_zamani") @db.Timestamptz
+  id                  String    @id(map: "outbox_olay_ba") @db.Uuid
+  ad                  String
+  surum               Int
+  govde               Json      @db.JsonB
+  olusturmaZamani     DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+  aktarimZamani       DateTime? @map("aktarim_zamani") @db.Timestamptz
+  denemeSayisi        Int       @default(0) @map("deneme_sayisi")
+  sonrakiDenemeZamani DateTime? @map("sonraki_deneme_zamani") @db.Timestamptz
+  sonHata             String?   @map("son_hata")
 
+  // Aktarılmayı bekleyen satırlar için kısmi dizin.
+  @@index([olusturmaZamani], map: "outbox_olay_olusturma_zamani_dizin", where: raw("aktarim_zamani IS NULL"))
   @@map("outbox_olay")
+}
+
+// Tüketicinin "bu olayı işledim" kaydı. İşin işlemiyle aynı işlemde yazılmaz; süreli sahiplenmeyle
+// tutulur (KR-012 Kural 3 eki). Durum 'isleniyor' ya da 'tamamlandi'dır.
+model IslenenOlay {
+  tuketici              String
+  olayId                String    @map("olay_id") @db.Uuid
+  durum                 String
+  sahiplenmeBitisZamani DateTime  @map("sahiplenme_bitis_zamani") @db.Timestamptz
+  tamamlanmaZamani      DateTime? @map("tamamlanma_zamani") @db.Timestamptz
+  olusturmaZamani       DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+
+  @@id([tuketici, olayId], map: "islenen_olay_ba")
+  @@map("islenen_olay")
 }

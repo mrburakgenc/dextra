@@ -13,7 +13,7 @@ datasource db {
 // Değişiklik kaydı. Kimlik outbox_iz notunun kimliğidir; veritabanı varsayılanı yoktur.
 // Asıl veritabanı başka veritabanı olduğu için yabancı anahtar yoktur.
 model DegisiklikKaydi {
-  id                    String   @id @db.Uuid
+  id                    String   @id(map: "degisiklik_kaydi_ba") @db.Uuid
   istekId               String?  @map("istek_id") @db.Uuid
   kullaniciId           String   @map("kullanici_id") @db.Uuid
   uyelikId              String?  @map("uyelik_id") @db.Uuid
