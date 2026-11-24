@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 53 görevin 45 tanesi alındı. Son koşuların ve incelemelerin toplamı: 520 dakika, 189.76 dolar.
+Kayıtlı 59 görevin 47 tanesi alındı. Son koşuların ve incelemelerin toplamı: 537 dakika, 198.08 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -54,7 +54,7 @@ Kayıtlı 53 görevin 45 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | alındı | 10.5 | 9.0 | 8.99 | 16 | 0 engel, 4 öneri | 0 |
 | GV-031 | EP-002 15 | Onarım: kırmızı test, düzenli kapanış ve dinamik içe aktarma yasağı (bağlama incelemesinin | alındı | 1.5 | 6.1 | 2.52 | 4 | 0 engel, 1 öneri | 0 |
 | GV-032 | EP-003 10 | Yetki verisi, yetki belleği, yetki guard'ı ve yetkilerim ucu | alındı | 12.5 | 6.9 | 9.82 | 12 | 0 engel, 4 öneri | 0 |
-| GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | incelemede kaldı | 2.7 | 6.2 | 3.53 | 5 | 1 engel, 0 öneri | 0 |
+| GV-033 | EP-003 11 | Yetki kapısı - okuma: satır süzgeci ve yetenek başına kolon indirimi | alındı | 2.5 | 7.0 | 4.07 | 5 | 0 engel, 2 öneri | 1 |
 | GV-034 | EP-003 12 | Yetki kapısı - yazma: şartlı yazma, kolon sınırı, oluşturma denetimi ve değişiklik kaydı | bekliyor | — | — | — | 0 | — | 0 |
 | GV-035 | EP-003 13 | Erişim kaydı: tablolar ve salt okuma isteklerinin sonunda iz veritabanına yazım | bekliyor | — | — | — | 0 | — | 0 |
 | GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | incelemede kaldı | 0.7 | 3.8 | 1.92 | 3 | 1 engel, 1 öneri | 1 |
@@ -72,9 +72,15 @@ Kayıtlı 53 görevin 45 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-048 | EP-005 2 | Test derleme klasörünün yeri ve bağlantı sayımının tek yardımcıya toplanması | alındı | 8.2 | 10.7 | 3.74 | 11 | 0 engel, 1 öneri | 0 |
 | GV-049 | EP-005 3 | Yerel deneme betiği: geçici veritabanlarıyla backend ve ön yüzü birlikte açar | alındı | 0.9 | 6.1 | 2.37 | 2 | 0 engel, 1 öneri | 0 |
 | GV-050 | EP-006 1 | Kimlik modülünün alt modüllere bölünmesi | alındı | 5.0 | 5.7 | 3.55 | 9 | 0 engel, 1 öneri | 0 |
-| GV-051 | EP-004 4 | Yetki kurallarının ekrana taşınması: yetkilerim, yetki sağlayıcısı ve <Can> | tamam | 5.0 | — | 2.02 | 5 | — | 0 |
-| GV-052 | EP-006 2 | Kimlik sertleştirmesi (feature içi): notlar, sistem aktörü, yetki verisi ve katman yönü | bekliyor | — | — | — | 0 | — | 0 |
+| GV-051 | EP-004 4 | Yetki kurallarının ekrana taşınması: yetkilerim, yetki sağlayıcısı ve <Can> | alındı | 5.0 | 4.0 | 3.92 | 5 | 0 engel, 2 öneri | 0 |
+| GV-052 | EP-006 2 | Kimlik sertleştirmesi (feature içi): notlar, sistem aktörü, yetki verisi ve katman yönü | tamam | 12.8 | — | 5.89 | 23 | — | 0 |
 | GV-053 | EP-003 22 | Ortak kod sertleştirmesi: anahtar denetimi, yalnız kendisi listesi, yetki guard'ı ve iki l | bekliyor | — | — | — | 0 | — | 0 |
+| GV-054 | EP-006 3 | Çekirdek parça: bütünlük soruları ve yönetim testlerinin ortak kurulumu | bekliyor | — | — | — | 0 | — | 0 |
+| GV-055 | EP-006 4.1 | Kullanıcı: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
+| GV-056 | EP-006 5.1 | Rol ve izin: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
+| GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
+| GV-058 | EP-006 7.1 | Üyelik: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
+| GV-059 | EP-006 8.1 | Yetenek: listele ve tek kayıt | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -134,6 +140,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-048 | inceleme kaldı: bağlantı sızınca temizlik kancası süre aşımına düşüyor, geçici veritabanı kalabiliyor | inceleme kaydı | yeniden koşuldu, geçti |
 | GV-033 | inceleme kaldı: tek kayıt okuma görünmeyen kolon üzerinden kaydın varlığını ele veriyor | inceleme kaydı | bulgularla yeniden koşuyor |
 | GV-049 | bitiş kaydındaki dosya listesi boştu; araç beyan uyuşmuyor dedi | aracın kaydı | yeniden koşuldu, geçti |
+| GV-033 | ikinci inceleme kaldı: karar çelişkisi (kararlı sayfalama ile kimlik kolonunun gizlenebilmesi) | inceleme kaydı | karar AK-38; işçi soruyla durdu, cevaplandı, üçüncü turda geçti |
 
 ## 6. Hatalarım
 
@@ -185,6 +192,8 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Tohum ve kurulum komutları artık belirteç anahtarları ve aracı katman sırrı ortamda olmadan çalışmıyor (guard kök modüle bağlı; AK-34).
 - Ön yüzde site simgesi yok; tarayıcı her sayfada bulunamadı hatası yazıyor.
 - Parola belirlendikten sonra giriş ekranında başarı iletisi gösterilmiyor (kartta istemedim).
+- TEYİDİNİ BEKLEYEN KARAR (KR-008 Seçim 5 ve 21'e dokunur): AK-38, bir kaydı okuyabilen her yetenek o kaydın kimliğini de görür. Bedeli: kimlik zaman sıralı olduğu için kaydın kabaca ne zaman oluşturulduğu da görünür. Öbür yol: kimliği göremeyen yetenek okumaya hiç katılmaz.
+- Lint yasak listesi, kütüphanenin şartı bellekte değerlendiren iki çağrısını daha kapsamalı (GV-033 incelemesi); sertleştirme kartına sonradan yazılamadı, ayrı küçük iş.
 
 ## 9. PR'lar
 
@@ -236,3 +245,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 01:16 — GV-048 (test derleme klasörünün yeri, bağlantı sayımının tek yardımcıda toplanması) ilk incelemede kaldı (bağlantı sızınca temizlik kancası süre aşımına düşüyordu), yeniden koşuldu, geçti ve alındı: 16, 25 ve 26 test geçti; geçici derleme klasörü kalmadı.
 - 01:16 — GV-033 (yetki kapısı, okuma) incelemede kaldı: tek kayıt okuma, kimlik kolonunu göremeyen yeteneği de hesaba katıyor ve kaydın varlığını ele veriyordu. Bulgularla yeniden koşuyor.
 - 01:16 — Sertleştirme ikiye bölündü ve plana girdi: feature içi olan (GV-052) yönetim epic'inde koşuyor; ortak koddaki (GV-053) yetki kapısının yazması alınınca koşacak. Ön yüzde yetki kurallarını ekrana taşıyan görev (GV-051) koşuyor; bunun için ön yüze yetki koşullarını değerlendiren paket eklendi (backend'deki ile aynı sürüm).
+- 01:29 — GV-051 (ön yüzde yetki kuralları ve Can) alındı: tip, lint, derleme 0; beş test dosyasında 44 test; tarayıcıya giden dosyalarda veritabanı istemcisi ya da belirteç adı yok. Web temeli epic'i bitti (EP-004: 4/4).
+- 01:29 — GV-033 (yetki kapısı, okuma) üç turda alındı: ilk inceleme tek kayıt okumasındaki sızıntıyı, ikincisi varsayılan sıralamanın görünmeyen kimlik kolonunu ele vermesini buldu. İkincisi bir karar çelişkisiydi; karar AK-38 (kimlik kolonu kolon sınırının dışındadır; senin teyidini bekler). Kendi ölçümüm: tip ve lint 0; okuma kapısı testi 15, yetki testi 19.
+- 01:29 — Yönetim epic'inin planı ağaca işlendi: bütünlük soruları ve testlerin ortak kurulumu (GV-054), ardından beş alt özelliğin okuma uçları (GV-055 … GV-059). Uçların ortak sözleşmesi AK-39. Auth çekirdeğinde yetki kapısının yazması (GV-034) ve erişim kaydı (GV-035) yan yana koşuyor.
