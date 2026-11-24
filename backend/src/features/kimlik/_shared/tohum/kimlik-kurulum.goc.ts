@@ -10,7 +10,7 @@ import { type IzBilgisi, notunOrtakAlanlari } from '../iz.js';
 import { TohumYardimcisi } from '../tohum-yardimcisi.js';
 import { KURULUM_REPO, type YeniYetenek } from './kurulum.repository.js';
 
-export const KIMLIK_KURULUM_GOCU = '0001-kimlik-kurulum';
+export const KIMLIK_KURULUM_GOCU = '202611240000-kimlik-kurulum';
 
 // İzin kataloğu: TS-002 "Uçlar ve izinler"deki yönetim listesi. Kaynak model adıdır.
 const IZIN_KATALOGU: Readonly<Record<string, readonly string[]>> = {

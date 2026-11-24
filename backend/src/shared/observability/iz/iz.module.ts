@@ -1,17 +1,21 @@
 import {
   type BeforeApplicationShutdown,
+  Inject,
   Module,
   type OnApplicationBootstrap,
+  Optional,
 } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module.js';
 import { IZ_PRISMA_CLIENT } from '../../database/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../../database/iz/generated/client.js';
 import { Registrar } from '../../database/registrar.js';
 import { UnitOfWork } from '../../database/unit-of-work.js';
+import { KOMUT_BAGLAMI } from '../../messaging/komut-baglami.js';
 import { IzAktarici } from './iz-aktarici.js';
 import { outboxIzRepoKaydet } from './outbox-iz.repository.js';
 
-// İz aktarıcısı. Döngüsü uygulama açılınca başlar, kapanırken veritabanı bağlantıları kapanmadan
+// İz aktarıcısı. Döngüsü uygulama açılınca başlar (komut bağlamında başlamaz; komut-baglami.ts),
+// kapanırken veritabanı bağlantıları kapanmadan
 // (onApplicationShutdown) önce durur. Dışa bir şey verilmez.
 @Module({
   imports: [DatabaseModule],
@@ -30,12 +34,17 @@ export class IzModule
   constructor(
     registrar: Registrar,
     private readonly aktarici: IzAktarici,
+    @Optional()
+    @Inject(KOMUT_BAGLAMI)
+    private readonly komutBaglami: true | undefined,
   ) {
     outboxIzRepoKaydet(registrar);
   }
 
   onApplicationBootstrap(): void {
-    this.aktarici.baslat();
+    if (this.komutBaglami === undefined) {
+      this.aktarici.baslat();
+    }
   }
 
   beforeApplicationShutdown(): Promise<void> {
