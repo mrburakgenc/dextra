@@ -10,7 +10,10 @@ import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
 import { RepoKayitlari } from '../src/shared/database/registrar.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { IzAktarici } from '../src/shared/observability/iz/iz-aktarici.js';
+import {
+  IzAktarici,
+  PartiHatasi,
+} from '../src/shared/observability/iz/iz-aktarici.js';
 import {
   OUTBOX_IZ_REPO,
   outboxIzRepoKaydet,
@@ -389,14 +392,20 @@ describe('tek geçiş', () => {
     expect(await izKimlikleri()).not.toContain(gelecek);
   });
 
-  it('g) iz yazımı hata verince geçiş hata atar, notlara dokunulmaz; engel kalkınca aktarılır', async () => {
+  it('g) iz yazımı hata verince geçiş parti hatası atar, notlara dokunulmaz; engel kalkınca aktarılır', async () => {
     const kimlikler = await notEkle([{}, {}, {}]);
     // Engel: iz tablosunun adı değiştirilir, ekleme "tablo yok" (42P01) hatası alır.
     await izSql.query(
       'alter table degisiklik_kaydi rename to degisiklik_kaydi_gizli',
     );
     try {
-      await expect(aktarici.gecis()).rejects.toThrow(/degisiklik_kaydi/);
+      const hata: unknown = await aktarici.gecis().catch((e: unknown) => e);
+      expect(hata).toBeInstanceOf(PartiHatasi);
+      expect((hata as PartiHatasi).cause).toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching(/degisiklik_kaydi/) as unknown,
+        }),
+      );
     } finally {
       await izSql.query(
         'alter table degisiklik_kaydi_gizli rename to degisiklik_kaydi',
