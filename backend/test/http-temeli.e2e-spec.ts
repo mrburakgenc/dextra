@@ -2,6 +2,7 @@
 //   pnpm -C backend test:e2e test/http-temeli.e2e-spec.ts --reporter=verbose
 // Uygulama AppModule ile, göçleri uygulanmış asıl ve iz geçici veritabanlarıyla açılır; temel,
 // burada tanımlanan sınama uçlarıyla denenir. Tekil kısıt ve süre aşımı gerçek Prisma hatasıdır.
+// Sınama uçları herkese açıktır: kimlik guard'ı onlardan bir şey istemez (TS-002 AK-12).
 import { setTimeout as uyu } from 'node:timers/promises';
 import {
   Body,
@@ -27,6 +28,7 @@ import {
 } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { yeniKimlik } from '../src/shared/database/kimlik.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
 import {
   ISTEK_KIMLIGI_BASLIGI,
   istekBaglami,
@@ -70,6 +72,7 @@ class SinamaController {
   constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
 
   @Post('dogrulama/:id')
+  @HerkeseAcik()
   dogrulama(
     @Param('id', { schema: z.uuid() }) id: string,
     @Query({ schema: sorguSemasi }) sorgu: z.infer<typeof sorguSemasi>,
@@ -84,16 +87,19 @@ class SinamaController {
   }
 
   @Get('kodlu/:kod')
+  @HerkeseAcik()
   kodlu(@Param('kod', { schema: hataKoduSemasi }) kod: HataKodu): never {
     throw new KodluHata(kod, `sınama iletisi: ${kod}`, { ornek: kod });
   }
 
   @Get('ayrintisiz')
+  @HerkeseAcik()
   ayrintisiz(): never {
     throw new KodluHata('bulunamadi', 'Kayıt yok');
   }
 
   @Get('beklenmeyen')
+  @HerkeseAcik()
   beklenmeyen(): never {
     throw new Error(
       'gizli ileti: select * from kullanici; /Users/biri/proje/src/gizli.ts',
@@ -101,6 +107,7 @@ class SinamaController {
   }
 
   @Post('tekil')
+  @HerkeseAcik()
   async tekil(): Promise<void> {
     const id = yeniKimlik();
     for (let i = 0; i < 2; i++) {
@@ -111,6 +118,7 @@ class SinamaController {
   }
 
   @Get('sure-asimi')
+  @HerkeseAcik()
   async sureAsimi(): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
@@ -122,6 +130,7 @@ class SinamaController {
   }
 
   @Get('kilitlenme')
+  @HerkeseAcik()
   kilitlenme(): never {
     // Kilitlenme döngüsü kararlı üretilemediği için adaptörün verdiği kodla kurulur (40P01 → P2034).
     throw new Prisma.PrismaClientKnownRequestError(
@@ -131,6 +140,7 @@ class SinamaController {
   }
 
   @Get('kimlik')
+  @HerkeseAcik()
   async kimlik(): Promise<{ istekKimligi: string }> {
     // Bekleme, eşzamanlı isteklerin kendi bağlamlarını iç içe geçmiş sırayla okumasını sağlar.
     await uyu(Math.floor(Math.random() * 30));
