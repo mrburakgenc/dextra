@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../shared/database/unit-of-work.js';
-import { BUTUNLUK_CEKIRDEK_REPO } from './cekirdek/butunluk.repository.js';
+import {
+  BUTUNLUK_CEKIRDEK_REPO,
+  type IzinKunyesi,
+  type UyelikKunyesi,
+} from './cekirdek/butunluk.repository.js';
+
+// Yönetim alt özellikleri çekirdek repository dosyalarını içe aktaramaz (lint sınırı); künyelerin
+// türleri onlara buradan verilir.
+export type { IzinKunyesi, UyelikKunyesi };
 
 // Çekirdek parça "bütünlük sorusu" (TS-002 "Yapı"): korumalı işlerin ve yönetim komutlarının
 // denetimleri. Her soru yalnız evet ya da hayır döner, satır vermez; isteyenin okuma yeteneğinden
@@ -64,5 +72,51 @@ export class ButunlukSorusu {
     return islem
       .repo(BUTUNLUK_CEKIRDEK_REPO)
       .tasimaDonguYaparMi(grupId, yeniUstGrupId);
+  }
+
+  // TS-002 AK-43 ekleri. Kayıt yoksa hayır döner.
+
+  // Rol sistem rolü mü: kodu dolu mu.
+  rolSistemRoluMu(islem: Islem, rolId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).rolSistemRoluMu(rolId);
+  }
+
+  // Grup kök grup mu: üst grubu yok mu.
+  grupKokMu(islem: Islem, grupId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).grupKokMu(grupId);
+  }
+
+  kisiPasifMi(islem: Islem, kullaniciId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).kisiPasifMi(kullaniciId);
+  }
+
+  kisiUnutulmusMu(islem: Islem, kullaniciId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).kisiUnutulmusMu(kullaniciId);
+  }
+
+  kisiSistemAktoruMu(islem: Islem, kullaniciId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).kisiSistemAktoruMu(kullaniciId);
+  }
+
+  kullaniciAdiDoluMu(islem: Islem, kullaniciId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).kullaniciAdiDoluMu(kullaniciId);
+  }
+
+  izinKatalogdaMi(islem: Islem, izinId: string): Promise<boolean> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).izinKatalogdaMi(izinId);
+  }
+
+  // Künyeler "yalnız evet ya da hayır" ilkesinin adıyla istisnasıdır (TS-002 AK-43): satırın yalnız
+  // sayılan alanlarını verir; kayıt yoksa undefined döner. Üyelik künyesi yalnız üyelik kaldırma,
+  // izin künyesi yalnız yetenek yazma ve yenileme işinde kullanılır.
+  uyelikKunyesi(
+    islem: Islem,
+    uyelikId: string,
+  ): Promise<UyelikKunyesi | undefined> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).uyelikKunyesi(uyelikId);
+  }
+
+  izinKunyesi(islem: Islem, izinId: string): Promise<IzinKunyesi | undefined> {
+    return islem.repo(BUTUNLUK_CEKIRDEK_REPO).izinKunyesi(izinId);
   }
 }

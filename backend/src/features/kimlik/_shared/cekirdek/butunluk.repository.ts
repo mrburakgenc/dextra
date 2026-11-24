@@ -1,6 +1,7 @@
 // Çekirdek repository: bütünlük sorularının okumalarını yetki kapısından geçmeden yapar (KR-010
 // Seçim 48'in adıyla istisnası; TS-002 "Yapı", "bütünlük sorusu"). Her metot yalnız evet ya da hayır
-// döner, satır vermez. Yalnız kimlik/_shared içindeki bütünlük sorusu parçası kullanır.
+// döner, satır vermez; istisnası iki künyedir (TS-002 AK-43), onlar satırın yalnız sayılan alanlarını
+// verir. Yalnız kimlik/_shared içindeki bütünlük sorusu parçası kullanır.
 import {
   RepoBelirteci,
   type RepoIstemcisi,
@@ -39,6 +40,30 @@ export interface ButunlukCekirdekRepo {
   rolBosMu(rolId: string): Promise<boolean>;
   // Yeni üst, taşınan grubun kendisi ya da altındakilerden biri mi: yeni üstten köke doğru yürünür.
   tasimaDonguYaparMi(grupId: string, yeniUstGrupId: string): Promise<boolean>;
+  // TS-002 AK-43 ekleri. Kayıt yoksa hayır döner.
+  rolSistemRoluMu(rolId: string): Promise<boolean>;
+  grupKokMu(grupId: string): Promise<boolean>;
+  kisiPasifMi(kullaniciId: string): Promise<boolean>;
+  kisiUnutulmusMu(kullaniciId: string): Promise<boolean>;
+  kisiSistemAktoruMu(kullaniciId: string): Promise<boolean>;
+  kullaniciAdiDoluMu(kullaniciId: string): Promise<boolean>;
+  izinKatalogdaMi(izinId: string): Promise<boolean>;
+  // Künyeler (TS-002 AK-43); kayıt yoksa undefined.
+  uyelikKunyesi(uyelikId: string): Promise<UyelikKunyesi | undefined>;
+  izinKunyesi(izinId: string): Promise<IzinKunyesi | undefined>;
+}
+
+export interface UyelikKunyesi {
+  kullaniciId: string;
+  grupId: string;
+  rolId: string;
+  // Silinme zamanı boş mu.
+  canli: boolean;
+}
+
+export interface IzinKunyesi {
+  kaynak: string;
+  eylem: string;
 }
 
 // Okuma görünümü boştur: sorular çağıranın işleminde sorulur.
@@ -125,5 +150,61 @@ export function butunlukCekirdekRepo(
       }
       return false;
     },
+    rolSistemRoluMu: async (rolId) =>
+      (await istemci.rol.findFirst({
+        where: { id: rolId, kod: { not: null } },
+        select: { id: true },
+      })) !== null,
+    grupKokMu: async (grupId) =>
+      (await istemci.grup.findFirst({
+        where: { id: grupId, ustGrupId: null },
+        select: { id: true },
+      })) !== null,
+    kisiPasifMi: async (kullaniciId) =>
+      (await istemci.kullanici.findFirst({
+        where: { id: kullaniciId, pasifZamani: { not: null } },
+        select: { id: true },
+      })) !== null,
+    kisiUnutulmusMu: async (kullaniciId) =>
+      (await istemci.kullanici.findFirst({
+        where: { id: kullaniciId, unutulmaZamani: { not: null } },
+        select: { id: true },
+      })) !== null,
+    kisiSistemAktoruMu: async (kullaniciId) =>
+      (await istemci.kullanici.findFirst({
+        where: { id: kullaniciId, sistemAktoru: true },
+        select: { id: true },
+      })) !== null,
+    kullaniciAdiDoluMu: async (kullaniciId) =>
+      (await istemci.kullanici.findFirst({
+        where: { id: kullaniciId, kullaniciAdi: { not: null } },
+        select: { id: true },
+      })) !== null,
+    izinKatalogdaMi: async (izinId) =>
+      (await istemci.izin.findUnique({
+        where: { id: izinId },
+        select: { id: true },
+      })) !== null,
+    uyelikKunyesi: async (uyelikId) => {
+      const satir = await istemci.uyelik.findUnique({
+        where: { id: uyelikId },
+        select: {
+          kullaniciId: true,
+          grupId: true,
+          rolId: true,
+          silinmeZamani: true,
+        },
+      });
+      if (satir === null) {
+        return undefined;
+      }
+      const { silinmeZamani, ...kimlikler } = satir;
+      return { ...kimlikler, canli: silinmeZamani === null };
+    },
+    izinKunyesi: async (izinId) =>
+      (await istemci.izin.findUnique({
+        where: { id: izinId },
+        select: { kaynak: true, eylem: true },
+      })) ?? undefined,
   };
 }
