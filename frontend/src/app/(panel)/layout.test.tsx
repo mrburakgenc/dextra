@@ -156,6 +156,45 @@ describe('PanelDuzeni', () => {
     expect(screen.queryByRole('link', { name: 'Kullanıcılar' })).toBeNull();
   });
 
+  it.each([
+    { kaynak: 'Rol', etiket: 'Roller', adres: '/roller' },
+    { kaynak: 'Grup', etiket: 'Gruplar', adres: '/gruplar' },
+    { kaynak: 'Izin', etiket: 'İzinler', adres: '/izinler' },
+  ])(
+    '$kaynak:oku kuralı varken menüde $etiket bağlantısı görünür, yokken görünmez',
+    async ({ kaynak, etiket, adres }) => {
+      oturumVar();
+      sahteFetch.mockResolvedValueOnce(
+        jsonCevap(
+          { kurallar: [{ action: 'oku', subject: kaynak, yetenekId: 'y1' }] },
+          200,
+        ),
+      );
+
+      render(await PanelDuzeni({ children: icerik }));
+
+      const menu = screen.getByRole('navigation', { name: 'Ana menü' });
+      expect(
+        within(menu).getByRole('link', { name: etiket }).getAttribute('href'),
+      ).toBe(adres);
+      expect(within(menu).getAllByRole('link')).toHaveLength(1);
+      cleanup();
+
+      // Aynı kaynakta başka eylem okuma sayılmaz.
+      sahteFetch.mockResolvedValueOnce(
+        jsonCevap(
+          { kurallar: [{ action: 'olustur', subject: kaynak, yetenekId: 'y1' }] },
+          200,
+        ),
+      );
+
+      render(await PanelDuzeni({ children: icerik }));
+
+      expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeDefined();
+      expect(screen.queryByRole('link', { name: etiket })).toBeNull();
+    },
+  );
+
   it('backend 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
     oturumVar();
     sahteFetch.mockResolvedValue(

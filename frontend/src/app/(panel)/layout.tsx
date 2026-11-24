@@ -21,6 +21,14 @@ const YetkilerimCevabi = z.object({
   ),
 });
 
+// Menü bağlantıları; her biri o kaynağı okuyabilen kişiye görünür.
+const MENU = [
+  { etiket: 'Kullanıcılar', adres: '/kullanicilar', kaynak: 'Kullanici' },
+  { etiket: 'Roller', adres: '/roller', kaynak: 'Rol' },
+  { etiket: 'Gruplar', adres: '/gruplar', kaynak: 'Grup' },
+  { etiket: 'İzinler', adres: '/izinler', kaynak: 'Izin' },
+] as const;
+
 // Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden giriş ekranına dönülür. Bu bir
 // kolaylıktır, güvenlik denetimi değildir; kararı backend verir (TS-004). Kişinin yetki
 // kuralları her sayfa isteğinde sunucuda çekilir ve istemcideki yetki sağlayıcısına verilir.
@@ -58,16 +66,18 @@ export default async function PanelDuzeni({
         <p className="text-xl font-bold">Dextra</p>
         <nav aria-label="Ana menü">
           <ul className="flex gap-4">
-            <Can I="oku" a="Kullanici">
-              <li>
-                <Link
-                  href="/kullanicilar"
-                  className="text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                >
-                  Kullanıcılar
-                </Link>
-              </li>
-            </Can>
+            {MENU.map((oge) => (
+              <Can key={oge.adres} I="oku" a={oge.kaynak}>
+                <li>
+                  <Link
+                    href={oge.adres}
+                    className="text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                  >
+                    {oge.etiket}
+                  </Link>
+                </li>
+              </Can>
+            ))}
           </ul>
         </nav>
         <form action={cikisYap}>
