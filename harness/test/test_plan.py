@@ -16,6 +16,7 @@ import json
 import os
 import pathlib
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -84,7 +85,7 @@ def gorev_durumu(kok, kimlik):
 
 class Ortam(unittest.TestCase):
     def setUp(self):
-        for ad in ("SAHTE_MOD", "SAHTE_INCELEME"):
+        for ad in ("SAHTE_MOD", "SAHTE_INCELEME", "SAHTE_ZAMAN_DIZINI", "SAHTE_MOD_GV-001"):
             os.environ.pop(ad, None)
 
     tearDown = setUp
@@ -443,6 +444,59 @@ class Yurutme(Ortam):
         sonuc = plan.yurut(kok, "EP-001", en_cok=1)
         self.assertEqual(sonuc["alinan"], ["GV-001"])
         self.assertIsNone(gorev_durumu(kok, "GV-001").get("inceleme"))
+
+    def _iki_yaprak(self, yollar_1, yollar_2, **kw):
+        """İki bağımsız yaprak yürütülür; işçilerin başlangıç ve bitiş anları döner (kimlik → [başla, bitir])."""
+        os.environ["SAHTE_MOD"] = "ayri"
+        os.environ["SAHTE_ZAMAN_DIZINI"] = tempfile.mkdtemp(prefix="harness-zaman-")
+        kok = kurulu(**kw)
+        yaprak_task(kok, yollar=yollar_1)
+        yaprak_task(kok, baslik="Raporu güncelle", yollar=yollar_2)
+        sonuc = plan.yurut(kok, "EP-001")
+        zaman = {p.stem: json.loads(p.read_text(encoding="utf-8"))
+                 for p in pathlib.Path(os.environ["SAHTE_ZAMAN_DIZINI"]).glob("*.json")}
+        return kok, sonuc, zaman
+
+    def test_dosyalari_kesismeyen_yapraklar_yan_yana_kosar_ve_ikisi_de_alinir(self):
+        kok, sonuc, zaman = self._iki_yaprak(["src/gv-001/**"], ["src/gv-002/**"], paralel=2)
+        self.assertEqual(sonuc["alinan"], ["GV-001", "GV-002"])
+        self.assertTrue(sonuc["bitti"])
+        self.assertLess(zaman["GV-002"][0], zaman["GV-001"][1])   # ikincisi, birincisi bitmeden başladı
+        self.assertLess(zaman["GV-001"][0], zaman["GV-002"][1])
+        for dosya in ("src/gv-001/a.ts", "src/gv-002/a.ts"):
+            self.assertTrue((kok / dosya).is_file())
+
+    def test_dosyalari_kesisen_yapraklar_yan_yana_kosmaz(self):
+        _, sonuc, zaman = self._iki_yaprak(["src/**"], ["src/gv-002/**"], paralel=2)
+        self.assertEqual(sonuc["alinan"], ["GV-001", "GV-002"])
+        self.assertGreaterEqual(zaman["GV-002"][0], zaman["GV-001"][1])
+
+    def test_paralel_ayari_yokken_yapraklar_sirayla_kosar(self):
+        _, sonuc, zaman = self._iki_yaprak(["src/gv-001/**"], ["src/gv-002/**"])
+        self.assertEqual(sonuc["alinan"], ["GV-001", "GV-002"])
+        self.assertGreaterEqual(zaman["GV-002"][0], zaman["GV-001"][1])
+
+    def test_yan_yana_kosanlardan_biri_sorunluysa_temiz_olan_alinir_ve_yurutme_durur(self):
+        os.environ["SAHTE_MOD_GV-001"] = "kapsam-disi"
+        _, sonuc, _ = self._iki_yaprak(["src/gv-001/**"], ["src/gv-002/**"], paralel=2)
+        self.assertEqual(sonuc["alinan"], ["GV-002"])
+        self.assertEqual((sonuc["duran"]["gorev"], sonuc["duran"]["asama"]), ("GV-001", "kosum"))
+        self.assertFalse(sonuc["bitti"])
+
+    def test_en_cok_siniri_yan_yana_kosuda_da_asilmaz(self):
+        os.environ["SAHTE_MOD"] = "ayri"
+        kok = kurulu(paralel=2)
+        yaprak_task(kok, yollar=["src/gv-001/**"])
+        yaprak_task(kok, baslik="Raporu güncelle", yollar=["src/gv-002/**"])
+        sonuc = plan.yurut(kok, "EP-001", en_cok=1)
+        self.assertEqual(sonuc["alinan"], ["GV-001"])
+        self.assertEqual(gorev_durumu(kok, "GV-002")["durum"], "taslak")
+
+    def test_yurutme_ozeti_yan_yana_kosuyu_soyler(self):
+        kok = kurulu(paralel=2)
+        yaprak_task(kok)
+        self.assertIn("en çok 2 yaprak yan yana", plan.yurutme_ozeti(kok, "EP-001"))
+        self.assertNotIn("yan yana", plan.yurutme_ozeti(kurulu(), "EP-001"))
 
     def test_bitmis_epicte_hicbir_sey_kosturmaz(self):
         kok = self._agac()

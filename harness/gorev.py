@@ -22,6 +22,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import threading
 
 import h
 
@@ -545,13 +546,17 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
     return cikti, sorunlar, zaman_asimi
 
 
+_ORTAK_KILIT = threading.Lock()   # yan yana koşan görevlerin paylaştığı yerler: epic dosyası ve git'in ağaç kaydı
+
+
 def _plani_guncelle(kok: pathlib.Path, d: dict) -> None:
     if d.get("plan"):
         import plan  # aynı dizinde; döngüsel yüklemeyi önlemek için burada
-        try:
-            plan.guncelle(kok, d["plan"])
-        except h.HarnessHata:
-            pass   # plan silinmişse görev kaydı yine de geçerlidir
+        with _ORTAK_KILIT:
+            try:
+                plan.guncelle(kok, d["plan"])
+            except h.HarnessHata:
+                pass   # plan silinmişse görev kaydı yine de geçerlidir
 
 
 def _agac_ac(kok: pathlib.Path, kimlik: str, d: dict) -> pathlib.Path:
@@ -611,23 +616,31 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
     d = _durum_oku(kok, kimlik, kayit)
     if d.get("alindi") or d["durum"] == "atildi":
         raise h.HarnessHata("%s kapanmış (%s); yeniden koşturulamaz" % (kimlik, asama(d, {}, True)[1]))
-    onceki_kayit = ""
-    if cevap:                       # soruyla duran işçi cevabı ve kendi önceki bitiş kaydını alır; kayıt aşağıda silinir
-        onceki = _json_oku(kayit / "bitis.json")
+    onceki = _json_oku(kayit / "bitis.json")    # aşağıda silinir; soru ya da sorun varsa işçiye geri verilir
+    onceki_sorunlar = _json_oku(kayit / "rapor.json").get("sorunlar") or []
+    if cevap:
         if d["durum"] != "soru" or not onceki.get("soru"):
             raise h.HarnessHata("%s soruyla durmadı; --cevap yalnız soruyla duran göreve verilir" % kimlik)
         eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
         _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [{"soru": onceki["soru"], "cevap": cevap}]})
-        onceki_kayit = ("\n\n## Önceki bitiş kaydın\nBu görev daha önce koştu ve soruyla durdu. Önceki koşunun işi "
-                        "çalışma ağacında duruyor; baştan yazma, cevaba göre sürdür ve bitiş kaydını yeniden yaz.\n"
-                        "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
+    onceki_kayit = ""
+    if onceki_sorunlar:             # araç sorun ölçtüyse işçi neyi gidereceğini bilir; iş baştan yapılmaz
+        onceki_kayit += ("\n\n## Önceki koşuda aracın ölçtüğü sorunlar\nBu görev daha önce koştu ve araç şu sorunları "
+                         "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
+                         "ve bitiş kaydını yeniden yaz:\n"
+                         + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
+    if onceki and (cevap or onceki_sorunlar or _onceki_bulgular(kayit)):
+        onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
+                         "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
+                         "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
     kart = (kayit / "kart.md").read_text(encoding="utf-8")
     if HEDEF_YERTUTUCU in kart or OLCUT_YERTUTUCU in kart:
         raise h.HarnessHata("%s kartında hedef ya da kabul ölçütü doldurulmamış" % kimlik)
     if d.get("plan"):
         import plan
         plan.onkosul_denetle(kok, d)
-    agac = _agac_ac(kok, kimlik, d)
+    with _ORTAK_KILIT:
+        agac = _agac_ac(kok, kimlik, d)
     if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
         r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, capture_output=True, text=True,
                            stdin=subprocess.DEVNULL)

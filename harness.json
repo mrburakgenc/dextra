@@ -31,7 +31,8 @@
     "yerel_ag": true,
     "hazirlik": ["pnpm", "install", "--offline", "--frozen-lockfile"],
     "orkestrasyon": true,
-    "efor": "xhigh",
+    "paralel": 3,
+    "efor": "high",
     "inceleme_efor": "xhigh",
     "mcp": { "context7": { "type": "http", "url": "https://mcp.context7.com/mcp" } },
     "ag_araclari": false

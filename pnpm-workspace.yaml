@@ -7,4 +7,6 @@ packages:
 # prisma yalnız Node sürümünü denetler.
 allowBuilds:
   '@prisma/engines': true
+  # bullmq'nun alt bağımlılığı; yerel hızlandırıcıyı derler. Kapalı: derlenmezse saf JavaScript yoluna düşer.
+  msgpackr-extract: false
   prisma: true

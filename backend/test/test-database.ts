@@ -1,4 +1,7 @@
+import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import pg from 'pg';
 import { localInfrastructure } from './local-infrastructure.js';
 
@@ -22,10 +25,24 @@ async function onServer(sql: string): Promise<void> {
   }
 }
 
-// Eşsiz adlı geçici bir veritabanı açar, verilen SQL metinlerini sırayla uygular.
+const backendDir = fileURLToPath(new URL('..', import.meta.url));
+
+// Asıl şemanın göçlerini canlıda kullanılacak komutla uygular; adres yalnız bu komutun
+// ortamına verilir.
+async function applyMigrations(url: string): Promise<void> {
+  await promisify(execFile)(
+    `${backendDir}node_modules/.bin/prisma`,
+    ['migrate', 'deploy'],
+    { cwd: backendDir, env: { ...process.env, DATABASE_URL: url } },
+  );
+}
+
+// Eşsiz adlı geçici bir veritabanı açar; istenirse önce asıl şemanın göçlerini, sonra verilen
+// SQL metinlerini sırayla uygular.
 // Testler tabloyu gerçek veritabanlarında değil burada kurar (TS-001); iş bitince drop() çağrılır.
 export async function createTestDatabase(
   sqls: readonly string[] = [],
+  { migrations = false }: { migrations?: boolean } = {},
 ): Promise<TestDatabase> {
   const name = `dextra_test_${randomUUID().replaceAll('-', '')}`;
   await onServer(`CREATE DATABASE ${name}`);
@@ -41,12 +58,15 @@ export async function createTestDatabase(
 
   const client = new pg.Client({ connectionString: database.url });
   try {
+    if (migrations) {
+      await applyMigrations(database.url);
+    }
     await client.connect();
     for (const sql of sqls) {
       await client.query(sql);
     }
   } catch (error) {
-    // SQL uygulanamazsa yarım veritabanı sunucuda kalmaz. Silme de hata verirse çağırana
+    // Göç ya da SQL uygulanamazsa yarım veritabanı sunucuda kalmaz. Silme de hata verirse çağırana
     // yine asıl SQL hatası ulaşır; silmenin hatası onu örtmesin diye bırakılır.
     await database.drop().catch(() => undefined);
     throw error;

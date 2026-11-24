@@ -34,12 +34,12 @@ tarih: 2026-11-24
 
 Asıl veritabanı:
 ```
-outbox_iz
+outbox_iz                            yalnız değişiklik kaydı notu taşır (Seçenek 1: A); tür kolonu yoktur
   id                    uuid PK      v7, uygulamada; iz kaydının kimliği de budur
-  tur                   text         'degisiklik_kaydi' | 'erisim_kaydi'
   surum                 int          gövde biçiminin sürümü; aktarıcı bildiğinden büyük sürümü almaz
   govde                 jsonb        kurucu katı şemayla doğrular (bilinmeyen alan hata verir)
   olusturma_zamani      timestamptz  veritabanı saati
+  aktarim_zamani        timestamptz? iz veritabanına yazıldığı doğrulanan an; 3 gün sonra silinir
   deneme_sayisi         int          0; yalnız o satıra özgü (veri) hatada artar
   sonraki_deneme_zamani timestamptz? doluysa ve gelecekteyse aktarıcı satırı atlar
   son_hata              text?        son satır hatasının sınıfı (değer taşımaz)
@@ -67,6 +67,7 @@ erisim_kaydi
   erisilen_yer text (rota deseni; adresin kendisi ve sorgu dizgesi yazılmaz) · kayit_sayisi int
   kullanılan yetenek ve üyelik kimlikleri: çoğuldur (KR-010 Seçim 40) — biçimi açık, aşağıda
   olusma_zamani · yazilma_zamani
+  (bu tablo erişim kaydını yazan parçayla birlikte, kimlik yürüyen iskeletinde kurulur)
 ```
 - İki outbox tablosunun nedeni: ömür, yük ve temizlik davranışı ayrıdır; tek tabloda türe bağlı boş kolonlar olurdu.
 - Açık (kullanıcının tek kuralına karşı tartılacak): erişim kaydındaki yetenek ve üyelik kimlikleri dizi kolonu mu olur, bağlantı tablosu mu. İz veritabanından asıl veritabanına yabancı anahtar kurulamaz; dizi anlık görüntüdür, bağlantı tablosu satır sayısını katlar. İz tabloları kurulmadan sorulacak.
@@ -75,13 +76,13 @@ erisim_kaydi
 ## Yapı
 Yazma yüzeyi (`shared/messaging`; feature tam repository'yi isteyemez):
 - `run` içinde: olay notu ve değişiklik kaydı notu, işin işlem nesnesiyle yazılır.
-- Erişim kaydı: yolu "Seçenekler 1"de açık. `run` açan bir istekte erişim kaydı işlem onaylandıktan sonra yazılıp başarısız olursa istek reddedilemez (istemci onaylanmış yazmayı yeniden dener; çürütme 6); bu durumun kuralı erişim kaydını yazan parça kurulurken (kimlik yürüyen iskeleti) seçilecek.
+- Erişim kaydı outbox'a yazılmaz (Seçenek 1: A): istek sonunda ortak altyapı kodu onu doğrudan iz veritabanına yazar; yazan parça kimlik yürüyen iskeletinde kurulur. Yalnız `run` açmayan isteklerde yazılır (ajan okuması, KR-013): işlem onaylandıktan sonra yazılamayan kayıt isteği reddettirirse istemci onaylanmış yazmayı yeniden dener (çürütme 6).
 - Değişiklik kaydında eski değerin hangi kilit altında okunduğu repository tabanının işidir (çürütme 9): eski ve yeni değer aynı ifadeden alınır ya da okuma kilitli yapılır; taban kurulurken seçilecek.
 
 İz aktarıcısının sözleşmesi:
 1. Asıl veritabanında işlem açar; `outbox_iz`'den sürümünü bildiği, `sonraki_deneme_zamani` boş ya da geçmiş N satırı `FOR UPDATE SKIP LOCKED` ile alır. Sıra güvencesi yoktur ve iz için gerekmez.
 2. Satırları iz veritabanına yazar: her yazım kendi başına onaylanan tek ifadedir (açık işleme sarılmaz); kimlik tekildir, çakışan satır atlanır.
-3. Yazılan satırları kimlik listesiyle siler (zaman aralığıyla değil) ve işlemi kapatır.
+3. Yazılan satırları kimlik listesiyle (zaman aralığıyla değil) aktarılmış diye işaretler ve işlemi kapatır. Aktarılmış satırı 3 günden sonra aktarıcının temizlik geçişi siler; aktarılmamış satır silinmez.
 4. Hata iki sınıftır. Parti hatası (bağlantı, süre aşımı, şema): işlem geri alınır, satıra dokunulmaz, aktarıcı süreç içinde artan aralıkla bekler. Satır hatası (yalnız o satırın verisi): satırlar tek tek denenir; hata veren satırın `deneme_sayisi` artar ve `sonraki_deneme_zamani` üst sınırı olan artan aralıkla ileri atılır; öbür satırlar ilerler; satır silinmez.
 5. "Beklemeden yeniden oku" yalnız parti silinip onaylandıysa geçerlidir.
 6. İz yazımının süre sınırı sunucu tarafındadır (`statement_timeout`, `lock_timeout`), asıl işlemin 5 saniyelik sınırından kısadır ve tek tek denemenin toplamını kapsar.
@@ -91,18 +92,20 @@ Yazma yüzeyi (`shared/messaging`; feature tam repository'yi isteyemez):
 10. Bekleyenler asıl veritabanında birikir (KR-013 "Bilinen sınırlar"daki "kuyrukta birikir" cümlesi değişir): iz veritabanına uzun süre yazılamazsa asıl veritabanının diski dolar. Bedeldir; alarm eşiği adlandırılmış sabittir.
 
 ## Seçenekler
-### 1 — Erişim kaydının yolu (açık; kullanıcıya soruldu, 2026-11-24)
-- A — İstek sonunda doğrudan iz veritabanına tek INSERT. Okumada birlikte onaylanacak iş yoktur, outbox'ın atomiklik kazancı da yoktur (KR-013 bulgu 9). Asıl veritabanına okuma başına yazma yok; outbox yalnız değişiklik kaydı ve olay taşır ve kullanıcının 3 gün kuralı aynen kalır. Bedel: iz veritabanı kapalıyken okumalar reddedilir (KR-011 Seçim 9). Ajanın önerisi.
+### 1 — Erişim kaydının yolu (kullanıcı, 2026-11-24: A)
+- A — (seçildi) İstek sonunda doğrudan iz veritabanına tek INSERT. Okumada birlikte onaylanacak iş yoktur, outbox'ın atomiklik kazancı da yoktur (KR-013 bulgu 9). Asıl veritabanına okuma başına yazma yok; outbox yalnız değişiklik kaydı ve olay taşır ve kullanıcının 3 gün kuralı aynen kalır. Bedel: iz veritabanı kapalıyken okumalar reddedilir (KR-011 Seçim 9). Ajanın önerisiydi.
 - B — Outbox'tan (KR-013 Seçim 4, bugünkü karar). İz veritabanı kapalıyken okumalar sürer. Bedel: okuma başına asıl veritabanına bir ekleme ve bir silme (varsayım aralığıyla saniyede 500–2500); erişim notu 3 gün tutulamaz, yazıldığı doğrulanınca silinir ve iz veritabanı o kaydın tek kopyası olur (yedekten dönülürse aradaki kayıtlar kaybolur).
-### 2 — Olay kuyruğunun yeri (açık; deneme görevinden sonra)
+### 2 — Olay kuyruğunun yeri (kullanıcı, 2026-11-24: a)
 Belgeden (BullMQ deposunun belgeleri, 2026-11-24; bu depoda denenmedi): BullMQ 6 kuyruğu PostgreSQL'de de tutabilir (`createPostgresBackend`, `runMigrations`, ayrı şema).
-- a — Kuyruk PostgreSQL'de: işlerin durumu veritabanında durur, Redis olay yolunda yoktur, süpürücü yazılmaz. Çürütmenin düzeltmesi (17): kazanç taslağın söylediğinden küçüktür — tekrar güvenliği için (olay, tüketici) "işlendi" tablosu yine gerekir, `outbox_olay` ve olay aktarıcısı da kalır (arka uç bizim işlemimize katılamıyorsa); yeniden deneme fırtınasının yükü asıl PostgreSQL'e biner; tüketici başına bağlantı ve boşta yoklama yükü ile `runMigrations`'ın istediği yetki bilinmiyor.
+- a — (seçildi) Kuyruk PostgreSQL'de: işlerin durumu veritabanında durur, Redis olay yolunda yoktur, süpürücü yazılmaz. Çürütmenin düzeltmesi (17): kazanç taslağın söylediğinden küçüktür — tekrar güvenliği için (olay, tüketici) "işlendi" tablosu yine gerekir, `outbox_olay` ve olay aktarıcısı da kalır (arka uç bizim işlemimize katılamıyorsa); yeniden deneme fırtınasının yükü asıl PostgreSQL'e biner; tüketici başına bağlantı ve boşta yoklama yükü ile `runMigrations`'ın istediği yetki bilinmiyor.
 - b — Kuyruk Redis'te, (olay, tüketici) başına teslim satırı bizim tablomuzda: satır tüketicinin `run`'ında kapanır ve "işlendi" kaydıyla tek tablo olur; kapanmamış satırları süpürücü yeniden kuyruğa koyar. Bedel: süpürücü ile BullMQ'nun kendi durumu ayrışabilir (çürütme 18: denemesi tükenmiş iş duruyorsa yeniden koyma etkisizdir ve teslim sessizce açık kalır) → teslim satırı son durumu ve deneme sayısını taşır.
 - c — Teslim tablosu kuyruğun kendisidir (BullMQ'suz; çürütmenin en güçlü karşı görüşü). Kullanıcı BullMQ'yu açıkça istediği için alınmadı.
-- İlk taslakta ajan (a)'yı önermişti; çürütme bu öneriyi zayıflattı. Karar deneme görevinin ölçümünden sonra kullanıcıya götürülecek.
+- İlk taslakta ajan (a)'yı önermişti; çürütme bu öneriyi zayıflattı ve karar ölçüme bırakıldı. Ölçüm (GV-008 ve GV-009; işçi ve inceleyici ayrı ayrı koşturdu, sayılar örtüştü; bullmq 6.7.7, tek makine): göç ayrı bir şemaya 15 tablo, 78 işlev ve 33 dizin kurar, public şemasına yazmaz ve uzantı istemez; göçü koşan role veritabanında CREATE yetkisi gerekir; Redis ayarı olmadan iş eklenir ve işlenir; aynı iş kimliğiyle ikinci ekleme bekleyen, işlenen, tamamlanmış ve başarısız işte yok sayılır, silinmiş işte yeni iş üretir; işçi zorla kapatılınca iş kaybolmaz ve küçültülmüş ayarla 2 saniyede yeniden işlenir (varsayılan ayarda ölçülmedi); hep hata veren iş 3 kez denenir ve başarısız olarak okunabilir; yeni iş LISTEN/NOTIFY ile öğrenilir (ekleme ile tamamlanma arası 40 ms); boşta dinleyen başına 3 bağlantı ve 10 saniyede 8 işlem; resmî arayüz uygulamanın işlemini kabul etmez (yalnız belgelenmemiş bir iç SQL işleviyle olur; kullanılmayacak); 200 işlik hata fırtınası 0,2 saniyede biter ve yan sorgunun ortancası 0,26 ms'den 0,41 ms'ye çıkar (kaba ölçü; ölçümler fırtınanın başını kapsar); tamamlanan ve başarısız işi silme seçenekleri çalışır, olay geçmişi satırları kalır.
+- Kullanıcı (a)'yı seçti (2026-11-24). Kabul edilen bedel: dinleyen başına 3 veritabanı bağlantısı (10 dinleyen ve 2 uygulama kopyası 60 bağlantı eder; PostgreSQL'in varsayılan sınırı 100'dür) ve desteğin yeni olması; dinleyen sayısı büyürse sınır yükseltilir ya da (b)'ye geçilir, feature kodu değişmez.
+- Seçimin sonuçları: `outbox_olay` ve olay aktarıcısı kalır (aynı işlemde ekleme resmî yoldan yapılamaz); tekrar güvenliği için (olay, tüketici) "işlendi" kaydı bizdedir (silinmiş işin kimliği yeniden eklenebildiği için kuyruğun kopya engeli tek başına yetmez); kuyruk tabloları ayrı şemada durur ve göçleri yayın adımında koşar; Redis yalnız yetki önbelleği için kalır.
 
 ## Hata modları
-- İz veritabanı kapalı: notlar asıl veritabanında bekler (B) ya da okumalar reddedilir (A); açılınca aktarım sürer. Fark edilir: en eski satırın yaşı.
+- İz veritabanı kapalı: değişiklik kaydı notları asıl veritabanında bekler ve okumalar reddedilir; açılınca aktarım sürer. Fark edilir: en eski satırın yaşı.
 - Bozuk tek not: ertelenir, öbürleri ilerler. Fark edilir: denenmiş satır sayısı.
 - İki sürüm yan yana: eski aktarıcı yeni sürümlü notu almaz; yeni kopya alır.
 - Ağdan düşen kopyanın kilitlediği satırlar sunucu kopmayı fark edene kadar başka kopyaya verilmez (süresi ölçülmedi).
@@ -110,9 +113,9 @@ Belgeden (BullMQ deposunun belgeleri, 2026-11-24; bu depoda denenmedi): BullMQ 6
 
 ## Aşamalar
 1. Deneme: BullMQ PostgreSQL arka ucu (kurulur mu; ayrı şema; iş kimliğiyle kopya engeli; işçi kapanıp açılınca iş kaybı; bizim işlemimizin içinde kuyruğa konabiliyor mu; bağlantı sayısı ve boşta yük; göçü hangi rol koşar; sürekli hata veren işin yükü).
-2. Outbox tabloları ve yazma yüzeyi (Seçenek 1'in cevabından sonra).
-3. İz tabloları ve iz aktarıcısı.
-4. Olay yolu (Seçenek 2'nin cevabından sonra): kapı, bağdaştırıcı, abone defteri, olay aktarıcısı, tüketici tabanı.
+2. Outbox tabloları ve yazma yüzeyi.
+3. Değişiklik kaydı tablosu ve iz aktarıcısı.
+4. Olay yolu: kapı, bağdaştırıcı, abone defteri, olay aktarıcısı, tüketici tabanı.
 5. Bütünün sınaması.
 
 ## Doğrulama
@@ -136,16 +139,16 @@ Bağımsız oturum (inceleyici rolü, yalnız okuma, 2026-11-24) ilk taslağı �
 | 3 | orta | Açık duran işlem varken silinen notlar ölü satır olarak birikir; düşen kopyanın kilidi uzun sürer | kısmen: sözleşme 8; etkisi ölçülmedi |
 | 4 | orta | Birikmenin sınırı yok; kalıcı bozuk satır ölçüyü kör eder | işlendi: iki ölçü (sözleşme 9), bedel yazıldı (10) |
 | 5 | hafif | İz yazımının süre sınırı ve biçimi yazılmamış | işlendi: sözleşme 2, 6 |
-| 6 | orta | Okuyup yazan istekte erişim kaydı başarısız olursa istemci onaylanmış yazmayı yeniden dener | açık: erişim kaydını yazan parça kurulurken seçilecek ("Yapı") |
+| 6 | orta | Okuyup yazan istekte erişim kaydı başarısız olursa istemci onaylanmış yazmayı yeniden dener | işlendi (ajan okuması): erişim kaydı yalnız `run` açmayan isteklerde yazılır |
 | 7 | orta | Unutma ile bekleyen notlar yarışır; veri sahibi alanı yok | kısmen: `veri_sahibi_kullanici_id` eklendi; gerisi unutma tasarımına |
 | 8 | orta | Zamanı uygulama saati verirse kopyalar arası fark sırayı ters çevirir | işlendi: veritabanı saati |
 | 9 | orta | Eski değerin hangi kilit altında okunduğu, değer taşımayan modeller ve iz üretmeyen tablolar yazılmamış | kısmen: değişmez 5, 6; kilit repository tabanına |
 | 10 | orta | Erişim kaydında yetenek ve üyelik tekil; kararlar çoğul ister | kısmen: çoğul yazıldı; biçimi (dizi mi, bağlantı tablosu mu) açık |
-| 11 | orta | "Hemen sil", kullanıcının açık 3 gün seçimini sessizlikle çeviriyor; söylenmeyen bedel: iz veritabanı tek kopya olur | Seçenek 1'e bağlandı: A seçilirse 3 gün aynen kalır |
-| 12 | orta | Kuyruksuz yolda erişim kaydı için outbox'ın gerekçesi kalmıyor | kullanıcıya soruldu (Seçenek 1) |
+| 11 | orta | "Hemen sil", kullanıcının açık 3 gün seçimini sessizlikle çeviriyor; söylenmeyen bedel: iz veritabanı tek kopya olur | kapandı (kullanıcı: A): 3 gün kuralı aynen kalır; not aktarılınca silinmez, işaretlenir |
+| 12 | orta | Kuyruksuz yolda erişim kaydı için outbox'ın gerekçesi kalmıyor | kapandı (kullanıcı, 2026-11-24: A) |
 | 13 | hafif | `erisilen_yer` tanımsız; adres kişisel veri sokar | işlendi: rota deseni |
 | 14 | hafif | Değişiklik kaydında "hangi iş" yok | işlendi: `is_adi` |
 | 15 | hafif | `outbox_olay`'da yinelenen alanlar ve erken kolonlar; `son_hata` eksik | işlendi: en küçük hâl; `outbox_iz` dizini ölçülünce |
 | 16 | hafif | İz tablolarının temizliği silmeyle yapılırsa ortak diski yorar | açık: gerçek veri gelmeden |
-| 17 | orta | (a)'nın kazancı küçük, bedeli büyük; denemeye dört soru eksik | işlendi: Seçenek 2 ve Aşama 1; ajanın (a) önerisi geri çekildi |
+| 17 | orta | (a)'nın kazancı küçük, bedeli büyük; denemeye dört soru eksik | kapandı: dört soru deneme görevleriyle ölçüldü; kullanıcı (a)'yı seçti (Seçenek 2) |
 | 18 | orta | (b)'de süpürücü ile BullMQ'nun durumu ayrışır | işlendi: teslim satırı son durumu ve deneme sayısını taşır |
