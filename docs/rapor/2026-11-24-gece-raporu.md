@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 80 görevin 67 tanesi alındı. Son koşuların ve incelemelerin toplamı: 727 dakika, 280.13 dolar.
+Kayıtlı 82 görevin 70 tanesi alındı. Son koşuların ve incelemelerin toplamı: 769 dakika, 298.06 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -81,16 +81,16 @@ Kayıtlı 80 görevin 67 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-057 | EP-006 6.1 | Grup: ağacı oku ve tek kayıt | alındı | 4.7 | 4.5 | 4.15 | 9 | 0 engel, 0 öneri | 1 |
 | GV-058 | EP-006 7.1 | Üyelik: listele ve tek kayıt | alındı | 4.2 | 3.9 | 3.64 | 9 | 0 engel, 1 öneri | 0 |
 | GV-059 | EP-006 8.1 | Yetenek: listele ve tek kayıt | alındı | 5.2 | 3.9 | 4.37 | 9 | 0 engel, 1 öneri | 0 |
-| GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | tamam | 7.6 | — | 2.90 | 6 | — | 0 |
+| GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | alındı | 7.6 | 7.7 | 5.67 | 6 | 0 engel, 2 öneri | 0 |
 | GV-061 | EP-003 24 | Unit of Work'ün yazma işareti ve erişim kaydının salt okuma kuralı | alındı | 5.5 | 4.2 | 3.59 | 6 | 0 engel, 0 öneri | 0 |
 | GV-062 | EP-006 4.2 | Kullanıcı aç | alındı | 7.3 | 5.2 | 5.68 | 8 | 0 engel, 2 öneri | 0 |
 | GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | bekliyor | — | — | — | 0 | — | 0 |
 | GV-064 | EP-006 4.4 | Kullanıcıyı pasife al ve yeniden aç | bekliyor | — | — | — | 0 | — | 0 |
-| GV-065 | EP-006 5.2 | Rol: oluştur, adını değiştir ve sil | soru | 2.4 | — | 1.63 | 0 | — | 1 |
-| GV-066 | EP-006 6.2 | Grup: oluştur ve adını değiştir | tamam | 6.0 | — | 2.74 | 8 | — | 0 |
+| GV-065 | EP-006 5.2 | Rol: oluştur, adını değiştir ve sil | tamam | 5.9 | — | 2.51 | 7 | — | 1 |
+| GV-066 | EP-006 6.2 | Grup: oluştur ve adını değiştir | alındı | 6.0 | 5.8 | 5.62 | 8 | 0 engel, 3 öneri | 0 |
 | GV-067 | EP-006 6.3 | Grup: taşı ve sil | bekliyor | — | — | — | 0 | — | 0 |
 | GV-068 | EP-006 7.2 | Üyelik: ver ve kaldır | soru | 1.7 | — | 1.22 | 0 | — | 0 |
-| GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | bekliyor | — | — | — | 0 | — | 0 |
+| GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | tamam | 8.7 | — | 4.40 | 8 | — | 0 |
 | GV-070 | EP-006 8.3 | Yetenek: yenile | bekliyor | — | — | — | 0 | — | 0 |
 | GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | alındı | 1.8 | 2.0 | 1.38 | 1 | 0 engel, 0 öneri | 0 |
 | GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | alındı | 0.7 | 6.2 | 2.82 | 7 | 0 engel, 2 öneri | 1 |
@@ -100,8 +100,10 @@ Kayıtlı 80 görevin 67 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-076 | EP-005 7 | Kimlik modülünü tek başına kuran iki test ortak yetki modülünü kurar | alındı | 2.6 | 2.7 | 2.24 | 2 | 0 engel, 0 öneri | 0 |
 | GV-077 | EP-005 8 | Rol listesinde canlılık süzgeci ve ortak yetki modülüne geçiş | alındı | 3.1 | 4.0 | 2.70 | 4 | 0 engel, 1 öneri | 0 |
 | GV-078 | EP-005 9 | Grup listesinde canlılık süzgeci ve ortak yetki modülüne geçiş | alındı | 2.9 | 3.4 | 2.47 | 3 | 0 engel, 0 öneri | 0 |
-| GV-079 | EP-006 9 | Çekirdek ekleri: bütünlük sorularına ekler, iki künye okuması ve parola sırrı parçası | bekliyor | — | — | — | 0 | — | 0 |
-| GV-080 | EP-007 2 | Roller, gruplar ve izinler: liste ekranları ve ortak liste parçaları | bekliyor | — | — | — | 0 | — | 0 |
+| GV-079 | EP-006 9 | Çekirdek ekleri: bütünlük sorularına ekler, iki künye okuması ve parola sırrı parçası | alındı | 5.3 | 3.6 | 4.30 | 6 | 0 engel, 4 öneri | 0 |
+| GV-080 | EP-007 2 | Roller, gruplar ve izinler: liste ekranları ve ortak liste parçaları | sorunlu | 7.5 | — | 2.69 | 20 | — | 0 |
+| GV-081 | EP-003 26 | Yazma kapısı: silinmiş kayıt güncellenmez ve niyet eylemi almaz | bekliyor | — | — | — | 0 | — | 0 |
+| GV-082 | EP-006 7.3 | Üyelik: ver ve kaldır | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -170,6 +172,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-072 | inceleme kaldı: kartın saymadığı iki test artık açılmıyor | inceleme kaydı | soru cevaplandı (AK-42 eki); testler GV-076'da |
 | GV-065 | işçi soruyla durdu: 'sistem rolü mü' sorusu çekirdekte yok; silinmiş rolün adı değişebiliyor | bitiş kaydı | cevaplandı (AK-43); açık denetim sonraya |
 | GV-068 | işçi soruyla durdu: parola sırrı parçası ve üç soru çekirdekte yok | bitiş kaydı | çekirdek ekleri görevi açıldı (GV-079); GV-068 yerine yeni yaprak açılacak |
+| GV-080 | bitiş kaydındaki dosya listesi yeni dosyaları saymıyor; araç beyan uyuşmuyor dedi | aracın kaydı | yeniden koşuyor; neden kartımdaki cümle |
 
 ## 6. Hatalarım
 
@@ -190,6 +193,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - GV-035'in kartını da eksik yazdım: isteğin yazma yapıp yapmadığını bilmek için Unit of Work'e dokunmak gerekiyordu, kart o dosyayı kapsamıyordu ve 'başka yol yoksa soruyla dur' diyordu. İşçi durmadı, yan kanal yazdı; inceleme yakaladı. Aynı sınıfın dördüncü örneği.
 - Yönetim okuma kartlarını yazarken canlılık süzgecinin kolon görünürlüğüyle çakışacağını fark ettim ama 'tasarım gereği' deyip geçtim; iki işçi ve bir inceleyici aynı noktada durdu. Kullanıcının KR-010 Seçim 26'daki seçimiyle çeliştiğini kart yazarken görmeliydim.
 - GV-072'nin kartında, kimlik modülünü kök modülsüz kuran testleri aramadım; kapıları tek modüle toplayınca o testlerin açılmayacağını inceleyici buldu. Uygulamanın bütününe dokunan işte etkilenen testleri kart yazarken aramak gerekiyordu (AK-29'daki dersin aynısı).
+- Bitiş kaydındaki dosya listesi duruşlarının nedeni kartlarımdaki cümleydi: 'dokunulan listesi yalnız depoda izlenen ve değişen dosyaların yollarını taşır' yazmışım. İşçiler bunu harfiyen okuyup yeni eklenen (henüz izlenmeyen) dosyaları listeye koymuyor; araç gerçekte değişenle karşılaştırıp uyuşmazlık sayıyor. Bu gece altı duruş bu cümleden (GV-049, GV-053, GV-056, GV-073 iki kez, GV-080). Cümle sonraki kartlar için düzeltildi; önceden yazılmış dört kart (GV-063, GV-064, GV-067, GV-070) eski cümleyi taşıyor.
 
 ## 7. Araçta (harness) değişenler
 
@@ -302,3 +306,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 02:38 — Beş okuma yaprağı da alındı: kullanıcı (15), rol (12), grup (17), üyelik (17), yetenek (18 test). GV-076 (iki test) alındı: kimlik kurulumu ve çekirdeği testleri yeniden yeşil (32). GV-077 ve GV-078 (rol ve grup listesinde canlılık süzgeci) alındı.
 - 02:38 — Yazma yaprakları başladı. GV-065 (rol yaz) ve GV-068 (üyelik yaz) soruyla durdu: yönetim yazma işleri, isteyenin okuma yeteneğinden bağımsız cevaplanması gereken birkaç soruyu ve 'parola sırrı' parçasını çekirdekte bulamadı. Karar AK-43 (çekirdek ekleri; senin teyidini bekler, çünkü çekirdek liste kapalıdır). Çekirdek ekleri görevi GV-079 koşuyor. GV-065 cevaplandı ve sürüyor (eksik soru olmadan da yazılabiliyor). GV-068 çekirdek ekleri olmadan yazılamıyor ve ağacı eski tabanda kaldığı için yeniden koşturulamaz; yerine yeni yaprak açılacak.
 - 02:38 — Ön yüzde rol, grup ve izin liste ekranları (GV-080) koşuyor.
+- 02:47 — GV-062 (kullanıcı aç) alındı: açma ve okuma testleri 42. GV-060 (yazma kapısının düzeltmesi, sistem alanları, iki lint yasağı) alındı: kapı ve yetki testleri 59; kullanıcı açma, uçtan uca ve kimlik kurulumu 46; birleşimde kırılan yok. GV-066 (grup oluştur ve adını değiştir) alındı: grup testleri 27. GV-079 (çekirdek ekleri) alındı: çekirdek testleri 52. Her alımdan sonra tip ve lint 0.
+- 02:47 — İki inceleme silinmiş rolün ve grubun adının değiştirilebildiğini söyledi; kural tek yerde, yetki kapısında kapatılıyor (GV-081: silinmiş kayıt güncellenmez ve niyet eylemi almaz; koşuyor).
+- 02:47 — Çekirdek ekleri alındıktan sonra, onlara ihtiyaç duyan yapraklar yeni ağaçlarla başlatıldı: GV-063 (kullanıcı güncelle ve bağlantı üret), GV-067 (grup taşı ve sil), GV-082 (üyelik ver ve kaldır; GV-068'in yerine). GV-065 (rol yaz) ve GV-069 (yetenek yaz) incelemede. Ön yüzde GV-080 (rol, grup, izin listeleri) kod olarak bitti, bitiş kaydındaki dosya listesi için yeniden koşuyor.
