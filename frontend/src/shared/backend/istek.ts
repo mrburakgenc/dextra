@@ -57,6 +57,30 @@ export async function backendIstegi(
     );
   }
 
+  // Yol tek '/' ile başlar; '//' ile başlayan, şema taşıyan ya da başka kökene çözülen yol
+  // belirteci ve imzalı başlıkları başka bir kökene götürebileceği için istek atılmadan
+  // reddedilir (TS-004 "İlk ekranların sözleşmesi").
+  if (!istek.yol.startsWith('/') || istek.yol.startsWith('//')) {
+    throw new Error('Backend isteğinin yolu tek "/" ile başlamalı');
+  }
+  // Bozuk BACKEND_ADRESI yapılandırma hatasıdır; ağ hatasına karışmasın diye fetch'ten önce
+  // kurulur. Çatının URL hatası adresi alanlarında taşır; bu yüzden yerine adı söyleyen
+  // hata fırlatılır.
+  let hedef: URL;
+  let kok: URL;
+  try {
+    kok = new URL(adres);
+    if (kok.protocol !== 'http:' && kok.protocol !== 'https:') {
+      throw new Error();
+    }
+    hedef = new URL(istek.yol, kok);
+  } catch {
+    throw new TypeError(`${BACKEND_ADRESI} geçerli bir http(s) adresi değil`);
+  }
+  if (hedef.origin !== kok.origin) {
+    throw new Error('Backend isteğinin yolu başka bir kökene çözülüyor');
+  }
+
   // İstemci adresi x-forwarded-for başlığının ilk değeridir (TS-004 Yapı).
   const gelen = await headers();
   const basliklar: Record<string, string> = imzaBasliklari(sir, {
@@ -74,8 +98,6 @@ export async function backendIstegi(
     }
   }
 
-  // Bozuk BACKEND_ADRESI yapılandırma hatasıdır; try dışında kurulur ki ağ hatasına karışmasın.
-  const hedef = new URL(istek.yol, adres);
   let cevap: Response;
   try {
     cevap = await fetch(hedef, {

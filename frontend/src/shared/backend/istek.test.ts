@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { createHmac } from 'node:crypto';
+import { inspect } from 'node:util';
 import { headers } from 'next/headers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { erisimBelirteciniOku } from '../oturum/cerezler';
@@ -174,6 +175,21 @@ describe('backend isteği', () => {
   });
 });
 
+describe('backend isteğinin yolu', () => {
+  it.each([
+    '//baska.ornek/x',
+    'https://baska.ornek/x',
+    'kimlik/oturum/giris',
+    '',
+    '/\\baska.ornek/x',
+  ])('%s istek atılmadan reddedilir', async (yol) => {
+    await expect(
+      backendIstegi({ yol, yontem: 'GET', oturumlu: true }),
+    ).rejects.toThrow(Error);
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('ortam değişkenleri', () => {
   it.each(['BACKEND_ADRESI', 'ARACI_KATMAN_SIRRI'])(
     '%s eksikken hata adını söyler, öbür değerleri söylemez',
@@ -201,6 +217,26 @@ describe('ortam değişkenleri', () => {
     ).rejects.toThrow(TypeError);
     expect(sahteFetch).not.toHaveBeenCalled();
   });
+
+  it.each(['backend:3001', 'http://gizli adres:3001', 'ftp://gizli.sinama/'])(
+    'bozuk BACKEND_ADRESI (%s) hatasının iletisi ve hiçbir alanı değeri taşımaz',
+    async (deger) => {
+      vi.stubEnv('BACKEND_ADRESI', deger);
+
+      const hata = await backendIstegi({ yol: '/x', yontem: 'GET', oturumlu: false }).then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+      if (!(hata instanceof TypeError)) throw new Error('TypeError beklenirdi');
+      expect(hata.message).toContain('BACKEND_ADRESI');
+      // Bütün alanlar (cause, input, base gibi gizli olanlar dahil) incelenir.
+      const dokum = inspect(hata, { showHidden: true, depth: null });
+      expect(dokum).not.toContain(deger);
+      expect(dokum).not.toContain('gizli');
+      expect(hata.cause).toBeUndefined();
+      expect(sahteFetch).not.toHaveBeenCalled();
+    },
+  );
 
   it('32 karakterden kısa sırda hata adı söyler, değeri söylemez', async () => {
     const kisa = 'k'.repeat(15) + 'gizli-deger';
