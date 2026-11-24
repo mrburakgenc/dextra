@@ -1,11 +1,33 @@
+import { Injectable } from '@nestjs/common';
 import type {
   RepoFabrikasi,
   RepoIstemcisi,
 } from '../../../../shared/database/registrar.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
 import type { OkumaKapisi } from '../../../../shared/yetki/okuma-kapisi.js';
-import type { KullaniciOkumaRepo } from '../domain/kullanici.repository.js';
+import { YazmaKapisi } from '../../../../shared/yetki/yazma-kapisi.js';
+import {
+  type KullaniciOkumaRepo,
+  KullaniciYazmaRepo,
+  type YeniKullanici,
+} from '../domain/kullanici.repository.js';
 
 const KAYNAK = 'Kullanici';
+
+@Injectable()
+export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
+  constructor(private readonly kapi: YazmaKapisi) {
+    super();
+  }
+
+  olustur(
+    islem: Islem,
+    isAdi: string,
+    { kullaniciAdi, gorunenAd }: YeniKullanici,
+  ): Promise<string> {
+    return this.kapi.olustur(islem, isAdi, KAYNAK, { kullaniciAdi, gorunenAd });
+  }
+}
 
 export function kullaniciPrismaRepository(
   kapi: OkumaKapisi,

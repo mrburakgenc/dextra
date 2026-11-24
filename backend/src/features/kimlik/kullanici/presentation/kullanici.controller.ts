@@ -1,23 +1,39 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
 import { Izin } from '../../../../shared/guvenlik/isaretler.js';
 import type { Kayit } from '../../../../shared/yetki/okuma-kapisi.js';
+import type { AcilanKullanici } from '../application/kullanici-ac.command.js';
+import { KullaniciAcHandler } from '../application/kullanici-ac.handler.js';
 import { KullaniciListeleHandler } from '../application/kullanici-listele.handler.js';
 import type { KullaniciListesi } from '../application/kullanici-listele.query.js';
 import { KullaniciOkuHandler } from '../application/kullanici-oku.handler.js';
+import {
+  type KullaniciAcGovdesi,
+  kullaniciAcSemasi,
+} from './kullanici-ac.schema.js';
 import {
   type KullaniciListeleParametreleri,
   kullaniciListeleSemasi,
 } from './kullanici-listele.schema.js';
 
-// Kullanıcı yönetiminin okuma uçları (TS-002 AK-39; izin Kullanici:oku). Sistem aktörleri ve
-// unutulmuş kişiler de kayıttır; neyin görüneceğini yalnız isteyenin yeteneği belirler.
+// Kullanıcı yönetiminin uçları (TS-002 AK-39). Okuma uçları (izin Kullanici:oku): sistem aktörleri ve
+// unutulmuş kişiler de kayıttır; neyin görüneceğini yalnız isteyenin yeteneği belirler. Kullanıcı aç
+// (izin Kullanici:olustur): 201 ve { id, parolaBaglantisiKodu }.
 @Controller('kimlik/kullanici')
 export class KullaniciController {
   constructor(
     private readonly listeleHandler: KullaniciListeleHandler,
     private readonly okuHandler: KullaniciOkuHandler,
+    private readonly acHandler: KullaniciAcHandler,
   ) {}
+
+  @Post()
+  @Izin('Kullanici', 'olustur')
+  ac(
+    @Body({ schema: kullaniciAcSemasi }) govde: KullaniciAcGovdesi,
+  ): Promise<AcilanKullanici> {
+    return this.acHandler.calistir(govde);
+  }
 
   @Get()
   @Izin('Kullanici', 'oku')
