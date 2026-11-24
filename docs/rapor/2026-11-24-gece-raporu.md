@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 38 görevin 28 tanesi alındı. Son koşuların ve incelemelerin toplamı: 307 dakika, 107.48 dolar.
+Kayıtlı 39 görevin 28 tanesi alındı. Son koşuların ve incelemelerin toplamı: 301 dakika, 105.18 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@ Kayıtlı 38 görevin 28 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-024 | EP-003 3 | Belirteç üretici (RS256) ve istemci adresi imzası | alındı | 1.4 | 5.4 | 2.55 | 4 | 0 engel, 3 öneri | 1 |
 | GV-025 | EP-003 4 | Tohum göçü koşucusu ve defteri (tohum_gocu) | alındı | 13.4 | 8.3 | 6.56 | 10 | 0 engel, 5 öneri | 0 |
 | GV-026 | EP-003 5 | Kimlik çekirdeği: çekirdek repository'ler ve parçalar (sayaçlar, kişi kilidi, kök üyelik,  | alındı | 2.8 | 5.0 | 3.91 | 13 | 0 engel, 2 öneri | 1 |
-| GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | soru | 8.6 | — | 3.41 | 4 | — | 0 |
+| GV-027 | EP-003 6 | İlk kurulum göçü: kök grup, roller, izin kataloğu, yönetim yetenekleri, ilk SuperAdmin, ge | tamam | 1.0 | — | 0.46 | 4 | — | 1 |
 | GV-028 | EP-003 7 | Parola: özetleme, parola kuralı, bağlantı parçası, bağlantıyla parola belirleme ve kurulum | bekliyor | — | — | — | 0 | — | 0 |
 | GV-029 | EP-003 8 | Oturum denetimi ve kimlik guard'ı: uç işaretleri, belirteç ve adres doğrulama, her istekte | bekliyor | — | — | — | 0 | — | 0 |
 | GV-030 | EP-003 9 | Giriş ve çıkış: parola ile giriş yöntemi, oturumun açılması, çıkış | bekliyor | — | — | — | 0 | — | 0 |
@@ -60,6 +60,7 @@ Kayıtlı 38 görevin 28 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-036 | EP-003 14 | Şema testlerinde tam tablo listesi sınamasının kaldırılması | incelemede kaldı | 0.7 | 3.8 | 1.92 | 3 | 1 engel, 1 öneri | 1 |
 | GV-037 | EP-003 15 | İz aktarıcısı testindeki tam tablo listesi sınamasının kaldırılması | alındı | 1.2 | 1.8 | 1.20 | 1 | 0 engel, 0 öneri | 0 |
 | GV-038 | EP-003 16 | Kırılgan şema sınamalarının kaldırılması (bütün test klasörü) | alındı | 5.5 | 5.2 | 3.71 | 4 | 0 engel, 1 öneri | 0 |
+| GV-039 | EP-003 17 | Tohum koşucusu testinde tam göç listesi sınamasının kaldırılması | tamam | 2.0 | — | 0.65 | 1 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -122,6 +123,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - Araca MCP ayarını eklerken bir satırı yanlış bloğa kaydırdım; aracın iki testi yakaladı, düzeltildi.
 - GV-017 alındıktan sonra tablo listesini sayan testi (test-database) koşturmadım; kırmızı test ana dalda bir saatten uzun kaldı ve onu ben değil GV-019'un incelemesi yakaladı. Bundan sonra şema değiştiren her kartta tablo sayan testlerin aranıp koşturulması yazılı.
 - GV-020'nin kartına var olan outbox-sema testini kabul ölçütü olarak yazdım ama o testin yeni tablolarla kırılacağını görmedim; aynı sorunun ikinci örneği.
+- İzin sorusunu iki kez yanlış teşhis ettim: sorunun nereden geldiğine bakmadan proje ayarına izin kuralı yazdım ve artık sormaz dedim. Soru kişisel genel ayardaki her zaman sor kuralından geliyordu; proje ayarı onu geçemez. Yazdığım proje kuralı bu soruya hiç etki etmedi.
 
 ## 7. Araçta (harness) değişenler
 
@@ -143,6 +145,8 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Benim verdiğim kararların (4. bölüm) gözden geçirilmesi.
 - İmza anahtarlarının ve aracı katman sırrının gerçek değerleri: depoya yazılmadı; ortam değişkeni olarak senin vermen gerekir.
 - GV-036 atılmayı bekliyor (incelemede kaldı, yerine GV-038 açıldı; atma geri alınamadığı için sana bırakıldı): python3 harness/h.py gorev at GV-036
+- Birleştirmede soru çıkmasın istiyorsan: kişisel genel ayardaki (~/.claude/settings.json) ask listesinden gh pr merge satırını kaldır ya da yalnız ilgili projenin kendi ayarına taşı. O dosyaya dokunmadım.
+- Doğrulanmadı: aynı listede schema.prisma, .gitignore ve AGENTS.md düzenlemeleri de her zaman sor olarak duruyor. İşçi oturumları soru soramadığı için bu dosyalarda düzenleme aracı reddediliyor olabilir; işçilerin kabukla dosya yazmasının bir nedeni bu olabilir.
 
 ## 9. PR'lar
 
@@ -168,3 +172,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 23:00 — GV-025 (tohum göçü koşucusu ve tohum_gocu tablosu) alındı: 12/12; ad denetimi 4/4.
 - 23:00 — GV-026 (kimlik çekirdeği; depodaki ilk feature kodu) iki soruyla durdu, cevaplandı (AK-20: genel sayaç not bırakmaz; AK-21: feature içinde ham yazma da yazılmaz, kapatılma ve silinme zamanı uygulama saatiyle) ve alındı: 20/20; feature içinde ham sorgu yok (aradım).
 - 23:00 — Auth çekirdeğinin kalan sekiz görevi tek komutla yürütülmeye başladı (ilk kurulum göçü, parola, guard, giriş ve çıkış, yetki verisi, yetki kapısının okuması ve yazması, erişim kaydı).
+- 23:08 — PR #14 birleşti (auth çekirdeğinin ilk bölümü ve test temizliği): https://github.com/mrburakgenc/dextra/pull/14
+- 23:08 — GV-027 (ilk kurulum göçü) soruyla durdu: kimlik göçü bildirilince tohum koşucusunun kök modüllü testi yalnız kendi göçünü beklediği için kırılıyor. Karar AK-22 (tam göç listesi sınanmaz), cevap verildi, düzeltme görevi açıldı (GV-039). Yürütme yeniden başladı: parola (GV-028), kimlik guard'ı (GV-029) ve GV-039.
+- 23:08 — Kullanıcı gh komutlarında yine izin sorulduğunu söyledi. Neden bulundu (ayar dosyaları ve belge okunarak): kişisel genel ayardaki her zaman sor listesinde gh pr merge var; bu tür kural her izin kuralını ve otomatik kipi geçer (belge), bu oturumun izinleri atlayan kipinde de sorduğu gözlendi; proje ayarından susturulamaz. Otomatik kip proje ayarından açılamaz (belge). Karar: gece boyunca birleştirme, push ve PR komutu koşturulmaz; iş dalda birikir; iş bitince sırayla push, PR ve en son birleştirme koşar, böylece bekleyen soru hiçbir şeyi durdurmaz.
