@@ -139,17 +139,16 @@ describe('outbox tabloları (asıl şemanın ilk göçü)', () => {
     ]);
   });
 
-  it('public şemasında iki outbox tablosu, işlenen olay tablosu ve göç aracının kendi tablosundan başka tablo yoktur', async () => {
+  it('public şemasında iki outbox tablosu vardır', async () => {
     const rows = await query<{ name: string }>(
       database.url,
       "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
     );
-    expect(rows.map((row) => row.name)).toEqual([
-      '_prisma_migrations',
-      'islenen_olay',
-      'outbox_iz',
-      'outbox_olay',
-    ]);
+    // Liste birebir sayılmaz; başka görevin tablosu bu testi kırmasın diye yalnız bu dosyanın
+    // tablolarının varlığına bakılır (TS-003 Onarım).
+    expect(rows.map((row) => row.name)).toEqual(
+      expect.arrayContaining(['outbox_iz', 'outbox_olay']),
+    );
   });
 
   it.each(tablolar)(

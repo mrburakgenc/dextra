@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { KimlikModule } from './features/kimlik/kimlik.module.js';
 import { DatabaseModule } from './shared/database/database.module.js';
 import { HealthModule } from './shared/health/health.module.js';
+import { HttpTemeliModule } from './shared/http/http-temeli.module.js';
 import { MessagingModule } from './shared/messaging/messaging.module.js';
 import { OlayModule } from './shared/messaging/olay/olay.module.js';
 import { IzModule } from './shared/observability/iz/iz.module.js';
@@ -9,9 +11,11 @@ import { IzModule } from './shared/observability/iz/iz.module.js';
   imports: [
     DatabaseModule,
     HealthModule,
+    HttpTemeliModule,
     MessagingModule,
     OlayModule,
     IzModule,
+    KimlikModule,
   ],
 })
 export class AppModule {}

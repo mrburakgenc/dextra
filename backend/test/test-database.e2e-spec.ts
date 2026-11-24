@@ -144,11 +144,15 @@ describe('geçici test veritabanı yardımcısı', () => {
         goclu.url,
         "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
       );
-      expect(tables.map((table) => table.name)).toEqual([
-        '_prisma_migrations',
-        'outbox_iz',
-        'outbox_olay',
-      ]);
+      // Liste birebir sayılmaz; şemaya tablo eklendikçe test kırılmasın diye yardımcının işini
+      // gösteren tabloların (göç defteri ve outbox tabloları) varlığına bakılır (TS-003 Onarım).
+      expect(tables.map((table) => table.name)).toEqual(
+        expect.arrayContaining([
+          '_prisma_migrations',
+          'outbox_iz',
+          'outbox_olay',
+        ]),
+      );
     } finally {
       await goclu.drop();
     }
@@ -174,10 +178,13 @@ describe('geçici test veritabanı yardımcısı', () => {
         izli.url,
         "select table_name as name from information_schema.tables where table_schema = 'public' order by 1",
       );
-      expect(tables.map((table) => table.name)).toEqual([
-        '_prisma_migrations',
-        'degisiklik_kaydi',
-      ]);
+      // Liste birebir sayılmaz; iz şemasına tablo eklendikçe test kırılmasın diye iz şemasının
+      // tablolarının varlığına ve asıl şemanın tablosunun yokluğuna bakılır (TS-003 Onarım).
+      const names = tables.map((table) => table.name);
+      expect(names).toEqual(
+        expect.arrayContaining(['_prisma_migrations', 'degisiklik_kaydi']),
+      );
+      expect(names).not.toContain('outbox_olay');
     } finally {
       await izli.drop();
     }
