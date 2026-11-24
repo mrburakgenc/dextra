@@ -9,6 +9,11 @@ import {
   PAROLA_BAGLANTISI_REPO,
   parolaBaglantisiRepo,
 } from './baglanti/parola-baglantisi.repository.js';
+import { ButunlukSorusu } from './butunluk-sorusu.js';
+import {
+  BUTUNLUK_CEKIRDEK_REPO,
+  butunlukCekirdekRepo,
+} from './cekirdek/butunluk.repository.js';
 import {
   KULLANICI_CEKIRDEK_REPO,
   kullaniciCekirdekRepo,
@@ -49,8 +54,16 @@ import { KURULUM_REPO, kurulumRepo } from './tohum/kurulum.repository.js';
     TohumYardimcisi,
     KimlikKurulumGocu,
     ParolaBaglantisi,
+    ButunlukSorusu,
   ],
-  exports: [GenelSayac, KisininSayisi, KisiKilidi, KokUyelik, ParolaBaglantisi],
+  exports: [
+    GenelSayac,
+    KisininSayisi,
+    KisiKilidi,
+    KokUyelik,
+    ParolaBaglantisi,
+    ButunlukSorusu,
+  ],
 })
 export class KimlikCekirdekModule {
   constructor(
@@ -67,5 +80,6 @@ export class KimlikCekirdekModule {
       kurulumGocu.uygula(ad, islem),
     );
     registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
+    registrar.register(BUTUNLUK_CEKIRDEK_REPO, butunlukCekirdekRepo);
   }
 }
