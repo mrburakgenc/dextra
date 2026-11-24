@@ -2,6 +2,11 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../shared/database/database.module.js';
 import { Registrar } from '../../shared/database/registrar.js';
 import { MessagingModule } from '../../shared/messaging/messaging.module.js';
+import { ParolaBaglantisi } from './_shared/baglanti/parola-baglantisi.js';
+import {
+  PAROLA_BAGLANTISI_REPO,
+  parolaBaglantisiRepo,
+} from './_shared/baglanti/parola-baglantisi.repository.js';
 import {
   KULLANICI_CEKIRDEK_REPO,
   kullaniciCekirdekRepo,
@@ -23,17 +28,29 @@ import { KisiKilidi } from './_shared/kisi-kilidi.js';
 import { KisininSayisi } from './_shared/kisinin-sayisi.js';
 import { KokUyelik } from './_shared/kok-uyelik.js';
 import { TohumYardimcisi } from './_shared/tohum-yardimcisi.js';
+import { KurulumBaglantisiHandler } from './parola/application/kurulum-baglantisi.handler.js';
+import { ParolaBelirleHandler } from './parola/application/parola-belirle.handler.js';
+import { ParolaOzetleyici } from './parola/domain/parola-ozetleyici.port.js';
+import { PAROLA_REPO } from './parola/domain/parola.repository.js';
+import { Argon2idParolaOzetleyici } from './parola/infrastructure/parola-ozetleyici.argon2id.js';
+import { parolaPrismaRepository } from './parola/infrastructure/parola.prisma-repository.js';
+import { ParolaController } from './parola/presentation/parola.controller.js';
 
 // Kimlik feature'ı. Çekirdek repository'ler Unit of Work'e Registrar ile tanıtılır; çekirdek
 // parçalar yalnız bu feature'ın içinde kullanılır, dışa verilmez.
 @Module({
   imports: [DatabaseModule, MessagingModule],
+  controllers: [ParolaController],
   providers: [
     GenelSayac,
     KisininSayisi,
     KisiKilidi,
     KokUyelik,
     TohumYardimcisi,
+    ParolaBaglantisi,
+    { provide: ParolaOzetleyici, useClass: Argon2idParolaOzetleyici },
+    ParolaBelirleHandler,
+    KurulumBaglantisiHandler,
   ],
 })
 export class KimlikModule {
@@ -42,5 +59,7 @@ export class KimlikModule {
     registrar.register(KULLANICI_CEKIRDEK_REPO, kullaniciCekirdekRepo);
     registrar.register(OTURUM_CEKIRDEK_REPO, oturumCekirdekRepo);
     registrar.register(UYELIK_CEKIRDEK_REPO, uyelikCekirdekRepo);
+    registrar.register(PAROLA_BAGLANTISI_REPO, parolaBaglantisiRepo);
+    registrar.register(PAROLA_REPO, parolaPrismaRepository);
   }
 }
