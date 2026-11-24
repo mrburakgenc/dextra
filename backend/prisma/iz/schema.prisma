@@ -30,3 +30,41 @@ model DegisiklikKaydi {
 
   @@map("degisiklik_kaydi")
 }
+
+// Erişim kaydı (KR-013 Seçim 2 ve 6; TS-002 AK-10): yetki kapısından okuma yapan oturumlu istek başına
+// bir satır. Kimlik uygulamada üretilir. Dönen kayıtların kimliklerini taşımaz; erişilen yer rota
+// desenidir. İstek kimliği isteksiz okumalar için boş bırakılabilir (TS-003 Veri modeli).
+model ErisimKaydi {
+  id            String               @id(map: "erisim_kaydi_ba") @db.Uuid
+  istekId       String?              @map("istek_id") @db.Uuid
+  kullaniciId   String               @map("kullanici_id") @db.Uuid
+  isAdi         String               @map("is_adi")
+  erisilenYer   String               @map("erisilen_yer")
+  kayitSayisi   Int                  @map("kayit_sayisi")
+  olusmaZamani  DateTime             @map("olusma_zamani") @db.Timestamptz
+  yazilmaZamani DateTime             @default(dbgenerated("clock_timestamp()")) @map("yazilma_zamani") @db.Timestamptz
+  yetenekler    ErisimKaydiYetenek[]
+  uyelikler     ErisimKaydiUyelik[]
+
+  @@map("erisim_kaydi")
+}
+
+// Erişimde kullanılan yetenekler. Yetenek asıl veritabanındadır; ona yabancı anahtar yoktur.
+model ErisimKaydiYetenek {
+  erisimKaydiId String      @map("erisim_kaydi_id") @db.Uuid
+  yetenekId     String      @map("yetenek_id") @db.Uuid
+  erisimKaydi   ErisimKaydi @relation(fields: [erisimKaydiId], references: [id], onDelete: Restrict, map: "erisim_kaydi_yetenek_erisim_kaydi_id_ya")
+
+  @@id([erisimKaydiId, yetenekId], map: "erisim_kaydi_yetenek_ba")
+  @@map("erisim_kaydi_yetenek")
+}
+
+// Erişimde kullanılan üyelikler. Üyelik asıl veritabanındadır; ona yabancı anahtar yoktur.
+model ErisimKaydiUyelik {
+  erisimKaydiId String      @map("erisim_kaydi_id") @db.Uuid
+  uyelikId      String      @map("uyelik_id") @db.Uuid
+  erisimKaydi   ErisimKaydi @relation(fields: [erisimKaydiId], references: [id], onDelete: Restrict, map: "erisim_kaydi_uyelik_erisim_kaydi_id_ya")
+
+  @@id([erisimKaydiId, uyelikId], map: "erisim_kaydi_uyelik_ba")
+  @@map("erisim_kaydi_uyelik")
+}
