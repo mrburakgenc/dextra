@@ -129,9 +129,40 @@ afterAll(async () => {
   expect(await kalanVeritabanlari(adlar)).toEqual([]);
 });
 
+async function silinmisRolEkle(ad: string): Promise<string> {
+  const id = await rolEkle(ad);
+  await ortam.db.query(
+    'update rol set silinme_zamani = clock_timestamp() where id = $1',
+    [id],
+  );
+  return id;
+}
+
 describe('a) rol listesi ve tek kayıt', () => {
-  // "Silinmiş işaretlenen rol listede yoktur" maddesi, canlılık süzgecini bağlayacak göreve taşındı
-  // (TS-002 AK-42).
+  it('silinmiş işaretlenen rol listede yoktur; tek kayıt ucunda kimliğiyle okunur (TS-002 AK-42)', async () => {
+    const silinmis = await silinmisRolEkle('Silinmiş');
+    const liste = await getir(
+      '/kimlik/rol?boyut=100',
+      ortam.superadmin.erisimBelirteci,
+    );
+    expect(liste.status).toBe(200);
+    const govde = liste.body as ListeCevabi;
+    expect(govde.sonrakiVar).toBe(false);
+    expect(govde.kayitlar.length).toBeGreaterThan(0);
+    expect(govde.kayitlar.map((k) => k['id'])).not.toContain(silinmis);
+    for (const kayit of govde.kayitlar) {
+      expect(kayit['silinmeZamani']).toBeNull();
+    }
+
+    const tek = await getir(
+      `/kimlik/rol/${silinmis}`,
+      ortam.superadmin.erisimBelirteci,
+    );
+    expect(tek.status).toBe(200);
+    expect(tek.body).toMatchObject({ id: silinmis, ad: 'Silinmiş' });
+    expect((tek.body as Record<string, unknown>)['silinmeZamani']).not.toBeNull();
+  });
+
   it('ilk yönetici listede kurulumun iki sistem rolünü kodlarıyla görür', async () => {
     const cevap = await getir(
       '/kimlik/rol?boyut=100',
@@ -260,6 +291,27 @@ describe('ortak', () => {
     for (const kayit of kayitlar) {
       expect(Object.keys(kayit).sort()).toEqual(['id', 'kaynak']);
     }
+  });
+
+  it('silinme zamanını göremeyen okuma yeteneği listede canlı rolleri kendi kolonlarıyla görür (TS-002 AK-42)', async () => {
+    const kisi = await ortam.kullaniciAc(yeniAd());
+    const canli = await rolEkle('Canlılık');
+    const silinmis = await silinmisRolEkle('Canlılık');
+    await yetenekVer(kisi.id, {
+      kaynak: 'Rol',
+      sart: [{ alan: 'ad', islec: 'esit', deger: 'Canlılık' }],
+      kolonlar: ['ad'],
+    });
+
+    const cevap = await getir('/kimlik/rol', kisi.erisimBelirteci);
+    expect(cevap.status).toBe(200);
+    expect((cevap.body as ListeCevabi).kayitlar).toEqual([
+      { id: canli, ad: 'Canlılık' },
+    ]);
+
+    const tek = await getir(`/kimlik/rol/${silinmis}`, kisi.erisimBelirteci);
+    expect(tek.status).toBe(200);
+    expect(tek.body).toEqual({ id: silinmis, ad: 'Canlılık' });
   });
 
   it('sayfa ve sonrakiVar boyut 2 ile üç kayıtta doğru çalışır (rol, kod sırasıyla)', async () => {
