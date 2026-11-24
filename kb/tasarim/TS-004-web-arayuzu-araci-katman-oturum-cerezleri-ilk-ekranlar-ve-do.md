@@ -69,6 +69,15 @@ Ajan kararı (2026-11-25 gecesi); backend'deki uçlar GV-028 ve GV-030'da yazıl
 - Bozuk `BACKEND_ADRESI` için fırlatılan hata adresin değerini taşımaz (çatı sunucu hatalarını günlüğe yazar).
 - Form kuralları: etiket girdiye bağlıdır; alan hatası alanın yanında, genel hata formun üstünde ve ekran okuyucuya duyurulacak biçimde gösterilir; gönderim sürerken düğme kapalıdır; form verisi tarayıcının kalıcı deposuna yazılmaz (KR-014).
 
+## Yetki kurallarının ekrana taşınması
+Ajan kararı (2026-11-25 gecesi); backend ucu GV-032'de yazıldığı gibidir.
+- Backend ucu: `GET kimlik/oturum/yetkilerim` (oturumlu) `{ kurallar: [...] }` döner. Her kural bir CASL kuralıdır: `action` (eylem), `subject` (kaynak; model adı), varsa `conditions` (koşul; bütün kayıtlarda yoktur), varsa `fields` (kolonlar; bütün kolonlarda yoktur) ve `yetenekId`. Koşul, backend'in sorguda kullandığı biçimdedir (Prisma sorgu koşulu; `@casl/prisma`).
+- Ekran aynı koşulu aynı kitaplıkla değerlendirir (KR-010 Seçim 38): ön yüze `@casl/prisma` kuruldu; koşul yorumlayıcısı onun veritabanı istemcisi istemeyen girişinden alınır. Reddedilen: koşulu ön yüzde elle yorumlamak (iki ayrı yorumlayıcı zamanla ayrışır).
+- Akış: korumalı düzen kuralları sunucuda çeker ve istemcideki yetki sağlayıcısına verir; ekran parçaları `<Can>` ile sorar. Kurallar kişinin kendi kurallarıdır ve tarayıcıya bilerek gider; belirteç gitmez.
+- Soru biçimleri: tür düzeyi ("Kullanici oluşturabilir miyim": menü ve düğmeler), kayıt düzeyi ("bu kaydı güncelleyebilir miyim": kayıt, türüyle etiketlenerek sorulur) ve kolon düzeyi ("bu kaydın şu kolonunu"). Alan izni ekranda kayıt örneğiyle sorulur (KR-014 bulgu 10).
+- Sınır: ekran yalnız kaydın ekrana gelmiş kolonlarına bakan koşulu doğru değerlendirir; ekrana gelmeyen kolona bakan koşulda ekran "hayır" der ve kararı backend verir (KR-014 bulgu 4; ekran gizleyebilir, izin veremez).
+- Kurallar oturum boyunca her sayfa isteğinde yeniden çekilir (düzen sunucuda çalışır); ayrı bir tazeleme düzeni yazılmadı.
+
 ## Seçenekler
 ### Veri çekme
 - A — Sunucu bileşeni ve Server Action (seçildi): tarayıcıdan backend'e giden yol yoktur; ek kitaplık gerekmez. Bedel: etkileşimli listelerde her değişiklik sunucuya gider.
