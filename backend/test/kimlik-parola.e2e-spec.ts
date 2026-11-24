@@ -5,6 +5,7 @@
 // her testten önce SQL ile yeniden yazılır; satırlar ve notlar ayrı bir bağlantıdan okunur.
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import type { INestApplication } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { KisiKilidi } from '../src/features/kimlik/_shared/kisi-kilidi.js';
 import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/kurulum-baglantisi.handler.js';
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -389,18 +391,15 @@ describe('g) kurulum komutunun işi', () => {
   });
 
   it('derlenmiş komut kodu standart çıktıya bir kez yazar ve 0 ile çıkar; kullanıcı yokken 1 ile çıkar ve hatayı standart hataya yazar', async () => {
-    await promisify(execFile)(
-      `${backendDir}node_modules/.bin/nest`,
-      ['build'],
-      {
-        cwd: backendDir,
-      },
-    );
+    const derleme = await derle();
+    onTestFinished(() => derleme.sil());
     // Alt süreç, createAppDatabases'in geçici veritabanlarına çevirdiği adresleri miras alır.
     const kos = () =>
-      promisify(execFile)(process.execPath, ['dist/kurulum.js'], {
-        cwd: backendDir,
-      });
+      promisify(execFile)(
+        process.execPath,
+        [join(derleme.klasor, 'kurulum.js')],
+        { cwd: backendDir },
+      );
 
     await gozlemci.query(`delete from kullanici where id = '${SUPERADMIN}'`);
     await expect(kos()).rejects.toMatchObject({
