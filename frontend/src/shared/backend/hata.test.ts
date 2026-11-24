@@ -6,6 +6,7 @@ import {
   alanHatalari,
   hataGovdesiniOku,
   kimlikGerekliyseGiriseDon,
+  kimlikGerekliyseOturumuBitir,
 } from './hata';
 
 vi.mock('server-only', () => ({}));
@@ -88,6 +89,29 @@ describe('hata eşleme', () => {
       durum: 403,
     });
     expect(oturumCerezleriniSil).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('sunucu bileşenindeki kimlik_gerekli çerezlere dokunmadan /oturum-bitti adresine yönlendirir', () => {
+    expect(() => {
+      kimlikGerekliyseOturumuBitir({
+        kod: 'kimlik_gerekli',
+        ileti: 'Oturum gerekli',
+        ayrinti: null,
+        durum: 401,
+      });
+    }).toThrow('yonlendirildi');
+    expect(redirect).toHaveBeenCalledWith('/oturum-bitti');
+    expect(oturumCerezleriniSil).not.toHaveBeenCalled();
+  });
+
+  it('sunucu bileşeninde başka kodda yönlendirmez', () => {
+    kimlikGerekliyseOturumuBitir({
+      kod: 'yetki_yok',
+      ileti: 'Yetkin yok',
+      ayrinti: null,
+      durum: 403,
+    });
     expect(redirect).not.toHaveBeenCalled();
   });
 });

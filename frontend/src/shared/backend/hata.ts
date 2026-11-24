@@ -57,7 +57,8 @@ export function alanHatalari(hata: BackendHatasi): Record<string, string> {
 
 // kimlik_gerekli (401) gelince oturum çerezleri silinir ve giriş ekranına dönülür
 // (TS-004 Değişmez 5); başka kodlarda bir şey yapmaz. Çerez silme çatının kuralı gereği
-// yalnız Server Action ya da Route Handler içinde çalışır.
+// yalnız Server Action ya da Route Handler içinde çalışır; sunucu bileşeni
+// kimlikGerekliyseOturumuBitir'i kullanır.
 export async function kimlikGerekliyseGiriseDon(
   hata: BackendHatasi,
 ): Promise<void> {
@@ -66,4 +67,12 @@ export async function kimlikGerekliyseGiriseDon(
   }
   await oturumCerezleriniSil();
   redirect('/giris');
+}
+
+// Sunucu bileşenindeki kimlik_gerekli (401): bileşen çerez değiştiremez; çerezleri silip giriş
+// ekranına dönen /oturum-bitti rota işleyicisine yönlendirilir. Başka kodlarda bir şey yapmaz.
+export function kimlikGerekliyseOturumuBitir(hata: BackendHatasi): void {
+  if (hata.kod === 'kimlik_gerekli') {
+    redirect('/oturum-bitti');
+  }
 }
