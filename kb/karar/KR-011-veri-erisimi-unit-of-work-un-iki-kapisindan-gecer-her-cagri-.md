@@ -82,7 +82,7 @@ Registrar   register(belirtec, fabrika)                 feature başına tektir;
 - Kapsam: Unit of Work yalnız asıl veritabanını kapsar. İz veritabanına yalnız ortak altyapı kodu kendi istemcisiyle erişir ("İstisna yolu"). Hiçbir feature'a ait olmayan tabloları (outbox gibi) ortak kodun kendi registrar'ı kaydeder; feature outbox'a yalnız "olay yaz" yüzeyinden ulaşır, tam repository'yi isteyemez.
 - İşaret: "işlemin içinde miyim" bilgisi AsyncLocalStorage ile tutulur; onu yalnız çalıştırıcı okur (işlem içindeyken `run` ve `read` çağrısına hata vermek için; Seçim 5 ve 10), işlemi taşımak için kullanılmaz ve işlem kapanınca kapalı sayılır. Seçim 5'te reddedilen "gizli bağlam" işlemi taşıyan bağlamdır; bu işaret taşımaz, yalnız hata verir. "Adıyla istenen ayrı işlem" çağrısı ilk kullanıcısı çıkana kadar yazılmaz; iç içe çağrı sınamasının o yarısı ertelenir.
 - Hataların dışarıya dönüşü (ajan önerisi; uç kodları yazılmadı): kilitlenme döngüsü ve süre aşımı "yeniden dene"; şartlı yazmada sıfır satır "bulunamadı ya da yetki yok"; tekil kısıt "çakışma". Düzeltme: "iki iş aynı kayıtta çakışırsa hata döner" cümlesi varsayılan yalıtımda böyle gerçekleşmez; çakışan ikinci yazma hata almaz, satır kilidini bekler (bu depoda denenmedi). 5 saniye işlemin toplam süresidir; bağlantı ve kilit beklemesini kapsadığı ajan okumasıdır.
-- Göç: şema göçü Unit of Work kullanmaz. Tohum göçü uygulama kodunu (tohum yardımcısı) çağırır; koşucusu tasarlanınca hangi kapıdan yazdığı buraya yazılacak (TS-002).
+- Göç: şema göçü Unit of Work kullanmaz. Tohum göçü uygulama kodunu (tohum yardımcısı) çağırır; koşucusu her göçü `run` içinde uygular (TS-002 AK-1; GV-025'te yazıldı).
 - Seçeneklerde eksik kalan karşı görüş (inceleme 10): "ortam bağlamı, okuma ve yazma arayüzü ayrımı ve işlem dışında yazmada çalışma anı hatası" birleşimi tartılmamıştı. Kazancı: kanonun ve BADI'nin yazım biçimi, test başına geri alma, tüketicinin komutu aynı işlemde sarabilmesi, sözleşmelerin sade imzası. Bedeli: yanlış kullanım derlemede değil çalışma anında görülür ve işlemi gizli bir bağlam taşır. Kullanıcının seçimi (fabrika) yerindedir; neye karşı seçildiği böyle yazıldı.
 
 Ajan önerileri — kullanıcı teyit etti (2026-11-24); ikisi de ölçümle yeniden bakılacak başlangıç değerleridir:
@@ -145,6 +145,6 @@ Denetim kimliği ve ölçüm tarihi henüz yok; kod yazılmadı.
 - Yeniden bakma tetiği (öneri, ajan; eşik belirlenmedi): yürüyen iskelette örneği taşımanın yükü ağır çıkarsa; seçilen Prisma sürümü işlem arayüzünü değiştirirse.
 
 ## İstisna yolu
-- Göç ve tohum betikleri Unit of Work kullanmaz; kendi araçlarıyla çalışır.
+- Şema göçü Unit of Work kullanmaz; kendi aracıyla çalışır. Tohum göçü `run` içinde koşar (TS-002 AK-1).
 - Ortak altyapı yazımları (outbox, değişiklik kaydı) istisna değildir: iş yazmasıyla aynı örnekten geçer.
 - Bunların dışındaki sapma için yol tanımlanmadı; kullanıcıya sorulacak.
