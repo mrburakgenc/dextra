@@ -44,7 +44,20 @@ export class YetkiBellegi {
       return kayit.yetki;
     }
     const satirlar = await this.veri.kisininSatirlari(kullaniciId);
-    const yetki = yetenekleriDerle(satirlar, kullaniciId, this.katalog);
+    // Yeteneğin grubu ve rolü aynı üyelikten okunur (KR-008 Seçim 44); o üyelik yeteneği verendir.
+    const uyelikler: Record<string, string> = {};
+    for (const { yetenekId, grupId, rolId } of satirlar.yetenekler) {
+      const uyelik = satirlar.uyelikler.find(
+        (u) => u.grupId === grupId && u.rolId === rolId,
+      );
+      if (uyelik !== undefined) {
+        uyelikler[yetenekId] = uyelik.uyelikId;
+      }
+    }
+    const yetki: DerlemeSonucu = {
+      ...yetenekleriDerle(satirlar, kullaniciId, this.katalog),
+      uyelikler,
+    };
     for (const { yetenekId, neden } of yetki.derlenmeyenler) {
       this.gunluk.warn(
         `Yetenek derlenmedi: yetenek=${yetenekId} neden=${neden}`,
