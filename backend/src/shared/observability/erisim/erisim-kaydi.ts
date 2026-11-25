@@ -9,7 +9,7 @@ import { concatMap, type Observable } from 'rxjs';
 import { IZ_PRISMA_CLIENT } from '../../database/domain/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../../database/iz/generated/client.js';
 import { yeniKimlik } from '../../database/domain/kimlik.js';
-import { istekBaglami } from '../../http/istek-baglami.js';
+import { istekBaglami } from '../istek-baglami/istek-baglami.js';
 import { okumaBirikimi } from '../../yetki/infrastructure/okuma-kapisi.js';
 
 // Erişim kaydının yazımı (KR-013 Seçim 2 ve 6; KR-011 Seçim 9; TS-003 Seçenek 1: A). Bütün uçlara

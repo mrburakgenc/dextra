@@ -3,7 +3,7 @@ import {
   HerkeseAcik,
   YalnizKendisi,
 } from '../../../../shared/guvenlik/application/isaretler.js';
-import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
+import { istekBaglami } from '../../../../shared/observability/istek-baglami/istek-baglami.js';
 import {
   type ParolaBelirleKomutu,
   parolaBelirleKomutuSemasi,

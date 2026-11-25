@@ -16,7 +16,7 @@ import {
   YalnizKendisi,
 } from '../../../../shared/guvenlik/application/isaretler.js';
 import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/application/istemci-adresi-imzasi.js';
-import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
+import { istekBaglami } from '../../../../shared/observability/istek-baglami/istek-baglami.js';
 import type { YetenekKurali } from '../../../../shared/yetki/application/yetenek-derleyici.js';
 import {
   type ParolaGirisGovdesi,

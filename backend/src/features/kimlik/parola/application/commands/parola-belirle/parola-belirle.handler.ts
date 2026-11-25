@@ -1,7 +1,7 @@
 // Bağlantıyla parola belirle işinin işleyicisi (TS-002 "İşlem sınırları"; KR-009 Seçim 9).
 import { Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
-import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { KodluHata } from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { OutboxYazici } from '../../../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { baglantiKodununOzeti } from '../../../../_shared/application/parola-baglantisi.js';
 import { PAROLA_BAGLANTISI_REPO } from '../../../../_shared/domain/repositories/i-parola-baglantisi.repository.js';

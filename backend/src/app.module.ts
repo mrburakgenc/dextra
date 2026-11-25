@@ -10,7 +10,7 @@ import { OturumDenetimiHandler } from './features/kimlik/oturum/application/comm
 import { DatabaseModule } from './shared/database/database.module.js';
 import { GuvenlikModule } from './shared/guvenlik/guvenlik.module.js';
 import { KimlikGuard } from './shared/guvenlik/infrastructure/kimlik.guard.js';
-import { HealthModule } from './shared/health/health.module.js';
+import { HealthModule } from './shared/observability/health/health.module.js';
 import { HttpTemeliModule } from './shared/http/http-temeli.module.js';
 import { OTURUM_DENETIMI } from './shared/kimlik/domain/i-oturum-denetimi.contract.js';
 import { YETKI_VERISI } from './shared/kimlik/domain/i-yetki-verisi.contract.js';

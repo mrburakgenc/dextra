@@ -1,5 +1,5 @@
 import type { RepoIstemcisi } from '../../database/infrastructure/registrar.js';
-import { KodluHata } from '../../http/kodlu-hata.js';
+import { KodluHata } from '../../http/domain/kodlu-hata.js';
 import { OkumaKapisi } from './okuma-kapisi.js';
 import { prismaKaynakKatalogu } from './prisma-kaynak-katalogu.js';
 

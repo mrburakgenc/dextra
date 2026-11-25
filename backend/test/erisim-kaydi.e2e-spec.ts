@@ -40,7 +40,7 @@ import {
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
-import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
+import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
 import { OkumaKapisi } from '../src/shared/yetki/infrastructure/okuma-kapisi.js';

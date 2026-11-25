@@ -1,7 +1,7 @@
 // Grubu sil işinin işleyicisi (TS-002 "İşlem sınırları"; AK-39; KR-008 Seçim 22 ve 27).
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
-import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { KodluHata } from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {

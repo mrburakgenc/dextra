@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { yeniKimlik } from '../database/domain/kimlik.js';
-import type { DerlemeSonucu } from '../yetki/application/yetenek-derleyici.js';
+import { yeniKimlik } from '../../database/domain/kimlik.js';
+import type { DerlemeSonucu } from '../../yetki/application/yetenek-derleyici.js';
 
 export const ISTEK_KIMLIGI_BASLIGI = 'x-istek-kimligi';
 

@@ -3,7 +3,7 @@ import {
   Injectable,
   StandardSchemaValidationPipe,
 } from '@nestjs/common';
-import { KodluHata } from './kodlu-hata.js';
+import { KodluHata } from '../domain/kodlu-hata.js';
 
 export interface DogrulamaAyrintisi {
   readonly alan: string;

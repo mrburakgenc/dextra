@@ -5,8 +5,8 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { istekOturumunuYaz } from '../../http/istek-baglami.js';
-import { KodluHata } from '../../http/kodlu-hata.js';
+import { istekOturumunuYaz } from '../../observability/istek-baglami/istek-baglami.js';
+import { KodluHata } from '../../http/domain/kodlu-hata.js';
 import {
   OTURUM_DENETIMI,
   type OturumDenetimi,
