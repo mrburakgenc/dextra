@@ -278,7 +278,8 @@ class Kosum(Ortam):
 
     def test_agacinda_kalan_isci_uyari_almaz(self):
         kok = gorev_deposu()
-        self.assertEqual(gorev.kos(kok, dolu_kart(kok))["uyarilar"], [])
+        # GV-127 (TS-006 Yapı 12): sahte işçi dosyayı düzenleme kapısından geçirmeden yazar; tek uyarı kapı dışı yazımdır
+        self.assertEqual([u["ad"] for u in gorev.kos(kok, dolu_kart(kok))["uyarilar"]], ["kapi-disi-yazim"])
 
     def test_kosum_raporu_ve_durumu_diske_yazilir(self):
         kok = gorev_deposu()
