@@ -824,6 +824,128 @@ describe('yetki kapısı - okuma', () => {
     });
   });
 
+  describe('m) koşulsuz ve koşullu kural birlikte (TS-002 AK-52)', () => {
+    // Y1 bütün kayıtları görür; Y2 yalnız isteyenin kendi kaydını.
+    const kosulsuzVeKosullu = (
+      y1Kolonlar: readonly string[],
+      y2Kolonlar: readonly string[],
+    ): Promise<DerlemeSonucu> =>
+      yetkiAl(AYSE, [AYSE_A, ECE_A_R2], [
+        yetenek({
+          butunKayitlar: true,
+          ...(y1Kolonlar.length === 0
+            ? { butunKolonlar: true }
+            : { kolonlar: [...y1Kolonlar] }),
+        }),
+        yetenek({
+          yetenekId: Y2,
+          rolId: R2,
+          sart: [
+            { alan: 'id', islec: 'esit', deger: { yerTutucu: 'isteyen' } },
+          ],
+          ...(y2Kolonlar.length === 0
+            ? { butunKolonlar: true }
+            : { kolonlar: [...y2Kolonlar] }),
+        }),
+      ]);
+
+    it('liste: koşulsuz kural bütün kayıtları verir; çağıranın koşulu yine uygulanır', async () => {
+      const yetki = await kosulsuzVeKosullu([], []);
+
+      await istekte(yetki, async () => {
+        expect(adlar(await kapi.liste(prisma, 'Kullanici'))).toEqual([
+          'Ayşe',
+          'Banu',
+          'Cem',
+          'Deniz',
+          'Ece',
+        ]);
+        expect(
+          adlar(
+            await kapi.liste(prisma, 'Kullanici', {
+              kosul: [
+                { alan: 'gorunenAd', islec: 'listede', deger: ['Banu', 'Deniz'] },
+              ],
+            }),
+          ),
+        ).toEqual(['Banu', 'Deniz']);
+      });
+    });
+
+    it('tek kayıt: koşullu kuralın tutmadığı kayıt kimliğiyle okunur', async () => {
+      const yetki = await kosulsuzVeKosullu([], []);
+
+      await istekte(yetki, async () => {
+        expect(await kapi.tek(prisma, 'Kullanici', CEM)).toMatchObject({
+          id: CEM,
+          gorunenAd: 'Cem',
+          kullaniciAdi: 'cem',
+        });
+      });
+    });
+
+    it('kolonlar: koşulun tuttuğu satır iki kuralın kolonlarını, tutmayan satır yalnız koşulsuz kuralın kolonlarını taşır', async () => {
+      const yetki = await kosulsuzVeKosullu(
+        ['gorunenAd'],
+        ['gorunenAd', 'kullaniciAdi', 'sistemAktoru'],
+      );
+
+      await istekte(yetki, async () => {
+        expect(await kapi.liste(prisma, 'Kullanici')).toEqual([
+          {
+            id: AYSE,
+            gorunenAd: 'Ayşe',
+            kullaniciAdi: 'ayse',
+            sistemAktoru: false,
+          },
+          { id: BANU, gorunenAd: 'Banu' },
+          { id: CEM, gorunenAd: 'Cem' },
+          { id: DENIZ, gorunenAd: 'Deniz' },
+          { id: ECE, gorunenAd: 'Ece' },
+        ]);
+        expect(await kapi.tek(prisma, 'Kullanici', AYSE)).toEqual({
+          id: AYSE,
+          gorunenAd: 'Ayşe',
+          kullaniciAdi: 'ayse',
+          sistemAktoru: false,
+        });
+        expect(await kapi.tek(prisma, 'Kullanici', DENIZ)).toEqual({
+          id: DENIZ,
+          gorunenAd: 'Deniz',
+        });
+      });
+    });
+
+    it('koşulsuz kural yoksa iki koşulun birleşimi döner; kuralı olmayan kişi hiçbir satır almaz', async () => {
+      const ikiKosullu = await yetkiAl(AYSE, [AYSE_A, ECE_A_R2], [
+        yetenek({
+          sart: [{ alan: 'gorunenAd', islec: 'esit', deger: 'Banu' }],
+          butunKolonlar: true,
+        }),
+        yetenek({
+          yetenekId: Y2,
+          rolId: R2,
+          sart: [{ alan: 'gorunenAd', islec: 'esit', deger: 'Deniz' }],
+          butunKolonlar: true,
+        }),
+      ]);
+      const kuralsiz = await yetkiAl(AYSE, [AYSE_A], []);
+
+      await istekte(ikiKosullu, async () => {
+        expect(adlar(await kapi.liste(prisma, 'Kullanici'))).toEqual([
+          'Banu',
+          'Deniz',
+        ]);
+        await expect(
+          kapi.tek(prisma, 'Kullanici', CEM),
+        ).rejects.toMatchObject({ kod: 'bulunamadi' });
+      });
+      await istekte(kuralsiz, async () => {
+        expect(await kapi.liste(prisma, 'Kullanici')).toEqual([]);
+      });
+    });
+  });
+
   it('kapı yalnız katalogdaki kaynak ve kolonlarla çalışır', async () => {
     const yetki = await yetkiAl(AYSE, [AYSE_A], [
       yetenek({ butunKayitlar: true, butunKolonlar: true }),

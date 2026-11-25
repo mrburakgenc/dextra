@@ -209,11 +209,15 @@ export class OkumaKapisi {
       : undefined;
 
     // Prisma 7.10.1, "ve"nin içindeki boş "veya"yı koşulsuz sayar (WHERE 1=1; GV-033'te ölçüldü). Bu
-    // yüzden kural yoksa satır süzgeci hiçbir satıra uymayan boş kimlik listesidir.
+    // yüzden kural yoksa satır süzgeci hiçbir satıra uymayan boş kimlik listesidir. "Veya"nın içindeki
+    // boş koşulu ise yok sayar; bu yüzden koşulsuz kural "veya"ya konmaz, süzgeci koşulsuz yapar
+    // (TS-002 AK-52).
     const satirSuzgeci =
       katilanlar.length === 0
         ? { id: { in: [] } }
-        : { OR: katilanlar.map(({ kural }) => kural.conditions ?? {}) };
+        : katilanlar.some(({ kural }) => kural.conditions === undefined)
+          ? {}
+          : { OR: katilanlar.map(({ kural }) => kural.conditions ?? {}) };
     const sayfa = await vekil.findMany({
       where: { AND: [okuma.kosul, satirSuzgeci] },
       orderBy: [
