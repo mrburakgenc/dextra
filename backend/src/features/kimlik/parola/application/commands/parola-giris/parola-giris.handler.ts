@@ -5,11 +5,11 @@ import {
   type Islem,
   UnitOfWork,
 } from '../../../../../../shared/database/unit-of-work.js';
+import type { GirisYontemi } from '../../../../../../shared/kimlik/application/i-giris-yontemi.port.js';
 import type {
   GirisDogrulamaSonucu,
   GirisKesinlestirmeSonucu,
-  GirisYontemi,
-} from '../../../../../../shared/kimlik/giris-yontemi.contract.js';
+} from '../../../../../../shared/kimlik/domain/i-giris-yontemi.contract.js';
 import {
   girisKarari,
   girisKesinlestirmeKarari,

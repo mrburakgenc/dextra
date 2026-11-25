@@ -22,16 +22,16 @@ import type {
   KisininSatirlari,
   UyelikSatiri,
   YetenekSatiri,
-} from '../src/shared/kimlik/yetki-verisi.contract.js';
+} from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import {
   OUTBOX_REPO,
   outboxRepo,
 } from '../src/shared/messaging/outbox/outbox-repo.js';
 import { OutboxYazici } from '../src/shared/messaging/outbox/outbox-yazici.js';
-import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
-import type { DerlemeSonucu } from '../src/shared/yetki/yetenek-derleyici.js';
-import { YazmaKapisi } from '../src/shared/yetki/yazma-kapisi.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
+import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derleyici.js';
+import { YazmaKapisi } from '../src/shared/yetki/infrastructure/yazma-kapisi.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 

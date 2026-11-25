@@ -2,7 +2,7 @@
 // (TS-002 AK-19, AK-39).
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/unit-of-work.js';
-import { YazmaKapisi } from '../../../../../shared/yetki/yazma-kapisi.js';
+import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
 import type { YeniKullanici } from '../../domain/entities/kullanici.entity.js';
 import type { IKullaniciYazmaRepo } from '../../domain/repositories/i-kullanici.repository.js';
 import type { GorunenAd } from '../../domain/value-objects/gorunen-ad.js';

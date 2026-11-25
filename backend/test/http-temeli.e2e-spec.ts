@@ -28,7 +28,7 @@ import {
 } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { yeniKimlik } from '../src/shared/database/kimlik.js';
-import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ISTEK_KIMLIGI_BASLIGI,
   istekBaglami,

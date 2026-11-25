@@ -2,19 +2,11 @@
 // kimlik ve proje uygular. Ortak kodda durur, çünkü projenin kendi yöntemi başka bir feature'da yaşar.
 // İki adımlı yöntemin başlatma adımı (kod iste) kodla giriş yazılırken eklenir.
 import type { z } from 'zod';
-import type { Islem } from '../database/unit-of-work.js';
-
-// Doğrulamanın kanıtı düz veridir: parolada sırrın doğrulama anındaki güncelleme zamanı, kodda kod
-// satırının kimliği. Kesinleştirme onu kişinin kilidi altında yeniden sınar.
-export type GirisDogrulamaSonucu =
-  | {
-      readonly sonuc: 'tamam';
-      readonly kullaniciId: string;
-      readonly kanit: string;
-    }
-  | { readonly sonuc: 'yanlis' | 'kilitli' | 'kapali' };
-
-export type GirisKesinlestirmeSonucu = 'tamam' | 'gecersiz';
+import type { Islem } from '../../database/unit-of-work.js';
+import type {
+  GirisDogrulamaSonucu,
+  GirisKesinlestirmeSonucu,
+} from '../domain/i-giris-yontemi.contract.js';
 
 export interface GirisYontemi<TGirdi> {
   // Oturum satırına yazılan yöntem adı: 'parola', 'tek_kullanimlik_kod' ya da projenin yöntemi.

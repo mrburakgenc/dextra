@@ -14,7 +14,7 @@ import type { IzBilgisi } from '../src/features/kimlik/_shared/application/iz.js
 import { KisiKilidi } from '../src/features/kimlik/_shared/application/kisi-kilidi.js';
 import { ParolaSirri } from '../src/features/kimlik/_shared/application/parola-sirri.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import { istekBaglami } from '../src/shared/http/istek-baglami.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';

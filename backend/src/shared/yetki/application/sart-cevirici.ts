@@ -3,8 +3,8 @@ import type {
   Islec,
   SabitDeger,
   SartOgesi,
-} from '../kimlik/yetki-verisi.contract.js';
-import type { AlanTipi } from './alan-tipleri.js';
+} from '../../kimlik/domain/i-yetki-verisi.contract.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
 
 // Yer tutucuları çözülmüş şart öğesi.
 export interface CozulmusSartOgesi {

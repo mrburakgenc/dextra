@@ -4,8 +4,8 @@ import type {
   RepoFabrikasi,
   RepoIstemcisi,
 } from '../../../../../shared/database/registrar.js';
-import type { OkumaKapisi } from '../../../../../shared/yetki/okuma-kapisi.js';
-import type { KosulOgesi } from '../../../../../shared/yetki/sart-cevirici.js';
+import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
+import type { KosulOgesi } from '../../../../../shared/yetki/application/sart-cevirici.js';
 import type { IYetenekRepo } from '../../domain/repositories/i-yetenek.repository.js';
 
 const KAYNAK = 'Yetenek';

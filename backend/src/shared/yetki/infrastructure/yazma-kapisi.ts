@@ -1,20 +1,26 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../database/kimlik.js';
+import { yeniKimlik } from '../../database/kimlik.js';
 import {
   Registrar,
   RepoBelirteci,
   type RepoIstemcisi,
-} from '../database/registrar.js';
-import type { Islem } from '../database/unit-of-work.js';
-import { type IstekOturumu, istekBaglami } from '../http/istek-baglami.js';
-import { KodluHata } from '../http/kodlu-hata.js';
+} from '../../database/registrar.js';
+import type { Islem } from '../../database/unit-of-work.js';
+import { type IstekOturumu, istekBaglami } from '../../http/istek-baglami.js';
+import { KodluHata } from '../../http/kodlu-hata.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
-} from '../messaging/outbox/outbox-yazici.js';
-import { KAYNAK_KATALOGU, type YazmaKatalogu } from './kaynak-katalogu.js';
-import type { PrismaKosulu } from './sart-cevirici.js';
-import type { DerlemeSonucu, YetenekKurali } from './yetenek-derleyici.js';
+} from '../../messaging/outbox/outbox-yazici.js';
+import type { PrismaKosulu } from '../application/sart-cevirici.js';
+import type {
+  DerlemeSonucu,
+  YetenekKurali,
+} from '../application/yetenek-derleyici.js';
+import {
+  KAYNAK_KATALOGU,
+  type YazmaKatalogu,
+} from '../domain/kaynak-katalogu.js';
 
 // Yazılacak alanlar ve değerleri; anahtarlar modelin alan adlarıdır. Tanımsız değer yazılmaz.
 export type YazmaVerisi = Readonly<Record<string, unknown>>;

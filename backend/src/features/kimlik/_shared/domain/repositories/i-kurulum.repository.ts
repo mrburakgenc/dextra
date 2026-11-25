@@ -3,7 +3,7 @@
 // Kullanıcı ve üyelik yazmaz; onları tohum yardımcısı yazar. Yalnız kurulum göçü kullanır.
 // Gerçeklemesi infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
-import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 
 export interface YeniYetenek {
   id: string;

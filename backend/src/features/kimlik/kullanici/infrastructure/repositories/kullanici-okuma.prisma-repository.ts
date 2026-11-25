@@ -1,7 +1,7 @@
 // IKullaniciOkumaRepo'nun gerçeklemesi: kullanıcı kayıtlarını işlemin istemcisiyle, yetki kapısının
 // okuma yüzünden okur.
 import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
-import type { OkumaKapisi } from '../../../../../shared/yetki/okuma-kapisi.js';
+import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import type { IKullaniciOkumaRepo } from '../../domain/repositories/i-kullanici.repository.js';
 
 const KAYNAK = 'Kullanici';

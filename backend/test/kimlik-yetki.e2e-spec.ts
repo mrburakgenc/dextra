@@ -16,13 +16,13 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-kurulum.goc.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
-import { Izin } from '../src/shared/guvenlik/isaretler.js';
+import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
+import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import {
   istekBaglamiAraKatmani,
   istekOturumunuYaz,
@@ -31,11 +31,11 @@ import {
 import {
   YETKI_VERISI,
   type YetkiVerisi,
-} from '../src/shared/kimlik/yetki-verisi.contract.js';
+} from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
-import type { YetenekKurali } from '../src/shared/yetki/yetenek-derleyici.js';
-import { YazmaKapisi } from '../src/shared/yetki/yazma-kapisi.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+import type { YetenekKurali } from '../src/shared/yetki/application/yetenek-derleyici.js';
+import { YazmaKapisi } from '../src/shared/yetki/infrastructure/yazma-kapisi.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type {
   Kayit,
   Siralama,
-} from '../../../../../shared/yetki/okuma-kapisi.js';
+} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { Sayfa } from '../../domain/repositories/i-rol.repository.js';
 
 export interface ListeSorgusu {

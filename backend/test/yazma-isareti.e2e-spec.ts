@@ -11,7 +11,7 @@ import { AppModule } from '../src/app.module.js';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
 import { Registrar, RepoBelirteci } from '../src/shared/database/registrar.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   istekBaglami,
   varsaIstekBaglami,

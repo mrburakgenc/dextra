@@ -22,14 +22,14 @@ import { ParolaGirisYontemi } from '../src/features/kimlik/parola/application/co
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
 import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici/parola-ozetleyici.argon2id.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
+import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 

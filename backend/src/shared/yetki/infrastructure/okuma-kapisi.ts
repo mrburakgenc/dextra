@@ -1,23 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { RepoIstemcisi } from '../database/registrar.js';
-import { type IstekBaglami, istekBaglami } from '../http/istek-baglami.js';
-import { KodluHata } from '../http/kodlu-hata.js';
-import type { AlanTipi } from './alan-tipleri.js';
-import { KAYNAK_KATALOGU, type KaynakKatalogu } from './kaynak-katalogu.js';
+import type { RepoIstemcisi } from '../../database/registrar.js';
+import { type IstekBaglami, istekBaglami } from '../../http/istek-baglami.js';
+import { KodluHata } from '../../http/kodlu-hata.js';
 import {
   type KosulOgesi,
   kosuluCevir,
   type PrismaKosulu,
-} from './sart-cevirici.js';
-import type { YetenekKurali } from './yetenek-derleyici.js';
-
-// Kapının döndürdüğü kayıt: yalnız isteyenin görebildiği kolonlar.
-export type Kayit = Readonly<Record<string, unknown>>;
-
-export interface Siralama {
-  readonly alan: string;
-  readonly yon: 'artan' | 'azalan';
-}
+} from '../application/sart-cevirici.js';
+import type { YetenekKurali } from '../application/yetenek-derleyici.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
+import {
+  KAYNAK_KATALOGU,
+  type KaynakKatalogu,
+} from '../domain/kaynak-katalogu.js';
+import type { Kayit, Siralama } from '../domain/okuma-tipleri.js';
 
 // Çağıranın listeye verdiği koşul, sıralama ve sayfa; koşul yetkinin satır süzgeciyle "ve" ile birleşir.
 // yalnizCanli açıkken yalnız silinme zamanı boş kayıtlar gelir (TS-002 AK-42); bu süzgeç kapınındır,

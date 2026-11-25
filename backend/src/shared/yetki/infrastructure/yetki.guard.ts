@@ -3,9 +3,9 @@ import {
   type ExecutionContext,
   Injectable,
 } from '@nestjs/common';
-import { isaretleriOku } from '../guvenlik/isaretler.js';
-import { istekBaglami, istekYetkisiniYaz } from '../http/istek-baglami.js';
-import { KodluHata } from '../http/kodlu-hata.js';
+import { isaretleriOku } from '../../guvenlik/application/isaretler.js';
+import { istekBaglami, istekYetkisiniYaz } from '../../http/istek-baglami.js';
+import { KodluHata } from '../../http/kodlu-hata.js';
 import { YetkiBellegi } from './yetki-bellegi.js';
 
 // Yetki guard'ı (TS-002 AK-18; KR-010 Derleme eşlemesi): kimlik guard'ının ardından bütün uçlara

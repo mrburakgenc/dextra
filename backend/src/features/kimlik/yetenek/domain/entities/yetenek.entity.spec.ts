@@ -1,5 +1,5 @@
 // Yetenek varlığının birim testi: oluşturma işlevi (yazma kararıyla) ve silme ile yenileme kararları.
-import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 import {
   type IcerikListesi,
   icerikListesi,

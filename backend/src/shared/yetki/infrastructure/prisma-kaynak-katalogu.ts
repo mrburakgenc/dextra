@@ -1,21 +1,7 @@
-import { Prisma } from '../database/generated/client.js';
-import { ALAN_TIPLERI, type AlanTipi } from './alan-tipleri.js';
-
-// Kaynak türünün adından o türün alan adlarına ve alanlarının tiplerine (TS-002 AK-44); bilinmeyen
-// tür için undefined.
-export interface KaynakKatalogu {
-  alanlar(tur: string): readonly string[] | undefined;
-  alanTipleri(tur: string): Readonly<Record<string, AlanTipi>> | undefined;
-}
-
-// Yazma kapısının kataloğu: alanlara ek olarak yalnız sistemin yazdığı alanları bilir; onlar istek
-// gövdesinden kabul edilmez (KR-008 Seçim 34; TS-002 "Veri modeli", çürütme 17). Bilinmeyen tür için
-// boş.
-export interface YazmaKatalogu extends KaynakKatalogu {
-  sistemAlanlari(tur: string): readonly string[];
-}
-
-export const KAYNAK_KATALOGU = Symbol('KaynakKatalogu');
+import { Prisma } from '../../database/generated/client.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
+import type { YazmaKatalogu } from '../domain/kaynak-katalogu.js';
+import { ALAN_TIPLERI } from './alan-tipleri.js';
 
 // Her kaynakta sistemin yazdığı alanlar (KR-008 Seçim 34): kimlik ile oluşturma, güncelleme ve
 // silinme zamanı. Modelde olmayan ad o kaynakta yok sayılır.

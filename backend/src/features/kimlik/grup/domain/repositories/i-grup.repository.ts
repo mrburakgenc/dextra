@@ -6,7 +6,7 @@ import type { Islem } from '../../../../../shared/database/unit-of-work.js';
 import type {
   Kayit,
   Siralama,
-} from '../../../../../shared/yetki/okuma-kapisi.js';
+} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniGrup } from '../entities/grup.entity.js';
 import type { GrupAdi } from '../value-objects/grup-adi.js';
 

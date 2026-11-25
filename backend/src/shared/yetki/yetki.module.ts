@@ -1,9 +1,12 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module.js';
 import { MessagingModule } from '../messaging/messaging.module.js';
-import { KAYNAK_KATALOGU, type YazmaKatalogu } from './kaynak-katalogu.js';
-import { OkumaKapisi } from './okuma-kapisi.js';
-import { YazmaKapisi } from './yazma-kapisi.js';
+import {
+  KAYNAK_KATALOGU,
+  type YazmaKatalogu,
+} from './domain/kaynak-katalogu.js';
+import { OkumaKapisi } from './infrastructure/okuma-kapisi.js';
+import { YazmaKapisi } from './infrastructure/yazma-kapisi.js';
 
 // Yetki kapılarının tek modülü (TS-002 AK-42): okuma ve yazma kapısını ve kaynak kataloğunu sağlar
 // ve dışa verir. Katalog kök modülde bir kez kurulur ve forRoot ile buraya verilir; modül yalnız kök

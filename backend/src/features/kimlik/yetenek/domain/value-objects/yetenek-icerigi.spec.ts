@@ -1,6 +1,6 @@
 // Yetenek içeriği değer nesnesinin birim testi: işaret ile içerik birlikte yazılamaz, iki ret birlikte
 // ve sırayla döner; geçerli içerik yalnız içerik alanlarını taşır.
-import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 import { type IcerikListesi, icerikListesi } from './icerik-listesi.js';
 import {
   type YetenekIcerigiAlanlari,

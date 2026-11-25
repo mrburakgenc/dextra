@@ -6,7 +6,7 @@ import type {
   UyelikSatiri,
   YetenekSatiri,
   YetkiSurumleri,
-} from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+} from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 
 export interface GrupDugumu {
   readonly id: string;

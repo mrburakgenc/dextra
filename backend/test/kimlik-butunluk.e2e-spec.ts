@@ -11,7 +11,7 @@ import pg from 'pg';
 import request from 'supertest';
 import { ButunlukSorusu } from '../src/features/kimlik/_shared/application/butunluk-sorusu.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import { istekBaglami } from '../src/shared/http/istek-baglami.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { yeniKimlik } from '../../../../../shared/database/kimlik.js';
 import type { Islem } from '../../../../../shared/database/unit-of-work.js';
-import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,

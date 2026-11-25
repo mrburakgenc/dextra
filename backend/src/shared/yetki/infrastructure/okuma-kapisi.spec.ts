@@ -1,7 +1,7 @@
-import type { RepoIstemcisi } from '../database/registrar.js';
-import { KodluHata } from '../http/kodlu-hata.js';
-import { prismaKaynakKatalogu } from './kaynak-katalogu.js';
+import type { RepoIstemcisi } from '../../database/registrar.js';
+import { KodluHata } from '../../http/kodlu-hata.js';
 import { OkumaKapisi } from './okuma-kapisi.js';
+import { prismaKaynakKatalogu } from './prisma-kaynak-katalogu.js';
 
 // TS-002 AK-44: çağıranın koşulunda alanın tipine uymayan değer (uç şemasından kaçmış) veritabanına
 // gitmez ve doğrulama hatası olur; kodun yazdığı işleç hatası öyle kalır (500'e düşen düz hata).

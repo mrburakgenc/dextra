@@ -5,7 +5,7 @@ import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import type {
   OturumDenetimi,
   OturumDenetimiSonucu,
-} from '../../../../../../shared/kimlik/oturum-denetimi.contract.js';
+} from '../../../../../../shared/kimlik/domain/i-oturum-denetimi.contract.js';
 import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
 import { notunOrtakAlanlari } from '../../../../_shared/application/iz.js';
 import { denetimSonucu } from '../../../domain/entities/oturum.entity.js';

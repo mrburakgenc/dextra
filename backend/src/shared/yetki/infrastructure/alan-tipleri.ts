@@ -1,14 +1,5 @@
-import type { Prisma } from '../database/generated/client.js';
-import type { AlanAdi } from './kaynak-katalogu.js';
-
-// Şart dilinin alan tipleri (TS-002 AK-44). "obur" (JSON, dizi) şartta kullanılamaz.
-export type AlanTipi =
-  | 'metin'
-  | 'sayi'
-  | 'mantiksal'
-  | 'kimlik'
-  | 'zaman'
-  | 'obur';
+import type { Prisma } from '../../database/generated/client.js';
+import type { AlanAdi } from './prisma-kaynak-katalogu.js';
 
 // Prisma 7'nin üretilmiş istemcisi çalışma anında kimlik (@db.Uuid) ile metni, dizi ile tekil alanı
 // ayıran model bilgisi vermez; bu bilgi yalnız tiplerde, modelin sorgu koşulundaki süzgeç tipinde

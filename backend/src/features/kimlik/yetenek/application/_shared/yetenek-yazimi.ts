@@ -8,8 +8,8 @@ import { KodluHata } from '../../../../../shared/http/kodlu-hata.js';
 import {
   KAYNAK_KATALOGU,
   type KaynakKatalogu,
-} from '../../../../../shared/yetki/kaynak-katalogu.js';
-import { yetenekleriDerle } from '../../../../../shared/yetki/yetenek-derleyici.js';
+} from '../../../../../shared/yetki/domain/kaynak-katalogu.js';
+import { yetenekleriDerle } from '../../../../../shared/yetki/application/yetenek-derleyici.js';
 import { ButunlukSorusu } from '../../../_shared/application/butunluk-sorusu.js';
 import {
   type IzinOlgulari,

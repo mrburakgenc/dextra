@@ -7,7 +7,7 @@ import { ret, type Sonuc, tamam } from '../../../../../shared/domain/sonuc.js';
 import type {
   OturumDenetimiGirdisi,
   OturumDenetimiSonucu,
-} from '../../../../../shared/kimlik/oturum-denetimi.contract.js';
+} from '../../../../../shared/kimlik/domain/i-oturum-denetimi.contract.js';
 import type { KapatilmaNedeni } from '../../../_shared/domain/kapatilma-nedeni.js';
 
 // Oturum sayıları (TS-002 AK-9; KR-009 varsayılanları). Proje ayarı sonra gelir.

@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   HerkeseAcik,
   YalnizKendisi,
-} from '../../../../shared/guvenlik/isaretler.js';
+} from '../../../../shared/guvenlik/application/isaretler.js';
 import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
 import {
   type ParolaBelirleKomutu,

@@ -3,7 +3,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
 import { Registrar } from '../../../shared/database/registrar.js';
-import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
+import { OkumaKapisi } from '../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { KullaniciAcHandler } from './application/commands/kullanici-ac/kullanici-ac.handler.js';
 import { KullaniciGuncelleHandler } from './application/commands/kullanici-guncelle/kullanici-guncelle.handler.js';

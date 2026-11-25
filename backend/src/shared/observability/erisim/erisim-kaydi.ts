@@ -10,7 +10,7 @@ import { IZ_PRISMA_CLIENT } from '../../database/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../../database/iz/generated/client.js';
 import { yeniKimlik } from '../../database/kimlik.js';
 import { istekBaglami } from '../../http/istek-baglami.js';
-import { okumaBirikimi } from '../../yetki/okuma-kapisi.js';
+import { okumaBirikimi } from '../../yetki/infrastructure/okuma-kapisi.js';
 
 // Erişim kaydının yazımı (KR-013 Seçim 2 ve 6; KR-011 Seçim 9; TS-003 Seçenek 1: A). Bütün uçlara
 // bağlanır. İstek oturumluysa, yetki kapısından okuma yapmışsa ve yazma işareti yoksa (TS-002 AK-40),
