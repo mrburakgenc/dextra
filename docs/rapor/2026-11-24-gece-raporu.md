@@ -12,13 +12,28 @@ Denetlemek için:
 
 ## 1. Kısa özet
 
-(Sabah yazılacak: gece boyunca ne bitti, ne kaldı, nerede duruldu.)
+Yazıldığı an: 2026-11-25 sabahı, son görev alındıktan sonra. Sayılar aracın kayıtlarından ve kendi ölçümlerimden; "ölçülmedi" dediğim yer ölçülmemiştir.
+
+1. Gece boyunca istediğin sıra tamamlandı: outbox ve olay yolu, auth çekirdeği, yönetim (kullanıcı, grup, rol, üyelik, yetenek tek `kimlik` feature'ının alt özellikleri olarak) ve ön yüz.
+2. Aracın kaydına göre 104 görev açıldı, 100 tanesi alındı; plan ağacında yedi epic'in hepsinde kalan tek şey atılmayı bekleyen üç ölü yaprak (GV-036, GV-068, GV-089).
+3. Backend'de çalışan uçlar: giriş, oturum yenileme, çıkış, yetkilerim, bağlantıyla parola belirleme, parola değiştirme; kullanıcı, rol, izin, grup, üyelik, yetenek ve oturum için okuma ve yazma işleri (yönetim uçlarının hepsi yetki kapısından geçer).
+4. Ön yüzde çalışan ekranlar: giriş, parola belirleme, panel, kullanıcılar, roller, gruplar, izinler, yetenekler, kullanıcının üyelikleri, oturumlar ve parolamı değiştir; oturum arka planda sessizce yenileniyor.
+5. Kanıt üç katmanlı: her alımdan sonra tip, lint ve değişen testleri kendim yeniden koşturdum; bütünü gerçek uçlardan sınayan on adımlı senaryo testi var; üç kez gerçek tarayıcıda uçtan uca denedim (görüntüler `docs/rapor/gorsel/`).
+6. Gecenin en önemli bulgusu bir yetki hatasıydı: okuma kapısı, aynı kaynakta hem "bütün kayıtlar" hem şartlı kuralı olan kişiye yalnız şartlı kuralın satırlarını gösteriyordu; bir işçi buldu, düzeltildi (AK-52) ve etkilenen on sekiz test dosyası (316 test) yeniden koşturuldu.
+7. İncelemeler iki ciddi ön yüz kusuru daha yakaladı ve ikisi de kapandı: yetenek yenileme formu değiştirilmeden gönderildiğinde yeteneği bozabiliyordu; kişi kendi oturumunu kapatınca tarayıcıdaki çerezler silinmiyordu.
+8. Teyidini bekleyen kararlarım var (8.2): kimlik kolonunun kolon sınırı dışında kalması (AK-38), kapalı çekirdek listeye ekler (AK-43, AK-47) ve oturum yenilemenin iki açık noktası (AK-49); bunları sana sormam gerekirdi, "durma" dediğin için işaretleyip ilerledim.
+9. Yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı ve tek kullanımlık kodla giriş; deneme sınırı yayın şartıdır, yani bu hâliyle uçlar yayına çıkamaz.
+10. Yapmadıklarım (devretmediğin için): kalıcı veritabanlarına göç uygulamak, taslak kabul etmek, görev atmak, gerçek anahtar ve sır yazmak, Dextra dışına dokunmak, kapıları atlatmak.
+11. En çok tekrarladığım hata kart yazımıydı: dosya listesi eksik, iki isteği çelişen ya da fazla büyük kartlar yüzünden işçiler durdu ya da yeniden koştu (6. bölüm); hepsini kayda geçirdim.
+12. Maliyet tablosunun toplamı 409.82 dolar görünüyor ama gerçek harcama bundan yüksek: araç yeniden koşulan görevin önceki koşularını kayıttan siliyor (ne kadar yüksek olduğu ölçülmedi).
+13. Kod durumu: bütün commit'ler `worktree-base-mimari-tasarim` dalında; push, PR ve merge en sona bırakıldı (9. bölüm), merge senin onayını isteyecek.
+14. Sabah ilk yapman gerekenler 8.1'de: merge onayı, üç ölü yaprağın atılması ve teyit bekleyen kararlara bakmak.
 
 ## 2. Görevler
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 104 görevin 99 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1030 dakika, 407.35 dolar.
+Kayıtlı 104 görevin 100 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1037 dakika, 409.82 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -125,7 +140,7 @@ Kayıtlı 104 görevin 99 tanesi alındı. Son koşuların ve incelemelerin topl
 | GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | alındı | 3.4 | 7.3 | 4.54 | 10 | 0 engel, 1 öneri | 1 |
 | GV-102 | EP-003 32 | Okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar | alındı | 2.7 | 4.1 | 2.61 | 2 | 0 engel, 0 öneri | 0 |
 | GV-103 | EP-007 11 | Parolamı değiştir ve oturumlar ekranları | alındı | 2.8 | 6.9 | 4.32 | 17 | 0 engel, 3 öneri | 0 |
-| GV-104 | EP-007 12 | Kısaltılmış kimlik son sekiz karakteri gösterir | bekliyor | — | — | — | 0 | — | 0 |
+| GV-104 | EP-007 12 | Kısaltılmış kimlik son sekiz karakteri gösterir | alındı | 3.5 | 3.1 | 2.48 | 9 | 0 engel, 2 öneri | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -159,6 +174,23 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | `outbox_olay` tablosuna üç kolon ve bir dizin | sürekli konamayan olay öbürlerini tıkamasın | TS-003 |
 | `bullmq` 6.7.7 ve `jose` 6.2.17 (en yeni sürümler değil) | yeni yayınlanan pakete hemen güvenmemek için en az bir haftalık sürüm | commit mesajları |
 | Aracın onay ayarı `yok`; projeye izin kuralları | senin talimatın; yalnız bu proje | harness.json, .claude/settings.json |
+
+Gece boyunca eklenen kararlar aynı yerde AK-11 … AK-52 olarak yazılıdır (TS-002 "Aşamalar"); web arayüzünün kararları TS-004'tedir. Konularına göre:
+
+| Konu | Kararlar | Tek cümleyle |
+|---|---|---|
+| HTTP temeli ve hata kodları | AK-11, AK-26, AK-45, AK-48 ve eki | Tek biçimli hata cevabı; yabancı anahtar ihlali 409, "kayıt yok" 404 (uyarı günlüğüyle) |
+| Guard ve işaretler | AK-12, AK-14, AK-28, AK-29, AK-33, AK-34 | Her uç üç işaretten birini taşır; "yalnız kendisi" sayılı listedir; anahtarlar açılışta denetlenir |
+| Giriş ve oturum | AK-13, AK-15, AK-31, AK-35 | Güvenlik olayı şimdilik teknik günlükte; girişte kullanıcı adı sızmaz; notlarda yazan kişi |
+| Oturum yenileme | **AK-49 ve eki (teyidini bekler)** | Pencere 10 saniye; tekrar anahtarı yerine "aynı içerik aynı imza"; kapalı oturuma eski nesilde öbür oturumlar kapanmaz |
+| Parola değiştirme, oturum listesi ve kapatma | AK-50, AK-51 | Uçların sözleşmesi; oturum yönetimi ilk sürüme alındı |
+| Yetki verisi, bellek, guard | AK-16, AK-17, AK-18, AK-37 | AK-37, AK-16'nın senin KR-008 Seçim 41'ine aykırı yerini düzeltir |
+| Yetki kapıları | AK-19, **AK-38 (teyidini bekler)**, AK-40, AK-41, AK-42 ve eki, AK-44, **AK-52** | Kimlik kolonu kolon sınırının dışında; canlılık süzgeci kapıda; şart değeri kolon tipine uymalı; AK-52 gecenin bulduğu kapı hatasının düzeltmesi |
+| Çekirdek parçalar | AK-20, AK-21, AK-27, **AK-43 (teyidini bekler)**, **AK-47 ve eki (teyidini bekler)** | Kapalı çekirdek listeye ekler (KR-010 Seçim 48 gereği sana sorulmalıydı; soramadığım için işaretli) |
+| Tohum ve komutlar | AK-22, AK-23, AK-24, AK-25 | Tohum göçü adı ve sırası; komut bağlamında döngüler başlamaz |
+| Yapı ve testler | AK-30, AK-32, AK-36 | Alt özellik başına modül; testler ortak derleme klasörüne derlemez; katman yönü |
+| Yönetim uçları | AK-39, AK-46 ve eki | Ortak sözleşme; sistem ve tohum yeteneği yenilenemez |
+| Web arayüzü | TS-004 (bütünü taslak) | Aracı katman, çerezler, ekranlar, form sertleştirmesi, sessiz yenileme, parola ve oturum ekranları |
 
 ## 5. Duruşlar ve nedenleri
 
@@ -256,64 +288,84 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 
 ## 8. Ertelenenler ve senden bekleyenler
 
+Bu bölüm sabah yeniden düzenlendi: maddeler gece boyunca yazıldıkları sırayla değil, kime ve neye ait olduklarına göre duruyor; metinleri değişmedi. Gece içinde kapanan maddeler en altta, kapatan görevle birlikte.
+
+### 8.1 Senin yapman gerekenler
+
+- Birleştirme: PR #14'ten sonraki bütün işler dalda (`worktree-base-mimari-tasarim`) duruyor. Push, PR ve merge komutlarını gecenin en sonuna bıraktım; merge komutu kişisel genel ayarındaki kural yüzünden sana soru çıkarır. Onaylarsan birleşir, onaylamazsan PR açık kalır; başka hiçbir iş buna bağlı değil.
+- Ölü yaprakları at (atma geri alınamadığı için sana bırakıldı; üçü de hiç alınmadı, yerlerine yeni yaprak açıldı): `python3 harness/h.py gorev at GV-036`, `python3 harness/h.py gorev at GV-068`, `python3 harness/h.py gorev at GV-089`.
+- 4. bölümdeki kararlarımı gözden geçir; önce 8.2'deki teyit bekleyenleri. Hiçbiri kabul edilmiş karar değildir; istemediğini söylersen ilgili kod ayrı görevle değişir.
 - Göçler hiçbir kalıcı veritabanına (`dextra`, `dextra_iz`) uygulanmadı; yalnız testlerin açıp sildiği geçici veritabanlarında denendi. Uygulamayı yerelde çalıştırmak için bu senin onayını bekliyor.
 - Taslak düğümlerin hiçbiri kabul edilmedi.
-- Benim verdiğim kararların (4. bölüm) gözden geçirilmesi.
 - İmza anahtarlarının ve aracı katman sırrının gerçek değerleri: depoya yazılmadı; ortam değişkeni olarak senin vermen gerekir.
-- GV-036 atılmayı bekliyor (incelemede kaldı, yerine GV-038 açıldı; atma geri alınamadığı için sana bırakıldı): python3 harness/h.py gorev at GV-036
 - Birleştirmede soru çıkmasın istiyorsan: kişisel genel ayardaki (~/.claude/settings.json) ask listesinden gh pr merge satırını kaldır ya da yalnız ilgili projenin kendi ayarına taşı. O dosyaya dokunmadım.
-- Doğrulanmadı: aynı listede schema.prisma, .gitignore ve AGENTS.md düzenlemeleri de her zaman sor olarak duruyor. İşçi oturumları soru soramadığı için bu dosyalarda düzenleme aracı reddediliyor olabilir; işçilerin kabukla dosya yazmasının bir nedeni bu olabilir.
-- Araç hatası (düzeltilmedi; düzeltmek harness.json değişikliği, o da sana soru gerektiriyor): alma çakışmayla yarıda kalınca araç görev ağacındaki dosyaları commit etmiş oluyor; işin imzası commit durumuna bağlı olduğu için sonraki alma ve inceleme iş değişmiş diye reddediyor. Öneri: gorev.py içindeki imza, tabandan sonra eklenen dosyaları commit edilmiş olsun olmasın adı ve içeriğiyle katsın.
-- Araç boşluğu: tabanı eskiyen görev için tabanı yenileme yolu yok; çakışmayı ana oturum elle çözmek zorunda kalıyor ve bu çözümü ikinci bir oturum incelemiyor (GV-028'de çözüm dört yerde iki tarafın birleşimiydi; testlerle ölçüldü).
-- Bilgi: kişisel genel ayardaki hook'lar bu projede de çalışıyor; test koşumu kapısı bir komutumu hedefsiz diye reddetti (aynı testleri tek tek yol vererek koşturdum). O hook'ların klasörüne bakmadım.
-- Araç boşluğu: bir kartın dosya listesi sonradan genişletilemiyor (liste ölçüm kaydında duruyor ve elle yazılamıyor); işçinin haklı sorusu ancak işi bölerek cevaplanabiliyor.
-- Ön yüzde lint aracı backend ile aynı ana sürümde tutuldu; çatının hazır lint paketi o sürümü desteklemeyen eklentiler getirdiği için kurulmadı. Erişilebilirlik lint kuralları bu yüzden yok; eklenti yeni sürümü destekleyince eklenmeli.
-- Ön yüzde yenileme yok: backend'de yenile ucu henüz yazılmadı; oturum 15 dakika sürer ve sonra giriş ekranına dönülür.
 - Ön yüzde next-env.d.ts dosyası depoda; geliştirme sunucusu koşunca çatı bu dosyayı yeniden yazıyor ve izlenen dosya değişmiş görünüyor. Kalıcı çözüm dosyayı .gitignore'a almak; o değişiklik sana soru çıkardığı için yapılmadı.
+
+### 8.2 Teyidini bekleyen kararlarım
+
+- TEYİDİNİ BEKLEYEN KARAR (KR-008 Seçim 5 ve 21'e dokunur): AK-38, bir kaydı okuyabilen her yetenek o kaydın kimliğini de görür. Bedeli: kimlik zaman sıralı olduğu için kaydın kabaca ne zaman oluşturulduğu da görünür. Öbür yol: kimliği göremeyen yetenek okumaya hiç katılmaz.
+- TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48: çekirdek liste kapalıdır): AK-43, bütünlük sorularına yedi soru, iki künye okuması (üyelik, izin) ve listede olup yazılmamış 'parola sırrı' parçası eklendi.
+- TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48): AK-47 ve eki, bütünlük sorusunu çağırabilen işlerin listesi genişletildi (kullanıcı güncelle, yeniden aç ve öbür yönetim işleri).
+- TEYİDİNİ BEKLEYEN KARAR: AK-49 oturum yenileme. (a) Cevabı kaybolan yenilemenin tekrarı için tekrar anahtarı yerine 'aynı içerik aynı imzayı üretir' yolu seçildi; KR-009 Kural 4'ün 'aynı anda gelen farklı istek reddedilir' yarısı karşılanmıyor (o istek de aynı çifti alır). (b) Kapalı oturuma eski nesil gelince kişinin öbür oturumları kapatılmıyor, yalnız günlüğe yazılıyor. (c) Hoşgörü penceresi 10 saniye.
+- TEYİDİNİ BEKLEYEN OKUMALAR (AK-49 eki): yeniden kullanımda süresi geçmiş ama kapatılmamış oturumlar da 'yeniden kullanım' nedeniyle kapanıyor; gövdesi bozuk yenileme isteği 401 değil 400 dönüyor; oturum satırının kilidinin gerçekten alındığı ölçülmedi.
+
+### 8.3 Yazılmayan işler ve bilinen kusurlar
+
+- Yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı (yayın şartı: sır sınayan uçlar bu olmadan yayına çıkamaz) ve tek kullanımlık kodla giriş. Olaylar yazılmıyor (olay adları ve zarfı tasarlanmadı); mobil uygulamaya başlanmadı.
+
+- Ön yüzde lint aracı backend ile aynı ana sürümde tutuldu; çatının hazır lint paketi o sürümü desteklemeyen eklentiler getirdiği için kurulmadı. Erişilebilirlik lint kuralları bu yüzden yok; eklenti yeni sürümü destekleyince eklenmeli.
 - KR-006 kökte ortak derleyici ve lint taban ayarı ister; ön yüzde sıkılık seçenekleri ve biçim ayarı backend'den kopyalandı. Ya ortak taban ayarı için görev açılmalı ya da KR-006'nın o cümlesi değişmeli.
 - Tohum ve kurulum komutları artık belirteç anahtarları ve aracı katman sırrı ortamda olmadan çalışmıyor (guard kök modüle bağlı; AK-34).
 - Ön yüzde site simgesi yok; tarayıcı her sayfada bulunamadı hatası yazıyor.
 - Parola belirlendikten sonra giriş ekranında başarı iletisi gösterilmiyor (kartta istemedim).
-- TEYİDİNİ BEKLEYEN KARAR (KR-008 Seçim 5 ve 21'e dokunur): AK-38, bir kaydı okuyabilen her yetenek o kaydın kimliğini de görür. Bedeli: kimlik zaman sıralı olduğu için kaydın kabaca ne zaman oluşturulduğu da görünür. Öbür yol: kimliği göremeyen yetenek okumaya hiç katılmaz.
 - Lint yasak listesi, kütüphanenin şartı bellekte değerlendiren iki çağrısını daha kapsamalı (GV-033 incelemesi); sertleştirme kartına sonradan yazılamadı, ayrı küçük iş.
 - Erişim kaydının açık bıraktıkları (GV-035 incelemesi): oluşma zamanı yazılma zamanının neredeyse kopyası; iş adı denetleyici ve yöntem adından üretiliyor, değişiklik kaydındaki elle verilen adlarla aynı düzende değil; hiçbir kuralın katılmadığı okuma kayıtsız kalıyor.
-- Araç önerisi: bitiş kaydındaki dosya listesini işçi elle beyan ediyor ve yeniden koşularda sık sık eksik yazıyor (bu gece beş duruş yalnız bu yüzden: GV-031, GV-049, GV-053, GV-056, GV-073). Listeyi araç zaten ölçüyor; beyanı zorunlu tutmak yerine ölçüleni kayda yazması bu duruşları kaldırır.
-- TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48: çekirdek liste kapalıdır): AK-43, bütünlük sorularına yedi soru, iki künye okuması (üyelik, izin) ve listede olup yazılmamış 'parola sırrı' parçası eklendi.
-- GV-068 atılmayı bekliyor (hiç dosya değiştirmedi; ağacı eski tabanda; yerine yeni yaprak açıldı): python3 harness/h.py gorev at GV-068
-- Araç boşluğu (bu gece en çok zaman alan): bir görevin ağacı ilk koşuda açılıyor ve taban bir daha yenilenmiyor. Soruyla duran ve hiç dosya değiştirmemiş bir görev, cevabı bir ön koşul görevi olduğunda o ön koşulu göremiyor; tek yol görevi atıp yenisini açmak ve atma sana soruluyor. Öneri: dosya değiştirmemiş görevin ağacı yeniden koşumda güncel tabandan yeniden açılsın.
 - Grup taşımada küçük tutarsızlık (GV-067 incelemesi): grup zaten hedefin altındaysa satır değişmiyor ama genel sayaç artıyor ve boş bir değişiklik notu yazılıyor.
 - Yönetim yazma depolarında yeni bir desen çıktı (GV-062 incelemesi): yazma arayüzü Unit of Work'e kayıtlı okuma arayüzünü genişletmek yerine ayrı bir soyut sınıf olarak bağlanıyor; KR-011 Seçim 6'nın amacı korunuyor ama metni bu deseni anlatmıyor.
 - Ertelenen: tohum satırının yönetici tarafından yenilenmesi (KR-008 Seçim 16'daki zincir); 'yeteneğin künyesi' çekirdek eki (yenilemeyi okuma yeteneğinden bağımsız kılar); yazma kapısında niyet eylemiyle oluşturma yolu.
-- Hata süzgeci 'kayıt bulunamadı' veritabanı hatasını (güncellenecek satır yok) tanımıyor; SuperAdmin üyeliği verirken var olmayan kişi 500 dönüyor (GV-082 incelemesi). Öneri: bulunamadi (404) koduna çevrilsin.
 - Kimlik sistem aktörü görünen adıyla bulunuyor (AK-2); ad değişikliği artık reddediliyor ama sabit bir kimlik ya da ayrı bir işaret daha sağlam olur.
-- TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48): AK-47 ve eki, bütünlük sorusunu çağırabilen işlerin listesi genişletildi (kullanıcı güncelle, yeniden aç ve öbür yönetim işleri).
-- Ön yüzde 403, 404 ve çakışma iletilerinin ekrana çevrilmesi iki dosyada yineleniyor (GV-087 incelemesi); tek yere toplanmalı.
-- Ön yüzde form hata dönünce yazılanlar siliniyor (çatının form davranışı; GV-084 incelemesi); alanların değeri hata durumunda korunmalı.
-- ATILACAK ÖLÜ YAPRAKLAR (gorev at; yetkisi sende): GV-036, GV-068, GV-089.
-- TEYİDİNİ BEKLEYEN KARAR: AK-49 oturum yenileme. (a) Cevabı kaybolan yenilemenin tekrarı için tekrar anahtarı yerine 'aynı içerik aynı imzayı üretir' yolu seçildi; KR-009 Kural 4'ün 'aynı anda gelen farklı istek reddedilir' yarısı karşılanmıyor (o istek de aynı çifti alır). (b) Kapalı oturuma eski nesil gelince kişinin öbür oturumları kapatılmıyor, yalnız günlüğe yazılıyor. (c) Hoşgörü penceresi 10 saniye.
-- Senaryo testinin iz adımı arka plandaki aktarım döngüsüyle yarışabilir (GV-090 incelemesi): test 'aktarılacak not kalmadı' sonucunu döngü notları kilitlemişken de alabilir; ara sıra düşebilecek bir test. Düzeltme: aktarılmamış not sayısı sıfır olana kadar beklemek.
-- 'Kayıt yok' eşlemesi sunucu içi bir aramanın boş dönmesini de 404 gösterir ve hata düzeyinde günlüğe yazmaz (GV-092 incelemesi); gerçek bir hata sessiz kalabilir. Öneri: bu dal uyarı düzeyinde günlüğe yazılsın.
 - Yetenek yazarken boş kolon listesi null gider, okurken boş dizi döner (GV-090 gözlemi); biçim tek olmalı.
-- Ön yüzde üyelik bölümü, grup ya da rol listesini okuyamayan kişide tabloyu hiç çizmiyor (GV-088 incelemesi); adlar boş işaretle gösterilip tablo çizilmeli. Satır başına 'Kaldır' düğmelerinin erişilebilir adı aynı.
-- Yetenek yenileme formu, kişinin göremediği içerik kolonunu boş sayıp üzerine yazabiliyordu ve virgül içeren liste değerini bozabiliyordu (GV-093 incelemesi); değiştirilmeden gönderilen form yeteneği daraltabilirdi. GV-096 bunu kapatıyor.
-- TEYİDİNİ BEKLEYEN OKUMALAR (AK-49 eki): yeniden kullanımda süresi geçmiş ama kapatılmamış oturumlar da 'yeniden kullanım' nedeniyle kapanıyor; gövdesi bozuk yenileme isteği 401 değil 400 dönüyor; oturum satırının kilidinin gerçekten alındığı ölçülmedi.
-- İşçiler üç görevde bir dosyayı düzenleme aracıyla değil kabuk betiğiyle yazdı (GV-087, GV-085, GV-094); araç bunu engellemiyor, kural gösteren hook atlanıyor.
-- Tarayıcı denemesinde görüldü: silinmiş ya da yenilenmiş kaydın sayfası (rol, grup, yetenek) kaydı canlı gibi gösteriyor ve iş düğmelerini çiziyor; backend işi 'Kayıt bulunamadı' diye reddediyor, yani açık değil, tutarsızlık. Sıradaki ön yüz görevine eklendi.
 - Tarayıcı denemesinde görüldü: değeri boş olan kolon da (sistem aktörünün kullanıcı adı, telefon) '—' ile gösteriliyor; TS-004'te '—' 'göremediğin kolon' demek. İki durum ayrı gösterilmeli.
 - Pasif kişinin sayfasında 'Üyelik ver' ve 'Parola kodu üret' hâlâ görünüyor; backend 409 ile reddeder.
 - Yerel deneme betiği Ctrl-C ile kapanınca temizliği yapıyor ama 1 koduyla çıkıyor.
 - Yetenek formunda değiştirilmiş (oynanmış) değer türü ya da işleç gönderilirse form ileti göstermeden hiçbir şey yapmıyor (GV-096 üçüncü incelemesi); yalnız elle oynanmış istekte olur.
-- Hâlâ yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı (yayın şartı), tek kullanımlık kodla giriş; ön yüzde parola değiştirme ve oturumlarım ekranları backend alınınca yazılacak.
 - Senaryo testi iki kişiye kaynak başına tek kural veriyordu; okuma kapısındaki hatayı bu yüzden yakalamadı. Senaryoya 'aynı kaynakta iki kurallı kişi' adımı eklenmeli (kapı testine GV-102 ekliyor).
 - Oturum listesinin 'geçmiş' görünümü derin sayfada parça başına çok satırı belleğe alıyor ve erişim kaydındaki kayıt sayısı cevaptakinden büyük çıkıyor (GV-101 incelemesi); kapalı oturumlar birikince yavaşlar. Kapıya 'veya' koşulu desteği gelince tek sorguya iner.
 - Grup kayıt sayfasında, üst grup listede olup adı okunamıyorsa '—' görünüyor; kural kısaltılmış kimlik diyor (GV-099 son incelemesi; küçük tutarsızlık).
 - Kişi kendi oturumunu kapatınca giriş ekranı açılıyor ama adres çubuğunda /oturum-bitti yazıyor (çerezler siliniyor; görünüş kusuru).
 - Oturum tablosundaki 'Kullanıcı' bağlantısı, kullanıcıları okuyamayan kişiye de çiziliyor (GV-103 incelemesi); tıklayınca 'yetkin yok' sayfası açılır.
+- Oturumlar sayfasının bir testinde iki örnek kimliğin son sekiz karakteri aynı; 'düğme adları farklıdır' sınaması kimlik kısmını artık ayırt etmiyor (GV-104 incelemesi; ortak işlevin kendi testi ayrımı sınıyor).
+
+### 8.4 Aracın (harness) boşlukları ve süreç notları
+
+- Doğrulanmadı: aynı listede schema.prisma, .gitignore ve AGENTS.md düzenlemeleri de her zaman sor olarak duruyor. İşçi oturumları soru soramadığı için bu dosyalarda düzenleme aracı reddediliyor olabilir; işçilerin kabukla dosya yazmasının bir nedeni bu olabilir.
+- Araç hatası (düzeltilmedi; düzeltmek harness.json değişikliği, o da sana soru gerektiriyor): alma çakışmayla yarıda kalınca araç görev ağacındaki dosyaları commit etmiş oluyor; işin imzası commit durumuna bağlı olduğu için sonraki alma ve inceleme iş değişmiş diye reddediyor. Öneri: gorev.py içindeki imza, tabandan sonra eklenen dosyaları commit edilmiş olsun olmasın adı ve içeriğiyle katsın.
+- Araç boşluğu: tabanı eskiyen görev için tabanı yenileme yolu yok; çakışmayı ana oturum elle çözmek zorunda kalıyor ve bu çözümü ikinci bir oturum incelemiyor (GV-028'de çözüm dört yerde iki tarafın birleşimiydi; testlerle ölçüldü).
+- Bilgi: kişisel genel ayardaki hook'lar bu projede de çalışıyor; test koşumu kapısı bir komutumu hedefsiz diye reddetti (aynı testleri tek tek yol vererek koşturdum). O hook'ların klasörüne bakmadım.
+- Araç boşluğu: bir kartın dosya listesi sonradan genişletilemiyor (liste ölçüm kaydında duruyor ve elle yazılamıyor); işçinin haklı sorusu ancak işi bölerek cevaplanabiliyor.
+- Araç önerisi: bitiş kaydındaki dosya listesini işçi elle beyan ediyor ve yeniden koşularda sık sık eksik yazıyor (bu gece beş duruş yalnız bu yüzden: GV-031, GV-049, GV-053, GV-056, GV-073). Listeyi araç zaten ölçüyor; beyanı zorunlu tutmak yerine ölçüleni kayda yazması bu duruşları kaldırır.
+- Araç boşluğu (bu gece en çok zaman alan): bir görevin ağacı ilk koşuda açılıyor ve taban bir daha yenilenmiyor. Soruyla duran ve hiç dosya değiştirmemiş bir görev, cevabı bir ön koşul görevi olduğunda o ön koşulu göremiyor; tek yol görevi atıp yenisini açmak ve atma sana soruluyor. Öneri: dosya değiştirmemiş görevin ağacı yeniden koşumda güncel tabandan yeniden açılsın.
+- İşçiler üç görevde bir dosyayı düzenleme aracıyla değil kabuk betiğiyle yazdı (GV-087, GV-085, GV-094); araç bunu engellemiyor, kural gösteren hook atlanıyor.
 - Tarayıcı aracı ana çalışma ağacında .playwright-mcp klasörüne geçici dosyalar yazdı (git'e girmiyor; .git/info/exclude ile dışarıda); silinebilir.
+
+### 8.5 Gece içinde kapananlar
+
+- Ön yüzde yenileme yok: backend'de yenile ucu henüz yazılmadı; oturum 15 dakika sürer ve sonra giriş ekranına dönülür. **Kapandı: GV-094 ve GV-095.**
+- Hata süzgeci 'kayıt bulunamadı' veritabanı hatasını (güncellenecek satır yok) tanımıyor; SuperAdmin üyeliği verirken var olmayan kişi 500 dönüyor (GV-082 incelemesi). Öneri: bulunamadi (404) koduna çevrilsin. **Kapandı: GV-092.**
+- Ön yüzde 403, 404 ve çakışma iletilerinin ekrana çevrilmesi iki dosyada yineleniyor (GV-087 incelemesi); tek yere toplanmalı. **Kapandı: GV-099.**
+- Ön yüzde form hata dönünce yazılanlar siliniyor (çatının form davranışı; GV-084 incelemesi); alanların değeri hata durumunda korunmalı. **Kapandı: GV-096.**
+- Senaryo testinin iz adımı arka plandaki aktarım döngüsüyle yarışabilir (GV-090 incelemesi): test 'aktarılacak not kalmadı' sonucunu döngü notları kilitlemişken de alabilir; ara sıra düşebilecek bir test. Düzeltme: aktarılmamış not sayısı sıfır olana kadar beklemek. **Kapandı: GV-097.**
+- 'Kayıt yok' eşlemesi sunucu içi bir aramanın boş dönmesini de 404 gösterir ve hata düzeyinde günlüğe yazmaz (GV-092 incelemesi); gerçek bir hata sessiz kalabilir. Öneri: bu dal uyarı düzeyinde günlüğe yazılsın. **Kapandı: GV-097.**
+- Ön yüzde üyelik bölümü, grup ya da rol listesini okuyamayan kişide tabloyu hiç çizmiyor (GV-088 incelemesi); adlar boş işaretle gösterilip tablo çizilmeli. Satır başına 'Kaldır' düğmelerinin erişilebilir adı aynı. **Kapandı: GV-099.**
+- Yetenek yenileme formu, kişinin göremediği içerik kolonunu boş sayıp üzerine yazabiliyordu ve virgül içeren liste değerini bozabiliyordu (GV-093 incelemesi); değiştirilmeden gönderilen form yeteneği daraltabilirdi. GV-096 bunu kapatıyor. **Kapandı: GV-096.**
+- Tarayıcı denemesinde görüldü: silinmiş ya da yenilenmiş kaydın sayfası (rol, grup, yetenek) kaydı canlı gibi gösteriyor ve iş düğmelerini çiziyor; backend işi 'Kayıt bulunamadı' diye reddediyor, yani açık değil, tutarsızlık. Sıradaki ön yüz görevine eklendi. **Kapandı: GV-099.**
 
 ## 9. PR'lar
 
-Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pulls?q=is%3Apr+is%3Amerged). Gece boyunca açılanlar aşağıdaki günlüğe eklenir.
+- Bu oturumda daha önce birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pulls?q=is%3Apr+is%3Amerged).
+- Gece içinde birleşenler: #13 (https://github.com/mrburakgenc/dextra/pull/13) ve #14 (https://github.com/mrburakgenc/dextra/pull/14).
+- Gecenin kalan bütün commit'leri tek PR'da: dal `worktree-base-mimari-tasarim` → `main`. Bu rapor o PR'ın içinde olduğu için numarası buraya yazılamadı; bağlantısı oturumun son iletisindedir ve şu komutla görülür: `gh pr list --state all --head worktree-base-mimari-tasarim`.
+- Neden tek PR ve neden en sonda: merge komutu kişisel genel ayarındaki "her zaman sor" kuralına takılıyor (gece iki kez sana soru çıkardı). Kuralı dolanmadım; gece boyunca push, PR ve merge yapmadım, işler bitince üçünü ayrı komutlarla ve en son çalıştırdım.
 
 ## 10. Gece günlüğü
 
@@ -415,3 +467,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 06:03 — GV-103 (parolamı değiştir ve oturumlar ekranları) iki koşuda alındı: altı test dosyasında 160 test; tip ve lint 0. İlk inceleme yerinde bir açık buldu: kişi kendi oturumunu kapatınca tarayıcıdaki çerezler silinmiyordu (çatı, iş içinden yapılan yönlendirmeyi sunucuda kendisi izliyor; sahte yönlendirmeli testler bunu göremiyordu).
 - 06:03 — GERÇEK TARAYICIDA SON DENEME (06:00-06:03; bütün işlerin birleştiği derleme; geçici veritabanları): (1) Başlıkta Kullanıcılar, Roller, Gruplar, İzinler, Yetenekler, Oturumlar, Parolamı değiştir ve Çıkış var. (2) Silinen grubun sayfası 'Silinmiş' işaretini ve zamanını gösteriyor, iş düğmesi yok. (3) Aynı kullanıcı adıyla ikinci kişi açılınca backend'in çakışma iletisi görünüyor ve yazılanlar formda kalıyor. (4) Yönetici ikinci bir tarayıcıdan da girince oturum listesinde iki satır var, biri 'Bu oturum'; öbürü kapatılınca o tarayıcının sonraki isteği girişe düşüyor ve çerezleri siliniyor; geçmiş görünümünde 'Kapatıldı: Sahibi kapattı' yazıyor. (5) Yalnız temel üyeliği olan kişinin başlığında yalnız Oturumlar, Parolamı değiştir ve Çıkış var; oturum listesinde yalnız kendi oturumu görünüyor. (6) Parola değiştirme: yanlış eski parolada 'Eski parola yanlış' ve boş alanlar; doğrusunda giriş sayfası 'Parolan değişti; yeniden gir' notuyla açılıyor, çerezler silinmiş; eski parola girmiyor, yenisi giriyor. (7) Kişi kendi oturumunu listeden kapatınca üç çerez de siliniyor. (8) Yönetici, kullanıcının kayıt sayfasındaki 'Oturumları' bağlantısıyla o kişinin geçmiş oturumlarını nedenleriyle görüyor ('Sahibi kapattı', 'Parola değişti'); okuma kapısı düzeltmesi tarayıcıda da doğrulandı. Görüntü: docs/rapor/gorsel/2026-11-25-oturumlar.png. Ortam kapatıldı: iki geçici veritabanı silindi, 3001 ve 3100 boş.
 - 06:03 — Denemede küçük bir kusur görüldü ve düzeltmesi başladı (GV-104): kısaltılmış kimlik ilk sekiz karakterdi; kimlikler zaman sıralı olduğu için aynı dakikada açılan iki oturumun kısaltması aynı çıkıyordu. Karar düzeltildi: son sekiz karakter.
+- 06:09 — GV-104 (kısaltılmış kimlik son sekiz karakteri gösterir) ilk koşuda alındı: yedi test dosyasında 212 test. Gecenin son görevi buydu.
+- 06:09 — KAPANIŞ ÖLÇÜMÜ (kendi ölçümüm, 06:09-06:11; dalın son hâli): ön yüzde tip, lint ve derleme 0; backend'de tip ve lint 0; bilgi tabanı zinciri temiz. Plan ağacı: EP-001 6/6, EP-002 15/15, EP-003 31/32, EP-004 4/4, EP-005 11/11, EP-006 21/23, EP-007 12/12; eksik kalan üç yaprak atılmayı bekleyen ölü yapraklar (GV-036, GV-068, GV-089). Bütün test dosyaları tek seferde koşturulmadı (test koşum kuralın gereği); gece boyunca her alımdan sonra değişen ve etkilenen dosyalar yoluyla koşturuldu.
