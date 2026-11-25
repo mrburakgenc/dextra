@@ -5,7 +5,7 @@ Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 Tasarım: docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md
 
 Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · rapor · denetim · acik-uc · etki ·
-           sorgu · dizin · graf
+           sorgu · dizin · graf · ajan-karari
 Çıkış kodu: 0 temiz · 1 bulgu var · 2 ölçülemedi (kapılar 2'yi kırmızı sayar)
 """
 from __future__ import annotations
@@ -382,6 +382,79 @@ def acik_uc_kapat(kok: pathlib.Path, kimlik: str, no: int, karar: str, tarih: st
                  % (no, tarih or datetime.date.today().isoformat(), metin, karar))
     yol.write_text("\n".join(satirlar), encoding="utf-8")
     return metin
+
+
+# ── Ajan kararları (TS-006 Yapı 20) ──────────────────────────────────────────────────
+# Ajanın kullanıcıya sormadan verdiği kararlar düğümün gövdesinde üç biçimde tanınır: (1) `AK-<n>` ile başlayan liste
+# maddesi (hangi girintide olursa olsun; aynı numaralı ek madde, "AK-19 eki" gibi, aynı kararın parçasıdır); (2)
+# başlığında "Ajan kararları" geçen bölümün üst düzey liste maddeleri; (3) "Ajan kararı" sözüyle başlayan paragraf:
+# bulunduğu bölüm tek karar öbeğidir ve başlığıyla gösterilir. İki biçime uyan madde bir kez sayılır; kod bloğu atlanır.
+
+AJAN_KARARI_KARAKTER = 160   # gösterilen ilk cümlenin sınırı
+KABUL_AJAN_KARARI = 20       # kabul sorusunda listelenen en çok karar; fazlası sayıyla söylenir
+_LISTE_MADDESI = re.compile(r"^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$")
+_AJAN_KARARI_NO = re.compile(r"AK-(\d+)\b")
+_MD_BASLIK = re.compile(r"^(#{1,6})\s+(.*)$")
+_KISALTMA = ("bkz", "örn", "ör", "orn", "vb", "vs")   # ardındaki nokta cümleyi bitirmez
+
+
+def ilk_cumle(metin: str) -> str:
+    """Metnin ilk cümlesi (nokta, ünlem ya da soru işaretinin ardından boşluk ya da son; rakamdan ya da kısaltmadan
+    sonraki nokta cümleyi bitirmez); sınırı aşarsa kesilir."""
+    for m in re.finditer(r"[.!?](?=\s|$)", metin):
+        onceki = re.search(r"\w*$", metin[:m.start()]).group(0)
+        if m.group(0) == "." and (onceki[-1:].isdigit() or onceki.lower() in _KISALTMA):
+            continue
+        metin = metin[:m.end()]
+        break
+    cumle = metin.strip()
+    return cumle if len(cumle) <= AJAN_KARARI_KARAKTER else cumle[:AJAN_KARARI_KARAKTER - 1].rstrip() + "…"
+
+
+def ajan_kararlari(d: dict) -> list:
+    """Düğümün ajan kararları, metindeki sırayla, her biri ilk cümlesiyle (karar öbeği bölümün başlığıyla)."""
+    kararlar: dict = {}
+    baslik, baslik_no, ajan_duzeyi, kod = None, None, None, None
+    for no, satir in enumerate(d["_govde"].split("\n")):
+        cit = satir.lstrip()[:3]
+        if cit in ("```", "~~~") and cit == (kod or cit):   # kod bloğu yalnız açtığı işaretle kapanır
+            kod = None if kod else cit
+            continue
+        if kod:
+            continue
+        b, m = _MD_BASLIK.match(satir), _LISTE_MADDESI.match(satir)
+        if b:
+            baslik, baslik_no = b.group(2).strip(), no
+            if ajan_duzeyi is None or len(b.group(1)) <= ajan_duzeyi:   # alt başlık "Ajan kararları" bölümünü bitirmez
+                ajan_duzeyi = len(b.group(1)) if "ajan kararları" in baslik.lower() else None
+        elif m and _AJAN_KARARI_NO.match(m.group(2)):
+            kararlar.setdefault(("AK", int(_AJAN_KARARI_NO.match(m.group(2)).group(1))), m.group(2))
+        elif m and ajan_duzeyi and not m.group(1):
+            kararlar[("madde", no)] = m.group(2)
+        elif not m and not ajan_duzeyi and satir.startswith("Ajan kararı"):
+            kararlar.setdefault(("bolum", baslik_no), baslik or satir)
+    return [ilk_cumle(k) for k in kararlar.values()]
+
+
+def ajan_karari_sayimi(dz: Dizin) -> str | None:
+    """Durum ve oturum başı için: taslaklardaki ajan kararlarının toplamı ve en çok taşıyan üç düğüm; yoksa None."""
+    sayilar = [(d["kimlik"], len(ajan_kararlari(d))) for d in dz.dugumler if d["durum"] == "taslak"]
+    sayilar = sorted([s for s in sayilar if s[1]], key=lambda s: -s[1])
+    return ("%d, %d taslak düğümde (en çok: %s)" % (sum(n for _, n in sayilar), len(sayilar),
+                                                    ", ".join("%s %d" % s for s in sayilar[:3]))) if sayilar else None
+
+
+def ajan_karari_satirlari(d: dict) -> list:
+    """Kabul sorusunun düğüm başına ek satırları: ajan kararlarının sayısı ve ilk cümleleri (en çok yirmisi)."""
+    kararlar = ajan_kararlari(d)
+    if not kararlar:
+        return []
+    satirlar = ["  ajan kararı: %d (sana sorulmadan verildi; kabul edersen bunları da teyit edersin):" % len(kararlar)]
+    satirlar += ["    - " + k for k in kararlar[:KABUL_AJAN_KARARI]]
+    if len(kararlar) > KABUL_AJAN_KARARI:
+        satirlar.append("    … ilk %d gösterildi, toplam %d (hepsi: python3 harness/h.py ajan-karari %s)"
+                        % (KABUL_AJAN_KARARI, len(kararlar), d["kimlik"]))
+    return satirlar
 
 
 GUNLUK = "GUNLUK.md"
@@ -1474,6 +1547,9 @@ def _komut_durum(kok: pathlib.Path, arg: list) -> int:
     if uclar:
         print("  açık uç: %d (%s) — liste: python3 harness/h.py acik-uc" % (
             sum(n for _, n in uclar), ", ".join("%s %d" % ku for ku in uclar)))
+    ajan = ajan_karari_sayimi(dz)
+    if ajan:
+        print("  ajan kararı: %s — liste: python3 harness/h.py ajan-karari" % ajan)
     yavas = yavas_hooklar(kok)
     if yavas["sayi"]:
         print("  yavaş hook: %d çağrı %d ms eşiğini aştı (en uzun %d ms) — sıklaşırsa dizini hook yoluna alma "
@@ -1555,7 +1631,7 @@ def _komut_kabul(kok: pathlib.Path, arg: list) -> int:
     if sys.stdin.isatty() and sys.stdout.isatty():   # kullanıcının kendi terminali: soruyu komut sorar
         dz = Dizin(kok)
         for d in filter(None, map(dz.kimlik.get, kimlikler)):
-            print("%s\n  %s" % (_dugum_ozeti(d), d["_ifade"]))
+            print("\n".join(["%s\n  %s" % (_dugum_ozeti(d), d["_ifade"])] + ajan_karari_satirlari(d)))
         if input("Kabul edilsin mi? Onay için 'evet' yaz: ").strip().lower() != "evet":
             print("kabul edilmedi.")
             return 1
@@ -1618,6 +1694,23 @@ def _komut_acik_uc(kok: pathlib.Path, arg: list) -> int:
             print("%s/AU-%d [%s] %s" % (d["kimlik"], n, d["durum"], metin))
             toplam += 1
     print("%d açık uç%s" % (toplam, (", %d düğümde" % sum(bool(acik_uclar(d)) for d in dugumler)) if toplam else ""))
+    return 0
+
+
+def _komut_ajan_karari(kok: pathlib.Path, arg: list) -> int:
+    if len(arg) > 1 or (arg and not KIMLIK.match(arg[0])):
+        raise HarnessHata("kullanım: h.py ajan-karari [<KİMLİK>]")
+    dz = Dizin(kok)
+    if arg and arg[0] not in dz.kimlik:
+        raise HarnessHata("%s bulunamadı" % arg[0])
+    toplam, dugum = 0, 0
+    for d in [dz.kimlik[arg[0]]] if arg else dz.dugumler:
+        kararlar = ajan_kararlari(d)
+        if kararlar:
+            print("%s [%s] %d ajan kararı — %s" % (d["kimlik"], d["durum"], len(kararlar), d["baslik"]))
+            print("\n".join("  - " + k for k in kararlar))
+            toplam, dugum = toplam + len(kararlar), dugum + 1
+    print("%d ajan kararı%s" % (toplam, (", %d düğümde" % dugum) if toplam else ""))
     return 0
 
 
@@ -1723,6 +1816,7 @@ KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
             "rapor": _komut_rapor, "denetim": _komut_denetim, "acik-uc": _komut_acik_uc,
+            "ajan-karari": _komut_ajan_karari,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}
