@@ -1,10 +1,7 @@
 // Rol alt özelliğinin liste sorgularına ortak parçalar: sorgu şeması, sorgu ve cevap tipleri, sayfalama
 // (TS-002 AK-39; KR-014). Sayfa 1'den başlar; toplam sayı dönmez.
 import { z } from 'zod';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { Sayfa } from '../../domain/repositories/i-rol.repository.js';
 
 export interface ListeSorgusu {
@@ -13,8 +10,8 @@ export interface ListeSorgusu {
   readonly siralama: readonly Siralama[];
 }
 
-export interface ListeCevabi {
-  readonly kayitlar: readonly Kayit[];
+export interface ListeCevabi<K> {
+  readonly kayitlar: readonly K[];
   readonly sayfa: number;
   readonly boyut: number;
   readonly sonrakiVar: boolean;
@@ -41,10 +38,10 @@ export function listeSemasi(siralamalar: readonly [string, ...string[]]) {
 }
 
 // Sonraki sayfanın varlığı, boyuttan bir fazla kayıt istenerek anlaşılır; fazla kayıt cevaba girmez.
-export async function sayfala(
+export async function sayfala<K>(
   { sayfa, boyut, siralama }: ListeSorgusu,
-  oku: (siralama: readonly Siralama[], sayfa: Sayfa) => Promise<Kayit[]>,
-): Promise<ListeCevabi> {
+  oku: (siralama: readonly Siralama[], sayfa: Sayfa) => Promise<K[]>,
+): Promise<ListeCevabi<K>> {
   const kayitlar = await oku(siralama, {
     atla: (sayfa - 1) * boyut,
     al: boyut + 1,

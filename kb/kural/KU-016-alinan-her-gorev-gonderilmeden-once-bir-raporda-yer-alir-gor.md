@@ -1,7 +1,7 @@
 ---
 kimlik: KU-016
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
 dayanak: [KR-015@1]

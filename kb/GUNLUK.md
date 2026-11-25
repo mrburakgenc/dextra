@@ -40,3 +40,26 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] taslak | KU-016 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
 ## [2026-11-25] taslak | DN-001 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
 ## [2026-11-25] taslak | TS-006 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
+## [2026-11-25] taslak | DN-002 Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
+## [2026-11-25] taslak | TS-007 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
+## [2026-11-25] taslak | TS-008 Yetenekte öncelik: aynı kaydı tutan yeteneklerden önceliği yüksek olan tek başına geçerlidir
+## [2026-11-25] kabul | KR-015@1 Alınan her iş raporla kapanır; raporu olmayan iş gönderilemez
+## [2026-11-25] kabul | DN-001@1 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
+## [2026-11-25] kabul | KU-016@1 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
+## [2026-11-25] kabul | TS-006@1 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
+## [2026-11-25] kabul | TS-007@1 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
+## [2026-11-25] kabul | KR-005@1 Backend modular monolith ve dikey dilim mimarisidir; bounded context = feature
+## [2026-11-25] kabul | KR-007@1 Yetkilendirme ABAC'tır ve repository'de çözülür
+## [2026-11-25] kabul | DN-002@1 Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
+## [2026-11-25] kabul | KU-007@1 Feature'lar birbirini doğrudan içe aktarmaz
+## [2026-11-25] kabul | KU-008@1 Her feature kendi içinde Clean Architecture'dır; bağımlılık içe doğru akar
+## [2026-11-25] kabul | KU-009@1 Çapraz kesen yetenekler yalnız shared altında yaşar
+## [2026-11-25] kabul | KU-010@1 Guard zincirinin sırası sabittir
+## [2026-11-25] kabul | KU-011@1 Her endpoint tam bir yetki dekoratörü taşır
+## [2026-11-25] kabul | KU-012@1 Yetki repository'de çözülür; handler yetki kodu yazmaz
+## [2026-11-25] kabul | KU-013@1 requesterId istek gövdesinden okunmaz
+## [2026-11-25] taslak | KR-016 Yetenekte etki ve öncelik: yasak kuralı izinleri önceliğe göre kapatır
+## [2026-11-25] taslak | KU-017 Uygulanamayan yasak sessizce düşmez; o izni kapatır
+## [2026-11-25] taslak | KU-018 Kök yöneticinin sistem izinleri yasakla kapatılmaz
+## [2026-11-25] taslak | KU-019 Uç guard'ı yalnız izin kurallarını sayar
+## [2026-11-25] taslak | KU-020 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır

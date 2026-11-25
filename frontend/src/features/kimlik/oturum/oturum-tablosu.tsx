@@ -10,15 +10,23 @@ import {
   SiralamaBasligi,
 } from '../../../shared/liste/liste-parcalari';
 import { sorguMetni } from '../../../shared/liste/sorgu';
+import { Kolon } from '../../../shared/yetki/yetki-saglayici';
 import { OturumKapat } from './oturum-isleri';
 import type { OturumKaydi, OturumListesiSorgusu } from './oturum-listesi';
 
 // Oturum listesinin tablosu, görünüm seçimi ve sayfalaması (TS-004 "Parola değiştirme ve oturumlar
 // ekranları"). Bütün gezinti adres sorgusuyla yapılır; görünüm ve sıralama değişince ilk sayfaya
-// dönülür, kişi süzgeci korunur. Sunucu bileşenidir.
+// dönülür, kişi süzgeci korunur. Kişinin tür düzeyinde okuyamadığı kolon çizilmez (TS-004 "Yönetim
+// ekranları"). Sunucu bileşenidir.
 
 const ADRES = '/oturumlar';
+const KAYNAK = 'Oturum';
+// Durum kolonu kapatılma zamanı ve nedeninden türer.
+const DURUM_ALANLARI = ['kapatilmaZamani', 'kapatilmaNedeni'];
 const HUCRE = 'px-3 py-2';
+// İsteği yapan oturumun işareti kaydın kimliğinden türer; Durum kolonu çizilmiyorsa İşler hücresinde
+// durur.
+const BU_OTURUM = <strong className="rounded bg-blue-100 px-2 text-sm">Bu oturum</strong>;
 
 const GORUNUMLER = [
   { etiket: 'Açık oturumlar', acik: 'true' },
@@ -111,33 +119,45 @@ export function OturumTablosu({
         basliklar={
           <>
             {kullaniciKolonu && (
-              <th scope="col" className={`${HUCRE} text-left`}>
-                Kullanıcı
-              </th>
+              <Kolon a={KAYNAK} alanlar={['kullaniciId']}>
+                <th scope="col" className={`${HUCRE} text-left`}>
+                  Kullanıcı
+                </th>
+              </Kolon>
             )}
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="baslangicZamani"
-              etiket="Başlangıç"
-              sirala={sirala}
-              suzgec={{ acik, kullaniciId }}
-            />
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="sonDondurmeZamani"
-              etiket="Son etkinlik"
-              sirala={sirala}
-              suzgec={{ acik, kullaniciId }}
-            />
-            <th scope="col" className={`${HUCRE} text-left`}>
-              Adres
-            </th>
-            <th scope="col" className={`${HUCRE} text-left`}>
-              Tarayıcı bilgisi
-            </th>
-            <th scope="col" className={`${HUCRE} text-left`}>
-              Durum
-            </th>
+            <Kolon a={KAYNAK} alanlar={['baslangicZamani']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="baslangicZamani"
+                etiket="Başlangıç"
+                sirala={sirala}
+                suzgec={{ acik, kullaniciId }}
+              />
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['sonDondurmeZamani']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="sonDondurmeZamani"
+                etiket="Son etkinlik"
+                sirala={sirala}
+                suzgec={{ acik, kullaniciId }}
+              />
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['ipAdresi']}>
+              <th scope="col" className={`${HUCRE} text-left`}>
+                Adres
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['tarayiciBilgisi']}>
+              <th scope="col" className={`${HUCRE} text-left`}>
+                Tarayıcı bilgisi
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={DURUM_ALANLARI}>
+              <th scope="col" className={`${HUCRE} text-left`}>
+                Durum
+              </th>
+            </Kolon>
             {acikGorunum && (
               <th scope="col" className={`${HUCRE} text-left`}>
                 İşler
@@ -151,31 +171,48 @@ export function OturumTablosu({
           return (
             <tr key={kayit.id} className="border-b border-gray-200">
               {kullaniciKolonu && (
+                <Kolon a={KAYNAK} alanlar={['kullaniciId']}>
+                  <td className={HUCRE}>
+                    {kayit.kullaniciId === undefined ? (
+                      BOS
+                    ) : (
+                      <Link href={`/kullanicilar/${kayit.kullaniciId}`} className={BAGLANTI}>
+                        {kimliginAdi(null, kayit.kullaniciId)}
+                      </Link>
+                    )}
+                  </td>
+                </Kolon>
+              )}
+              <Kolon a={KAYNAK} alanlar={['baslangicZamani']}>
+                <td className={HUCRE}>{zaman(kayit.baslangicZamani)}</td>
+              </Kolon>
+              <Kolon a={KAYNAK} alanlar={['sonDondurmeZamani']}>
+                <td className={HUCRE}>{zaman(kayit.sonDondurmeZamani)}</td>
+              </Kolon>
+              <Kolon a={KAYNAK} alanlar={['ipAdresi']}>
+                <td className={HUCRE}>{kayit.ipAdresi ?? BOS}</td>
+              </Kolon>
+              <Kolon a={KAYNAK} alanlar={['tarayiciBilgisi']}>
+                <td className={HUCRE}>{kayit.tarayiciBilgisi ?? BOS}</td>
+              </Kolon>
+              <Kolon a={KAYNAK} alanlar={DURUM_ALANLARI}>
                 <td className={HUCRE}>
-                  {kayit.kullaniciId === undefined ? (
-                    BOS
-                  ) : (
-                    <Link href={`/kullanicilar/${kayit.kullaniciId}`} className={BAGLANTI}>
-                      {kimliginAdi(null, kayit.kullaniciId)}
-                    </Link>
+                  {durum(kayit, acikGorunum)}
+                  {bu && (
+                    <>
+                      {' '}
+                      {BU_OTURUM}
+                    </>
                   )}
                 </td>
-              )}
-              <td className={HUCRE}>{zaman(kayit.baslangicZamani)}</td>
-              <td className={HUCRE}>{zaman(kayit.sonDondurmeZamani)}</td>
-              <td className={HUCRE}>{kayit.ipAdresi ?? BOS}</td>
-              <td className={HUCRE}>{kayit.tarayiciBilgisi ?? BOS}</td>
-              <td className={HUCRE}>
-                {durum(kayit, acikGorunum)}
-                {bu && (
-                  <>
-                    {' '}
-                    <strong className="rounded bg-blue-100 px-2 text-sm">Bu oturum</strong>
-                  </>
-                )}
-              </td>
+              </Kolon>
               {acikGorunum && (
                 <td className={HUCRE}>
+                  {bu && (
+                    <Kolon a={KAYNAK} alanlar={DURUM_ALANLARI} yoksa={BU_OTURUM}>
+                      {null}
+                    </Kolon>
+                  )}
                   <OturumKapat kayit={kayit} bu={bu} oturum={oturumAdi(kayit)} />
                 </td>
               )}

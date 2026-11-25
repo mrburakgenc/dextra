@@ -1,7 +1,7 @@
 ---
 kimlik: KR-005
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Backend modular monolith ve dikey dilim mimarisidir; bounded context = feature
 agirlik: tek-yonlu
@@ -96,3 +96,17 @@ Belgedeki istisnalar (satır 139):
 - Kendi entity'si olmayan, yalnız orkestrasyon yapan sub-feature için `domain/` ve `infrastructure/` isteğe bağlıdır.
 
 Bunların dışında geçici sapma yoktur; sapma gerekiyorsa önce bu karar değiştirilir (öneri ajan; kullanıcı teyidi, 2026-11-23; dayanağı kullanıcının "kurallar tam geçmeli" sözü).
+
+## Bu depodaki durum (2026-11-25'te ölçüldü)
+- Klasör düzeni gerçekleşti: `backend/src/features/kimlik` (yedi alt özellik) ve `backend/src/shared` (on bir konu). "Varsayımlar"daki ilk ve üçüncü madde böylece kesinleşti.
+- İçe aktarma sınırı lint'i kurulu ve çalışıyor (`backend/eslint.config.mjs`): feature yalnız ortak kodu ve kendi içini, ortak kod yalnız ortak kodu içe aktarır; ihlal 0.
+- Alt özelliklerin dört katmanı ve iş klasörleri yapı denetimiyle sınanıyor (DN-002; ihlal 0). Katman düzeninin ayrıntısı TS-005'tedir.
+- Ölçüt 1 (feature'lar arası doğrudan içe aktarma) bugün 0'dır; ölçüt 2 ve "Feature'lar arası erişim" bloğundaki Kural 3–7 ikinci feature olmadığı için hiç sınanmadı.
+
+## Açık uçlar
+- AU-1: Kural 7'nin (feature ACL'i) makineyle denetimi denenmedi.
+- AU-2: Ortak koddaki sözleşmelerin base'e mi projeye mi ait sayılacağı ve ölçütün bunları nasıl sayacağı yazılmadı.
+- AU-3: Kanonun olay sınırı kuralı (`IRON_RULES_EVENTS.md` EVT-11) okunmadı; bu kararla çelişip çelişmediği bilinmiyor.
+- AU-4: "Yeni bir feature eklenirken base'in hangi dosyalarına dokunmak gerekir" ölçümü yapılmadı; hedef o ölçümden sonra konacak.
+- AU-5: "Feature'lar arası erişim" bloğundaki Kural 3–7 ve "shared hiçbir feature'ı içe aktarmaz" yükümlülüğü için kural taslakları açılmadı.
+- AU-6: Karara yeniden bakma eşiği (faz 2'ye geçiş) için sayı belirlenmedi.

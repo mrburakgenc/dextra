@@ -105,10 +105,14 @@ function backend(yetenekCevabi: () => Response, adCevabi?: () => Response) {
   });
 }
 
-// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+// Yetenekleri bütün kolonlarıyla okuyabilen kişi.
+const OKU: YetkiKurali[] = [{ action: 'oku', subject: 'Yetenek' }];
+
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişi yetenekleri
+// okuyabilir (liste kolonları tür düzeyindeki okuma kuralına göre çizilir).
 async function goster(
   sorgu: Record<string, string | string[]> = {},
-  kurallar: YetkiKurali[] = [],
+  kurallar: YetkiKurali[] = OKU,
 ) {
   render(
     <YetkiSaglayici kurallar={kurallar}>
@@ -215,13 +219,13 @@ describe('YeteneklerSayfasi liste', () => {
     expect(hucreler(satir).slice(3, 6)).toEqual(['Kayıt vermez', 'Kolon vermez', 'Tohum']);
   });
 
-  it('kayıtta gelmeyen kolonların hücresi boş işarettir', async () => {
+  it('kayıtta gelmeyen kolonların hücresi boş işarettir; izin bağlantısı kaydın kısaltılmış kimliğidir', async () => {
     backend(() => listeCevabi({ kayitlar: [{ id: SARTLI }] }));
 
     await goster();
 
     const [, satir] = screen.getAllByRole('row');
-    expect(hucreler(satir)).toEqual(['—', '—', '—', '—', '—', '—', '—']);
+    expect(hucreler(satir)).toEqual(['—', '—', `…${SARTLI.slice(-8)}`, '—', '—', '—', '—']);
   });
 
   it('izin yazısı kayıt sayfasına bağlantıdır', async () => {
@@ -447,5 +451,91 @@ describe('YeteneklerSayfasi durumlar', () => {
       'yonlendirildi:/oturum-bitti',
     );
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
+  });
+});
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function basliklar(): (string | null)[] {
+  return screen.getAllByRole('columnheader').map((h) => h.textContent);
+}
+
+// Her kayıt satırının hücre sayısı.
+function hucreSayilari(): number[] {
+  return screen
+    .getAllByRole('row')
+    .slice(1)
+    .map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+describe('YeteneklerSayfasi kolonların yetkisi', () => {
+  it('türün iki alanını ve oluşturma zamanını okuma kuralı olmayan kişide kolonların başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    backend(() => listeCevabi());
+
+    await goster({}, [
+      {
+        action: 'oku',
+        subject: 'Yetenek',
+        fields: ['grupId', 'rolId', 'izinId', 'butunKayitlar', 'sart', 'butunKolonlar', 'kolonlar'],
+      },
+    ]);
+
+    expect(basliklar()).toEqual(['Grup', 'Rol', 'İzin', 'Kayıt sınırı', 'Kolon sınırı']);
+    expect(screen.queryByRole('link', { name: 'Oluşturma zamanı' })).toBeNull();
+    expect(screen.queryByText('Sistem')).toBeNull();
+    expect(screen.queryByText(tarihSaat(OLUSTURMA))).toBeNull();
+    expect(hucreSayilari()).toEqual([5, 5]);
+  });
+
+  it('türün alanlarından birini bir kuralla okuyabilen kişide kolon çizilir; alanları taşımayan kaydın hücresi boş işarettir', async () => {
+    backend(() =>
+      listeCevabi({ kayitlar: [IKI_KAYIT[0], { id: SARTLI, izinId: IZIN }] }),
+    );
+
+    await goster({}, [{ action: 'oku', subject: 'Yetenek', fields: ['izinId', 'tohumAnahtari'] }]);
+
+    expect(basliklar()).toEqual(['İzin', 'Tür']);
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(hucreler(ilk)[1]).toBe('Sistem');
+    expect(hucreler(ikinci)[1]).toBe('—');
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    backend(() => listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Yetenek', conditions: { koken: 'elle' } }]);
+
+    expect(basliklar()).toEqual([
+      'Grup',
+      'Rol',
+      'İzin',
+      'Kayıt sınırı',
+      'Kolon sınırı',
+      'Tür',
+      'Oluşturma zamanı',
+    ]);
+    expect(hucreSayilari()).toEqual([7, 7]);
+  });
+
+  it('izin alanı gelmeyen kayıtların bağlantı adı kaydın kısaltılmış kimliğidir; adlar birbirinden ayrıdır', async () => {
+    backend(() => listeCevabi({ kayitlar: [{ id: BUTUN, grupId: GRUP }, { id: SARTLI, grupId: GRUP }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Yetenek', fields: ['grupId'] }]);
+
+    expect(basliklar()).toEqual(['Grup', 'İzin']);
+    expect(baglanti(`…${BUTUN.slice(-8)}`)).toBe(`/yetenekler/${BUTUN}`);
+    expect(baglanti(`…${SARTLI.slice(-8)}`)).toBe(`/yetenekler/${SARTLI}`);
+    expect(screen.queryByRole('link', { name: '—' })).toBeNull();
+  });
+
+  it('gelmiş ama boş tohum anahtarı kolonu kaldırmaz', async () => {
+    backend(() => listeCevabi({ kayitlar: [{ id: SARTLI, izinId: IZIN, tohumAnahtari: null }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Yetenek', fields: ['izinId', 'tohumAnahtari'] }]);
+
+    expect(basliklar()).toEqual(['İzin', 'Tür']);
+    const [, satir] = screen.getAllByRole('row');
+    expect(hucreler(satir)[1]).toBe('—');
   });
 });

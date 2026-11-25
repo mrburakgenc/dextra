@@ -14,7 +14,7 @@ import {
   UYELIK_YAZMA_REPO,
 } from './domain/repositories/i-uyelik.repository.js';
 import { uyelikOkumaPrismaRepository } from './infrastructure/repositories/uyelik-okuma.prisma-repository.js';
-import { KapiUyelikYazmaRepo } from './infrastructure/repositories/uyelik-yazma.kapi-repository.js';
+import { PrismaUyelikYazmaRepo } from './infrastructure/repositories/uyelik-yazma.prisma-repository.js';
 import { UyelikController } from './presentation/uyelik.controller.js';
 
 // Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
@@ -27,7 +27,7 @@ import { UyelikController } from './presentation/uyelik.controller.js';
     UyelikOkuHandler,
     UyelikVerHandler,
     UyelikKaldirHandler,
-    { provide: UYELIK_YAZMA_REPO, useClass: KapiUyelikYazmaRepo },
+    { provide: UYELIK_YAZMA_REPO, useClass: PrismaUyelikYazmaRepo },
   ],
 })
 export class UyelikModule {

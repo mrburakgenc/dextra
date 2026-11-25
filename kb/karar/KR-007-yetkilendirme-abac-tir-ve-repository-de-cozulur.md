@@ -1,7 +1,7 @@
 ---
 kimlik: KR-007
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetkilendirme ABAC'tır ve repository'de çözülür
 agirlik: tek-yonlu
@@ -11,11 +11,11 @@ baglam: TS-001
 kaynak: kb/_gelen/IRON_RULES_BACKEND.md
 alinti: **Tek mod: ABAC.** Bi-Modal kavrami v11 refactor'da kaldirildi.
 ---
-Yetkilendirme için tek mod olarak ABAC seçildi ve ince yetki repository'de çözülür: guard kaba denetimi yapar, repository satır ve alan düzeyini uygular, handler yetki kodu yazmaz; yetki disiplini iki yerde toplanır, karşılığında her repository yetki motoruna bağımlı olur ve okuma metotları isteği yapan kullanıcının kimliğini parametre alır.
+Yetkilendirme için tek mod olarak ABAC seçildi ve ince yetki repository'de çözülür: guard uç işaretiyle kaba denetimi yapar, repository satır ve kolon düzeyini kendi sorgusunda uygular, işleyici yetki kodu yazmaz; yetki disiplini iki yerde toplanır, karşılığında her repository yetki motoruna bağımlı olur ve süzgeci sorguya eklemek repository'yi yazanın işidir.
 
 > Alım notu: bu taslak `kb/_gelen/IRON_RULES_BACKEND.md` belgesinden alındı (bölüm 2, 3, 4, 5.5, 18, 19) ve `kb/_gelen/IRON_RULES_SHARED.md` bölüm 5 ile karşılaştırıldı. "Belgede yok" yazan yerler kullanıcıya sorulacak; "öneri (ajan)" yazan yerler onay bekler.
 
-> Uyarlama notu (2026-11-23; ikinci çürütme turu 50–52. bulgular): bu taslak kanondan alındığı hâliyle duruyor ve KR-008 ile KR-010'daki kullanıcı seçimleriyle dört yerde çelişiyor; kabulden önce yeniden yazılacak. (1) Yetki motoru iki katmandır: altta CASL kütüphanesi, üstte bu deponun derleyicisi ve dekoratörleri (KR-010 Seçim 38; 2026-11-24'te düzeltildi, önceki not "CASL değildir" diyordu); sunucuda veri kararını yalnız veritabanı verir, bu yüzden kanondaki `throwUnlessCan` ile bellekte kayıt denetimi alınmaz. (2) Yazmada kayıt denetimi "nadir istisna" değil, her yazmanın parçasıdır ve yetenek yetenek yapılır (KR-008 Seçim 10 ve 18, KR-010 Seçim 37). (3) "Rol ataması eksikse 403" cümlesi eksiktir: rol tek başına izin vermez, yetenek satırı gerekir. (4) İstek içi yetki belleği "kurala çevrilmeyenler"de duruyor; KR-010 onu "kim adına" ve "hangi sürüm" ile anahtarlı olarak zorunlu kılar.
+> Uyarlama (2026-11-25; önceki not "kabulden önce yeniden yazılacak" diyordu): bu taslak kanondan alındı ve bu deponun kararlarıyla şöyle uzlaştırıldı. (1) Yetki motoru iki katmandır: altta CASL, üstte bu deponun derleyicisi ve işaretleri (KR-010 Seçim 38); sunucuda veri kararını yalnız veritabanı verir, bu yüzden kanondaki bellekte kayıt denetimi (`throwUnlessCan`) alınmaz. (2) Yazmada kayıt denetimi istisna değil, her yazmanın parçasıdır: şartlı kilit, iki hâl kuralı ve değişiklik kaydı (KR-008 Seçim 10 ve 18; KR-010 Seçim 37). (3) Rol tek başına izin vermez; yetenek satırı gerekir (KR-008). (4) Yetki parametre değildir: isteği yapanın derlenmiş yetkisi istek bağlamında durur ve repository oradan alır; kanondaki `AbilityFactory` ve kullanıcı kimliği parametresi bu depoda yoktur. (5) Repository'nin biçimi TS-007'dedir (kabul, 2026-11-25): sorguyu repository yazar, süzgeci yetki yüzünden alır; kolonlar kayıt başınadır; yazmada sırayı motor yürütür. KR-008 ve KR-010 hâlâ taslaktır; bu karar onların ayrıntısına değil, yetkinin NEREDE çözüldüğüne karar verir.
 
 ## Bağlam
 - Kanon tek mod tanımlar: her feature repository'de çözülen ABAC kullanır; iki modlu yapı, RBAC geri dönüşü ve `roles.includes` kalıntısı yoktur (satır 172–174).
@@ -53,11 +53,12 @@ A (belgedeki yapı; kullanıcı 2026-11-21'de kanonun tamamını uygun buldu).
 - Kurala çevrilmeyenler (ayar, test ya da yetki matrisi değerlendirmesi adayı): yeni endpoint için kaynak kaydı + izin + rol üçlüsü (satır 214–221), `Action`/`Resource` sabit biçimi (satır 351–374), istek başına ability önbelleği (CASL-08), hassas endpoint'e özel hız sınırı (satır 457–473), RS256 imza, HttpOnly cookie, refresh token'ın hash'li saklanması, Redis'li hız sınırı (`IRON_RULES_SHARED.md` satır 338–348).
 - Alınmayanlar: rol ve kaynak adları, token süreleri ve eşzamanlı oturum sayısı (proje ayarı), `src-v2` yolları, eklentinin kendi hook'u.
 - Kullanıcı kararı bekleyen: repository deseninin beşinci adımı kişisel alanı maskelemeyi söyler (satır 264); kullanıcının 2026-11-17 talimatı gereği alınmadı (TS-001 Ç6).
-- Ortak parça (belgedeki adlar): `shared/authorization` altında dekoratörler, PoliciesGuard, AbilityFactory, FieldFilterHelper, ResourceRegistry.
+- Ortak parça (bu depodaki adlar; 2026-11-25'te ölçüldü): `shared/guvenlik` altında uç işaretleri ve kimlik guard'ı; `shared/yetki` altında yetki guard'ı, yetenek derleyici, şart çevirici, kaynak kataloğu, okuma ve yazma kapısı. Kanondaki adlar: `shared/authorization`, PoliciesGuard, AbilityFactory, FieldFilterHelper, ResourceRegistry.
 
 ## Doğrulama
-Belgede yok; denetim kimliği ve ölçüm tarihi henüz yok. Belge gelecekteki bir lint kuralını anar (satır 308).
-Öneri (ajan): Birim: uç (endpoint) ve handler.
+- Denetim: DN-002 (yapı denetimi) çekirdek olmayan feature repository'lerinde her okuma deyiminin yetki süzgecini taşıdığını ve birleştirme çağrısıyla kapandığını sınar. Uç işaretleri uygulama açılırken sınanır (`backend/src/shared/guvenlik/infrastructure/isaret-denetimi.ts`); bu ikincisi henüz bir denetim düğümüne bağlanmadı.
+- Ölçüm (2026-11-25): yapı denetimi geçti (rol yeni biçimde; grup, kullanıcı, üyelik, yetenek ve oturumun yönetim repository'leri taşınmayı bekliyor); işaretsiz uç 0 (uygulama açılıyor); işleyicilerde derlenmiş yetkiye ya da yetki kapısına başvuran satır 0 (arama).
+- Birim: uç ve işleyici. Kanon belgesi doğrulama yazmaz; gelecekteki bir lint kuralını anar (satır 308).
 
 ## Varsayımlar
 - Klasör yolları KR-005 ve KR-006 taslaklarına dayanır (`backend/src/features`, `backend/src/shared/authorization`); varsayım, 2026-12-21'e kadar yürüyen iskelette kesinleşecek.
@@ -79,3 +80,11 @@ Ham kaynak düzenlenmez; düzeltme kullanıcının eklenti deposunda yapılır.
 - AUTH-03 örneğinde outbox satırı transaction kapandıktan sonra yazılır (satır 1949–1958); TXN-03 aynı transaction'da yazılmasını şart koşar (satır 561–568).
 - CASL-08 örneğinde ability önbelleği kullanıcı kimliğine bakmadan istekteki ilk sonucu döndürür (satır 436–445); aynı istekte başka bir kullanıcı için çağrı durumunu belge söylemez. BADI tuzak kaydı T-0534 bunun orada yaşandığını yazar (hook hatırlatması, 2026-11-21).
 - SEC-10 gövdedeki `requesterId`'yi doğrulamayla reddeder, SEC-11 değeri global interceptor'a yazdırır (satır 1129–1165); NestJS belgesine göre interceptor pipe'tan önce çalışır (okundu 2026-11-21), BADI tuzak kaydı T-0394 mekanizmanın orada güvenilmez bulunduğunu yazar. Bu depoda ölçülmedi (KU-013).
+
+## Açık uçlar
+- AU-1: Ölçütler kanonda yok. Ajanın önerisi: yetki kodu içeren işleyici sayısı 0 ve işaretsiz uç sayısı 0 (ikincisi açılış denetimiyle sağlanıyor). Ölçütleri kullanıcı belirleyecek.
+- AU-2: Bu seçimle neyden vazgeçildiği kanonda yok; kullanıcı yazacak.
+- AU-3: Geri dönüş: geri almanın bedeli ve karara yeniden bakma tetiği kanonda yok.
+- AU-4: Kişisel alanın maskelenmesi (kanondaki desenin beşinci adımı) alınmadı (TS-001 Ç6); kullanıcı aksini söyleyene kadar maskeleme yoktur.
+- AU-5: Kanondaki istisna "yazma komutunda kayıt düzeyinde son denetim" (`throwUnlessCan`) bu depoda yoktur; yerine şartlı yazma vardır. Başka bir istisna yolu tanımlı değil: sapma gerekirse nasıl karar verileceği yazılmadı.
+- AU-6: Yetki koşullarının baktığı kullanıcı nitelikleri (kanonda `groupPath` örneği) bu base için belirlenmedi; bugünkü yer tutucular KR-008'dedir.

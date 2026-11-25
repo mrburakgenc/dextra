@@ -27,7 +27,8 @@ argument-hint: <yükümlülük>
    - `rol`: kural yalnız bazı rollere gidecekse (`rol: [uygulayici, inceleyici]`).
    - `kesinlik`: her ajanın doğarken bilmesi gerekiyorsa `kesin`; değilse `olagan`.
    - `denetim_duzey`: önce kuralı yapıya taşımayı dene (çiğnenince derlenmesin); olmuyorsa `mekanik` ya da `test`; o da olmuyorsa `gozden-gecirme` ve bir `bakis` tarihi.
-5. Kesin kuralda "İhlal örneği" ve "Uygun örnek" bölümlerini somut yaz.
+   - `denetim_ref` (mekanik kuralda): denetim düğümünün kimliği. Denetimin push kapısında koşması için o düğümün baş bloğuna `komut: <deponun kökünde çalışan kabuk komutu>` yazılır (aracın kendi denetimiyse `cesit: yerlesik`); komutu `python3 harness/h.py denetim kos <DN-NNN>` ile dene. Kapı yalnız kabul edilmiş kurala bağlı, kabul edilmiş denetimi koşturur. Köşeli parantezle başlayan komut tırnak içine yazılır (`komut: "[ -f harness.json ]"`); kabul edilmiş denetimin komutu değişirse sürümü de artar. Komut yalnız git'in push kapısında (`denetle --dal`) koşar, ajanın push kancasında koşmaz; kapı kesilirse komutun süreç grubu da durdurulur, ama kendi oturumunu açan torun süreç izlenemez.
+5. Kesin kuralda "İhlal örneği" ve "Uygun örnek" bölümlerini somut yaz. Karara bağlanmamış bir nokta kalırsa onu "belgede yok" ya da "kullanıcıya sorulacak" diye düz metne yazma; açık uç olarak ekle: `python3 harness/h.py acik-uc ekle KU-NNN "<soru>"` (iş o noktaya gelince soru kullanıcıya gider).
 6. `python3 harness/h.py denetle` ile kontrol et; kuralın hangi dosyalara düştüğünü `python3 harness/h.py sor <KİMLİK>` ile göster.
 7. Kullanıcıya kuralı özetle ve kabul etmek isteyip istemediğini sor. İsterse `python3 harness/h.py kabul <KİMLİK>` çalıştır (kararı da taslaksa onu da aynı komuta yaz); hook taslağı kullanıcıya gösterip sorar. Kimlikleri kullanıcıya yazdırma, komutu sen çalıştır.
 

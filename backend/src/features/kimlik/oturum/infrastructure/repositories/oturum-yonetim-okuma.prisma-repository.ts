@@ -1,76 +1,117 @@
-// IOturumYonetimOkumaRepo'nun gerçeklemesi: oturum kayıtlarını işlemin istemcisiyle, yetki kapısının
-// okuma yüzünden okur.
+// IOturumYonetimOkumaRepo'nun gerçeklemesi: oturum kayıtlarını işlemin istemcisiyle okur. Sorguyu
+// kendisi yazar; satır süzgecini, kolon seçimini ve okumayı kapatan işlevi yetki kapısının okuma
+// yüzünden alır (TS-007 "Yapı").
 import type {
   RepoFabrikasi,
   RepoIstemcisi,
 } from '../../../../../shared/database/infrastructure/registrar.js';
-import type { KosulOgesi } from '../../../../../shared/yetki/application/sart-cevirici.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import { KodluHata } from '../../../../../shared/http/domain/kodlu-hata.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { SatirSuzgeci } from '../../../../../shared/yetki/infrastructure/model-tipleri.js';
 import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import { HAREKETSIZLIK_SINIRI_MS } from '../../domain/entities/oturum.entity.js';
-import type { IOturumYonetimOkumaRepo } from '../../domain/repositories/i-oturum-yonetim.repository.js';
+import type {
+  IOturumYonetimOkumaRepo,
+  OturumGorunumu,
+} from '../../domain/repositories/i-oturum-yonetim.repository.js';
 
-const KAYNAK = 'Oturum';
+// Bir okumanın koşulu ve baktığı kolonlar.
+interface Parca {
+  readonly kosul: SatirSuzgeci<'Oturum'>;
+  readonly bakilan: readonly string[];
+}
 
 // Açıklık süzgecinin parçaları (TS-002 "Veri modeli"; oturum denetimiyle aynı tanım). Açık oturum:
 // kapatılmamış, mutlak bitişi geçmemiş ve son döndürmesinden beri hareketsizlik sınırı dolmamış.
-// Açık olmayanlar bunun tersidir ve üç ayrık parçaya bölünür, çünkü kapının koşulu yalnız "ve"
-// bağlar: kapatılmış; kapatılmamış ve mutlak bitişi geçmiş; kapatılmamış, mutlak bitişi geçmemiş ve
-// hareketsizlik sınırı dolmuş.
-function aciklikParcalari(acik: boolean, simdi: Date): KosulOgesi[][] {
-  const an = simdi.toISOString();
-  const sinir = new Date(
-    simdi.getTime() - HAREKETSIZLIK_SINIRI_MS,
-  ).toISOString();
-  const kapatilmamis: KosulOgesi = { alan: 'kapatilmaZamani', islec: 'bos' };
-  const bitmemis: KosulOgesi = {
-    alan: 'mutlakBitisZamani',
-    islec: 'buyuk',
-    deger: an,
-  };
+// Açık olmayanlar bunun tersidir ve üç ayrık parçaya bölünür: kapatılmış; kapatılmamış ve mutlak
+// bitişi geçmiş; kapatılmamış, mutlak bitişi geçmemiş ve hareketsizlik sınırı dolmuş. Her parça ayrı
+// okunur ve yalnız kendi baktığı kolonları yetkiye verir: bir parçanın kolonlarını gören kural o
+// parçanın okumasına katılır.
+function aciklikParcalari(acik: boolean, simdi: Date): Parca[] {
+  const sinir = new Date(simdi.getTime() - HAREKETSIZLIK_SINIRI_MS);
   if (acik) {
     return [
-      [
-        kapatilmamis,
-        bitmemis,
-        { alan: 'sonDondurmeZamani', islec: 'buyuk', deger: sinir },
-      ],
+      {
+        kosul: {
+          kapatilmaZamani: null,
+          mutlakBitisZamani: { gt: simdi },
+          sonDondurmeZamani: { gt: sinir },
+        },
+        bakilan: ['kapatilmaZamani', 'mutlakBitisZamani', 'sonDondurmeZamani'],
+      },
     ];
   }
   return [
-    [{ alan: 'kapatilmaZamani', islec: 'dolu' }],
-    [
-      kapatilmamis,
-      { alan: 'mutlakBitisZamani', islec: 'kucuk_esit', deger: an },
-    ],
-    [
-      kapatilmamis,
-      bitmemis,
-      { alan: 'sonDondurmeZamani', islec: 'kucuk_esit', deger: sinir },
-    ],
+    {
+      kosul: { kapatilmaZamani: { not: null } },
+      bakilan: ['kapatilmaZamani'],
+    },
+    {
+      kosul: { kapatilmaZamani: null, mutlakBitisZamani: { lte: simdi } },
+      bakilan: ['kapatilmaZamani', 'mutlakBitisZamani'],
+    },
+    {
+      kosul: {
+        kapatilmaZamani: null,
+        mutlakBitisZamani: { gt: simdi },
+        sonDondurmeZamani: { lte: sinir },
+      },
+      bakilan: ['kapatilmaZamani', 'mutlakBitisZamani', 'sonDondurmeZamani'],
+    },
   ];
 }
 
-// Kapının sırasıyla (alan, sonra kimlik artan) a, b'den önce mi. Sıralanabilen alanlar zamandır.
-function once(a: Kayit, b: Kayit, { alan, yon }: Siralama): boolean {
-  const fark = (a[alan] as Date).getTime() - (b[alan] as Date).getTime();
+function yon({ yon }: Siralama): 'asc' | 'desc' {
+  return yon === 'artan' ? 'asc' : 'desc';
+}
+
+// Sıralama alanları sorgu şemasındakilerdir; başka alan şemadan geçmez.
+function oturumSirasi(siralama: Siralama) {
+  switch (siralama.alan) {
+    case 'baslangicZamani':
+      return { baslangicZamani: yon(siralama) };
+    case 'sonDondurmeZamani':
+      return { sonDondurmeZamani: yon(siralama) };
+  }
+  throw new Error(`Sıralama için bilinmeyen alan: ${siralama.alan}`);
+}
+
+// Kaydın sıralanan alandaki zamanı. Sıralanan alan bakılan kolondur: okumaya katılan her kural onu
+// görür ve kayıtta vardır.
+function sirasi(kayit: OturumGorunumu, alan: string): number {
+  switch (alan) {
+    case 'baslangicZamani':
+      return Number(kayit.baslangicZamani);
+    case 'sonDondurmeZamani':
+      return Number(kayit.sonDondurmeZamani);
+  }
+  throw new Error(`Sıralama için bilinmeyen alan: ${alan}`);
+}
+
+// Sorgunun sırasıyla (alan, sonra kimlik artan) a, b'den önce mi.
+function once(
+  a: OturumGorunumu,
+  b: OturumGorunumu,
+  { alan, yon }: Siralama,
+): boolean {
+  const fark = sirasi(a, alan) - sirasi(b, alan);
   if (fark !== 0) {
     return yon === 'artan' ? fark < 0 : fark > 0;
   }
-  return (a['id'] as string) < (b['id'] as string);
+  return a.id < b.id;
 }
 
-// Her biri kapının sırasıyla gelen ayrık listeleri sırayı koruyarak birleştirir. İlk n çıktı yalnız
+// Her biri sorgunun sırasıyla gelen ayrık listeleri sırayı koruyarak birleştirir. İlk n çıktı yalnız
 // listelerin ilk n öğesine bağlıdır; bu yüzden her parçadan ilk (atla + al) kayıt istenip birleşimden
 // sayfa kesilince sayfalar birbiriyle tutarlıdır.
-function birlestir(listeler: readonly Kayit[][], siralama: Siralama): Kayit[] {
+function birlestir(
+  listeler: readonly OturumGorunumu[][],
+  siralama: Siralama,
+): OturumGorunumu[] {
   const kalanlar = listeler.map((liste) => [...liste]);
-  const sonuc: Kayit[] = [];
+  const sonuc: OturumGorunumu[] = [];
   for (;;) {
-    let secilen: Kayit[] | undefined;
+    let secilen: OturumGorunumu[] | undefined;
     for (const kalan of kalanlar) {
       const [bas] = kalan;
       const [enIyi] = secilen ?? [];
@@ -89,36 +130,73 @@ function birlestir(listeler: readonly Kayit[][], siralama: Siralama): Kayit[] {
   }
 }
 
+// Süzülen ve sıralanan kolonlar yetkinin bakılan kolonlarıdır; sıranın sonunda kimlik vardır. Kişinin
+// verdiği süzgeçlerin tipini uç şeması doğrular (TS-002 AK-44).
 export function oturumYonetimOkumaPrismaRepository(
   kapi: OkumaKapisi,
 ): RepoFabrikasi<IOturumYonetimOkumaRepo> {
-  return (istemci: RepoIstemcisi) => ({
-    liste: async ({ kullaniciId, acik, simdi, siralama, atla, al }) => {
-      const kisi: KosulOgesi[] =
-        kullaniciId === undefined
-          ? []
-          : [{ alan: 'kullaniciId', islec: 'esit', deger: kullaniciId }];
-      const parcalar =
-        acik === undefined ? [[]] : aciklikParcalari(acik, simdi);
-      if (parcalar.length === 1) {
-        return kapi.liste(istemci, KAYNAK, {
-          kosul: [...kisi, ...(parcalar[0] ?? [])],
-          siralama: [siralama],
-          sayfa: { atla, al },
+  return (istemci: RepoIstemcisi) => {
+    const oku = async (
+      { kosul, bakilan }: Parca,
+      kullaniciId: string | undefined,
+      siralama: Siralama,
+      atla: number,
+      al: number,
+    ): Promise<OturumGorunumu[]> => {
+      const yetki = kapi.yetki('Oturum', {
+        bakilan: [
+          ...(kullaniciId === undefined ? [] : ['kullaniciId']),
+          ...bakilan,
+          siralama.alan,
+        ],
+      });
+      const satirlar = await istemci.oturum.findMany({
+        where: {
+          AND: [
+            kullaniciId === undefined ? {} : { kullaniciId },
+            kosul,
+            yetki.satirlar,
+          ],
+        },
+        orderBy: [oturumSirasi(siralama), { id: 'asc' }],
+        skip: atla,
+        take: al,
+        select: yetki.kolonlar,
+      });
+      return yetki.kayitlar(satirlar, (where, select) =>
+        istemci.oturum.findMany({ where, select }),
+      );
+    };
+    return {
+      liste: async ({ kullaniciId, acik, simdi, siralama, atla, al }) => {
+        const parcalar =
+          acik === undefined
+            ? [{ kosul: {}, bakilan: [] }]
+            : aciklikParcalari(acik, simdi);
+        const [tekParca] = parcalar;
+        if (parcalar.length === 1 && tekParca !== undefined) {
+          return oku(tekParca, kullaniciId, siralama, atla, al);
+        }
+        const listeler: OturumGorunumu[][] = [];
+        for (const parca of parcalar) {
+          listeler.push(await oku(parca, kullaniciId, siralama, 0, atla + al));
+        }
+        return birlestir(listeler, siralama).slice(atla, atla + al);
+      },
+      tek: async (id) => {
+        const yetki = kapi.yetki('Oturum', { bakilan: [] });
+        const satirlar = await istemci.oturum.findMany({
+          where: { AND: [{ id }, yetki.satirlar] },
+          select: yetki.kolonlar,
         });
-      }
-      const listeler: Kayit[][] = [];
-      for (const parca of parcalar) {
-        listeler.push(
-          await kapi.liste(istemci, KAYNAK, {
-            kosul: [...kisi, ...parca],
-            siralama: [siralama],
-            sayfa: { atla: 0, al: atla + al },
-          }),
+        const [kayit] = await yetki.kayitlar(satirlar, (where, select) =>
+          istemci.oturum.findMany({ where, select }),
         );
-      }
-      return birlestir(listeler, siralama).slice(atla, atla + al);
-    },
-    tek: (id) => kapi.tek(istemci, KAYNAK, id),
-  });
+        if (kayit === undefined) {
+          throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
+        }
+        return kayit;
+      },
+    };
+  };
 }

@@ -5,7 +5,7 @@
 
   oturum-basi        SessionStart      durum özeti; sıkıştırma sonrası "gösterildi" kaydını sıfırlar
   istem              UserPromptSubmit  plan modunda tasarımcı paketini bir kez ekler
-  duzenleme-oncesi   PreToolUse Edit|Write   korunan yollar, kabul yasağı, okundu kapısı
+  duzenleme-oncesi   PreToolUse Edit|Write   korunan yollar, kabul yasağı, okundu kapısı; işçide geçen yolun kaydı
   duzenleme-sonrasi  PostToolUse Edit|Write  bilgi tabanı düğümü değiştiyse bulguları söyler
   komut-oncesi       PreToolUse Bash   yasak bayraklar, kabul, görev koşturma onayı, push kapısı
   ajan-dogarken      SubagentStart     rolün kesin paketini alt ajanın bağlamına ekler
@@ -23,7 +23,9 @@ import hashlib
 import json
 import os
 import pathlib
+import posixpath
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -42,8 +44,12 @@ OGRETICI = ("Öğretici mod açık: her tasarım seçiminde tekniğin adını, n
             "kaybettirdiğini ve alternatifini söyle. Tek yönlü kararların ilk taslağını kullanıcı "
             "yazar; sen eksik bölümü ve zayıf gerekçeyi göstererek çürütmeye çalışırsın.")
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
-PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b|\bgh\s+pr\s+(?:create|merge)\b")
-YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path")
+PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b|\bgh\s+pr\s+(?:create|merge)\b")   # çözümlenemeyen komut için
+KOMUT_AYIRICI = ";&|()\n`"
+GIT_DEGERLI_SECENEK = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix")
+GH_DEGERLI_SECENEK = ("-R", "--repo")
+KABUK = ("sh", "bash", "zsh", "dash")   # -c seçeneğinin değeri komuttur
+YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path", re.I)   # git'in ayar anahtarları harfe duyarsız
 # Hook yolunu yalnız okuyan tek biçim serbesttir; anahtarın geçtiği başka her komut (atama, silme, -c, alıntı)
 # reddedilir. Dar tutulur: kapıyı gevşeten istisna, kapının kendisinden geniş olmamalı.
 HOOK_YOLU_OKUMA = re.compile(r"\bgit(?:\s+-C\s+\S+)?\s+config(?:\s+--(?:local|global|system|worktree))?\s+--get(?:-all)?"
@@ -58,15 +64,27 @@ TIRNAKLI = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 YONLENDIRME = re.compile(r"(?<![<>=\-])&?\d*>>?\s*([^\s|;&<>]+)")
 GECICI_HEDEF = re.compile(r"^(?:&|/dev/null$|/dev/std|/tmp/|/private/tmp/|\$TMPDIR|\$\{TMPDIR\})")
 YERINDE_DEGISTIREN = re.compile(r"\btee\b|\bsed\s+(?:-\S+\s+)*-i|\bperl\s+(?:-\S+\s+)*-\S*i\S*\b")
-KABUL_KOMUTU = re.compile(r"h\.py[\"']?\s+kabul\b((?:[ \t]+[A-Z]{2}-\d{3,})*)")
 # Bu izin modlarında onay sorusu gösterilmez (biri soruları atlar, öteki soru gerektiren her çağrıyı reddeder).
 SORU_GOSTERMEYEN_MODLAR = ("bypassPermissions", "dontAsk")
-GOREV_ISLEM = re.compile(r"h\.py[\"']?\s+gorev\s+(kos|incele|al|at)\s+(GV-\d+)")
+# Metin ağı: sözcük ağının (_arac_cagrilari) yanında her zaman koşar. Sözcük ağının görmediği çağrıyı (kabuk olmayan
+# yorumlayıcının -c metni, betiğe sarılmış çağrı) metindeki örüntüden görür; iki ağın birleşimi görülmüş sayılır.
+GOREV_ISLEM = re.compile(r"h\.py[\"']?\s+gorev\s+(kos|incele|al|at|tazele|genislet)\s+(GV-\d+)")
 PLAN_YURUT = re.compile(r"h\.py[\"']?\s+plan\s+yurut\s+(EP-\d+)")
+KABUL_METNI = re.compile(r"h\.py[\"']?\s+kabul\b")
+KAPAT_METNI = re.compile(r"h\.py[\"']?\s+acik-uc\s+kapat\b")
+CEVAP_METNI = re.compile(r"(?<![\w-])--cevap(?![\w-])")
+METIN_REDDI = ("Bu komutta aracın izin işareti isteyen bir çağrısı (kabul, --taslakla, --cevap, açık uç kapatma) "
+               "var, ama bağımsız değişkenleri güvenle çıkarılamıyor (başka bir yorumlayıcının ya da betiğin içinde); "
+               "kanca işaret yazamaz, komutu ne sorar ne geçirir. Komutu düz biçimde yaz: `python3 harness/h.py ...`.")
+IZINLI_SOZCUK = re.compile(r"(?<![\w-])(?:kabul|kapat|yurut|kos|incele|al|at|tazele|genislet|--taslakla|--cevap)"
+                           r"(?![\w-])")
+TASLAKLA = re.compile(r"(?<![\w-])--taslakla(?![\w-])")   # tırnaklı bayrak da: fazladan sormak zararsızdır
 GOREV_SORUSU = {"kos": "Bu görev ayrı bir oturumda, kendi çalışma ağacında koşturulacak",
                 "incele": "Bu görev, işi yapmayan ikinci bir oturuma inceletilecek",
-                "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek"}
-KANIT = re.compile(r"\.harness/gorev/GV-\d+/(?:durum|rapor|inceleme-rapor|bitis|inceleme)\.json$")
+                "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek",
+                "tazele": "Bu görevin ağacı oturum dalının ucuna getirilecek",
+                "genislet": "Bu görevin dosya listesi genişletilecek (kapsam genişletmek karardır)"}
+KANIT = re.compile(r"\.harness/gorev/GV-\d+/(?:(?:durum|rapor|inceleme-rapor|bitis|inceleme)\.json|kosular\.jsonl)$")
 PLAN_DOSYASI = re.compile(r"\.harness/plan/.+\.md$")
 CD = re.compile(r"^\s*cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)\s*(?:&&|;)")
 ANA_AGAC_REDDI = ("Bu oturum ana çalışma ağacında. Her oturum kendi çalışma ağacında (worktree) çalışır: "
@@ -158,13 +176,171 @@ def _heredoc_at(metin: str) -> str:
     return "\n".join(cikti)
 
 
+def _yerine_koymalar(metin: str) -> list:
+    """Tek tırnak dışındaki (tırnaksız ya da çift tırnaklı) komut yerine koyma gövdeleri: $( … ) ve ters tırnak.
+    Kapanmamış gövde metnin sonuna dek sürer."""
+    govdeler, i, tirnak = [], 0, None
+    while i < len(metin):
+        c = metin[i]
+        if tirnak == "'":
+            tirnak = None if c == "'" else tirnak
+        elif c == "\\":
+            i += 1
+        elif c == '"':
+            tirnak = None if tirnak else '"'
+        elif c == "'" and not tirnak:
+            tirnak = "'"
+        elif c == "`":
+            son = metin.find("`", i + 1)
+            son = len(metin) if son < 0 else son
+            govdeler.append(metin[i + 1:son])
+            i = son
+        elif metin.startswith("$(", i):
+            son, derinlik = i + 2, 1
+            while son < len(metin):
+                derinlik += {"(": 1, ")": -1}.get(metin[son], 0)
+                if not derinlik:
+                    break
+                son += 1
+            govdeler.append(metin[i + 2:son])
+            i = son
+        i += 1
+    return govdeler
+
+
+def _alt_komutlar(sozcukler: list, degerli: tuple) -> list:
+    """Seçenekler (değer alanlar değeriyle birlikte) atlanınca kalan sözcükler; ilki alt komuttur."""
+    kalan, i = [], 0
+    while i < len(sozcukler):
+        if sozcukler[i].startswith("-"):
+            i += 2 if sozcukler[i] in degerli else 1
+        else:
+            kalan.append(sozcukler[i])
+            i += 1
+    return kalan
+
+
+def push_mu(metin: str) -> bool:
+    """Komut gerçekten gönderiyor mu. Komut ayırıcılarla (; & | ve satır sonu, alt kabuk ayraçları, ters tırnak)
+    parçalara, parçalar boşluğa göre kabuk sözcüklerine bölünür; tırnak içi metin tek sözcüktür, komut sayılmaz.
+    Komutun konumuna bakılmaz: parçanın herhangi bir sözcüğünün dosya adı git ise ve ondan sonra git'in seçenekleri
+    atlanınca gelen alt komut push ise, ya da dosya adı gh olan sözcükten sonra (seçenekler atlanarak) `pr create|merge`
+    geliyorsa push'tur; böylece her sarmalayıcı (time, nice, xargs, sudo, if … then) kendiliğinden kapsanır.
+    Kabukta çalışan iç metin aynı tanıyıcıya yeniden verilir: tek tırnak dışındaki $( … ) ve ters tırnak gövdeleri,
+    sh/bash/zsh/dash için -c değeri ve eval'in bağımsız değişkenleri. Çözümlenemeyen komutta (kapanmamış tırnak,
+    yorumdaki kesme işareti) sözcük desenine düşülür: kapı ölçemediğini geçirmez."""
+    if any(push_mu(g) for g in _yerine_koymalar(metin)):
+        return True
+    lex = shlex.shlex(metin, posix=True, punctuation_chars=KOMUT_AYIRICI)
+    lex.whitespace = " \t\r"   # satır sonu ayırıcıdır
+    lex.whitespace_split = True   # sözcük yalnız boşlukta ve ayırıcıda biter ($REPO, a@b:c tek sözcük kalır)
+    lex.commenters = ""        # shlex sözcük ortasındaki '#' işaretini de yorum sayar; kabuk saymaz
+    try:
+        sozcukler = list(lex)
+    except ValueError:
+        return bool(PUSH.search(metin))
+    parca = []
+    for s in sozcukler + [";"]:
+        if not (s and all(c in KOMUT_AYIRICI for c in s)):
+            parca.append(s)
+            continue
+        for i, sozcuk in enumerate(parca):
+            ad, sonra = posixpath.basename(sozcuk), parca[i + 1:]
+            if (ad == "git" and _alt_komutlar(sonra, GIT_DEGERLI_SECENEK)[:1] == ["push"]
+                    or ad == "gh" and _alt_komutlar(sonra, GH_DEGERLI_SECENEK)[:2] in (["pr", "create"],
+                                                                                        ["pr", "merge"])
+                    or ad == "eval" and push_mu(" ".join(sonra))
+                    or ad in KABUK and any(re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", secenek) and push_mu(deger)
+                                           for secenek, deger in zip(sonra, sonra[1:]))):
+                return True
+        parca = []
+    return False
+
+
+AYIRICI_ISARETI = "\x00"
+
+
+def _ayiricilari_isaretle(metin: str) -> str:
+    """Tırnak dışındaki komut ayırıcıyı ve yönlendirmeyi (2>&1, >dosya, <dosya) AYIRICI_ISARETI'ne çevirir; tırnaklı
+    sözcükteki ayırıcı ve yönlendirme işareti ('3>2 olsun', '>5', ';') sözcüğün parçası olarak kalır."""
+    cikti, tirnak, kacis = [], None, False
+    for c in metin:
+        if kacis:
+            kacis = False
+        elif tirnak:
+            tirnak = None if c == tirnak else tirnak
+            kacis = c == "\\" and tirnak == '"'
+        elif c in "'\"":
+            tirnak = c
+        elif c == "\\":
+            kacis = True
+        elif c in KOMUT_AYIRICI + "<>":
+            if c in "<>":   # sözcük başındaki tanıtıcı numarası (2>) yönlendirmenin parçasıdır
+                j = len(cikti)
+                while j and cikti[j - 1].isdigit():
+                    j -= 1
+                if j == 0 or cikti[j - 1] in " \t\r" + AYIRICI_ISARETI:
+                    cikti[j:] = [AYIRICI_ISARETI] * (len(cikti) - j)
+            c = AYIRICI_ISARETI
+        cikti.append(c)
+    return "".join(cikti)
+
+
+def _arac_cagrilari(metin: str) -> list | None:
+    """Komuttaki bütün `h.py` çağrılarının araca ulaşacak bağımsız değişkenleri (komut adı dahil), yinelenmeden;
+    kanca izin isteyen komutu bunlardan tanır ve onay işaretinin özetini bunlardan hesaplar (h.komut_ozeti).
+    Gönderme tanıyıcısı gibi: komut ayırıcıda parçalara, parçalar kabuk sözcüklerine bölünür (tırnaklar kalkar, satır
+    devamı birleşir; tırnak dışındaki ayırıcı ve yönlendirme (2>&1, >dosya) parçayı bitirir, tırnaklı sözcükteki işaret
+    sözcükte kalır). Bir parçada dosya adı h.py olan ilk sözcükten sonraki sözcükler çağrının bağımsız değişkenleridir;
+    böylece tırnaklı alt komut ve kimlik, satır devamı ve önek komutları aynı sonucu verir. Kabukta çalışan iç metin
+    (tek tırnak dışındaki $( … ) ve ters tırnak, sh/bash/zsh/dash -c değeri (-c -- dahil), eval) yeniden çözülür.
+    Yanlış çözümleme işaretle korunan komutta (kabul, taslak izni, cevap, kapatma) kapalı tarafa düşer: araç başka bir
+    özet hesaplar ve koşturmaz. Görmediği çağrıyı metin ağı yakalar (_komut_karari). Çözümlenemeyen komutta None."""
+    cagrilar = []
+    for govde in _yerine_koymalar(metin):
+        ic = _arac_cagrilari(govde)
+        if ic is None:
+            return None
+        cagrilar += ic
+    lex = shlex.shlex(_ayiricilari_isaretle(metin.replace("\\\n", "")), posix=True,
+                      punctuation_chars=AYIRICI_ISARETI)
+    lex.whitespace, lex.whitespace_split, lex.commenters = " \t\r", True, ""
+    try:
+        sozcukler = list(lex)
+    except ValueError:
+        return None
+    parca = []
+    for s in sozcukler + [AYIRICI_ISARETI]:
+        if not (s and set(s) == {AYIRICI_ISARETI}):
+            parca.append(s)
+            continue
+        for i, sozcuk in enumerate(parca):
+            ad, sonra = posixpath.basename(sozcuk), parca[i + 1:]
+            c = next((k for k, o in enumerate(sonra) if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", o)), None)
+            deger = sonra[c + 1:] if ad in KABUK and c is not None else []
+            ic = ([" ".join(sonra)] if ad == "eval" else
+                  (deger[1:] if deger[:1] == ["--"] else deger)[:1])   # `sh -c -- '...'`: -- sonrası koşar
+            if ic:
+                ic = _arac_cagrilari(ic[0])
+                if ic is None:
+                    return None
+                cagrilar += ic
+                break
+            if ad == "h.py":
+                cagrilar.append(sonra)
+                break
+        parca = []
+    return [list(a) for a in dict.fromkeys(map(tuple, cagrilar))]
+
+
 def _kirmizilar(kok: pathlib.Path) -> list:
     eksik = h.kanarya()
     if eksik:
         raise h.HarnessHata("kapı kendi bozuk örneğinde şunları yakalayamadı: %s" % ", ".join(eksik))
     git_var = subprocess.run(["git", "rev-parse", "--verify", "--quiet", h.ayar_oku(kok)["taban_dal"]],
                              cwd=kok, capture_output=True).returncode == 0
-    return [b for b in h.denetle(kok, taban=git_var) if b["seviye"] == "kirmizi"]
+    # Denetim komutları burada koşmaz (kancanın süre sınırı 30 sn); onları git'in push kapısı (`denetle --dal`) koşturur
+    return [b for b in h.denetle(kok, taban=git_var, komutlar=False) if b["seviye"] == "kirmizi"]
 
 
 def _bulgu_metni(bulgular: list, sinir: int = 12) -> str:
@@ -212,10 +388,26 @@ def oturum_basi(girdi: dict, ortam: dict) -> dict | None:
         satirlar += ["Açık epic: " + s for s in plan.acik_planlar(kok)]
     except (h.HarnessHata, OSError, ValueError):
         pass
+    kosanlar = []
+    for p in sorted(gorev._kayit(kok).glob("GV-*")):
+        isaret = gorev.kosu_isareti(p)
+        if isaret:
+            kosanlar.append("%s %s" % (p.name, gorev.kosu_metni(isaret)))
+    if kosanlar:
+        satirlar.append("Koşan görev: %s." % ", ".join(kosanlar))
     if taslak:
         satirlar.append("Kabul bekleyen %d taslak: %s. Kabulü yalnız kullanıcı verir: kullanıcı isterse "
                         "`python3 harness/h.py kabul <KİMLİK>` çalıştırılır ve hook ona sorar."
                         % (len(taslak), ", ".join(taslak)))
+    uclar = h.acik_uc_sayilari(dz)
+    if uclar:
+        satirlar.append("Açık uç: %d (%s). Karara bağlanmamış noktalardır: o noktadaki seçimi kullanıcı yapar; liste: "
+                        "`python3 harness/h.py acik-uc`." % (sum(n for _, n in uclar),
+                                                            ", ".join("%s %d" % ku for ku in uclar)))
+    ajan = h.ajan_karari_sayimi(dz)
+    if ajan:
+        satirlar.append("Ajan kararı: %s. Kullanıcıya sorulmadan verilmiş kararlardır; taslak kabul edilince onlar da "
+                        "teyit edilmiş olur; liste: `python3 harness/h.py ajan-karari`." % ajan)
     satirlar.append("Zincir temiz." if not kirmizi else
                     "Zincirde %d kırmızı bulgu var:\n%s" % (len(kirmizi), _bulgu_metni(kirmizi, 6)))
     if dz.ayar.get("ogretici"):
@@ -244,6 +436,24 @@ def _yeni_metinler(arac_girdisi: dict) -> str:
     parcalar = [str(arac_girdisi.get(a, "")) for a in ("content", "new_string", "new_source")]
     parcalar += [str(e.get("new_string", "")) for e in arac_girdisi.get("edits") or [] if isinstance(e, dict)]
     return "\n".join(parcalar)
+
+
+def _duzenleme_sonucu(mevcut: str, arac_girdisi: dict) -> str:
+    """Düzenleme uygulanınca dosyanın metni: Write içeriği ya da Edit/MultiEdit değiştirmelerinin sırayla uygulanmışı."""
+    if "content" in arac_girdisi:
+        return str(arac_girdisi["content"])
+    metin = mevcut
+    for e in [arac_girdisi] + [e for e in arac_girdisi.get("edits") or [] if isinstance(e, dict)]:
+        if "old_string" in e:
+            metin = metin.replace(str(e["old_string"]), str(e.get("new_string", "")), -1 if e.get("replace_all") else 1)
+    return metin
+
+
+def _uc_kumesi(metin: str) -> set:
+    """Düğüm metnindeki açık ve kapanan uçlar, bölümlerine ayrıştırılmış olarak: {(numara, metin, bölüm)}. Satır
+    metnine değil bölüme bakılır: başlığı değiştirip ya da araya başlık koyup uçları düşüren düzenleme de görünür."""
+    d = {"_bolumler": h.bolumle(metin)[1]}
+    return {(no, m, b) for b in (h.ACIK_UCLAR, h.KAPANAN_UCLAR) for no, m in h.acik_uclar(d, b)}
 
 
 def duzenleme_oncesi(girdi: dict, ortam: dict) -> dict | None:
@@ -313,6 +523,17 @@ def duzenleme_oncesi(girdi: dict, ortam: dict) -> dict | None:
             return _red("Bir düğümü kabul durumuna yalnız kullanıcı getirir; dosyada durumu elle çevirme. Taslak "
                         "olarak bırak, kullanıcıya özetle ve `python3 harness/h.py kabul <KİMLİK>` çalıştır: "
                         "hook kullanıcıya sorar, onaylarsa düğüm kabul edilir.")
+        silinen = ["- AU-%d: %s (bölüm: %s)" % u
+                   for u in sorted(_uc_kumesi(mevcut) - _uc_kumesi(_duzenleme_sonucu(mevcut, arac)))]
+        if silinen:   # açık ucu silmek ya da değiştirmek kullanıcının kararıdır (TS-006 Yapı 19); eklemek serbest
+            mod = girdi.get("permission_mode")
+            if mod in SORU_GOSTERMEYEN_MODLAR:
+                return _red("Bu düzenleme açık uç satırını siliyor ya da değiştiriyor; bu kullanıcının kararıdır, ama "
+                            "bu izin modunda (%s) soru gösterilmez. Açık ucu kapatmak için: `python3 harness/h.py "
+                            "acik-uc kapat <KİMLİK> AU-<n> --karar \"...\"`." % mod)
+            return _karar("PreToolUse", "ask", "[harness] Bu düzenleme %s içinde açık uç satırını siliyor ya da "
+                          "değiştiriyor (onay ayarından bağımsız sorulur; karar verilen ucu kapatmanın yolu `h.py "
+                          "acik-uc kapat`):\n%s" % (goreli, "\n".join("  " + s for s in silinen)))
     # Okundu kapısı: bu dosyaya düşen yapı ve kurallar bu aktöre gösterildi mi?
     dz = h.Dizin(kok)
     yapi = dz.yapi_bul(goreli)
@@ -344,6 +565,20 @@ def duzenleme_oncesi(girdi: dict, ortam: dict) -> dict | None:
     return _red("\n".join(satirlar))
 
 
+def duzenleme_kapisi(girdi: dict, ortam: dict) -> dict | None:
+    """Düzenleme kapısı. İşçi oturumunda kapının geçirdiği yol görevin kaydına yazılır; koşu sonunda bu kayıtta
+    olmayan değişen dosya 'kapı dışı yazım' sayılır (gorev.kapi_disi)."""
+    karar = duzenleme_oncesi(girdi, ortam)
+    arac, isci = girdi.get("tool_input") or {}, ortam.get("HARNESS_GOREV")
+    dosya = arac.get("file_path") or arac.get("notebook_path")
+    if karar is None and isci and dosya:
+        hedef = (pathlib.Path(girdi.get("cwd") or ".") / dosya).resolve()   # mutlak yol birleştirmede korunur
+        kok = _kok(str(hedef.parent))
+        if kok is not None and hedef.is_relative_to(kok.resolve()):
+            gorev.kapidan_gecti(kok, isci, hedef.relative_to(kok.resolve()).as_posix())
+    return karar
+
+
 def duzenleme_sonrasi(girdi: dict, ortam: dict) -> dict | None:
     dosya = (girdi.get("tool_input") or {}).get("file_path")
     kok = _kok(str(pathlib.Path(dosya).parent)) if dosya else None
@@ -361,8 +596,9 @@ def duzenleme_sonrasi(girdi: dict, ortam: dict) -> dict | None:
     return _baglam("PostToolUse", "[harness] %s için bulgular:\n%s" % (goreli, _bulgu_metni(ilgili)))
 
 
-def _kabul_sorusu(girdi: dict, ortam: dict, metin: str) -> dict:
-    """Kabul komutunu ajan çalıştırır, kararı kullanıcı verir: kapı düğümü gösterip sorar, onay kaydını bırakır."""
+def _kabul_sorusu(girdi: dict, ortam: dict, metin: str, cagrilar: list) -> dict:
+    """Kabul komutunu ajan çalıştırır, kararı kullanıcı verir: kapı düğümü gösterip sorar, onay kaydını bırakır.
+    `cagrilar`: komuttaki kabul çağrılarının bağımsız değişkenleri; kimlikler aracın okuduğu gibi okunur."""
     if ortam.get("HARNESS_GOREV") or girdi.get("agent_id"):
         return _red("Kabulü yalnız kullanıcı verir; görev oturumu ve alt ajan kabul komutunu çalıştıramaz. "
                     "Taslağı bırak ve bildir; soruyu ana oturum kullanıcıya sordurur.")
@@ -371,8 +607,7 @@ def _kabul_sorusu(girdi: dict, ortam: dict, metin: str) -> dict:
         return _red("Kabul kullanıcının onayını ister, ama bu izin modunda (%s) onay sorusu gösterilmez. İzin modu "
                     "değiştirilir ya da komutu kullanıcı kendi terminalinde çalıştırır: "
                     "`python3 harness/h.py kabul <KİMLİK>`." % mod)
-    cagrilar = KABUL_KOMUTU.findall(metin)
-    kimlikler = h.kabul_sirasi(" ".join(cagrilar).split())
+    kimlikler = h.kabul_sirasi([a for c in cagrilar for a in c[1:] if not a.startswith("-")])
     if len(cagrilar) != 1 or not kimlikler:
         return _red("Kabul tek çağrıda ve kimlikleriyle istenir; karar ile kuralları birlikte verilebilir: "
                     "`python3 harness/h.py kabul KR-004 KU-007 KU-008`.")
@@ -387,19 +622,149 @@ def _kabul_sorusu(girdi: dict, ortam: dict, metin: str) -> dict:
         if d["durum"] != "taslak":
             return _red("%s taslak değil (durum: %s); kabul sorulmadı." % (kimlik, d["durum"]))
         satirlar += ["%s@%s %s — %s" % (kimlik, d["surum"], d["tur"], d["baslik"]), "  " + d["_ifade"],
-                     "  dosya: " + d["_yol"]]
+                     "  dosya: " + d["_yol"]] + h.ajan_karari_satirlari(d)
     h.onay_yaz(kok, kimlikler)
     return _karar("PreToolUse", "ask", "[harness] Onaylarsan şu taslaklar kabul edilir ve bağlayıcı olur:\n"
                   + "\n".join(satirlar))
 
 
+def _taslak_izni_sorusu(girdi: dict, kok: pathlib.Path, yurutme: str | None, kimlik: str | None,
+                        argv: list) -> dict:
+    """`--taslakla`: taslaklara rağmen koşturma izni, onay ayarından bağımsız her zaman kullanıcıya sorulur
+    (TS-006 Yapı 18). Soru gösterilmeyen izin modunda reddedilir: izin sorulmadan verilmiş sayılmaz.
+    İşaret bu çağrının bağımsız değişkenlerinin özetine bağlanır; aynı hedefin eski işareti bu soruyla geçersiz olur."""
+    mod = girdi.get("permission_mode")
+    if mod in SORU_GOSTERMEYEN_MODLAR:
+        return _red("--taslakla kullanıcının iznini ister, ama bu izin modunda (%s) soru gösterilmez. İzin modu "
+                    "değiştirilir ya da komutu kullanıcı kendi terminalinde çalıştırır." % mod)
+    if yurutme:
+        hedef, ozet = yurutme, plan.taslak_ozeti(kok, yurutme) + "\n\n" + plan.yurutme_ozeti(kok, yurutme)
+        taslaklar = [t["kimlik"] for _, ts in plan.bekleyen_taslaklar(kok, hedef) for t in ts]
+    else:
+        hedef, ozet = kimlik, gorev.taslak_ozeti(kok, kimlik) + "\n\n" + gorev.ozet(kok, kimlik, "kos")
+        taslaklar = [t["kimlik"] for t in gorev.is_taslaklari(
+            kok, gorev._durum_oku(kok, hedef, gorev._kayit(kok, hedef)))]
+    if "--taslakla" in argv:   # araç izni bu işaretle doğrular; işaretsiz --taslakla koşmaz
+        gorev.taslak_izni_yaz(kok, hedef, taslaklar, ozet=h.komut_ozeti(argv))
+    else:   # bayrak çağrının dışında (fazladan soru): eski işaret de kalmaz
+        h.izin_sil(kok, "taslakla", hedef)
+    return _karar("PreToolUse", "ask", "[harness] Kabul edilmemiş taslaklara rağmen koşturma izni (yalnız bu çağrı "
+                  "için; izin görevin kaydına yazılır):\n" + ozet)
+
+
+def _cevap_sorusu(girdi: dict, kok: pathlib.Path, kimlik: str, argv: list) -> dict | None:
+    """Açık uca dayanan soruya `--cevap` (TS-006 Yapı 19): cevabı yalnız kullanıcı verir; onay ayarından bağımsız her
+    zaman sorulur, soruda işçinin sorusu, açık uç ve verilecek cevap görünür. Cevap yoksa ya da soru açık uç
+    taşımıyorsa None."""
+    cevap = (h._secenek(argv, "--cevap") or [None])[0]
+    if not cevap or not gorev.acik_uc_sorusu(kok, kimlik)[1]:
+        return None
+    mod = girdi.get("permission_mode")
+    if mod in SORU_GOSTERMEYEN_MODLAR:
+        return _red("İşçinin sorusu bir açık uca dayanıyor; cevabı yalnız kullanıcı verir, ama bu izin modunda (%s) "
+                    "soru gösterilmez. İzin modu değiştirilir ya da komutu kullanıcı kendi terminalinde çalıştırır."
+                    % mod)
+    h.izin_yaz(kok, "cevap", kimlik, h.komut_ozeti(argv))   # aynı görevin eski işaretinin yerine geçer
+    return _karar("PreToolUse", "ask", "[harness] İşçinin sorusu bir açık uca dayanıyor: cevabı yalnız kullanıcı verir "
+                  "(onay ayarından bağımsız sorulur; cevap kayda 'kullanıcı onayıyla' yazılır):\n"
+                  + gorev.cevap_ozeti(kok, kimlik, cevap))
+
+
+def _kapatma_sorusu(girdi: dict, metin: str, cagrilar: list) -> dict | None:
+    """`acik-uc kapat`: açık ucu kapatmak kullanıcının kararıdır; onay ayarından bağımsız her zaman sorulur, soruda
+    açık ucun metni ve yazılacak karar görünür (TS-006 Yapı 19). `cagrilar`: komuttaki kapatma çağrıları. İşaretin
+    dosya adı yalnız doğrulanmış kimlikten kurulur: kimlik biçime uymuyorsa işaret yazılmaz, komut reddedilir."""
+    kok = _kok(_komut_dizini(metin, girdi.get("cwd"))) or _kok(girdi.get("cwd"))
+    if kok is None:
+        return None
+    mod = girdi.get("permission_mode")
+    if mod in SORU_GOSTERMEYEN_MODLAR:
+        return _red("Açık uç kapatmak kullanıcının kararıdır, ama bu izin modunda (%s) soru gösterilmez. İzin modu "
+                    "değiştirilir ya da komutu kullanıcı kendi terminalinde çalıştırır." % mod)
+    argv = cagrilar[0]
+    no = re.fullmatch(r"AU-(\d+)", argv[3]) if len(argv) > 3 else None
+    karar = (h._secenek(argv, "--karar") or [None])[0] if no else None
+    if len(cagrilar) > 1 or not karar or not h.IZIN_HEDEFI.fullmatch(argv[2]):
+        return _red('Açık uç kapatma komutu tek çağrıda ve şu biçimde yazılır: `python3 harness/h.py acik-uc kapat '
+                    '<KİMLİK> AU-<n> --karar "..."` (kimlik: iki büyük harf, tire, rakamlar). Onay işareti '
+                    'bırakılmadı.')
+    h.izin_yaz(kok, "acik-uc-kapat", argv[2], h.komut_ozeti(argv))   # aynı düğümün eski işaretinin yerine geçer
+    d = h.Dizin(kok).kimlik.get(argv[2])
+    return _karar("PreToolUse", "ask", "[harness] Açık uç kapatılacak; satır 'Kapanan uçlar' bölümüne tarih ve kararla "
+                  "geçer (onay ayarından bağımsız sorulur):\n%s/AU-%s — %s\nyazılacak karar: %s\ndüğüm: %s"
+                  % (argv[2], no.group(1), h.acik_uc_metni(kok, argv[2], int(no.group(1))) or "(açık uç bulunamadı)",
+                     karar, d["_yol"] if d else "(bulunamadı)"))
+
+
+def _birlestir(soru: dict | None, ek: dict | None) -> dict | None:
+    """Aynı komutta iki karar (--taslakla ve açık uç cevabı; açık uç kapatma ve komutun öbür kapıları): biri
+    reddediyorsa red, değilse soruların hepsi tek soruda."""
+    sorular = [s for s in (soru, ek) if s]
+    red = [s for s in sorular if s["hookSpecificOutput"]["permissionDecision"] == "deny"]
+    if red or len(sorular) <= 1:
+        return (red or sorular or [None])[0]
+    return _karar("PreToolUse", "ask", "\n\n".join(s["hookSpecificOutput"]["permissionDecisionReason"] for s in sorular))
+
+
+def _taslak_reddi(kok: pathlib.Path, yurutme: str | None, kimlik: str | None) -> str | None:
+    """Bayraksız taslaklı koşturmada aracın vereceği reddi kanca verir; kullanıcıya boşa koşturma sorusu gitmez.
+    Yürütmede ilk hazır yaprağa bakılır: araç orada, hiçbir yaprağı almadan durur."""
+    if yurutme:
+        hazirlar = plan.hazir(kok, yurutme)
+        if not hazirlar:
+            return None
+        kimlik, izin_komutu = hazirlar[0]["gorev"], "python3 harness/h.py plan yurut %s --taslakla" % yurutme
+    else:
+        izin_komutu = "python3 harness/h.py gorev kos %s --taslakla" % kimlik
+    try:
+        d = gorev._durum_oku(kok, kimlik, gorev._kayit(kok, kimlik))
+    except h.HarnessHata:   # bilinmeyen görev: hatayı komutun kendisi verir
+        return None
+    if d.get("alindi") or d["durum"] == "atildi":
+        return None
+    taslaklar = gorev.is_taslaklari(kok, d)
+    return gorev.taslak_engeli(kimlik, taslaklar, izin_komutu) if taslaklar else None
+
+
 def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
+    """Komut kapısı. Açık uç kapatma sorusu erken dönmez: önce komutun öbür kapıları (gönderme, PR, görev işlemleri,
+    işçi oturumu) karar verir; red kazanır, değilse kapatma sorusu öbür soruyla tek soruda birleşir."""
     metin = _heredoc_at(str((girdi.get("tool_input") or {}).get("command", "")))
+    cagrilar = _arac_cagrilari(metin)
+    karar = _komut_karari(girdi, ortam, metin, cagrilar)
+    kapat = [a for a in cagrilar or [] if a[:2] == ["acik-uc", "kapat"]]
+    if not kapat or (karar and karar["hookSpecificOutput"]["permissionDecision"] == "deny"):
+        return karar
+    return _birlestir(_kapatma_sorusu(girdi, metin, kapat), karar)
+
+
+def _kapanmis(kok: pathlib.Path, kimlik: str) -> bool:
+    """Görev alınmış ya da atılmış mı (araç önce buna bakar); bilinmeyen görevde hatayı komutun kendisi verir."""
+    try:
+        d = gorev._durum_oku(kok, kimlik, gorev._kayit(kok, kimlik))
+    except h.HarnessHata:
+        return False
+    return bool(d.get("alindi")) or d["durum"] == "atildi"
+
+
+def _komut_karari(girdi: dict, ortam: dict, metin: str, cagrilar: list | None) -> dict | None:
+    """`cagrilar`: komuttaki `h.py` çağrılarının bağımsız değişkenleri (_arac_cagrilari); None ise komut
+    çözümlenemedi. İzin isteyen araç komutu bunlardan tanınır, karar onlara göre verilir."""
     if YASAK_BAYRAK.search(HOOK_YOLU_OKUMA.sub(" ", metin)):
         return _red("--no-verify ve hook yolunu değiştiren bayraklar kullanılmaz; kapı kırmızıysa düzeltilir. "
                     "Hook yolunu yalnız görmek için: `git config --get core.hooksPath`.")
-    if KABUL_KOMUTU.search(metin):
-        return _kabul_sorusu(girdi, ortam, metin)
+    if cagrilar is None and re.search(r"h\.py", metin) and IZINLI_SOZCUK.search(metin):
+        return _red("Komut çözümlenemedi (kapanmamış tırnak gibi) ve aracın izin isteyen bir komutunu içeriyor; kanca "
+                    "onu ne sorar ne geçirir. Komutu `python3 harness/h.py ...` biçiminde, tırnakları kapalı tek çağrı "
+                    "olarak yaz.")
+    cagrilar = cagrilar or []
+    kabuller = [a for a in cagrilar if a[:1] == ["kabul"]]
+    # metin ağının gördüğü ama sözcük ağının bağımsız değişkenlerini çıkaramadığı işaretli çağrı: işaret yazılamaz
+    if (len(KABUL_METNI.findall(metin)) > len(kabuller)
+            or len(KAPAT_METNI.findall(metin)) > len([a for a in cagrilar if a[:2] == ["acik-uc", "kapat"]])):
+        return _red(METIN_REDDI)
+    if kabuller:
+        return _kabul_sorusu(girdi, ortam, metin, kabuller)
     if ortam.get("HARNESS_GOREV") and _dosyaya_yazar(metin):
         return _red("Görev oturumu dosyayı komutla yazmaz: dosya yalnız Write ya da Edit aracıyla yazılır, çünkü "
                     "kural ve kapsam kapıları oradadır. Komutun geçici çıktısı gerekiyorsa $TMPDIR altına yönlendir.")
@@ -407,25 +772,56 @@ def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
         return _red("Görev oturumu git geçmişine dokunmaz: commit, dal, birleştirme ve push yok. Değişikliği "
                     "çalışma ağacında bırak; commit ve birleştirmeyi orchestrator yapar.")
     kok = _kok(_komut_dizini(metin, girdi.get("cwd"))) or _kok(girdi.get("cwd"))
-    yurutme, m = PLAN_YURUT.search(metin), GOREV_ISLEM.search(metin)
-    if yurutme or m:
+    isler = [a for a in cagrilar if a[:2] == ["plan", "yurut"] or a[:1] == ["gorev"] and a[1:2]
+             and a[1] in GOREV_SORUSU]
+    gorulen = {tuple(a[:3]) for a in isler}
+    yalniz_metinde = [k for k in dict.fromkeys([("gorev",) + m.groups() for m in GOREV_ISLEM.finditer(metin)]
+                                               + [("plan", "yurut", m.group(1)) for m in PLAN_YURUT.finditer(metin)])
+                      if k not in gorulen]
+    if isler or yalniz_metinde:   # iki ağın birleşimi: fazladan sormak zararsızdır, eksik sormak değil
         if ortam.get("HARNESS_GOREV"):
             return _red("Görev oturumu başka bir görev işlemi başlatamaz; gerekiyorsa kendi kaydında bildir.")
         if kok is None:
             return None
+        argv = isler[0] if isler else list(yalniz_metinde[0])
+        hedef = argv[2] if len(argv) > 2 else ""
+        if len(isler) + len(yalniz_metinde) > 1 or not re.fullmatch(
+                r"EP-[0-9]+" if argv[0] == "plan" else r"GV-[0-9]+", hedef):
+            return _red("Görev ve plan işlemi komutta tek çağrı olarak ve hedefin kimliğiyle yazılır: `python3 "
+                        "harness/h.py gorev kos GV-NNN`, `python3 harness/h.py plan yurut EP-NNN`.")
+        if not isler and (TASLAKLA.search(metin) or CEVAP_METNI.search(metin)):   # yalnız metin ağı: işaret yok
+            return _red(METIN_REDDI)
+        yurutme = hedef if argv[0] == "plan" else None
+        islem, kimlik = ("yurut", None) if yurutme else (argv[1], hedef)
+        if islem in ("yurut", "kos"):
+            cevap = None if yurutme else (h._secenek(argv, "--cevap") or [None])[0]
+            acik = not yurutme and not _kapanmis(kok, kimlik)   # kapanmış görevde aracın reddi gelir, soru sorulmaz
+            bekleyen = gorev.bekleyen_acik_uclar(kok, kimlik) if acik and not cevap else []
+            if bekleyen:   # açık uç sorusu kullanıcıya gider: notla ya da cevapsız koşturma reddedilir
+                return _red(gorev.acik_uc_engeli(kimlik, bekleyen))
+            if TASLAKLA.search(metin):   # çağrının dışında da: eksik sormak, fazladan sormaktan kötü
+                return _birlestir(_taslak_izni_sorusu(girdi, kok, yurutme, kimlik, argv),
+                                  _cevap_sorusu(girdi, kok, kimlik, argv) if acik else None)
+            reddi = _taslak_reddi(kok, yurutme, kimlik)
+            if reddi:
+                return _red(reddi)
+            soru = _cevap_sorusu(girdi, kok, kimlik, argv) if acik else None
+            if soru:   # açık uca dayanan sorunun cevabı onay ayarından bağımsız sorulur
+                return soru
         # Ne kadar sorulacağını kullanıcı seçer: "baslangic" (varsayılan), "her-adim", "yok". Atma her zaman sorulur.
         onay = h.ayar_oku(kok)["gorev"].get("onay", "baslangic")
         if yurutme:
             if onay == "yok":
                 return None
             return _karar("PreToolUse", "ask", "[harness] Bu epic baştan sona yürütülecek:\n"
-                          + plan.yurutme_ozeti(kok, yurutme.group(1)))
-        islem = m.group(1)
-        if not (islem == "at" or onay == "her-adim" or (onay == "baslangic" and islem in ("kos", "al"))):
+                          + plan.yurutme_ozeti(kok, yurutme))
+        if not (islem == "at" or onay == "her-adim" or (onay == "baslangic" and islem in ("kos", "al", "genislet"))):
             return None
+        # yalnız bu çağrının kendi --yol'ları, aracın okuduğu gibi (h.py '--yol=desen' biçimini okumaz)
+        ekler = h._secenek(argv, "--yol") if islem == "genislet" else None
         return _karar("PreToolUse", "ask", "[harness] %s:\n%s"
-                      % (GOREV_SORUSU[islem], gorev.ozet(kok, m.group(2), islem)))
-    if kok is not None and PUSH.search(metin):
+                      % (GOREV_SORUSU[islem], gorev.ozet(kok, kimlik, islem, ekler)))
+    if kok is not None and push_mu(metin):
         kirmizi = _kirmizilar(kok)
         if kirmizi:
             return _red("Zincir kırmızı; push ve PR durduruldu:\n" + _bulgu_metni(kirmizi))
@@ -552,7 +948,7 @@ def durus(girdi: dict, ortam: dict) -> dict | None:
             "kullanıcıya söyle:\n" + _bulgu_metni(kirmizi)}
 
 
-OLAYLAR = {"oturum-basi": oturum_basi, "istem": istem, "duzenleme-oncesi": duzenleme_oncesi,
+OLAYLAR = {"oturum-basi": oturum_basi, "istem": istem, "duzenleme-oncesi": duzenleme_kapisi,
            "duzenleme-sonrasi": duzenleme_sonrasi, "komut-oncesi": komut_oncesi,
            "ajan-dogarken": ajan_dogarken, "ajan-baslatma": ajan_baslatma,
            "workflow-baslatma": workflow_baslatma, "durus": durus}
@@ -579,7 +975,7 @@ def guvenli_isle(olay: str, girdi: dict, ortam: dict) -> dict | None:
                                                 olay, type(hata).__name__, hata))
         except OSError:
             pass
-        if olay == "komut-oncesi" and (PUSH.search(metin) or GOREV_ISLEM.search(metin) or PLAN_YURUT.search(metin)):
+        if olay == "komut-oncesi" and (push_mu(metin) or GOREV_ISLEM.search(metin) or PLAN_YURUT.search(metin)):
             return _red("Kapı ölçülemedi (%s: %s); doğrulanamayan push ve görev koşturma durdurulur."
                         % (type(hata).__name__, hata))
         return None

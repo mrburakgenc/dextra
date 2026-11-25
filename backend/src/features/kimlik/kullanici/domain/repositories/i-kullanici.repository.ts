@@ -4,10 +4,7 @@
 // kimliği taşır (AK-38).
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniKullanici } from '../entities/kullanici.entity.js';
 import type { GorunenAd } from '../value-objects/gorunen-ad.js';
 
@@ -19,10 +16,23 @@ export interface KullaniciListeIstegi {
   readonly al: number;
 }
 
+// Okunan kullanıcı kaydı: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface KullaniciGorunumu {
+  readonly id: string;
+  readonly kullaniciAdi?: string | null;
+  readonly telefon?: string | null;
+  readonly gorunenAd?: string;
+  readonly sistemAktoru?: boolean;
+  readonly yetkiSurumu?: number;
+  readonly pasifZamani?: Date | null;
+  readonly unutulmaZamani?: Date | null;
+  readonly olusturmaZamani?: Date;
+}
+
 export interface IKullaniciOkumaRepo {
-  liste(istek: KullaniciListeIstegi): Promise<Kayit[]>;
+  liste(istek: KullaniciListeIstegi): Promise<KullaniciGorunumu[]>;
   // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  tek(id: string): Promise<Kayit>;
+  tek(id: string): Promise<KullaniciGorunumu>;
 }
 
 export const KULLANICI_OKUMA_REPO = new RepoBelirteci<

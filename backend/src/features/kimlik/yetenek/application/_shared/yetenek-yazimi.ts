@@ -87,8 +87,8 @@ export class YetenekYazimi {
     icerik: YetenekIcerigi,
   ): Promise<IzinOlgulari | undefined> {
     const izin = await islem.repo(YETENEK_REPO).izin(baglanti.izinId);
-    const kaynak = izin?.['kaynak'];
-    const eylem = izin?.['eylem'];
+    const kaynak = izin?.kaynak;
+    const eylem = izin?.eylem;
     if (typeof kaynak !== 'string' || typeof eylem !== 'string') {
       return undefined;
     }

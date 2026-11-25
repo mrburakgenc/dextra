@@ -3,11 +3,18 @@
 // Gerçeklemeleri infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniUyelik } from '../entities/uyelik.entity.js';
+
+// Okunan üyelik kaydı: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface UyelikGorunumu {
+  readonly id: string;
+  readonly kullaniciId?: string;
+  readonly grupId?: string;
+  readonly rolId?: string;
+  readonly silinmeZamani?: Date | null;
+  readonly olusturmaZamani?: Date;
+}
 
 export interface UyelikListeIstegi {
   // Verilen süzgeçler "ve" ile birleşir.
@@ -22,9 +29,9 @@ export interface UyelikListeIstegi {
 // Kayıtlar yalnız isteyenin görebildiği kolonları ve her zaman kimliği taşır (AK-38).
 export interface IUyelikOkumaRepo {
   // Yalnız silinmemiş üyelikler.
-  liste(istek: UyelikListeIstegi): Promise<Kayit[]>;
+  liste(istek: UyelikListeIstegi): Promise<UyelikGorunumu[]>;
   // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  tek(id: string): Promise<Kayit>;
+  tek(id: string): Promise<UyelikGorunumu>;
 }
 
 export const UYELIK_OKUMA_REPO = new RepoBelirteci<

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { kaydiEtiketle, type YetkiKurali, yetkiKur } from './yetki';
-import { Can, useYetki, YetkiSaglayici } from './yetki-saglayici';
+import { kaydiEtiketle, kolonCizilir, type YetkiKurali, yetkiKur } from './yetki';
+import { Can, Kolon, useYetki, YetkiSaglayici } from './yetki-saglayici';
 
 afterEach(cleanup);
 
@@ -207,5 +207,75 @@ describe('useYetki', () => {
     render(<Soru kurallar={[{ action: 'sil', subject: 'Kullanici' }]} />);
 
     expect(screen.getByText('evet')).toBeDefined();
+  });
+});
+
+describe('kolonCizilir', () => {
+  it('kuralı olmayan kolon için hayır, kolonları sayan kuralın verdiği kolon için evet çıkar', () => {
+    const yetki = yetkiKur([{ action: 'oku', subject: 'Grup', fields: ['ad'] }]);
+
+    expect(kolonCizilir(yetki, 'Grup', ['ad'])).toBe(true);
+    expect(kolonCizilir(yetki, 'Grup', ['olusturmaZamani'])).toBe(false);
+    expect(kolonCizilir(yetki, 'Rol', ['ad'])).toBe(false);
+  });
+
+  it('kolon saymayan kural bütün kolonları verir; başka eylemin kuralı okuma vermez', () => {
+    expect(kolonCizilir(yetkiKur([{ action: 'oku', subject: 'Grup' }]), 'Grup', ['ad'])).toBe(
+      true,
+    );
+    expect(kolonCizilir(yetkiKur([{ action: 'sil', subject: 'Grup' }]), 'Grup', ['ad'])).toBe(
+      false,
+    );
+  });
+
+  it('birden çok alandan türeyen kolon, alanlarından biri okunabiliyorsa çizilir', () => {
+    const yetki = yetkiKur([{ action: 'oku', subject: 'Yetenek', fields: ['tohumAnahtari'] }]);
+
+    expect(kolonCizilir(yetki, 'Yetenek', ['sistemSatiri', 'tohumAnahtari'])).toBe(true);
+    expect(kolonCizilir(yetki, 'Yetenek', ['butunKolonlar', 'kolonlar'])).toBe(false);
+  });
+
+  it('şartlı kural tür düzeyinde şartı değerlendirmez; değerlendirilemeyen şart da evet verir', () => {
+    expect(
+      kolonCizilir(
+        yetkiKur([{ action: 'oku', subject: 'Grup', conditions: { silinmeZamani: null } }]),
+        'Grup',
+        ['ad'],
+      ),
+    ).toBe(true);
+    expect(
+      kolonCizilir(
+        yetkiKur([{ action: 'oku', subject: 'Grup', conditions: { ad: { tanimsiz: 1 } } }]),
+        'Grup',
+        ['ad'],
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('<Kolon>', () => {
+  function Tablo({ kurallar }: Readonly<{ kurallar: readonly YetkiKurali[] }>) {
+    return (
+      <YetkiSaglayici kurallar={kurallar}>
+        <table>
+          <thead>
+            <tr>
+              <Kolon a="Grup" alanlar={['ad']}>
+                <th scope="col">Ad</th>
+              </Kolon>
+              <Kolon a="Grup" alanlar={['olusturmaZamani']}>
+                <th scope="col">Oluşturma zamanı</th>
+              </Kolon>
+            </tr>
+          </thead>
+        </table>
+      </YetkiSaglayici>
+    );
+  }
+
+  it('kolon okunabiliyorsa içeriği çizer, okunamıyorsa hiçbir şey çizmez', () => {
+    render(<Tablo kurallar={[{ action: 'oku', subject: 'Grup', fields: ['ad'] }]} />);
+
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Ad']);
   });
 });

@@ -1,7 +1,7 @@
 ---
 kimlik: KU-012
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetki repository'de çözülür; handler yetki kodu yazmaz
 dayanak: [KR-007@1]
@@ -9,30 +9,34 @@ kapsam: [backend/src/features/**/application/**, backend/src/features/**/infrast
 baglama: kapsam
 bicim: kural
 kesinlik: olagan
-denetim_duzey: gozden-gecirme
+denetim_duzey: mekanik
+denetim_ref: [DN-002]
 bakis: 2026-12-21
 kaynak: kb/_gelen/IRON_RULES_BACKEND.md
 alinti: AbilityFactory **sadece Repository'de** inject edilir.
 ---
-İnce yetki repository'de çözülür: repository `AbilityFactory` alır, okuma metotları isteği yapan kullanıcının kimliğini parametre alır ve satır ile alan süzmesini kendisi uygular. Handler yetki kodu yazmaz; `AbilityFactory.buildFor` ve `accessibleBy` handler'da çağrılmaz.
+İnce yetki repository'de çözülür: repository sorgusunu kendisi yazar, satır süzgecini ve kolon seçimini yetki yüzünden alıp sorguda uygular ve okumayı yetki yüzünün birleştirme çağrısıyla kapatır; yazmada deyimi repository verir, sırayı yetki motoru yürütür. Yetki parametre değildir, istek bağlamındaki derlenmiş yetkiden alınır. İşleyici yetki kodu yazmaz.
 
 ## Neden
-Belgedeki gerekçe (satır 180, 327): yetki disiplini guard ve repository ikilisinde toplanır; yetki handler'da çözülürse repository yetkiyi bilmez hâle gelir.
+- Kanon (`IRON_RULES_BACKEND.md` satır 180, 327): yetki disiplini guard ve repository ikilisinde toplanır; yetki işleyicide çözülürse repository yetkiyi bilmez hâle gelir.
+- Kullanıcı (2026-11-25): "controllerda ilk guard decorator sonrasında repositoryde instance katmanı". Aynı gün ölçülen sapma (repository'lerin sorgu yazmayıp ortak kapıya kaynak adıyla gitmesi) TS-007 ile geri alındı.
 
 ## İhlal örneği
-Belgeden: handler'ın `abilityFactory.buildFor(...)` çağırıp koşulu kendisinin kurması (satır 317–329); repository'nin `AbilityFactory` almadan ve kullanıcı kimliği parametresi olmadan sorgu yapması (satır 267–275).
+- İşleyicinin yetki süzgecini kendisi kurması ya da derlenmiş yetkiye bakarak karar vermesi.
+- Repository'nin süzgeçsiz okuması: `istemci.rol.findMany({ where: { silinmeZamani: null } })`.
+- Süzgeçle okuyup birleştirme çağrısını yapmadan dönmesi (kolon indirgeme ve erişim kaydı atlanır).
 
 ## Uygun örnek
-Belgeden: handler `this.repo.findMany(query.criteria, query.requesterId)` çağırır (satır 332–339); repository `accessibleBy` ile sorgu koşulunu ve izinli alanlarla seçimi kendisi uygular (satır 278–303).
+`backend/src/features/kimlik/rol/infrastructure/repositories/rol-okuma.prisma-repository.ts`: `where` içinde `yetki.satirlar`, `select` içinde `yetki.kolonlar`, sonunda `yetki.kayitlar(...)`. Yazma: `rol-yazma.prisma-repository.ts` deyimi verir, `deyimleGuncelle` sırayı yürütür. İşleyici yalnız repository'yi çağırır.
+
+## Bu depodaki denetim
+Yapı denetimi (DN-002) çekirdek olmayan feature repository'lerinde her okuma deyiminin süzgeci taşıdığını ve birleştirme çağrısıyla kapandığını sınar. Yetkiden bağımsız sistem işleri (giriş, oturum doğrulama, yetki verisinin derlenmesi) çekirdek repository'lerdedir ve bu kuralın dışındadır (KR-010 Seçim 48: liste kapalıdır).
 
 ## Alım notu
-- Kaynak: Kural 3.1, 3.5 ve 3.7 / CASL-05, CASL-07 (satır 182–212, 257–343); belge ikisini "aynı kanonun iki yüzü" diye anar (satır 180). Aynı deseni Pattern 20 (`PATTERNS.md`) anlatır.
-- Belgedeki istisna: yazma komutunda kayıt düzeyinde son denetim için `throwUnlessCan` (satır 342–343).
-- İstisna adayı (BADI tuzak kaydı T-0397): BADI'de handler içinde yetki nesnesi kuran iki belgeli istisna vardır (kullanıcının kendi yetkisini döndüren sorgu, menü görünürlük süzgeci); bu depo için kullanıcı kararı bekler.
-- Desenin beşinci adımı (kişisel alanın maskelenmesi, satır 264) alınmadı; kullanıcı kararı bekler (TS-001 Ç6).
-- Belgedeki örnekler repository'yi doğrudan enjekte eder; bu depoda repository'ler Unit of Work'ün `run` ve `read` kapılarından alınır (TS-001 "Yapı", Ç8).
-- Belge gelecekteki bir lint kuralını anar (satır 308); hedef denetim düzeyi mekaniktir.
-- Kapsam yolu varsayımdır.
-- Uyarı (çürütme turu, 2026-11-22; satırlar ajan tarafından okundu): belgedeki uygun örnek olduğu gibi alınamaz. Kullanıcı süzgecini yetki koşulunun üstüne yayar (satır 293), kolon listesini tür adıyla sorar (satır 288), yetki koşulu yoksa boş koşula düşer (satır 287) ve sayım sorgusu süzgeci taşımaz (satır 298). KR-008 taslağı bunların tersini ister; örnek kabulden önce bu depo için yeniden yazılacak.
-- Açık (kural cümlesi): cümle yalnız okumayı söyler; yazma yollarındaki denetim KR-008'de tanımlanınca eklenecek.
-- Uyarlama notu (2026-11-23; ikinci çürütme turu 53. bulgu): yazmanın tanımı geldi (KR-008 Seçim 10, 18 ve 34; KR-010 Seçim 26 ve 37) ve yetki motoru iki katmandır: altta CASL, üstte bu deponun derleyicisi (KR-010 Seçim 38; 2026-11-24'te düzeltildi, önceki not "CASL değildir" diyordu). Kural cümlesi, örnekler ve dayanak (`KR-008`, `KR-010`) kabulden önce buna göre yeniden yazılacak; `AbilityFactory` ve `accessibleBy` yeniden geçerli adaylardır, kanondaki bellekte kayıt denetimi (`throwUnlessCan`) alınmaz.
+- Kaynak: Kural 3.1, 3.5 ve 3.7 / CASL-05, CASL-07 (`IRON_RULES_BACKEND.md` satır 182–212, 257–343); Pattern 20 (`PATTERNS.md`).
+- Kanondan farklar ve gerekçeleri TS-007'dedir (kabul, 2026-11-25): kanondaki `AbilityFactory` ve kullanıcı kimliği parametresi yerine istek bağlamı; kanondaki tür başına tek kolon listesi yerine kayıt başına kolonlar (kullanıcı teyidi); kanondaki bellekte kayıt denetimi (`throwUnlessCan`) yerine şartlı yazma (KR-008, KR-010).
+- Geçiş: 2026-11-25 itibarıyla rol yeni biçimdedir; grup, kullanıcı, üyelik, yetenek ve oturumun yönetim repository'leri eski kapı yüzünün sarmalayıcısıyla çalışır ve sırayla taşınır (EP-010).
+
+## Açık uçlar
+- AU-1: Kişinin kendi kurallarını döndüren uç (`GET kimlik/oturum/yetkilerim`) derlenmiş yetkiyi denetleyicide istek bağlamından okuyup döndürür. Bu, "işleyici yetki kodu yazmaz" kuralının adıyla istisnası mıdır (kanonun kaynağındaki benzer iki istisna gibi), yoksa kuralın kapsamı dışında mı sayılır?
+- AU-2: Kanondaki desenin beşinci adımı kişisel alanın maskelenmesidir (satır 264); alınmadı (TS-001 Ç6). Kullanıcı aksini söyleyene kadar maskeleme yoktur.

@@ -1,6 +1,8 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { YetkiKurali } from '../../../shared/yetki/yetki';
+import { YetkiSaglayici } from '../../../shared/yetki/yetki-saglayici';
 import IzinlerSayfasi from './page';
 
 vi.mock('server-only', () => ({}));
@@ -39,8 +41,20 @@ function listeCevabi(
   );
 }
 
-async function goster(sorgu: Record<string, string | string[]> = {}) {
-  render(await IzinlerSayfasi({ searchParams: Promise.resolve(sorgu) }));
+// İzinleri bütün kolonlarıyla okuyabilen kişi.
+const OKU: YetkiKurali[] = [{ action: 'oku', subject: 'Izin' }];
+
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişi izinleri okuyabilir
+// (liste kolonları tür düzeyindeki okuma kuralına göre çizilir).
+async function goster(
+  sorgu: Record<string, string | string[]> = {},
+  kurallar: YetkiKurali[] = OKU,
+) {
+  render(
+    <YetkiSaglayici kurallar={kurallar}>
+      {await IzinlerSayfasi({ searchParams: Promise.resolve(sorgu) })}
+    </YetkiSaglayici>,
+  );
 }
 
 function istekAdresi(): URL {
@@ -184,5 +198,62 @@ describe('IzinlerSayfasi durumlar', () => {
       IzinlerSayfasi({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
+  });
+});
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function basliklar(): (string | null)[] {
+  return screen.getAllByRole('columnheader').map((h) => h.textContent);
+}
+
+// Her kayıt satırının hücre sayısı.
+function hucreSayilari(): number[] {
+  return screen
+    .getAllByRole('row')
+    .slice(1)
+    .map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+describe('IzinlerSayfasi kolonların yetkisi', () => {
+  it('eylemi okuma kuralı olmayan kişide kolonun başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Izin', fields: ['kaynak'] }]);
+
+    expect(basliklar()).toEqual(['Kaynak']);
+    expect(screen.queryByRole('link', { name: 'Eylem' })).toBeNull();
+    expect(screen.queryByText('olustur')).toBeNull();
+    expect(hucreSayilari()).toEqual([1, 1]);
+  });
+
+  it('eylemi bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi boş işarettir', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({ kayitlar: [IKI_KAYIT[0], { id: 'i3', kaynak: 'Grup' }] }),
+    );
+
+    await goster({}, [{ action: 'oku', subject: 'Izin', fields: ['kaynak', 'eylem'] }]);
+
+    expect(basliklar()).toEqual(['Kaynak', 'Eylem']);
+    expect(baglanti('Eylem')).toBe('/izinler?sirala=eylem');
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(hucreler(ilk)).toEqual(['Kullanici', 'oku']);
+    expect(hucreler(ikinci)).toEqual(['Grup', '—']);
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [
+      {
+        action: 'oku',
+        subject: 'Izin',
+        conditions: { yetenekler: { some: { silinmeZamani: null } } },
+      },
+    ]);
+
+    expect(basliklar()).toEqual(['Kaynak', 'Eylem']);
+    expect(hucreSayilari()).toEqual([2, 2]);
   });
 });

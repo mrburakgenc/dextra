@@ -50,10 +50,10 @@ export class OturumKapatHandler {
       const kayit = await islem.repo(OTURUM_YONETIM_OKUMA_REPO).tek(id);
       const karar = oturumKapatmaKarari({
         kapaliMi:
-          'kapatilmaZamani' in kayit ? kayit['kapatilmaZamani'] !== null : null,
+          'kapatilmaZamani' in kayit ? kayit.kapatilmaZamani !== null : null,
         sahibiMi:
           'kullaniciId' in kayit
-            ? kayit['kullaniciId'] === oturum.kullaniciId
+            ? kayit.kullaniciId === oturum.kullaniciId
             : null,
       });
       if (karar.tur === 'ret') {

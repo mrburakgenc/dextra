@@ -596,3 +596,115 @@ describe('OturumlarSayfasi hatalar', () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
   });
 });
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function hucreSayilari(): number[] {
+  return satirlar().map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+const KAPAT: YetkiKurali = { action: 'kapat', subject: 'Oturum' };
+
+describe('OturumlarSayfasi kolonların yetkisi', () => {
+  it('son etkinliği ve adresi okuma kuralı olmayan kişide kolonların başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    await goster({}, [
+      {
+        action: 'oku',
+        subject: 'Oturum',
+        fields: ['baslangicZamani', 'tarayiciBilgisi', 'kapatilmaZamani', 'kapatilmaNedeni'],
+      },
+      KAPAT,
+    ]);
+
+    expect(baslikMetinleri()).toEqual(['Başlangıç ▼', 'Tarayıcı bilgisi', 'Durum', 'İşler']);
+    expect(screen.queryByRole('link', { name: 'Son etkinlik' })).toBeNull();
+    expect(screen.queryByText(tarihSaat(SON_1))).toBeNull();
+    expect(screen.queryByText('10.0.0.1')).toBeNull();
+    expect(hucreSayilari()).toEqual([4, 4]);
+  });
+
+  it('adresi bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi boş işarettir', async () => {
+    const adressiz: Partial<typeof OBUR_OTURUM> = { ...OBUR_OTURUM };
+    delete adressiz.ipAdresi;
+    await goster(
+      {},
+      [{ action: 'oku', subject: 'Oturum', fields: ['ipAdresi'] }, KAPAT],
+      listeCevabi({ kayitlar: [BU_OTURUM, adressiz] }),
+    );
+
+    expect(baslikMetinleri()).toEqual(['Adres', 'İşler']);
+    const [ilk, ikinci] = satirlar();
+    expect(hucreler(ilk ?? document.body)[0]).toBe('10.0.0.1');
+    expect(hucreler(ikinci ?? document.body)[0]).toBe('—');
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    await goster({}, [
+      {
+        action: 'oku',
+        subject: 'Oturum',
+        conditions: { kullanici: { is: { sistemAktoru: false } } },
+      },
+      KAPAT,
+    ]);
+
+    expect(baslikMetinleri()).toEqual([
+      'Başlangıç ▼',
+      'Son etkinlik',
+      'Adres',
+      'Tarayıcı bilgisi',
+      'Durum',
+      'İşler',
+    ]);
+    expect(hucreSayilari()).toEqual([6, 6]);
+  });
+
+  it('kapatılma alanlarını okuyamayan kişide Durum kolonu yoktur; Bu oturum işareti İşler hücresindedir', async () => {
+    const kapanissiz = (kayit: typeof BU_OTURUM) => {
+      const kopya: Partial<typeof BU_OTURUM> = { ...kayit };
+      delete kopya.kapatilmaZamani;
+      delete kopya.kapatilmaNedeni;
+      return kopya;
+    };
+    await goster(
+      {},
+      [
+        {
+          action: 'oku',
+          subject: 'Oturum',
+          fields: ['baslangicZamani', 'sonDondurmeZamani', 'ipAdresi', 'tarayiciBilgisi'],
+        },
+        KAPAT,
+      ],
+      listeCevabi({ kayitlar: [kapanissiz(BU_OTURUM), kapanissiz(OBUR_OTURUM)] }),
+    );
+
+    expect(baslikMetinleri()).toEqual([
+      'Başlangıç ▼',
+      'Son etkinlik',
+      'Adres',
+      'Tarayıcı bilgisi',
+      'İşler',
+    ]);
+    expect(hucreSayilari()).toEqual([5, 5]);
+    const [bu, obur] = satirlar();
+    expect(hucreler(bu ?? document.body)[4]).toMatch(/^Bu oturum/);
+    expect(hucreler(obur ?? document.body)[4]).not.toMatch(/Bu oturum/);
+    expect(screen.getAllByText('Bu oturum')).toHaveLength(1);
+  });
+
+  it('kapatılma alanlarını okuyabilen kişide Bu oturum işareti Durum hücresindedir; İşler hücresinde yoktur', async () => {
+    await goster({}, [
+      { action: 'oku', subject: 'Oturum', fields: ['kapatilmaZamani', 'kapatilmaNedeni'] },
+      KAPAT,
+    ]);
+
+    expect(baslikMetinleri()).toEqual(['Durum', 'İşler']);
+    const [bu, obur] = satirlar();
+    expect(hucreler(bu ?? document.body)[0]).toBe('Açık Bu oturum');
+    expect(hucreler(bu ?? document.body)[1]).not.toMatch(/Bu oturum/);
+    expect(hucreler(obur ?? document.body)[0]).toBe('Açık');
+    expect(screen.getAllByText('Bu oturum')).toHaveLength(1);
+  });
+});

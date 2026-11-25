@@ -40,6 +40,7 @@ import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.j
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
+import { EskiYazmaKapisi } from './yardimci/eski-yuz.js';
 
 const IP = '203.0.113.21';
 const TARAYICI = 'Mozilla/5.0 yetki deneme';
@@ -786,11 +787,11 @@ describe('g) uygulamanın kataloğunda sistem alanları', () => {
   // İşi SuperAdmin'in oturumu ve derlenmiş yetkisi yazılmış bir istek bağlamında, kendi run'ında
   // koşturur.
   async function superadminYazar<T>(
-    is: (kapi: YazmaKapisi, islem: Islem) => Promise<T>,
+    is: (kapi: EskiYazmaKapisi, islem: Islem) => Promise<T>,
   ): Promise<T> {
     const surumler = await yetkiVerisi().surumler(superadmin);
     const yetki = await uygulama().get(YetkiBellegi).al(superadmin, surumler);
-    const kapi = uygulama().get(YazmaKapisi);
+    const kapi = new EskiYazmaKapisi(uygulama().get(YazmaKapisi));
     const uow = uygulama().get(UnitOfWork);
     return new Promise<T>((coz, reddet) => {
       istekBaglamiAraKatmani(

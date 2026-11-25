@@ -77,6 +77,7 @@ Bilgi tabanının günlüğü (`kb/GUNLUK.md`) elle yazılmaz; taslak açılınc
 - KU-004@1 [gözden geçirme] Bir görevin işi, onu yapmayan bir oturum inceleyip geçirmeden birleştirilmez; plan adımının işareti ve görevin ölçüm kayıtları elle yazılmaz, onları araç üretir. (KR-002)
 - KU-005@1 [gözden geçirme] İstenen işi karşılayan en az kod yazılır: istenmemiş özellik, tek yerde kullanılan soyutlama, istenmemiş ayar ya da esneklik ve olamayacak durum için hata yönetimi eklenmez. (KR-003)
 - KU-006@1 [gözden geçirme] Yalnız işin gerektirdiği satırlar değiştirilir: komşu kod, yorum ve biçim "iyileştirilmez", çalışan kod yeniden düzenlenmez; değişen her satır hedefe bağlanabilmelidir. (KR-003)
+- KU-016@1 [mekanik DN-001] Bu dalda alınan her görev, dal gönderilmeden önce `docs/rapor/` altındaki bir raporda yer alır; raporun görev tablosunu araç üretir, kısa özet ile kullanıcıdan beklenenler elle yazılır ve boş bırakılmaz. (KR-015)
 
 ### Yapı haritası
 

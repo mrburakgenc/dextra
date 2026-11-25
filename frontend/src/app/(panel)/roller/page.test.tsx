@@ -42,10 +42,14 @@ function listeCevabi(
   );
 }
 
-// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+// Rolleri bütün kolonlarıyla okuyabilen kişi.
+const OKU: YetkiKurali[] = [{ action: 'oku', subject: 'Rol' }];
+
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişi rolleri okuyabilir
+// (liste kolonları tür düzeyindeki okuma kuralına göre çizilir).
 async function goster(
   sorgu: Record<string, string | string[]> = {},
-  kurallar: YetkiKurali[] = [],
+  kurallar: YetkiKurali[] = OKU,
 ) {
   render(
     <YetkiSaglayici kurallar={kurallar}>
@@ -112,8 +116,10 @@ describe('RollerSayfasi liste', () => {
 
     await goster();
 
+    // Ad gelmeyince bağlantı kalır, yazısı kısaltılmış kimliktir (sekizden kısa kimlik olduğu gibi).
     const [, satir] = screen.getAllByRole('row');
-    expect(hucreler(satir)).toEqual(['—', '—']);
+    expect(hucreler(satir)).toEqual(['r3', '—']);
+    expect(baglanti('r3')).toBe('/roller/r3');
   });
 
   it('backend\'e oturumlu GET isteği atar', async () => {
@@ -264,5 +270,79 @@ describe('RollerSayfasi durumlar', () => {
       RollerSayfasi({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
     expect(sahteFetch).not.toHaveBeenCalled();
+  });
+});
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function basliklar(): (string | null)[] {
+  return screen.getAllByRole('columnheader').map((h) => h.textContent);
+}
+
+// Her kayıt satırının hücre sayısı.
+function hucreSayilari(): number[] {
+  return screen
+    .getAllByRole('row')
+    .slice(1)
+    .map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+describe('RollerSayfasi kolonların yetkisi', () => {
+  it('kodu okuma kuralı olmayan kişide kolonun başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['ad'] }]);
+
+    expect(basliklar()).toEqual(['Ad']);
+    expect(screen.queryByRole('link', { name: 'Kod' })).toBeNull();
+    expect(screen.queryByText('sistem rolü')).toBeNull();
+    expect(hucreSayilari()).toEqual([1, 1]);
+  });
+
+  it('kodu bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi ve gelmiş boş kod boş işarettir', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({ kayitlar: [{ id: 'r3', ad: 'Gizli' }, IKI_KAYIT[1]] }),
+    );
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['ad', 'kod'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Kod']);
+    expect(baglanti('Kod')).toBe('/roller?sirala=kod');
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(hucreler(ilk)).toEqual(['Gizli', '—']);
+    expect(hucreler(ikinci)).toEqual(['Muhasebe', '—']);
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolon yine çizilir', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    // Şart kayıtta gelmeyen silinme zamanına bakar ve bu kayıtlarda tutmaz: kolonu kayıt düzeyinde
+    // soran bir ekran kolonu kaldırırdı.
+    await goster({}, [
+      { action: 'oku', subject: 'Rol', conditions: { silinmeZamani: { not: null } } },
+    ]);
+
+    expect(basliklar()).toEqual(['Ad', 'Kod']);
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('adı okuyamayan kişide Ad başlığı düz yazıdır; sıralama bağlantısı yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [{ id: 'r1', kod: 'yonetici' }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['kod'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Kod']);
+    expect(screen.queryByRole('link', { name: 'Ad' })).toBeNull();
+    expect(baglanti('r1')).toBe('/roller/r1');
+  });
+
+  it('adı okuyabilen kişide Ad başlığı sıralama bağlantısıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['ad'] }]);
+
+    expect(basliklar()).toEqual(['Ad']);
+    expect(baglanti('Ad')).toBe('/roller?sirala=ad');
   });
 });

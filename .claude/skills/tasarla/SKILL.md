@@ -23,7 +23,7 @@ argument-hint: <tasarlanacak iş>
 2. Tasarımcı paketini al: `python3 harness/h.py paket --rol tasarimci`. Paketteki kesin kurallar tasarımın kısıtıdır.
 3. İşin ağırlığını söyle: tek yönlü karar içeriyorsa on iki adımın hepsi, içermiyorsa 1, 3, 7 ve 11.
 4. Bilinmeyen sayıyı kullanıcıya sor, her seferinde tek soru; cevap yoksa "varsayım" diye işaretle.
-5. Tasarım kaydını aç: `python3 harness/h.py yeni tasarim "<başlık>"` ve adımların çıktısını ilgili bölümlere yaz.
+5. Tasarım kaydını aç: `python3 harness/h.py yeni tasarim "<başlık>"` ve adımların çıktısını ilgili bölümlere yaz. Karara bağlanmamış nokta "belgede yok" ya da "kullanıcıya sorulacak" diye düz metne yazılmaz; açık uç olarak eklenir: `python3 harness/h.py acik-uc ekle TS-NNN "<soru>"` (iş o noktaya gelince soru kullanıcıya gider). Kullanıcıya sormadan yaptığın her seçimi `### Ajan kararları` başlığı altına `- AK-<n> <seçim>: <gerekçe>` maddesi olarak yaz (n kayıt içinde artar); ajan kararını başka biçimde yazma: kullanıcının kabul sorusunda gördüğü liste bu maddelerden çıkar (`python3 harness/h.py ajan-karari TS-NNN`).
 6. Tek yönlü işte çürütme turu yap: bağımsız bir alt ajana tasarımı çürütmesini söyle, bulgularını ve cevaplarını "Çürütme" bölümüne yaz. Ona dört soru sor: bu tasarım nerede çöker; hangi hata kipi düşünülmemiş; en güçlü karşı görüş nedir ve bastırıldı mı; bunu kendi adınla imzalar mıydın, imzalamazsan neden. Çürütme turu koşmadıysa bölüme "bağımsız inceleme yapılmadı" ve nedeni yazılır.
 7. Tasarımdan çıkan her karar için `karar`, her yükümlülük için `kural` taslağı aç.
 8. Sonunda kullanıcıya şunu ver: açılan taslakların listesi, her birindeki açık soru ve varsayımlar.

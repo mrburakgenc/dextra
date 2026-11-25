@@ -10,13 +10,16 @@ import {
   SiralamaBasligi,
 } from '../../../shared/liste/liste-parcalari';
 import { sorguMetni } from '../../../shared/liste/sorgu';
+import { Kolon } from '../../../shared/yetki/yetki-saglayici';
 import type { GrupKaydi, GrupListesiSorgusu } from './grup-listesi';
 
 // Grup listesinin tablosu, üst grup süzgeci ve sayfalaması (TS-004 "Yönetim ekranları"). Grubun
 // adı kayıt sayfasına bağlantıdır; 'Alt gruplar' yalnız o grubun altındakileri gösterir
-// (ustGrupId); 'Hepsi' süzgeci kaldırır.
+// (ustGrupId); 'Hepsi' süzgeci kaldırır. Kişinin tür düzeyinde okuyamadığı kolon çizilmez; bağlantı
+// kolonları hep çizilir.
 
 const ADRES = '/gruplar';
+const KAYNAK = 'Grup';
 
 export function GrupTablosu({
   liste,
@@ -43,23 +46,37 @@ export function GrupTablosu({
         liste={liste}
         basliklar={
           <>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="ad"
-              etiket="Ad"
-              sirala={sirala}
-              suzgec={{ ustGrupId }}
-            />
-            <th scope="col" className="px-3 py-2 text-left">
-              Üst grup
-            </th>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="olusturmaZamani"
-              etiket="Oluşturma zamanı"
-              sirala={sirala}
-              suzgec={{ ustGrupId }}
-            />
+            <Kolon
+              a={KAYNAK}
+              alanlar={['ad']}
+              yoksa={
+                <th scope="col" className="px-3 py-2 text-left">
+                  Ad
+                </th>
+              }
+            >
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="ad"
+                etiket="Ad"
+                sirala={sirala}
+                suzgec={{ ustGrupId }}
+              />
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['ustGrupId']}>
+              <th scope="col" className="px-3 py-2 text-left">
+                Üst grup
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="olusturmaZamani"
+                etiket="Oluşturma zamanı"
+                sirala={sirala}
+                suzgec={{ ustGrupId }}
+              />
+            </Kolon>
             <th scope="col" className="px-3 py-2 text-left">
               Alt gruplar
             </th>
@@ -69,22 +86,22 @@ export function GrupTablosu({
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
             <td className="px-3 py-2">
-              {kayit.ad === undefined ? (
-                BOS
-              ) : (
-                <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
-                  {kayit.ad}
-                </Link>
-              )}
+              <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
+                {kayit.ad ?? kimliginAdi(null, kayit.id)}
+              </Link>
             </td>
-            <td className="px-3 py-2">
-              {kimliginAdi(adlar, kayit.ustGrupId)}
-            </td>
-            <td className="px-3 py-2">
-              {kayit.olusturmaZamani === undefined
-                ? BOS
-                : tarihSaat(kayit.olusturmaZamani)}
-            </td>
+            <Kolon a={KAYNAK} alanlar={['ustGrupId']}>
+              <td className="px-3 py-2">
+                {kimliginAdi(adlar, kayit.ustGrupId)}
+              </td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <td className="px-3 py-2">
+                {kayit.olusturmaZamani === undefined
+                  ? BOS
+                  : tarihSaat(kayit.olusturmaZamani)}
+              </td>
+            </Kolon>
             <td className="px-3 py-2">
               <Link
                 href={`${ADRES}${sorguMetni({ sirala, ustGrupId: kayit.id })}`}

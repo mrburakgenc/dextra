@@ -1,4 +1,4 @@
 // Üyeliği oku işinin sonucu: isteyenin görebildiği kolonları ve kimliği taşıyan düz kayıt.
-import type { Kayit } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { UyelikGorunumu } from '../../../domain/repositories/i-uyelik.repository.js';
 
-export type UyelikOkuSonucu = Kayit;
+export type UyelikOkuSonucu = UyelikGorunumu;

@@ -262,10 +262,11 @@ class Kosum(Ortam):
         kok = gorev_deposu(zaman_asimi_sn=1)
         self.assertEqual(gorev.kos(kok, dolu_kart(kok))["durum"], "zaman-asimi")
 
-    def test_beyan_ettigi_dosyaya_dokunmayan_isci_yakalanir(self):
+    def test_beyan_ettigi_dosyaya_dokunmayan_isci_sorun_uretmez(self):
+        # GV-123 (TS-006 Yapı 3): beyan ölçümle karşılaştırılmaz; değişen dosyaların tek kaynağı ölçümdür
         os.environ["SAHTE_MOD"] = "dokunmaz"
         kok = gorev_deposu()
-        self.assertIn("beyan-uyusmuyor", sorun_adlari(gorev.kos(kok, dolu_kart(kok))))
+        self.assertNotIn("beyan-uyusmuyor", sorun_adlari(gorev.kos(kok, dolu_kart(kok))))
 
     def test_agacinin_disina_yazan_isci_raporda_uyari_olur(self):
         os.environ["SAHTE_MOD"] = "agac-disi"
@@ -277,7 +278,8 @@ class Kosum(Ortam):
 
     def test_agacinda_kalan_isci_uyari_almaz(self):
         kok = gorev_deposu()
-        self.assertEqual(gorev.kos(kok, dolu_kart(kok))["uyarilar"], [])
+        # GV-127 (TS-006 Yapı 12): sahte işçi dosyayı düzenleme kapısından geçirmeden yazar; tek uyarı kapı dışı yazımdır
+        self.assertEqual([u["ad"] for u in gorev.kos(kok, dolu_kart(kok))["uyarilar"]], ["kapi-disi-yazim"])
 
     def test_kosum_raporu_ve_durumu_diske_yazilir(self):
         kok = gorev_deposu()

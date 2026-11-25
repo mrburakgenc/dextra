@@ -63,16 +63,42 @@ export default async function YetenekSayfasi({
   return (
     <Kabuk silinmeZamani={kayit.silinmeZamani}>
       <KayitSatirlari
+        kayit={kayit}
         satirlar={[
-          { etiket: 'Grup', deger: kimliginAdi(adHaritasi(gruplar), kayit.grupId) },
-          { etiket: 'Rol', deger: kimliginAdi(adHaritasi(roller), kayit.rolId) },
-          { etiket: 'İzin', deger: kimliginAdi(adHaritasi(izinler), kayit.izinId) },
-          { etiket: 'Kayıt sınırı', deger: kayitSiniri(kayit.butunKayitlar, kayit.sart) },
-          { etiket: 'Bütün birimler', deger: evetHayir(kayit.butunBirimler) },
-          { etiket: 'Kolon sınırı', deger: kolonSiniri(kayit.butunKolonlar, kayit.kolonlar) },
-          { etiket: 'Tür', deger: yetenekTuru(kayit.sistemSatiri, kayit.tohumAnahtari) },
+          {
+            etiket: 'Grup',
+            alanlar: ['grupId'],
+            deger: kimliginAdi(adHaritasi(gruplar), kayit.grupId),
+          },
+          { etiket: 'Rol', alanlar: ['rolId'], deger: kimliginAdi(adHaritasi(roller), kayit.rolId) },
+          {
+            etiket: 'İzin',
+            alanlar: ['izinId'],
+            deger: kimliginAdi(adHaritasi(izinler), kayit.izinId),
+          },
+          {
+            etiket: 'Kayıt sınırı',
+            alanlar: ['butunKayitlar', 'sart'],
+            deger: kayitSiniri(kayit.butunKayitlar, kayit.sart),
+          },
+          {
+            etiket: 'Bütün birimler',
+            alanlar: ['butunBirimler'],
+            deger: evetHayir(kayit.butunBirimler),
+          },
+          {
+            etiket: 'Kolon sınırı',
+            alanlar: ['butunKolonlar', 'kolonlar'],
+            deger: kolonSiniri(kayit.butunKolonlar, kayit.kolonlar),
+          },
+          {
+            etiket: 'Tür',
+            alanlar: ['sistemSatiri', 'tohumAnahtari'],
+            deger: yetenekTuru(kayit.sistemSatiri, kayit.tohumAnahtari),
+          },
           {
             etiket: 'Oluşturma zamanı',
+            alanlar: ['olusturmaZamani'],
             deger:
               kayit.olusturmaZamani === undefined ? BOS : tarihSaat(kayit.olusturmaZamani),
           },

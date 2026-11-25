@@ -7,7 +7,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  bekleyenler,
+  featureKokunuDenetle,
   ortakKoduDenetle,
+  testIceAktarmasiniDenetle,
   type YapiKurali,
   yapiyiDenetle,
 } from './yapi-denetimi.js';
@@ -32,17 +35,30 @@ const DOGRU = [
   'alt/presentation/alt.controller.ts',
 ];
 
+// Doğru örneğin içeriği olan dosyaları; öbürleri boştur. Repository sorguyu yetki yüzünün süzgeci ve
+// okumayı kapatan işleviyle yazar (TS-007 "Yapı").
+const DOGRU_ICERIK: Record<string, string> = {
+  'alt/infrastructure/repositories/alt.prisma-repository.ts': [
+    "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+    'const satirlar = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+    'return yetki.kayitlar(satirlar, (where, select) => istemci.alt.findMany({ where, select }));',
+  ].join('\n'),
+};
+
 let kok: string;
 let sayac = 0;
 
-// Yeni bir features klasörüne ornek/<dosyalar> kurar ve yolunu döner.
-function kur(dosyalar: readonly string[]): string {
+// Yeni bir features klasörüne ornek/<dosyalar> kurar ve yolunu döner; içerik dosya adından metnedir.
+function kur(
+  dosyalar: readonly string[],
+  icerik: Record<string, string> = {},
+): string {
   sayac += 1;
   const features = join(kok, String(sayac));
   for (const dosya of dosyalar) {
     const yol = join(features, 'ornek', dosya);
     mkdirSync(dirname(yol), { recursive: true });
-    writeFileSync(yol, '');
+    writeFileSync(yol, icerik[dosya] ?? DOGRU_ICERIK[dosya] ?? '');
   }
   return features;
 }
@@ -196,8 +212,8 @@ describe('yapı denetimi: örnekler', () => {
     [
       'repository gerçeklemesi infrastructure kökünde',
       'd',
-      { ekle: ['alt/infrastructure/alt-yazma.kapi-repository.ts'] },
-      'alt/infrastructure/alt-yazma.kapi-repository.ts',
+      { ekle: ['alt/infrastructure/alt-yazma.bellek-repository.ts'] },
+      'alt/infrastructure/alt-yazma.bellek-repository.ts',
     ],
     [
       'repository gerçeklemesi başka klasörde',
@@ -236,6 +252,315 @@ describe('yapı denetimi: örnekler', () => {
   );
 });
 
+// TS-007 "Adlar, denetim ve geçiş": j Prisma repository'sinde vekil çağrısı, k okumada yetki süzgeci,
+// bekleyenler eski yüzü çağıran alt özellikler.
+describe('yapı denetimi: repository ve yetki yüzü', () => {
+  const OKUMA = 'alt/infrastructure/repositories/alt.prisma-repository.ts';
+  const YAZMA =
+    'alt/infrastructure/repositories/alt-yazma.prisma-repository.ts';
+  const KAPI_ICE_AKTARMASI =
+    "import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';\n";
+
+  it('yeni biçimli okuma ve yazma repository ihlalsizdir ve alt özellik bekleyen değildir', () => {
+    const features = kur([...DOGRU, YAZMA], {
+      [YAZMA]:
+        KAPI_ICE_AKTARMASI +
+        "return this.kapi.deyimleSil(islem, isAdi, 'Alt', id, (vt, where, veri) => vt.alt.updateMany({ where, data: veri }));",
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+    expect(bekleyenler(features)).toEqual([]);
+  });
+
+  it('Prisma vekili çağrısı olmayan prisma-repository dosyası kural j ile yakalanır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: "return kapi.yetki('Alt', { bakilan: [] });",
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'j',
+            yol: `ornek/${OKUMA}`,
+            neden: expect.any(String) as string,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('yetki süzgecini taşımayan okuma deyimi kural k ile yakalanır; süzgeçli deyim ve yeniden okuma geçer', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        DOGRU_ICERIK[OKUMA],
+        'const sayi = await istemci.alt.count({ where: { id } });',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'k',
+            yol: `ornek/${OKUMA}`,
+            neden: 'okuma deyimi yetki süzgecini taşımıyor: count (satır 4)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('okumayı kapatan çağrının ilk bağımsız değişkenindeki süzgeçsiz okuma kural k ile yakalanır; yalnız yeniden okuma muaftır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: { id } }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'k',
+            yol: `ornek/${OKUMA}`,
+            neden: 'okuma deyimi yetki süzgecini taşımıyor: findMany (satır 2)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('okumayı kapatan çağrının ilk bağımsız değişkenindeki süzgeçli okuma geçer', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+  });
+
+  it('süzgeçle aynı adlı yerel değişken süzgeç sayılmaz; kural k ile yakalanır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const satirlar = { id };',
+        'const kayitlar = await istemci.alt.findMany({ where: satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar(kayitlar, (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'k',
+            yol: `ornek/${OKUMA}`,
+            neden: 'okuma deyimi yetki süzgecini taşımıyor: findMany (satır 3)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      'süzgeçli okuma kapatan çağrı olmadan döner',
+      [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'return istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+      ],
+      'findMany (satır 2)',
+    ],
+    [
+      'iki süzgeçli okumadan yalnız sonraki kapatılır',
+      [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const a = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'const b = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar(b, (where, select) => istemci.alt.findMany({ where, select }));',
+      ],
+      'findMany (satır 2)',
+    ],
+  ])('%s: kural l ile yakalanır', (_ad, satirlar, deyim) => {
+    const features = kur(DOGRU, { [OKUMA]: satirlar.join('\n') });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'l',
+            yol: `ornek/${OKUMA}`,
+            neden: `süzgeçli okuma okumayı kapatan çağrıyla kapanmıyor: ${deyim}`,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('her süzgeçli okuma kendi kapatan çağrısıyla kapanınca kural l geçer', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [DOGRU_ICERIK[OKUMA], DOGRU_ICERIK[OKUMA]].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+  });
+
+  it('çekirdek repository okumasında yetki süzgeci aranmaz', () => {
+    const features = kurSrc({
+      'kimlik/parola/infrastructure/repositories/parola.prisma-repository.ts':
+        'return istemci.kullanici.findUnique({ where: { kullaniciAdi } });',
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'kimlik/parola', ihlaller: [] },
+    ]);
+  });
+
+  it('eski yüzü çağıran alt özellik adıyla bekleyendir; Prisma çağrısı olmayan dosyası kural j ile, eski yüz çağrısı kural m ile yakalanır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]:
+        "import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';\n" +
+        "return kapi.liste(istemci, 'Alt', { sayfa });",
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'j',
+            yol: `ornek/${OKUMA}`,
+            neden: expect.any(String) as string,
+          },
+          {
+            kural: 'm',
+            yol: `ornek/${OKUMA}`,
+            neden: 'eski yüzü çağırır; alt özellik bekleyendir',
+          },
+        ],
+      },
+    ]);
+    expect(bekleyenler(features)).toEqual(['ornek/alt']);
+  });
+
+  // TS-007 "Adlar, denetim ve geçiş": geçiş bitti; bekleyen alt özellik, .kapi-repository.ts adı ve
+  // feature'ın test kodunu ya da eski yüzün adını içe aktarması ihlaldir.
+  it.each<[string, YapiKurali, string, string]>([
+    [
+      'işleyicisi eski yüzü çağıran (bekleyen) alt özellik',
+      'm',
+      'alt/application/queries/alt-oku/alt-oku.handler.ts',
+      "import { OkumaKapisi } from '../../../../../../shared/yetki/infrastructure/okuma-kapisi.js';\n" +
+        "return this.kapi.tek(istemci, 'Alt', id);",
+    ],
+    [
+      '.kapi-repository.ts adlı yazma repository',
+      'n',
+      'alt/infrastructure/repositories/alt-yazma.kapi-repository.ts',
+      '',
+    ],
+    [
+      'test yardımcısını içe aktaran feature dosyası',
+      'o',
+      'alt/infrastructure/repositories/alt-yazma.prisma-repository.ts',
+      "import { yardimci } from '../../../../../../test/yardimci/baska.js';\n" +
+        "return this.kapi.deyimleSil(islem, isAdi, 'Alt', id, (vt, where) => vt.alt.deleteMany({ where }));",
+    ],
+    [
+      'eski yüzün adını içe aktaran feature dosyası',
+      'o',
+      'alt/application/_shared/liste.ts',
+      "import type {\n  ListeIstegi,\n} from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';",
+    ],
+  ])('%s kural %s ile yakalanır', (_ad, kural, dosya, metin) => {
+    const features = kur([...DOGRU, dosya], { [dosya]: metin });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          { kural, yol: `ornek/${dosya}`, neden: expect.any(String) as string },
+        ],
+      },
+    ]);
+  });
+
+  it('tip bağımsız değişkenli kapatan çağrı (kayitlar<Tip>(…)) tanınır: okuma kapanır, yeniden okuma muaftır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const satirlar = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar<Gorunum<AltSatiri>>(satirlar, (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+  });
+
+  it('tip bağımsız değişkenli kapatan çağrının ilk bağımsız değişkenindeki süzgeçsiz okuma kural k ile yakalanır; yalnız yeniden okuma muaftır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'return yetki.kayitlar<AltSatiri>(await istemci.alt.findMany({ where: { id } }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'k',
+            yol: `ornek/${OKUMA}`,
+            neden: 'okuma deyimi yetki süzgecini taşımıyor: findMany (satır 2)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('sonraki okuma kapatan çağrının ilk bağımsız değişkenine satır içi yazılınca önceki süzgeçli okuma kapanmış sayılmaz; kural l ile yakalanır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const a = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'l',
+            yol: `ornek/${OKUMA}`,
+            neden:
+              'süzgeçli okuma okumayı kapatan çağrıyla kapanmıyor: findMany (satır 2)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('önceki okuma kendi kapatan çağrısıyla, sonraki satır içi okuma kendi çağrısıyla kapanınca kural l geçer', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const a = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'const ka = await yetki.kayitlar(a, (where, select) => istemci.alt.findMany({ where, select }));',
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+  });
+});
+
 // Kurallara uyan küçük bir src: katmanlı iki konu (konu, baska), katman klasörü olmayan dört istisna,
 // yalnız üretilen kodu taşıyan veritabanı konusu ve feature içi ortak klasör (ornek/_shared).
 // Dosya adı → içerik.
@@ -269,7 +594,7 @@ const DOGRU_ORTAK: Record<string, string> = {
   'features/ornek/_shared/application/parca.ts':
     "import { Islem } from '../../../../shared/database/domain/islem.js';",
   'features/ornek/_shared/infrastructure/repositories/cekirdek.prisma-repository.ts':
-    '',
+    'return istemci.kullanici.findUnique({ where: { id } });',
   'features/ornek/alt/yardimci.ts': "import { Queue } from 'bullmq';",
 };
 
@@ -442,10 +767,117 @@ describe('yapı denetimi: ortak kod örnekleri', () => {
       },
       'features/ornek/_shared/domain/repositories/cekirdek.repository.ts',
     ],
+    [
+      'feature içi ortak klasörde Prisma vekili çağrısı olmayan prisma-repository',
+      'j',
+      {
+        'features/ornek/_shared/infrastructure/repositories/cekirdek.prisma-repository.ts':
+          'return kayitlar;',
+      },
+      'features/ornek/_shared/infrastructure/repositories/cekirdek.prisma-repository.ts',
+    ],
+    [
+      'feature içi ortak klasörde .kapi-repository.ts adı',
+      'n',
+      {
+        'features/ornek/_shared/infrastructure/repositories/cekirdek-yazma.kapi-repository.ts':
+          '',
+      },
+      'features/ornek/_shared/infrastructure/repositories/cekirdek-yazma.kapi-repository.ts',
+    ],
+    [
+      'feature içi ortak klasör test yardımcısını içe aktarır',
+      'o',
+      {
+        'features/ornek/_shared/application/parca.ts':
+          "import { yardimci } from '../../../../../test/yardimci/baska.js';",
+      },
+      'features/ornek/_shared/application/parca.ts',
+    ],
   ])('%s kural %s ile yakalanır', (_ad, kural, ekle, yol) => {
     const raporlar = ortakKoduDenetle(kurSrc({ ...DOGRU_ORTAK, ...ekle }));
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([
       { kural, yol, neden: expect.any(String) as string },
+    ]);
+  });
+});
+
+// Feature'ın kökünde doğrudan duran dosyalar n ve o'dan geçer; src'nin hiçbir dosyası test klasöründen
+// içe aktarmaz (p). Test klasörü içe aktarılan yolun çözüldüğü yerle tanınır, adla değil.
+describe('yapı denetimi: feature kökü ve test klasörü', () => {
+  // Dört düzey yukarıdaki test klasörü. Örnek metinlerde açık yazılmaz: denetim metin düzeyindedir ve bu
+  // dosya da src'de dört düzey derindedir; açık yazılsa gerçek depoda bu dosya kural p'ye takılırdı.
+  const TEST_KLASORU = '../../../../test';
+
+  it("kurallara uyan feature kökü ve src'nin içinde kalan içe aktarmalar ihlalsizdir", () => {
+    const src = kurSrc({
+      ...DOGRU_ORTAK,
+      'features/ornek/ornek.module.ts':
+        "import { AltModule } from './alt/alt.module.js';\nimport { T } from '../../shared/test/t.js';",
+      'main.ts': "import { AppModule } from './app.module.js';",
+      'shared/konu/infrastructure/x.spec.ts':
+        "import type { Tip } from '../domain/tip.js';",
+    });
+    expect(featureKokunuDenetle(join(src, 'features'))).toEqual([]);
+    expect(testIceAktarmasiniDenetle(src)).toEqual([]);
+  });
+
+  it.each<[string, YapiKurali, Record<string, string>, string]>([
+    [
+      'feature kökünde .kapi-repository.ts adı',
+      'n',
+      { 'features/ornek/ornek-yazma.kapi-repository.ts': '' },
+      'ornek/ornek-yazma.kapi-repository.ts',
+    ],
+    [
+      'feature kökündeki modül test yardımcısını içe aktarır',
+      'o',
+      {
+        'features/ornek/ornek.module.ts':
+          "import { yardimci } from '../../../test/yardimci/baska.js';",
+      },
+      'ornek/ornek.module.ts',
+    ],
+    [
+      'feature kökündeki modül eski yüzün adını içe aktarır',
+      'o',
+      {
+        'features/ornek/ornek.module.ts':
+          "import type { ListeIstegi } from '../../shared/yetki/infrastructure/okuma-kapisi.js';",
+      },
+      'ornek/ornek.module.ts',
+    ],
+  ])('%s kural %s ile yakalanır', (_ad, kural, ekle, yol) => {
+    const src = kurSrc({ ...DOGRU_ORTAK, ...ekle });
+    expect(featureKokunuDenetle(join(src, 'features'))).toEqual([
+      { kural, yol, neden: expect.any(String) as string },
+    ]);
+  });
+
+  it.each<[string, Record<string, string>, string]>([
+    [
+      'ortak kodun spec dosyası test yardımcısını içe aktarır',
+      {
+        'shared/konu/infrastructure/x.spec.ts': `import { EskiOkumaKapisi } from '${TEST_KLASORU}/yardimci/eski-yuz.js';`,
+      },
+      'shared/konu/infrastructure/x.spec.ts',
+    ],
+    [
+      'src kökündeki dosya test klasörünü dinamik içe aktarır',
+      { 'main.ts': "const y = await import('../test/yardimci/x.js');" },
+      'main.ts',
+    ],
+    [
+      'alt özellik dosyası test klasöründen dışa aktarır',
+      {
+        'features/ornek/alt/yardimci.ts': `export { y } from '${TEST_KLASORU}/yardimci/x.js';`,
+      },
+      'features/ornek/alt/yardimci.ts',
+    ],
+  ])('%s kural p ile yakalanır', (_ad, ekle, yol) => {
+    const src = kurSrc({ ...DOGRU_ORTAK, ...ekle });
+    expect(testIceAktarmasiniDenetle(src)).toEqual([
+      { kural: 'p', yol, neden: expect.any(String) as string },
     ]);
   });
 });
@@ -471,6 +903,18 @@ describe('yapı denetimi: gerçek depo', () => {
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([]);
   });
 
+  // Geçiş bitti (TS-007 "Aşamalar" 7): eski yüzü çağıran alt özellik kalmaz; sıfır değilse test kırmızıdır.
+  it('eski yüzü çağıran (bekleyen) alt özellik yoktur; varsa adlarıyla yazılır', () => {
+    const features = fileURLToPath(
+      new URL('../../../features', import.meta.url),
+    );
+    const bekleyen = bekleyenler(features);
+    process.stdout.write(
+      `bekleyen: ${String(bekleyen.length)}${bekleyen.length > 0 ? ` (${bekleyen.join(', ')})` : ''}\n`,
+    );
+    expect(bekleyen).toEqual([]);
+  });
+
   it('ortak kodun bütün konuları ve feature içi ortak klasör sınanır ve ihlal yoktur', () => {
     const src = fileURLToPath(new URL('../../..', import.meta.url));
     const raporlar = ortakKoduDenetle(src);
@@ -492,5 +936,17 @@ describe('yapı denetimi: gerçek depo', () => {
       'features/kimlik/_shared',
     ]);
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([]);
+  });
+
+  it("feature'ların kökündeki dosyalarda ihlal yoktur", () => {
+    const features = fileURLToPath(
+      new URL('../../../features', import.meta.url),
+    );
+    expect(featureKokunuDenetle(features)).toEqual([]);
+  });
+
+  it('kaynak kodunun hiçbir dosyası test klasöründen içe aktarmaz', () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(testIceAktarmasiniDenetle(src)).toEqual([]);
   });
 });

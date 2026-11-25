@@ -140,15 +140,19 @@ describe('RolSayfasi kayıt', () => {
     ]);
   });
 
-  it('kolonu gelmeyen alanlar boş işaretle görünür; kodu gelmeyen kayıtta sil görünmez', async () => {
+  it('kolonu gelmeyen alanların satırı çizilmez; kodu gelmeyen kayıtta sil görünmez', async () => {
     await goster({ id: ID });
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Rol');
-    expect(kayitSatirlari()).toEqual([
-      ['Ad', '—'],
-      ['Kod', '—'],
-    ]);
+    expect(screen.queryAllByRole('term')).toHaveLength(0);
     expect(dugme('Sil')).toBeNull();
+  });
+
+  it('gelmiş ama boş alanın satırı boş işaretle kalır; gelmeyen alanın etiketi yoktur', async () => {
+    await goster({ id: ID, kod: null });
+
+    expect(kayitSatirlari()).toEqual([['Kod', '—']]);
+    expect(screen.queryByText('Ad', { selector: 'dt' })).toBeNull();
   });
 
   it('404 bulunamadi dönünce Kayıt bulunamadı iletisi gösterilir', async () => {
