@@ -2,10 +2,7 @@
 // yazma yazma yüzünden geçer (TS-002 AK-39); gerçeklemeleri infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniRol } from '../entities/rol.entity.js';
 import type { RolAdi } from '../value-objects/rol-adi.js';
 
@@ -14,14 +11,28 @@ export interface Sayfa {
   readonly al: number;
 }
 
+// Okunan rol ve izin kayıtları: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface RolGorunumu {
+  readonly id: string;
+  readonly kod?: string | null;
+  readonly ad?: string;
+  readonly silinmeZamani?: Date | null;
+}
+
+export interface IzinGorunumu {
+  readonly id: string;
+  readonly kaynak?: string;
+  readonly eylem?: string;
+}
+
 // Kayıtlar isteyenin görebildiği kolonları ve kimliği taşır.
 export interface IRolOkumaRepo {
   // Yalnız silinmemiş roller (TS-002 AK-39, AK-42); tek kayıt silinmiş rolü de verir.
-  roller(siralama: readonly Siralama[], sayfa: Sayfa): Promise<Kayit[]>;
+  roller(siralama: readonly Siralama[], sayfa: Sayfa): Promise<RolGorunumu[]>;
   // Görülemeyen ya da var olmayan rol için bulunamadi.
-  rol(id: string): Promise<Kayit>;
+  rol(id: string): Promise<RolGorunumu>;
   // İzin kataloğu.
-  izinler(siralama: readonly Siralama[], sayfa: Sayfa): Promise<Kayit[]>;
+  izinler(siralama: readonly Siralama[], sayfa: Sayfa): Promise<IzinGorunumu[]>;
 }
 
 export const ROL_OKUMA_REPO = new RepoBelirteci<IRolOkumaRepo, IRolOkumaRepo>(
