@@ -89,8 +89,10 @@ class RaporYeni(unittest.TestCase):
         self.assertEqual(yol, kok / "docs/rapor/2026-11-25-odeme-isleri.md")
         metin = yol.read_text(encoding="utf-8")
         self.assertTrue(metin.startswith("# Ödeme işleri — 2026-11-25\n"))
-        for bolum in ("## Denetlemek için", "## 1. Kısa özet", "## 2. Görevler", "## 8. Kullanıcıdan beklenenler",
-                      "## 10. Günlük", rapor.BASLA, rapor.BITIR, rapor.TABLO_BASI):
+        # GV-128: 'İncelemenin önerileri' 3. bölüm oldu, sonraki bölümlerin numaraları bir kaydı
+        for bolum in ("## Denetlemek için", "## 1. Kısa özet", "## 2. Görevler", "## 3. İncelemenin önerileri",
+                      "## 9. Kullanıcıdan beklenenler", "## 11. Günlük", rapor.BASLA, rapor.BITIR, rapor.TABLO_BASI,
+                      rapor.ONERI_BASLA, rapor.ONERI_BITIR):
             self.assertIn(bolum, metin)
 
     def test_ikinci_cagri_uzerine_yazmaz_ve_hata_verir(self):
@@ -303,6 +305,178 @@ class Z19RaporsuzGorev(unittest.TestCase):
         self.assertEqual(kod, 0)
         self.assertNotIn("raporsuz-gorev", cikti)
         self.assertEqual(cikti.count("bos-rapor-bolumu"), 2)
+
+
+class IncelemeOnerileri(unittest.TestCase):
+    """GV-128 (TS-006 Yapı 13): raporun ikinci otomatik bloğu tablodaki görevlerin inceleme önerilerini listeler."""
+
+    UZUN = "Uzun " + "y" * 300 + ". İkinci cümle."
+
+    def _depo(self) -> pathlib.Path:
+        kok = sablonlu_depo()
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Önerili", alindi=True),
+              inceleme_rapor={"bulgular": [
+                  {"dosya": "harness/a.py", "satir": 12, "onem": "oneri",
+                   "aciklama": "Sabit\n  tekrarlanıyor. İkinci cümle burada; listelenmez."},
+                  {"dosya": "harness/b.py", "satir": 3, "onem": "engel", "aciklama": "Engel bulgusu. Listelenmez.",
+                   "kanit": "x"},
+                  {"dosya": "harness/c.py", "satir": 40, "onem": "oneri", "aciklama": self.UZUN}]})
+        kayit(kok, "GV-002", gorev_durumu("GV-002", "Önerisiz", alindi=True),
+              inceleme_rapor={"bulgular": [{"dosya": "harness/d.py", "satir": 1, "onem": "engel",
+                                            "aciklama": "Yalnız engel.", "kanit": "x"}]})
+        return kok
+
+    def _blok(self, metin: str) -> list:
+        return metin[metin.index(rapor.ONERI_BASLA) + len(rapor.ONERI_BASLA):metin.index(rapor.ONERI_BITIR)] \
+            .strip("\n").split("\n")
+
+    def test_a_iki_oneri_iki_satir_engel_listelenmez(self):
+        kok = self._depo()
+        metin = rapor.yeni(kok, "Öneriler", "2026-11-25").read_text(encoding="utf-8")
+        self.assertEqual(self._blok(metin), [
+            "- GV-001 · `harness/a.py:12` — Sabit tekrarlanıyor.",
+            "- GV-001 · `harness/c.py:40` — " + self.UZUN[:rapor.ONERI_SINIRI]])
+        self.assertEqual(len(self.UZUN[:rapor.ONERI_SINIRI]), 200)
+        self.assertNotIn("Engel bulgusu", metin)
+        self.assertNotIn("harness/d.py", metin)
+        self.assertNotIn("İkinci cümle", metin)
+
+    def test_b_onerisi_olmayan_gorevlerle_blok_oneri_yok_der(self):
+        kok = sablonlu_depo()
+        kayit(kok, "GV-002", gorev_durumu("GV-002", "Önerisiz", alindi=True),
+              inceleme_rapor={"bulgular": [{"dosya": "x", "satir": 1, "onem": "engel", "aciklama": "E.", "kanit": "k"}]})
+        kayit(kok, "GV-003", gorev_durumu("GV-003", "İncelenmemiş"))
+        kayit(kok, "GV-004", "{bozuk", inceleme_rapor="[1,")
+        metin = rapor.yeni(kok, "Öneriler", "2026-11-25").read_text(encoding="utf-8")
+        self.assertEqual(self._blok(metin), [rapor.ONERI_YOK])
+        self.assertEqual(self._blok(rapor.yeni(sablonlu_depo(), "Boş", "2026-11-25").read_text(encoding="utf-8")),
+                         [rapor.ONERI_YOK])
+
+    def test_c_uret_iki_blok_disina_dokunmaz_ve_iki_kez_ayni_ciktiyi_verir(self):
+        kok = self._depo()
+        yol = kok / "docs/rapor/el.md"
+        bas, orta, son = "# El\n\nÖnce.\n\n", "\n\n## Öneriler\nelle | yazılan GV-0099\n\n", "\n\n## Sonra\nmetin\n"
+        yol.parent.mkdir(parents=True)
+        yol.write_text(bas + rapor.BASLA + "\nGV-001\n" + rapor.BITIR + orta + rapor.ONERI_BASLA + "\neski öneri\n"
+                       + rapor.ONERI_BITIR + son, encoding="utf-8")
+        rapor.uret(kok, yol)
+        bir = yol.read_text(encoding="utf-8")
+        self.assertTrue(bir.startswith(bas + rapor.BASLA + "\n"))
+        self.assertIn("\n" + rapor.BITIR + orta + rapor.ONERI_BASLA + "\n- GV-001 ", bir)
+        self.assertTrue(bir.endswith("\n" + rapor.ONERI_BITIR + son))
+        self.assertNotIn("eski öneri", bir)
+        self.assertEqual(len(self._blok(bir)), 2)
+        rapor.uret(kok, yol)
+        self.assertEqual(yol.read_text(encoding="utf-8"), bir)
+
+    def test_d_ikinci_blogun_isaretleri_olmayan_eski_raporda_yalniz_tablo_yenilenir(self):
+        kok = self._depo()
+        yol = kok / "docs/rapor/eski.md"
+        bas, son = "# Eski\n\n## 2. Görevler\n\n", "\n\n## 3. Kullanıcının verdiği kararlar\nelle\n"
+        yol.parent.mkdir(parents=True)
+        yol.write_text(bas + rapor.BASLA + "\nGV-001\n" + rapor.BITIR + son, encoding="utf-8")
+        rapor.uret(kok, yol)
+        metin = yol.read_text(encoding="utf-8")
+        self.assertEqual(metin, bas + rapor.BASLA + "\n" + rapor.tablo(kok, ["GV-001", "GV-002"]) + "\n"
+                         + rapor.BITIR + son)
+        self.assertNotIn(rapor.ONERI_BASLA, metin)
+        self.assertNotIn("harness/a.py", metin)
+
+    def test_e_yeni_sablonda_rapor_denetimi_zorunlu_bolumleri_tanir(self):
+        for doldur, bos in [((), ["Kısa özet", "Kullanıcıdan beklenenler"]),
+                            (("Kısa özet",), ["Kullanıcıdan beklenenler"]),
+                            (("Kullanıcıdan beklenenler",), ["Kısa özet"]),
+                            (("Kısa özet", "Kullanıcıdan beklenenler"), [])]:
+            kok = dal_depo("GV-007: Ödeme")
+            kayit(kok, "GV-007", gorev_durumu("GV-007", "Ödeme", alindi=True),
+                  inceleme_rapor={"bulgular": [{"dosya": "a", "satir": 1, "onem": "oneri", "aciklama": "Ö."}]})
+            yol = rapor.yeni(kok, "Ödeme", "2026-11-25")
+            metin = yol.read_text(encoding="utf-8")
+            self.assertIn("## 9. Kullanıcıdan beklenenler", metin)
+            self.assertIn("- GV-007 · `a:1` — Ö.", metin)
+            for ad in doldur:
+                metin = bolum_doldur(metin, ad, DOLU[ad])
+            yol.write_text(metin, encoding="utf-8")
+            for ad in rapor.ZORUNLU_BOLUMLER:
+                self.assertEqual(rapor._bolum_bos_mu(metin, ad), ad in bos, (doldur, ad))
+            git(kok, "add", "-A")
+            git(kok, "commit", "-q", "-m", "Rapor")
+            bulgular = [b for b in h.denetle(kok, bugun=BUGUN, taban=True) if b["kod"] == "Z19"]
+            self.assertEqual([b["ad"] for b in bulgular], ["bos-rapor-bolumu"] * len(bos), doldur)
+            self.assertEqual([[a for a in rapor.ZORUNLU_BOLUMLER if a in b["mesaj"]] for b in bulgular],
+                             [[a] for a in bos])
+
+    def test_f_rapor_durum_son_satiri_oneri_sayisini_yazar(self):
+        kok = dal_depo("GV-001: Önerili")
+        kod, cikti = cli(kok, "rapor", "durum")
+        self.assertEqual(kod, 0)
+        self.assertTrue(cikti.rstrip("\n").split("\n")[-1].endswith("; tablolarda 0 inceleme önerisi"), cikti)
+        self.assertIn("rapor durum: 1 raporsuz görev, 0 boş bölüm; tablolarda 0 inceleme önerisi", cikti)
+        for k, n in (("GV-001", 0), ("GV-002", 2)):
+            kayit(kok, k, gorev_durumu(k, "İş", alindi=True), inceleme_rapor={"bulgular": [
+                {"dosya": "a", "satir": i, "onem": "oneri", "aciklama": "Ö."} for i in range(n)]
+                + [{"dosya": "b", "satir": 1, "onem": "engel", "aciklama": "E.", "kanit": "k"}]})
+        yol = rapor.yeni(kok, "Bir", "2026-11-25")
+        metin = yol.read_text(encoding="utf-8")
+        for ad in rapor.ZORUNLU_BOLUMLER:
+            metin = bolum_doldur(metin, ad, DOLU[ad])
+        yol.write_text(metin, encoding="utf-8")
+        # aynı görev ikinci raporun tablosunda da geçse bir kez sayılır; tablosuz (işaretsiz) rapor sayılmaz
+        (kok / "docs/rapor/2026-11-26-iki.md").write_text(
+            "%s\n| GV-002 |\n%s\n" % (rapor.BASLA, rapor.BITIR), encoding="utf-8")
+        (kok / "docs/rapor/2026-11-01-eski.md").write_text("# Eski\n\nGV-002 anlatıldı.\n", encoding="utf-8")
+        git(kok, "add", "-A")
+        git(kok, "commit", "-q", "-m", "Rapor")
+        self.assertEqual(rapor.oneri_sayisi(kok, h.ayar_oku(kok)), 2)
+        kod, cikti = cli(kok, "rapor", "durum")
+        self.assertEqual(kod, 0)
+        self.assertEqual(cikti.rstrip("\n").split("\n")[-1],
+                         "rapor durum: bu dalda raporsuz görev ve boş bölümlü rapor yok; tablolarda 2 inceleme önerisi")
+
+    def test_g_onerinin_metninde_adi_gecen_gorev_raporlanmis_sayilmaz(self):
+        # GV-001 eski (bu dalın değil); önerisi bu dalda alınan GV-002'yi anar. Rapor yalnız GV-001'i taşır.
+        kok = dal_depo("GV-002: İki")
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Bir", alindi=True), inceleme_rapor={"bulgular": [
+            {"dosya": "a", "satir": 1, "onem": "oneri", "aciklama": "GV-002 aynı dosyaya dokunuyor. Bak."}]})
+        bir = rapor.yeni(kok, "Bir", "2026-11-24")
+        self.assertIn("- GV-001 · `a:1` — GV-002 aynı dosyaya dokunuyor.", bir.read_text(encoding="utf-8"))
+        git(kok, "add", "-A")
+        git(kok, "commit", "-q", "-m", "Rapor")
+        # Z19: GV-002 raporsuzdur; GV-002'yi yalnız önerisinde anan rapor bu dalın raporu sayılıp sınanmaz
+        self.assertEqual([(a, y) for a, y, _ in z19(kok)], [("raporsuz-gorev", "GV-002")])
+        # sonraki 'rapor yeni' GV-002'yi tablosuna alır
+        kayit(kok, "GV-002", gorev_durumu("GV-002", "İki", alindi=True))
+        metin = rapor.yeni(kok, "İki", "2026-11-25").read_text(encoding="utf-8")
+        self.assertIn("| GV-002 |", metin)
+        self.assertNotIn("| GV-001 |", metin)
+
+    def test_h_isaret_tasiyan_oneri_blogu_bozmaz(self):
+        kok = sablonlu_depo()
+        isaretler = (rapor.BASLA, rapor.BITIR, rapor.ONERI_BASLA, rapor.ONERI_BITIR)
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Bir", alindi=True), inceleme_rapor={"bulgular": [
+            {"dosya": "a" + rapor.ONERI_BASLA, "satir": 1, "onem": "oneri",
+             "aciklama": "Bitiş %s başlangıç %s tablo %s %s işaretleri. İkinci." % tuple(reversed(isaretler))}]})
+        yol = rapor.yeni(kok, "Bir", "2026-11-25")
+        bir = yol.read_text(encoding="utf-8")
+        for isaret in isaretler:
+            self.assertEqual(bir.count(isaret), 1, isaret)
+        satirlar = self._blok(bir)
+        self.assertEqual(len(satirlar), 1)
+        self.assertTrue(satirlar[0].startswith("- GV-001 · `a"), satirlar)
+        self.assertNotIn("<!--", satirlar[0])
+        rapor.uret(kok, yol)
+        self.assertEqual(yol.read_text(encoding="utf-8"), bir)
+
+    def test_i_taban_dal_olculemezse_rapor_durum_yine_oneri_sayisini_yazar(self):
+        kok = dal_depo("GV-007: Ödeme", ayar={"taban_dal": "yok-boyle-dal"})
+        kayit(kok, "GV-007", gorev_durumu("GV-007", "Ödeme", alindi=True), inceleme_rapor={"bulgular": [
+            {"dosya": "a", "satir": 1, "onem": "oneri", "aciklama": "Ö."}]})
+        rapor.yeni(kok, "Ödeme", "2026-11-25")
+        kod, cikti = cli(kok, "rapor", "durum")
+        self.assertEqual(kod, 0)
+        son = cikti.rstrip("\n").split("\n")[-1]
+        self.assertTrue(son.startswith("rapor durum: Z19 ölçülemedi"), son)
+        self.assertTrue(son.endswith("; tablolarda 1 inceleme önerisi"), son)
 
 
 if __name__ == "__main__":
