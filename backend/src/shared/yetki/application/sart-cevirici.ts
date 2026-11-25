@@ -34,6 +34,20 @@ const PRISMA_ISLECI: Record<Islec, string> = {
   buyuk_esit: 'gte',
 };
 
+// Her işlecin tümleyeni: öğeyi sağlamayan dolu değer (TS-008 "Derleme"; kapanan AU-5). Boş değer ayrı
+// dalla tutulur; veritabanı istemcisinin genel "değil"i (NOT) boş değerli satırı düşürdüğü için
+// kullanılmaz.
+const TUMLEYEN_ISLEC: Record<Islec, string> = {
+  esit: 'not',
+  esit_degil: 'equals',
+  listede: 'notIn',
+  listede_degil: 'in',
+  kucuk: 'gte',
+  kucuk_esit: 'gt',
+  buyuk: 'lte',
+  buyuk_esit: 'lt',
+};
+
 const LISTE_ISLECLERI: readonly Islec[] = ['listede', 'listede_degil'];
 
 // İşlecin yazılabildiği alan tipleri (TS-002 AK-44). Mantıksal alanda yalnız eşitlik vardır (Prisma'nın
@@ -144,4 +158,30 @@ export function sartiCevir(
     kosullar.push({ [oge.alan]: { [PRISMA_ISLECI[oge.islec]]: oge.deger } });
   }
   return { kosul: { AND: kosullar } };
+}
+
+// Yasağın sartiCevir'den geçmiş şartından "yasak bu kaydı kesin tutmuyor" koşulu (TS-008 "Derleme";
+// kapanan AU-5): öğeler "ve" ile bağlı olduğu için her öğenin "sağlanmıyor ya da kolon boş" hâlinin
+// "veya"sıdır. Boşluk dalı yalnız katalogda boş olabildiği yazılı kolona yazılır; bilinmeyen kolonda
+// dal yazılmaz ve boş değerli kayıt yasaklı sayılır (önce kapatılır). Koşulsuz yasakta (boş şart)
+// koşul hiçbir kaydı tutmaz: veritabanı istemcisi öğesiz "veya"yı (OR: []) ve öğesiz "değil"i koşulsuz
+// sayıp bütün kayıtları getirir (ölçüldü: test/yetki-yasak-kosul.e2e-spec.ts); boş listede (in: [])
+// ise hiçbir kaydı getirmez. Bu yüzden okuma kapısının kuralsız süzgeci gibi boş kimlik listesi yazılır.
+export function kesinTutmuyorKosulu(
+  sart: readonly CozulmusSartOgesi[],
+  bosOlabilirlik: Readonly<Record<string, boolean>>,
+): PrismaKosulu {
+  if (sart.length === 0) {
+    return { id: { in: [] } };
+  }
+  return {
+    OR: sart.flatMap((oge) => {
+      const tumleyen = {
+        [oge.alan]: { [TUMLEYEN_ISLEC[oge.islec]]: oge.deger },
+      };
+      return bosOlabilirlik[oge.alan] === true
+        ? [tumleyen, { [oge.alan]: { equals: null } }]
+        : [tumleyen];
+    }),
+  };
 }

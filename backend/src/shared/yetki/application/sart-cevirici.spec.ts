@@ -1,5 +1,5 @@
 import type { Islec } from '../../kimlik/domain/i-yetki-verisi.contract.js';
-import { sartiCevir } from './sart-cevirici.js';
+import { kesinTutmuyorKosulu, sartiCevir } from './sart-cevirici.js';
 
 const ALANLAR = ['durum', 'tutar', 'sahibiId'];
 
@@ -51,5 +51,71 @@ describe('şart çevirici', () => {
     expect(
       sartiCevir([{ alan: 'durum', islec: 'esit', deger: ['x'] }], ALANLAR),
     ).toHaveProperty('neden');
+  });
+});
+
+describe('kesin tutmuyor koşulu', () => {
+  const BOS_OLABILIRLIK = { durum: true, tutar: false };
+
+  it.each<[Islec, string | number | string[], Record<string, unknown>]>([
+    ['esit', 'acik', { not: 'acik' }],
+    ['esit_degil', 'acik', { equals: 'acik' }],
+    ['listede', ['acik', 'bekliyor'], { notIn: ['acik', 'bekliyor'] }],
+    ['listede_degil', ['kapali'], { in: ['kapali'] }],
+    ['kucuk', 10, { gte: 10 }],
+    ['kucuk_esit', 10, { gt: 10 }],
+    ['buyuk', 10, { lte: 10 }],
+    ['buyuk_esit', 10, { lt: 10 }],
+  ])(
+    '%s öğesinin tümleyeni yazılır; boş olabilen kolonda boşluk dalı eklenir',
+    (islec, deger, tumleyen) => {
+      expect(
+        kesinTutmuyorKosulu([{ alan: 'durum', islec, deger }], BOS_OLABILIRLIK),
+      ).toEqual({
+        OR: [{ durum: tumleyen }, { durum: { equals: null } }],
+      });
+    },
+  );
+
+  it('boş olamayan kolonda boşluk dalı yazılmaz', () => {
+    expect(
+      kesinTutmuyorKosulu(
+        [{ alan: 'tutar', islec: 'buyuk', deger: 100 }],
+        BOS_OLABILIRLIK,
+      ),
+    ).toEqual({ OR: [{ tutar: { lte: 100 } }] });
+  });
+
+  it('katalogda boş olabilirliği yazılı olmayan kolonda boşluk dalı yazılmaz', () => {
+    expect(
+      kesinTutmuyorKosulu(
+        [{ alan: 'sahibiId', islec: 'esit', deger: 'x' }],
+        {},
+      ),
+    ).toEqual({ OR: [{ sahibiId: { not: 'x' } }] });
+  });
+
+  it('ve ile bağlı öğelerin tümleyenleri veya ile bağlanır', () => {
+    expect(
+      kesinTutmuyorKosulu(
+        [
+          { alan: 'durum', islec: 'esit', deger: 'acik' },
+          { alan: 'tutar', islec: 'buyuk', deger: 100 },
+        ],
+        BOS_OLABILIRLIK,
+      ),
+    ).toEqual({
+      OR: [
+        { durum: { not: 'acik' } },
+        { durum: { equals: null } },
+        { tutar: { lte: 100 } },
+      ],
+    });
+  });
+
+  it('koşulsuz yasakta koşul boş kimlik listesidir (öğesiz veya değil)', () => {
+    expect(kesinTutmuyorKosulu([], BOS_OLABILIRLIK)).toEqual({
+      id: { in: [] },
+    });
   });
 });
