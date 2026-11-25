@@ -27,10 +27,11 @@ ALMA_BASLIGI = re.compile(r"^(GV-\d+):")   # `gorev al` commit'i böyle başlar
 CIZGI = "—"
 BASLIK_SINIRI = 90
 NOT_SATIRI = ("Bu bölümü araç üretir (`python3 harness/h.py rapor uret <dosya>`); sayılar aracın kayıtlarından "
-              "(`.harness/gorev/`) okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON "
-              "incelemesinin kaydıdır: yeniden koşulan görevin önceki koşuları bu sayılara girmez.")
-TABLO_BASI = ("| Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları "
-              "| Cevaplanan soru |\n|---|---|---|---|---|---|---|---|---|---|")
+              "(`.harness/gorev/`) okunur, elle yazılmaz. Süre ve maliyet her görevin koşu geçmişindeki BÜTÜN işçi "
+              "koşularının ve incelemelerinin toplamıdır; 'Koşu' kolonu işçi koşusu / inceleme sayısıdır. Koşu geçmişi "
+              "olmayan eski görevde yalnız son işçi koşusu ve son inceleme sayılır, 'Koşu' kolonu boş kalır.")
+TABLO_BASI = ("| Görev | Plan | Başlık | Aşama | Koşu | İşçi (dk) | İnceleme (dk) | Dolar | Dosya "
+              "| İncelemenin bulguları | Cevaplanan soru |\n|---|---|---|---|---|---|---|---|---|---|---|")
 
 
 # ── Raporlar ─────────────────────────────────────────────────────────────────────────
@@ -110,9 +111,19 @@ def _satir(kok: pathlib.Path, kimlik: str) -> dict:
     rapor = _oku(kayit / "rapor.json")
     inceleme = _oku(kayit / "inceleme-rapor.json")
     cevaplar = {"cevaplar": []} if not (kayit / "cevaplar.json").exists() else _oku(kayit / "cevaplar.json")
-    isci_sn, inceleme_sn = _sayi(rapor, "sure_sn"), _sayi(inceleme, "sure_sn")
-    maliyetler = [m for m in (_sayi(rapor, "kullanim", "total_cost_usd"), _sayi(inceleme, "kullanim", "total_cost_usd"))
-                  if m is not None]
+    gecmis = gorev.kosu_gecmisi(kayit)
+    if gecmis:   # bütün koşuların toplamı
+        isciler = [_sayi(k, "sure_sn") or 0 for k in gecmis if k.get("tip") == "isci"]
+        incelemeler = [_sayi(k, "sure_sn") or 0 for k in gecmis if k.get("tip") == "inceleme"]
+        isci_sn = sum(isciler) if isciler else None
+        inceleme_sn = sum(incelemeler) if incelemeler else None
+        maliyetler = [m for m in (_sayi(k, "maliyet_usd") for k in gecmis) if m is not None]
+        kosu = "%d / %d" % (len(isciler), len(incelemeler))
+    else:        # geçmişi olmayan eski görev: son koşu ve son inceleme
+        isci_sn, inceleme_sn = _sayi(rapor, "sure_sn"), _sayi(inceleme, "sure_sn")
+        maliyetler = [m for m in (_sayi(rapor, "kullanim", "total_cost_usd"),
+                                  _sayi(inceleme, "kullanim", "total_cost_usd")) if m is not None]
+        kosu = CIZGI
     dolar = sum(maliyetler) if maliyetler else None
     degisen = (rapor or {}).get("degisen")
     bulgular = (inceleme or {}).get("bulgular")
@@ -125,6 +136,7 @@ def _satir(kok: pathlib.Path, kimlik: str) -> dict:
         plan if d is not None else CIZGI,
         baslik if d is not None else CIZGI,
         _asama(d) if d is not None else CIZGI,
+        kosu,
         "%.1f" % (isci_sn / 60) if isci_sn is not None else CIZGI,
         "%.1f" % (inceleme_sn / 60) if inceleme_sn is not None else CIZGI,
         "%.2f" % dolar if dolar is not None else CIZGI,
@@ -140,7 +152,7 @@ def _satir(kok: pathlib.Path, kimlik: str) -> dict:
 def tablo(kok: pathlib.Path, kimlikler) -> str:
     """Otomatik bloğun içeriği: not, toplam satırı ve görev tablosu."""
     satirlar = [_satir(kok, k) for k in sorted(set(kimlikler), key=lambda k: int(k[3:]))]
-    toplam = ("Tabloda %d görev var, %d tanesi alındı. Son koşuların ve incelemelerin toplamı: %.1f dakika, "
+    toplam = ("Tabloda %d görev var, %d tanesi alındı. Koşuların ve incelemelerin toplamı: %.1f dakika, "
               "%.2f dolar." % (len(satirlar), sum(s["alindi"] for s in satirlar),
                                sum(s["dakika"] for s in satirlar), sum(s["dolar"] for s in satirlar)))
     return "\n".join([NOT_SATIRI, "", toplam, "", TABLO_BASI] + [s["metin"] for s in satirlar])

@@ -148,7 +148,7 @@ def _gorev_asamasi(kok: pathlib.Path, kimlik: str, zorunlu: bool) -> tuple:
     d = gorev._json_oku(kayit / "durum.json")
     if not d:
         return False, "görev kaydı yok"
-    return gorev.asama(d, gorev._json_oku(kayit / "rapor.json"), zorunlu)
+    return gorev.asama(d, gorev._json_oku(kayit / "rapor.json"), zorunlu, gorev.kosu_isareti(kayit))
 
 
 def _coz(metin: str) -> tuple:

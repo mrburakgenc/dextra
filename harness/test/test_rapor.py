@@ -150,22 +150,23 @@ class OtomatikBlok(unittest.TestCase):
         s = self._satirlar(metin)
         self.assertEqual(sorted(s), ["GV-001", "GV-002", "GV-003", "GV-004", "GV-006", "GV-008", "GV-009", "GV-010"])
         baslik = ("Ödeme / iade " + "x" * 100)[:90]
-        self.assertEqual(s["GV-001"], ["GV-001", "EP-001 2.1", baslik, "alındı", "1.5", "0.5", "1.75", "3",
+        # GV-123: 'Koşu' kolonu eklendi (Aşama'dan sonra); bu kayıtların koşu geçmişi yok, hücre boştur
+        self.assertEqual(s["GV-001"], ["GV-001", "EP-001 2.1", baslik, "alındı", "—", "1.5", "0.5", "1.75", "3",
                                        "1 engel, 2 öneri", "2"])
-        self.assertEqual(s["GV-002"], ["GV-002", "—", "Sorunlu iş", "sorunlu", "2.0", "—", "0.30", "1", "—", "0"])
-        self.assertEqual(s["GV-003"], ["GV-003", "—", "Atılan iş", "atıldı", "1.0", "—", "0.20", "0", "—", "0"])
-        self.assertEqual(s["GV-004"], ["GV-004"] + ["—"] * 9)
+        self.assertEqual(s["GV-002"], ["GV-002", "—", "Sorunlu iş", "sorunlu", "—", "2.0", "—", "0.30", "1", "—", "0"])
+        self.assertEqual(s["GV-003"], ["GV-003", "—", "Atılan iş", "atıldı", "—", "1.0", "—", "0.20", "0", "—", "0"])
+        self.assertEqual(s["GV-004"], ["GV-004"] + ["—"] * 10)
         self.assertEqual(s["GV-006"][3], "bekliyor")
         self.assertEqual(s["GV-008"][3], "incelemede kaldı")
         self.assertEqual(s["GV-009"][3], "incelendi")
         self.assertEqual(s["GV-010"][3], "soru")
-        self.assertEqual(s["GV-010"][4:], ["—", "—", "—", "—", "—", "0"])
-        self.assertIn("Tabloda 8 görev var, 1 tanesi alındı. Son koşuların ve incelemelerin toplamı: 5.0 dakika, "
+        self.assertEqual(s["GV-010"][4:], ["—", "—", "—", "—", "—", "—", "0"])
+        self.assertIn("Tabloda 8 görev var, 1 tanesi alındı. Koşuların ve incelemelerin toplamı: 5.0 dakika, "
                       "2.25 dolar.", metin)
-        self.assertIn("SON işçi koşusunun ve SON incelemesinin", metin)
+        self.assertIn("BÜTÜN işçi koşularının ve incelemelerinin toplamıdır", metin)
         self.assertIn("elle yazılmaz", metin)
         blok = metin[metin.index(rapor.BASLA):metin.index(rapor.BITIR)]
-        self.assertLess(blok.index("SON işçi"), blok.index("Tabloda 8"))
+        self.assertLess(blok.index("BÜTÜN işçi"), blok.index("Tabloda 8"))
         self.assertLess(blok.index("Tabloda 8"), blok.index("| Görev |"))
 
     def test_baska_raporda_gecen_gorev_tabloya_girmez(self):
