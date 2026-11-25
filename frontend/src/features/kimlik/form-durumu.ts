@@ -7,3 +7,15 @@ export interface FormDurumu {
 }
 
 export const BOS_FORM_DURUMU: FormDurumu = { genelHata: null, alanHatalari: {} };
+
+// Kullanıcı işlerinin durumu: başarıda yönlendirme yoktur. Üretilen parola belirleme adresi
+// yalnız bu durumda, bellekte taşınır; adrese, çereze ya da tarayıcı deposuna yazılmaz ve sayfa
+// yenilenince kaybolur (TS-004 "Yönetim ekranları").
+export interface KullaniciIsDurumu extends FormDurumu {
+  readonly parolaAdresi: string | null;
+}
+
+export const BOS_KULLANICI_IS_DURUMU: KullaniciIsDurumu = {
+  ...BOS_FORM_DURUMU,
+  parolaAdresi: null,
+};

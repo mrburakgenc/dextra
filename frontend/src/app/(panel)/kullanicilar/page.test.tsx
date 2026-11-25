@@ -2,6 +2,8 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tarihSaat } from '../../../shared/bicim/bicim';
+import type { YetkiKurali } from '../../../shared/yetki/yetki';
+import { YetkiSaglayici } from '../../../shared/yetki/yetki-saglayici';
 import KullanicilarSayfasi from './page';
 
 vi.mock('server-only', () => ({}));
@@ -56,8 +58,16 @@ function listeCevabi(
   );
 }
 
-async function goster(sorgu: Record<string, string | string[]> = {}) {
-  render(await KullanicilarSayfasi({ searchParams: Promise.resolve(sorgu) }));
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+async function goster(
+  sorgu: Record<string, string | string[]> = {},
+  kurallar: YetkiKurali[] = [],
+) {
+  render(
+    <YetkiSaglayici kurallar={kurallar}>
+      {await KullanicilarSayfasi({ searchParams: Promise.resolve(sorgu) })}
+    </YetkiSaglayici>,
+  );
 }
 
 // Backend'e giden isteğin adresi; backend isteği fetch'e URL nesnesi verir.
@@ -153,6 +163,33 @@ describe('KullanicilarSayfasi liste', () => {
     expect(new Headers(init?.headers).get('authorization')).toBe(
       'Bearer erisim',
     );
+  });
+});
+
+describe('KullanicilarSayfasi bağlantılar', () => {
+  it('her satırın görünen adı kayıt sayfasına bağlantıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster();
+
+    expect(baglanti('Ada Yılmaz')).toBe('/kullanicilar/k1');
+    expect(baglanti('Can Demir')).toBe('/kullanicilar/k2');
+  });
+
+  it('Kullanici olustur kuralı olan kişi Yeni kullanıcı bağlantısını görür', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'olustur', subject: 'Kullanici' }]);
+
+    expect(baglanti('Yeni kullanıcı')).toBe('/kullanicilar/yeni');
+  });
+
+  it('Kullanici olustur kuralı olmayan kişi Yeni kullanıcı bağlantısını görmez', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Kullanici' }]);
+
+    expect(screen.queryByRole('link', { name: 'Yeni kullanıcı' })).toBeNull();
   });
 });
 
