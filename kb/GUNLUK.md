@@ -58,3 +58,8 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] kabul | KU-011@1 Her endpoint tam bir yetki dekoratörü taşır
 ## [2026-11-25] kabul | KU-012@1 Yetki repository'de çözülür; handler yetki kodu yazmaz
 ## [2026-11-25] kabul | KU-013@1 requesterId istek gövdesinden okunmaz
+## [2026-11-25] taslak | KR-016 Yetenekte etki ve öncelik: yasak kuralı izinleri önceliğe göre kapatır
+## [2026-11-25] taslak | KU-017 Uygulanamayan yasak sessizce düşmez; o izni kapatır
+## [2026-11-25] taslak | KU-018 Kök yöneticinin sistem izinleri yasakla kapatılmaz
+## [2026-11-25] taslak | KU-019 Uç guard'ı yalnız izin kurallarını sayar
+## [2026-11-25] taslak | KU-020 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
