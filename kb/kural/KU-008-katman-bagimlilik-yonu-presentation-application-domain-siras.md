@@ -15,22 +15,26 @@ bakis: 2026-12-21
 kaynak: kb/_gelen/IRON_RULES_BACKEND.md
 alinti: Her feature kendi klasorunde **4-Layer Clean Architecture VSA + Pragmatic CQRS** disiplini uygular.
 ---
-Her feature kendi içinde Clean Architecture'dır; katmanları domain, application, infrastructure ve presentation'dır (`interface` adı kullanılmaz). Bağımlılık içe doğru akar: presentation application'ı, application domain'i kullanır; infrastructure domain'deki arayüzleri gerçekler; domain dış katmanı ve çatı kodunu (NestJS, Prisma) içe aktarmaz.
+Her feature kendi içinde Clean Architecture'dır; katmanları domain, application, infrastructure ve presentation'dır (`interface` adı kullanılmaz). Bağımlılık içe doğru akar: presentation application'ı, application domain'i kullanır; infrastructure domain'deki arayüzleri gerçekler; domain dış katmanı içe aktarmaz.
 
 ## Neden
 - Kullanıcı (2026-11-21): her feature kendi içinde bir Clean Architecture olacak; "interface" katman adı değildir, başka bir şeydir.
-- Ad için belgedeki gerekçe (`ARCHITECTURE.md` satır 137): `interface` TypeScript anahtar sözcüğüdür ve repository arayüzleriyle karışır.
-- Bağımlılık yönünün gerekçesi belgede yazmıyor; kullanıcıya sorulacak.
+- Ad için kanondaki gerekçe (`ARCHITECTURE.md` satır 137): `interface` TypeScript anahtar sözcüğüdür ve repository arayüzleriyle karışır.
+- Kullanıcı (2026-11-23; KR-005): kuralı olmayan basit alt özellik de dört katmanı taşır; DDD tam sağlanmalı ve kurallar tam geçmelidir.
 
 ## İhlal örneği
-Belgeden (`IRON_RULES_BACKEND.md` satır 1172–1174): `domain/user.entity.ts` içinde `import { PrismaClient } from '@prisma/client'`.
+Kanondan (`IRON_RULES_BACKEND.md` satır 1172–1174): `domain/user.entity.ts` içinde `import { PrismaClient } from '@prisma/client'`. Bu depoda karşılığı: `backend/src/features/kimlik/rol/domain/` altındaki bir dosyanın `@nestjs/common` ya da Prisma'nın ürettiği tipleri içe aktarması.
 
 ## Uygun örnek
-Belgeden (`IRON_RULES_BACKEND.md` satır 1176–1184): domain `IUserRepository` arayüzünü tanımlar, infrastructure'daki `PrismaUserRepository` onu gerçekler.
+`backend/src/features/kimlik/rol/domain/repositories/i-rol.repository.ts` arayüzü tanımlar; `backend/src/features/kimlik/rol/infrastructure/repositories/rol-okuma.prisma-repository.ts` onu gerçekler; işleyici (`application/queries/rol-listele/rol-listele.handler.ts`) yalnız arayüzü tanır.
+
+## Bu depodaki denetim
+Yapı denetimi (DN-002; `backend/src/shared/yapi/infrastructure/yapi-denetimi.ts`) her alt özelliğin katman klasörlerini, iş klasörlerini ve katmanlar arası yasak içe aktarmaları sınar; lint sınırı aynı yönü ayrıca sınar. Alt özelliklerin klasör düzeninin ayrıntısı TS-005'tedir.
 
 ## Alım notu
-- Kaynaklar: Kural 12.1 ve 12.2 / MOD-02 (`IRON_RULES_BACKEND.md` satır 1076, 1087, 1167–1185), Mimari Değişmez 2 (`ARCHITECTURE.md` satır 846–855), Pattern 24 (`PATTERNS.md`).
-- Katman adı için kaynak cümle (`IRON_RULES_BACKEND.md` satır 1087): "`interface/` adi YASAK — `presentation/` ZORUNLU."
-- Kaynakta bayat kalan yerler (ham kaynak düzenlenmez; kullanıcının eklenti deposunda düzeltilmesi gerekir): `ARCHITECTURE.md` satır 849 katmanı "Interface" diye anar; satır 146–156'daki çizim "Interface Layer" yazar ve "Üst -> Alt" yönüyle domain'i infrastructure'ın üstüne koyar, bu da domain → infrastructure diye okunur ve MOD-02 ile çelişir.
-- Shared concern'leri için belge aynı disiplini ister ("mini-Clean Architecture", `ARCHITECTURE.md` satır 892 ve 1063); kapsamı shared'e genişletmek kullanıcı kararıdır.
-- Kapsam yolu varsayımdır; hedef denetim düzeyi mekaniktir.
+- Kaynak: `IRON_RULES_BACKEND.md` satır 1076–1184 ve `ARCHITECTURE.md` satır 95–139.
+- Denetim ortak kodu ve feature içi ortak klasörü de sınar; kuralın kapsam yolu yalnız feature'lardır.
+
+## Açık uçlar
+- AU-1: Bağımlılık yönünün gerekçesi kanon belgesinde yazmıyor; kuralın "Neden" bölümüne kullanıcının gerekçesi yazılacak.
+- AU-2: Uygulama katmanı bugün ortak kodun altyapı klasöründen iki somut sınıfı alıyor (Unit of Work, outbox yazıcısı; 2026-11-25 raporu 8.3). Kanon bunlar için uygulama katmanında arayüz ister; ayrı iş olarak yapılacak mı?

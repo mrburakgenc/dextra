@@ -5,7 +5,7 @@ durum: taslak
 surum: 1
 baslik: requesterId istek gövdesinden okunmaz
 dayanak: [KR-007@1]
-kapsam: [backend/src/features/**/application/**, backend/src/shared/cqrs/**]
+kapsam: [backend/src/features/**/application/**, backend/src/features/**/presentation/**]
 baglama: kapsam
 bicim: kural
 kesinlik: olagan
@@ -14,19 +14,22 @@ bakis: 2026-12-21
 kaynak: kb/_gelen/IRON_RULES_BACKEND.md
 alinti: `requesterId` body'den ASLA okunmaz, `@IsEmpty()` ile reddedilir
 ---
-`requesterId` istek gövdesinden okunmaz: komut ve sorgu sınıfları `BaseCommand` ya da `BaseQuery`'den türer, alan gövdede gelirse doğrulama reddeder ve değeri global `CommandRequesterInterceptor` yazar.
+İsteği yapanın kimliği istek gövdesinden, sorgusundan ya da yolundan okunmaz: kimlik guard'ının doğruladığı oturumdan, istek bağlamından alınır. Komut ve sorgu şemaları isteği yapanı gösteren alan taşımaz.
 
 ## Neden
-Belgedeki gerekçe (satır 1143): alan gövdeden okunursa saldırgan kendi seçtiği kimliği gönderebilir. Taban sınıftan türemeyen komutu interceptor yakalayamaz (satır 1156).
+Kanondaki gerekçe (`IRON_RULES_BACKEND.md` satır 1143): alan gövdeden okunursa saldırgan kendi seçtiği kimliği gönderebilir.
 
 ## İhlal örneği
-Belgeden: komutta `@IsString() requesterId: string` (satır 1140–1144); taban sınıf yerine `implements ICommand` (satır 1154–1157).
+Komut şemasında `isteyenId` ya da `requesterId` alanı; işleyicinin "kim adına" bilgisini komuttan okuması.
 
 ## Uygun örnek
-Belgeden: `extends BaseCommand` ve alanda `@IsEmpty(...)` (satır 1132–1138); interceptor kök modülde global bağlanır (satır 1162).
+İşleyici isteği yapanı `istekBaglami().oturum` üzerinden okur (`backend/src/shared/observability/istek-baglami/istek-baglami.ts`); oturumu kimlik guard'ı doğrular ve bağlama yalnız o yazar. Ölçüm (2026-11-25): komut ve sorgu dosyalarında isteği yapanı gösteren alan yok (arama sonucu 0).
 
 ## Alım notu
-- Kaynak: Kural 5.5 / SEC-10, SEC-11 (satır 1127–1165).
-- Interceptor'ın yeri belgede `shared/cqrs/infrastructure/command-requester.interceptor.ts`'tir (satır 1165).
-- Açık (kuralın ikinci yarısı): BADI tuzak kaydı T-0394'e göre interceptor'ın komuta ulaşması orada güvenilmez bulunmuş, pratikte kimlik controller'da açıkça alınıp komuta yazılıyor. NestJS belgesi (request lifecycle, okundu 2026-11-21) interceptor'ın pipe'tan önce çalıştığını söyler. Değerin nasıl yazılacağı (interceptor mı, controller'da açık atama mı) kullanıcı kararıdır; bu depoda ölçülmedi.
-- Kapsam yolu varsayımdır; hedef denetim düzeyi mekaniktir.
+- Kaynak: Kural 5.5 / SEC-10, SEC-11 (`IRON_RULES_BACKEND.md` satır 1127–1165).
+- Kanondaki düzenek (taban komut sınıfı, gövdede alanı reddeden doğrulama, değeri yazan global interceptor) bu depoda yoktur: komut ve sorgu için taban sınıf yoktur (TS-005) ve kimlik komuta hiç yazılmaz. İstek bağlamı ajan kararıdır (TS-002 AK-11 ve AK-12); bu kuralın kabulü o seçimi de teyit eder.
+- Başlıktaki `requesterId` kanondaki addır; bu depoda karşılığı istek bağlamındaki oturumdur.
+
+## Açık uçlar
+- AU-1: Bu kuralın makineyle denetimi yok (şemalarda yasak alan adı araması yapı denetimine eklenebilir); istenecek mi?
+- AU-2: Bir kullanıcı adına işlem (vekâlet, devir) gerektiğinde "kim adına" bilgisinin nereden geleceği tanımlı değil (KR-008: devir eylemi ertelendi).
