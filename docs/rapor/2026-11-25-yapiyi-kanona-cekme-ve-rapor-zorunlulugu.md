@@ -8,14 +8,25 @@
 
 ## 1. Kısa özet
 
-_(doldurulacak: ne yapıldı, ne değişti ve kullanıcı neye bakmalı; madde madde, her iddianın kaynağıyla)_
+Yazıldığı an: 2026-11-25, 14:25; yapı düzeltmesinin son görevi alındıktan ve tarayıcı denemesinden sonra. Sayılar aracın kayıtlarından ve kendi ölçümlerimden; ölçmediğim yeri "ölçülmedi" diye yazdım.
+
+1. Kullanıcı kodu okuyup yapının kanona uymadığını söyledi; ölçünce haklı çıktı (34 işleyici, varlık klasörü 0, sonuç dosyası 0) ve sapmanın nedeni benim kartlarımdı (6. bölüm).
+2. `kimlik`in yedi alt özelliği, `kimlik/_shared` ve ortak kod (`backend/src/shared`) kanondaki katman düzenine çekildi: her iş kendi `commands/<iş>/` ya da `queries/<iş>/` klasöründe, iş kuralları `domain/entities` ve `domain/value-objects` altında, repository arayüzleri `domain/repositories/i-<ad>.repository.ts` içinde (tasarım: TS-005; iş: EP-008).
+3. Davranış değişmedi: uçların adresleri, kodları ve iletileri aynı; her adımdan sonra etkilenen uçtan uca testleri beklentileri değişmeden koşturdum (sayılar 10. bölümde).
+4. Düzen artık makineyle sınanıyor: yapı denetimi 7 alt özelliği ve 12 ortak konuyu sınıyor, ihlal 0 (kendi ölçümüm: 45 test).
+5. Gerçek tarayıcıda yeni derlemeyle uçtan uca denedim: rol, grup, kullanıcı, üyelik, şartlı yetenek, yenileme, silinmiş kayıt sayfası, kısıtlı kullanıcının görünümü, yöneticinin başkasının oturumunu görmesi ve sessiz oturum yenileme çalıştı.
+6. Rapor yazmak araçta şart oldu: `h.py rapor` komutu bu raporu açtı ve görev tablosunu üretti; push kapısı raporu olmayan dalı göndermiyor (KR-015, KU-016, DN-001 taslak; GV-120).
+7. Yerel deneme betiğine kalıcı kip eklendi; uygulama yerel `dextra` veritabanının üstünde, yeni kodla açık (backend 3001, ön yüz 3100).
+8. Teyidini bekleyen kararlarım 4. bölümde: doğrulamanın yeri, Türkçe adların kalması, varlığın yalnız yazma tarafında kurulması, işleyici yanında birim testinin zorunlu olmaması.
+9. Senden bekleyenler 8.1'de: taslakların kabulü, PR biçimi kararı, dört ölü yaprağın atılması, araç değişikliklerinin iskelet deposuna taşınması.
+10. Sıradaki iş başladı: aracın boşluklarının kapatılması (TS-006, EP-009; dokuz görev) ayrı raporu ve ayrı PR'ı olacak.
 
 ## 2. Görevler
 
 <!-- otomatik:basla -->
 Bu bölümü araç üretir (`python3 harness/h.py rapor uret <dosya>`); sayılar aracın kayıtlarından (`.harness/gorev/`) okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevin önceki koşuları bu sayılara girmez.
 
-Tabloda 16 görev var, 14 tanesi alındı. Son koşuların ve incelemelerin toplamı: 197.3 dakika, 73.10 dolar.
+Tabloda 25 görev var, 15 tanesi alındı. Son koşuların ve incelemelerin toplamı: 227.0 dakika, 83.75 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -33,8 +44,17 @@ Tabloda 16 görev var, 14 tanesi alındı. Son koşuların ve incelemelerin topl
 | GV-116 | EP-008 11 | Ortak kod düzene çekilir (1/3): yetki, güvenlik ve kimlik sözleşmeleri | alındı | 4.6 | 8.4 | 5.62 | 115 | 0 engel, 2 öneri | 1 |
 | GV-117 | EP-008 12 | Ortak kod düzene çekilir (2/3): veritabanı, tohum ve mesajlaşma | alındı | 7.5 | 7.8 | 4.75 | 176 | 0 engel, 1 öneri | 0 |
 | GV-118 | EP-008 13 | Ortak kod düzene çekilir (3/3): HTTP, süzgeçler ve gözlemlenebilirlik | alındı | 10.9 | 4.3 | 5.77 | 51 | 0 engel, 1 öneri | 0 |
-| GV-119 | EP-008 14 | Yapı denetimi sıkılaşır: bütün alt özellikler ve ortak kod sınanır | bekliyor | — | — | — | — | — | 0 |
+| GV-119 | EP-008 14 | Yapı denetimi sıkılaşır: bütün alt özellikler ve ortak kod sınanır | alındı | 14.2 | 9.5 | 8.57 | 15 | 0 engel, 4 öneri | 0 |
 | GV-120 | — | Araca rapor komutu ve raporsuz görev denetimi eklenir | alındı | 8.3 | 7.2 | 5.91 | 6 | 0 engel, 3 öneri | 0 |
+| GV-121 | EP-009 1 | Taslak kural uyarısı ve pakette taslak bloğu | tamam | 6.0 | — | 2.09 | 5 | — | 0 |
+| GV-122 | EP-009 2 | Denetim düğümlerinin koşması ve push kapısına bağlanması | bekliyor | — | — | — | — | — | 0 |
+| GV-123 | EP-009 3 | Dosya beyanı zorunluluğu kalkar; koşu geçmişi; koşan görevin durumu | bekliyor | — | — | — | — | — | 0 |
+| GV-124 | EP-009 4 | Taban yenileme, dosya listesini genişletme, orkestratör notu ve kendiliğinden devam | bekliyor | — | — | — | — | — | 0 |
+| GV-125 | EP-009 5 | Alma sağlamlığı: çakışmada geri dönüş, imzanın korunması ve eşzamanlı alma | bekliyor | — | — | — | — | — | 0 |
+| GV-126 | EP-009 6 | Kart ön denetimi: kapsam genişliği, kart boyu ve liste dışı içe aktaranlar | bekliyor | — | — | — | — | — | 0 |
+| GV-127 | EP-009 7 | Kapılar: push deseni, commit'lenmiş rapor ve kapı dışı yazımın tespiti | bekliyor | — | — | — | — | — | 0 |
+| GV-128 | EP-009 8 | Raporda inceleme önerileri: ikinci otomatik blok | bekliyor | — | — | — | — | — | 0 |
+| GV-129 | EP-009 9 | Rapor: kapanmamış görev raporlanmış sayılmaz | bekliyor | — | — | — | — | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Kullanıcının verdiği kararlar
@@ -120,7 +140,7 @@ Aracın bu işte görülen boşlukları (düzeltilmedi): dosya beyanı zorunlulu
 - **PR biçimi kararı:** önerin (aşamalı PR; main'e tek commit) açık duruyor. Benim önerim epic başına bir PR ve tek commit olarak birleştirme; depo ayarı buna izin veriyor (ölçüldü). Karar gelene kadar bugünkü iş eskisi gibi tek PR ve birleştirme commit'iyle gider.
 - **Ölü yapraklar** (atma geri alınamadığı için sana bırakıldı): `python3 harness/h.py gorev at GV-036`, `GV-068`, `GV-089`, `GV-112`.
 - **İskelet deposu:** araçtaki rapor komutu ve denetimi yalnız bu depodaki kopyada; asıl kaynağa taşınması sana kalıyor.
-- **Araca eklenebilecekler:** sohbette sekiz madde saydım (taslak karara dayanan iş için uyarı; yapı denetiminin kurala bağlanması; dosya beyanı zorunluluğunun kalkması; taban yenileme; kart boyu ve kapsam ön denetimi; inceleme önerilerinin borç listesi; koşu geçmişi; tarayıcı denemesinin teste dönmesi). Hangilerini istediğini söylemedin.
+- **Aracın boşlukları:** "hepsini ekle sırayla … harness boşlukları da kapansın" dedin; TS-006 ve EP-009 (dokuz görev) açıldı ve başladı. Bu epic boyunca aracın geliştirme kipi açık (`harness.json`); epic bitince kapatacağım. On dördüncü madde (tarayıcı denemesinin kayıtlı teste dönmesi) yeni paket istediği için ayrı epic olacak.
 
 ### 8.2 Teyidini bekleyen kararlarım
 
@@ -139,12 +159,15 @@ Aracın bu işte görülen boşlukları (düzeltilmedi): dosya beyanı zorunlulu
 
 ### 8.4 Yerel ortam
 
-- Yerel `dextra` ve `dextra_iz` veritabanlarına göçler uygulandı, tohum basıldı ve kurulum komutu koştu (2026-11-25; ikisi de boştu). Uygulama bu veritabanlarının üstünde açık bırakıldı (backend 3001, ön yüz 3100); yapı düzeltmesinden ÖNCEKİ derlemeyle çalışıyor.
+- Yerel `dextra` ve `dextra_iz` veritabanlarına göçler uygulandı, tohum basıldı ve kurulum komutu koştu (2026-11-25; ikisi de boştu). Uygulama bu veritabanlarının üstünde açık (backend 3001, ön yüz 3100); 14:22'de yapı düzeltmesinden SONRAKİ kodla yeniden başlatıldı (yeniden başlatma açık oturumları düşürmez: oturumlar veritabanında; anahtar çifti ise her açılışta yeniden üretildiği için eski erişim çerezleri geçersizdir, yeniden giriş gerekir — bu ikinci cümle ölçülmedi, betiğin "anahtar yalnız bellekte" satırından çıkarımdır).
 - Kalıcı kiple yeniden başlatmak: `node scripts/yerel-deneme.mjs --kalici` (ilk yöneticinin parolası yoksa `--kalici --kurulum`).
 
 ## 9. PR'lar
 
-_(doldurulacak: açılan PR'lar ve durumları; yoksa nedeni)_
+- PR #15 (gece işleri) 2026-11-25 08:50'de birleşti: https://github.com/mrburakgenc/dextra/pull/15
+- Bu raporun anlattığı iş (yapı düzeltmesi, kalıcı kip, rapor komutu ve denetimi) tek PR olarak gönderilir: dal `worktree-base-mimari-tasarim` → `main`. Rapor PR'ın içinde olduğu için numarası buraya yazılamadı; `gh pr list --state all --head worktree-base-mimari-tasarim` ile görülür.
+- Birleştirme biçimi eskisi gibidir (birleştirme commit'i): kullanıcının aşamalı PR ve tek commit önerisi karara bağlanmadı (8.1).
+- Aracın boşlukları (EP-009) ayrı PR olacak.
 
 ## 10. Günlük
 
@@ -161,4 +184,8 @@ Saatler yerel saattir; ölçümler "kendi ölçümüm" diye işaretlidir (her al
 - **12:48** GV-116 (ortak kod 1/3: yetki, güvenlik, kimlik sözleşmeleri) alındı. Kendi ölçümüm: birim 149; uçtan uca 125 ve 61.
 - **13:34** GV-117 (ortak kod 2/3: veritabanı, tohum, mesajlaşma) alındı. Kendi ölçümüm: birim 36; uçtan uca 48, 67, 48 ve 81.
 - **13:49** GV-118 (ortak kod 3/3: HTTP, süzgeçler, gözlemlenebilirlik) alındı. Kendi ölçümüm: birim 26; uçtan uca 78 ve 68.
+- **14:13** GV-119 (yapı denetimi sıkılaşır) alındı; EP-008 kapandı (14 işin 13'ü alındı; kalan GV-112 hiç koşmamış ölü yaprak). Kendi ölçümüm: tip ve lint 0; yapı denetimi 45 test (7 alt özellik, 12 konu, ihlal 0); uçtan uca 52 ve 46.
+- **14:16–14:20** Gerçek tarayıcıda deneme (yeni derleme; geçici veritabanları; kapılar 3011 ve 3111): boş rol adında alan hatası; rol, grup ve kullanıcı açma; üyelik verme; şartlı yetenek yazma ve yenileme; yenilenen eski satırın sayfası "Silinmiş" ve düğmesiz; kısıtlı kullanıcının menüsünde yalnız Gruplar, Oturumlar, Parolamı değiştir ve Çıkış; kısıtlı kullanıcı yalnız kendi grubunu ve yalnız "ad" kolonunu görüyor; yönetici iki oturumu, kısıtlı kullanıcı birini görüyor; erişim çerezi silinince sayfa yine geliyor. İlk betiğim yarıda kesildi (parola belirlenip giriş yapılmıştı; nedeni ölçülmedi), kalan adımları parça parça koşturdum. Ortam kapatıldı: geçici veritabanları silindi.
+- **14:22** Uygulama yeni kodla, depodaki betiğin kalıcı kipiyle yerel veritabanının üstünde yeniden açıldı (göç bekleyen yok; tohum yinelenmedi; veri yerinde: 2 kullanıcı, 1 grup). Eski derlemeyle açık duran örnek ondan önce kapatıldı.
+- **14:00–14:10** Kullanıcının isteğiyle aracın boşlukları için TS-006 yazıldı ve EP-009 açıldı (dokuz görev); aracın geliştirme kipi bu epic için yeniden açıldı ve ilk görev (GV-121) başlatıldı.
 
