@@ -1,6 +1,6 @@
 // IParolaRepo'nun gerçeklemesi: çekirdek yol, Unit of Work'ün istemcisiyle (TS-002 "Çekirdek yollar").
 import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
-import { kimlikSistemAktoru } from '../../../_shared/cekirdek/sistem-aktoru.js';
+import { kimlikSistemAktoru } from '../../../_shared/infrastructure/repositories/sistem-aktoru-cekirdek.prisma-repository.js';
 import type { IParolaRepo } from '../../domain/repositories/i-parola.repository.js';
 
 export function parolaPrismaRepository(istemci: RepoIstemcisi): IParolaRepo {

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../../../shared/database/kimlik.js';
-import type { Islem } from '../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../shared/messaging/outbox/outbox-yazici.js';
-import { UYELIK_CEKIRDEK_REPO } from './cekirdek/uyelik.repository.js';
+import { yeniKimlik } from '../../../../shared/database/kimlik.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
+import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import { UYELIK_CEKIRDEK_REPO } from '../domain/repositories/i-uyelik-cekirdek.repository.js';
 import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 
 // Çekirdek parça "kök üyelik" (TS-002 "Yapı"; KR-008 Seçim 31 ve 43): yeteneksiz üyelik yazımı ve

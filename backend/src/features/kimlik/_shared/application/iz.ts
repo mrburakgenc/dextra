@@ -1,7 +1,7 @@
 // Çekirdek parçaların değişiklik kaydı notları. Çekirdek yolda yetenek yoktur: not yetenek ve üyelik
 // yerine işin adını taşır (TS-002 "Çekirdek yolların izi"). Yazan ve işin adı çağırandan gelir.
-import { varsaIstekBaglami } from '../../../shared/http/istek-baglami.js';
-import type { DegisiklikKaydiNotu } from '../../../shared/messaging/outbox/outbox-yazici.js';
+import { varsaIstekBaglami } from '../../../../shared/http/istek-baglami.js';
+import type { DegisiklikKaydiNotu } from '../../../../shared/messaging/outbox/outbox-yazici.js';
 
 export interface IzBilgisi {
   readonly yazanId: string;

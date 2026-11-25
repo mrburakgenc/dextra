@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../shared/messaging/outbox/outbox-yazici.js';
-import { KULLANICI_CEKIRDEK_REPO } from './cekirdek/kullanici.repository.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
+import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import { KULLANICI_CEKIRDEK_REPO } from '../domain/repositories/i-kullanici-cekirdek.repository.js';
 import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 
 // Çekirdek parça "kişinin sayısı" (TS-002 "Yapı"): kişinin yetki sayısını bir artırır; genel sayacı

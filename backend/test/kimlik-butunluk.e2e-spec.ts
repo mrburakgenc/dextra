@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { Controller, Get } from '@nestjs/common';
 import pg from 'pg';
 import request from 'supertest';
-import { ButunlukSorusu } from '../src/features/kimlik/_shared/butunluk-sorusu.js';
+import { ButunlukSorusu } from '../src/features/kimlik/_shared/application/butunluk-sorusu.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
 import { istekBaglami } from '../src/shared/http/istek-baglami.js';

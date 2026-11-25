@@ -5,7 +5,7 @@ import {
   KIMLIK_KAYNAKLARI,
   KIMLIK_SISTEM_ALANLARI,
   KimlikYetkiVerisi,
-} from './features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
+} from './features/kimlik/_shared/application/yetki-verisi.js';
 import { OturumDenetimiHandler } from './features/kimlik/oturum/application/commands/oturum-denetimi/oturum-denetimi.handler.js';
 import { DatabaseModule } from './shared/database/database.module.js';
 import { GuvenlikModule } from './shared/guvenlik/guvenlik.module.js';

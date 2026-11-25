@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
 import { OTURUM_REPO } from '../../../domain/repositories/i-oturum.repository.js';
 import { kapatmaNotu } from '../../_shared/kapatma-notu.js';
 import type { CikisKomutu } from './cikis.command.js';

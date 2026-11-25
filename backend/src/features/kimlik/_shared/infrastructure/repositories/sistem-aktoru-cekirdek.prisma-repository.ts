@@ -1,7 +1,7 @@
 // Kimlik'in sistem aktörünü bulan çekirdek işlev (TS-002 AK-2, AK-35): sistemin kendi kararıyla
 // yaptığı yazmaların notunda yazanı arayan her yer bunu kullanır. Yetki kapısından geçmeden okur
 // (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
 
 // Aktörün giriş bilgisi yoktur; tabloda onu sistem aktörü işaretiyle birlikte bu görünen ad ayırır.
 // Adın sistem aktörleri arasında tekilliğini tohum yardımcısı korur.

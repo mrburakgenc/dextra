@@ -15,7 +15,7 @@ import {
   type GrupDugumu,
   type SaklananYetenek,
   YETKI_VERISI_REPO,
-} from './yetki-verisi.repository.js';
+} from '../domain/repositories/i-yetki-verisi.repository.js';
 
 // Kimlik'in kaynak olan modelleri (TS-002 "Veri modeli"); kaynak kataloğu kök modülde bunlardan
 // kurulur. Sırları taşıyan ve altyapı tabloları kaynak değildir.

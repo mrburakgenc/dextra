@@ -6,9 +6,9 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
-import { KisininSayisi } from '../../../../_shared/kisinin-sayisi.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
+import { KisininSayisi } from '../../../../_shared/application/kisinin-sayisi.js';
 import {
   type UyelikKaldirmaReddi,
   uyelikKaldirmaKarari,

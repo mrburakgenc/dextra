@@ -112,10 +112,13 @@ export default defineConfig(
           ],
           category: 'olay-altyapisi',
         },
-        // Kimlik'in çekirdek repository belirteçleri ve onları içe aktaramayan yönetim alt
-        // özellikleri (TS-002 AK-27; KR-010 Seçim 48).
+        // Kimlik'in çekirdek repository arayüzleri, belirteçleri ve gerçeklemeleri ile onları içe
+        // aktaramayan yönetim alt özellikleri (TS-002 AK-27; KR-010 Seçim 48).
         {
-          pattern: 'src/features/kimlik/_shared/cekirdek/**',
+          pattern: [
+            'src/features/kimlik/_shared/domain/repositories/*-cekirdek.*',
+            'src/features/kimlik/_shared/infrastructure/repositories/*-cekirdek.*',
+          ],
           category: 'cekirdek-repo',
         },
         {

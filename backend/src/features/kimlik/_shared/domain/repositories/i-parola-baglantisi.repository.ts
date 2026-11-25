@@ -1,9 +1,7 @@
 // Çekirdek repository: parola_baglantisi tablosuna yetki kapısından geçmeden erişir (KR-010 Seçim 48'in
-// adıyla istisnası). Tabloda kodun yalnız özeti durur (TS-002 değişmez 13).
-import {
-  RepoBelirteci,
-  type RepoIstemcisi,
-} from '../../../../shared/database/registrar.js';
+// adıyla istisnası). Tabloda kodun yalnız özeti durur (TS-002 değişmez 13). Gerçeklemesi
+// infrastructure/repositories altındadır.
+import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
 
 export interface BulunanBaglanti {
   id: string;
@@ -48,52 +46,3 @@ export const PAROLA_BAGLANTISI_REPO = new RepoBelirteci<
   ParolaBaglantisiOkumaRepo,
   ParolaBaglantisiRepo
 >('ParolaBaglantisiRepo');
-
-export function parolaBaglantisiRepo(
-  istemci: RepoIstemcisi,
-): ParolaBaglantisiRepo {
-  return {
-    ozetIleBul: (kodOzeti) =>
-      istemci.parolaBaglantisi.findUnique({
-        where: { kodOzeti },
-        select: {
-          id: true,
-          kullaniciId: true,
-          sonGecerlilikZamani: true,
-          kullanilmaZamani: true,
-        },
-      }),
-    kullanilmamisi: (kullaniciId) =>
-      istemci.parolaBaglantisi.findFirst({
-        where: { kullaniciId, kullanilmaZamani: null },
-        select: {
-          id: true,
-          sonGecerlilikZamani: true,
-          olusturanId: true,
-          olusturmaZamani: true,
-        },
-      }),
-    sil: async (id) => {
-      await istemci.parolaBaglantisi.delete({
-        where: { id },
-        select: { id: true },
-      });
-    },
-    ekle: (baglanti) =>
-      istemci.parolaBaglantisi.create({
-        data: baglanti,
-        select: { olusturmaZamani: true },
-      }),
-    kullan: async (id, kullanilmaZamani) => {
-      const { count } = await istemci.parolaBaglantisi.updateMany({
-        where: {
-          id,
-          kullanilmaZamani: null,
-          sonGecerlilikZamani: { gt: kullanilmaZamani },
-        },
-        data: { kullanilmaZamani },
-      });
-      return count === 1;
-    },
-  };
-}

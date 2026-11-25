@@ -1,7 +1,7 @@
 // Rol oluştur işinin işleyicisi (TS-002 "İşlem sınırları": rol yaz; KR-008 Seçim 15 ve 22).
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import { rolOlustur } from '../../../domain/entities/rol.entity.js';
 import {
   type IRolYazmaRepo,

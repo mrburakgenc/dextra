@@ -8,7 +8,7 @@ import type {
   OturumDenetimiGirdisi,
   OturumDenetimiSonucu,
 } from '../../../../../shared/kimlik/oturum-denetimi.contract.js';
-import type { KapatilmaNedeni } from '../../../_shared/cekirdek/oturum.repository.js';
+import type { KapatilmaNedeni } from '../../../_shared/domain/kapatilma-nedeni.js';
 
 // Oturum sayıları (TS-002 AK-9; KR-009 varsayılanları). Proje ayarı sonra gelir.
 // Oturumun mutlak bitişi girişte belirlenir ve döndürmeyle uzamaz (KR-009 Kural 6).

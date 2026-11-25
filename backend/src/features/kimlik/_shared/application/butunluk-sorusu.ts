@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
 import {
   BUTUNLUK_CEKIRDEK_REPO,
   type IzinKunyesi,
   type UyelikKunyesi,
-} from './cekirdek/butunluk.repository.js';
+} from '../domain/repositories/i-butunluk-cekirdek.repository.js';
 
 // Yönetim alt özellikleri çekirdek repository dosyalarını içe aktaramaz (lint sınırı); künyelerin
 // türleri onlara buradan verilir.

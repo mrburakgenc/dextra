@@ -1,15 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../../../../shared/database/kimlik.js';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
-import type { SartOgesi } from '../../../../shared/kimlik/yetki-verisi.contract.js';
+import { yeniKimlik } from '../../../../../shared/database/kimlik.js';
+import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
-} from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import { KIMLIK_SISTEM_AKTORU_ADI } from '../cekirdek/sistem-aktoru.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../iz.js';
-import { TohumYardimcisi } from '../tohum-yardimcisi.js';
-import { KURULUM_REPO, type YeniYetenek } from './kurulum.repository.js';
+} from '../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { type IzBilgisi, notunOrtakAlanlari } from '../../application/iz.js';
+import { TohumYardimcisi } from '../../application/tohum-yardimcisi.js';
+import {
+  KURULUM_REPO,
+  type YeniYetenek,
+} from '../../domain/repositories/i-kurulum.repository.js';
+import { KIMLIK_SISTEM_AKTORU_ADI } from '../repositories/sistem-aktoru-cekirdek.prisma-repository.js';
 
 export const KIMLIK_KURULUM_GOCU = '202611240000-kimlik-kurulum';
 

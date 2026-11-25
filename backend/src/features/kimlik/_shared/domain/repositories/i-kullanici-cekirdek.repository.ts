@@ -1,9 +1,7 @@
 // Çekirdek repository: kullanici tablosuna yetki kapısından geçmeden erişir (KR-010 Seçim 48'in
-// adıyla istisnası). Yalnız kimlik/_shared içindeki parçalar kullanır.
-import {
-  RepoBelirteci,
-  type RepoIstemcisi,
-} from '../../../../shared/database/registrar.js';
+// adıyla istisnası). Yalnız kimlik/_shared içindeki parçalar kullanır. Gerçeklemesi
+// infrastructure/repositories altındadır.
+import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
 
 export interface YeniKullanici {
   id: string;
@@ -31,35 +29,3 @@ export const KULLANICI_CEKIRDEK_REPO = new RepoBelirteci<
   object,
   KullaniciCekirdekRepo
 >('KullaniciCekirdekRepo');
-
-export function kullaniciCekirdekRepo(
-  istemci: RepoIstemcisi,
-): KullaniciCekirdekRepo {
-  return {
-    kilitle: async (id) => {
-      await istemci.kullanici.update({
-        where: { id },
-        data: { yetkiSurumu: { increment: 0 } },
-        select: { id: true },
-      });
-    },
-    surumuArtir: async (id) => {
-      const satir = await istemci.kullanici.update({
-        where: { id },
-        data: { yetkiSurumu: { increment: 1 } },
-        select: { yetkiSurumu: true },
-      });
-      return satir.yetkiSurumu;
-    },
-    ekle: (kullanici) =>
-      istemci.kullanici.create({
-        data: kullanici,
-        select: { yetkiSurumu: true, olusturmaZamani: true },
-      }),
-    sistemAktoruVarMi: async (gorunenAd) =>
-      (await istemci.kullanici.findFirst({
-        where: { sistemAktoru: true, gorunenAd },
-        select: { id: true },
-      })) !== null,
-  };
-}

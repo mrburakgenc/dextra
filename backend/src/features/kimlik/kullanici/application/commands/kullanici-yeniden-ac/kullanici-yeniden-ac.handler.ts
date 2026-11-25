@@ -4,10 +4,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { istekBaglami } from '../../../../../../shared/http/istek-baglami.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
-import { KisininSayisi } from '../../../../_shared/kisinin-sayisi.js';
-import { KokUyelik } from '../../../../_shared/kok-uyelik.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
+import { KisininSayisi } from '../../../../_shared/application/kisinin-sayisi.js';
+import { KokUyelik } from '../../../../_shared/application/kok-uyelik.js';
 import {
   type KullaniciYenidenAcmaReddi,
   kullaniciYenidenAcmaKarari,

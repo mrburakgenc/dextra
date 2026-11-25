@@ -6,8 +6,8 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   type GrupTasimaReddi,
   grupTasimaKarari,

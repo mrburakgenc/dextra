@@ -1,14 +1,9 @@
 // Çekirdek repository: ilk kurulum göçünün genel sayaç, grup, rol, izin ve yetenek satırlarını yetki
 // kapısından geçmeden yazar (KR-010 Seçim 48'in adıyla istisnası; "tohum" çekirdek parçası).
 // Kullanıcı ve üyelik yazmaz; onları tohum yardımcısı yazar. Yalnız kurulum göçü kullanır.
-import {
-  RepoBelirteci,
-  type RepoIstemcisi,
-} from '../../../../shared/database/registrar.js';
-import type { SartOgesi } from '../../../../shared/kimlik/yetki-verisi.contract.js';
-
-// Genel sayaç tek satırdır; kimliği yalnız 1 olabilir (yetki_surumu_tek_satir_denetim).
-const GENEL_SAYAC_ID = 1;
+// Gerçeklemesi infrastructure/repositories altındadır.
+import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
 
 export interface YeniYetenek {
   id: string;
@@ -43,33 +38,3 @@ export interface KurulumRepo {
 export const KURULUM_REPO = new RepoBelirteci<object, KurulumRepo>(
   'KurulumRepo',
 );
-
-export function kurulumRepo(istemci: RepoIstemcisi): KurulumRepo {
-  return {
-    genelSayacEkle: async () => {
-      await istemci.yetkiSurumu.create({ data: { id: GENEL_SAYAC_ID } });
-    },
-    grupEkle: (grup) =>
-      istemci.grup.create({ data: grup, select: { olusturmaZamani: true } }),
-    rolEkle: async (rol) => {
-      await istemci.rol.create({ data: rol, select: { id: true } });
-    },
-    izinEkle: async (izin) => {
-      await istemci.izin.create({ data: izin, select: { id: true } });
-    },
-    yetenekEkle: ({ sart, ...yetenek }) =>
-      istemci.yetenek.create({
-        data: {
-          ...yetenek,
-          ...(sart !== null && {
-            sart: sart.map(({ alan, islec, deger }) => ({
-              alan,
-              islec,
-              deger,
-            })),
-          }),
-        },
-        select: { olusturmaZamani: true },
-      }),
-  };
-}

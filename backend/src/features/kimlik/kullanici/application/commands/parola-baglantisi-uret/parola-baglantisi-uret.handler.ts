@@ -6,9 +6,9 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { ParolaBaglantisi } from '../../../../_shared/baglanti/parola-baglantisi.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
+import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
 import {
   type ParolaBaglantisiUretmeReddi,
   parolaBaglantisiUretmeKarari,

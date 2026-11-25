@@ -6,8 +6,8 @@ import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../../../../../../shared/guvenlik/belirtec.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
 import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/iz.js';
-import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
+import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/application/iz.js';
+import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
 import {
   ILK_NESIL,
   oturumAc,
