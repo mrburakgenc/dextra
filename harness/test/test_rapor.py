@@ -139,7 +139,9 @@ class OtomatikBlok(unittest.TestCase):
         kayit(kok, "GV-010", gorev_durumu("GV-010", "Yarım", durum="soru"))
         eski = kok / "docs/rapor/2026-11-20-eski.md"
         eski.parent.mkdir(parents=True)
-        eski.write_text("# Eski\n\nGV-005 burada anlatıldı.\n", encoding="utf-8")
+        # GV-129 (TS-006 Yapı 15): başka raporda yalnız adı geçen görev raporlanmış sayılmaz; tablosunda kapanmış olmalı
+        eski.write_text("# Eski\n\nGV-005 burada anlatıldı.\n\n%s\n| GV-005 | — | Başka raporda | alındı |\n%s\n"
+                        % (rapor.BASLA, rapor.BITIR), encoding="utf-8")
         return kok
 
     def _satirlar(self, metin: str) -> dict:
@@ -150,7 +152,8 @@ class OtomatikBlok(unittest.TestCase):
         kok = self._depo()
         metin = rapor.yeni(kok, "Gece", "2026-11-25").read_text(encoding="utf-8")
         s = self._satirlar(metin)
-        self.assertEqual(sorted(s), ["GV-001", "GV-002", "GV-003", "GV-004", "GV-006", "GV-008", "GV-009", "GV-010"])
+        # GV-129: hiç koşmamış GV-006 ('bekliyor') artık tabloya girmez
+        self.assertEqual(sorted(s), ["GV-001", "GV-002", "GV-003", "GV-004", "GV-008", "GV-009", "GV-010"])
         baslik = ("Ödeme / iade " + "x" * 100)[:90]
         # GV-123: 'Koşu' kolonu eklendi (Aşama'dan sonra); bu kayıtların koşu geçmişi yok, hücre boştur
         self.assertEqual(s["GV-001"], ["GV-001", "EP-001 2.1", baslik, "alındı", "—", "1.5", "0.5", "1.75", "3",
@@ -158,18 +161,17 @@ class OtomatikBlok(unittest.TestCase):
         self.assertEqual(s["GV-002"], ["GV-002", "—", "Sorunlu iş", "sorunlu", "—", "2.0", "—", "0.30", "1", "—", "0"])
         self.assertEqual(s["GV-003"], ["GV-003", "—", "Atılan iş", "atıldı", "—", "1.0", "—", "0.20", "0", "—", "0"])
         self.assertEqual(s["GV-004"], ["GV-004"] + ["—"] * 10)
-        self.assertEqual(s["GV-006"][3], "bekliyor")
         self.assertEqual(s["GV-008"][3], "incelemede kaldı")
         self.assertEqual(s["GV-009"][3], "incelendi")
         self.assertEqual(s["GV-010"][3], "soru")
         self.assertEqual(s["GV-010"][4:], ["—", "—", "—", "—", "—", "—", "0"])
-        self.assertIn("Tabloda 8 görev var, 1 tanesi alındı. Koşuların ve incelemelerin toplamı: 5.0 dakika, "
+        self.assertIn("Tabloda 7 görev var, 1 tanesi alındı. Koşuların ve incelemelerin toplamı: 5.0 dakika, "
                       "2.25 dolar.", metin)
         self.assertIn("BÜTÜN işçi koşularının ve incelemelerinin toplamıdır", metin)
         self.assertIn("elle yazılmaz", metin)
         blok = metin[metin.index(rapor.BASLA):metin.index(rapor.BITIR)]
-        self.assertLess(blok.index("BÜTÜN işçi"), blok.index("Tabloda 8"))
-        self.assertLess(blok.index("Tabloda 8"), blok.index("| Görev |"))
+        self.assertLess(blok.index("BÜTÜN işçi"), blok.index("Tabloda 7"))
+        self.assertLess(blok.index("Tabloda 7"), blok.index("| Görev |"))
 
     def test_baska_raporda_gecen_gorev_tabloya_girmez(self):
         kok = self._depo()
@@ -477,6 +479,97 @@ class IncelemeOnerileri(unittest.TestCase):
         son = cikti.rstrip("\n").split("\n")[-1]
         self.assertTrue(son.startswith("rapor durum: Z19 ölçülemedi"), son)
         self.assertTrue(son.endswith("; tablolarda 1 inceleme önerisi"), son)
+
+
+class KapanmamisGorev(unittest.TestCase):
+    """GV-129 (TS-006 Yapı 15): görev bir raporda ancak tablosundaki satırı 'alındı' ya da 'atıldı' ise kapanmıştır;
+    hiç koşmamış görev tabloya girmez."""
+
+    def _asamalar(self, yol: pathlib.Path) -> dict:
+        return rapor._tablo_asamalari(yol.read_text(encoding="utf-8"))
+
+    def _eski_tablolu(self, kok: pathlib.Path, kimlikler, tarih="2026-11-24") -> pathlib.Path:
+        """Eski aracın yazdığı gibi rapor: tabloda verilen görevlerin bugünkü satırları (koşmamışsa 'bekliyor')."""
+        yol = rapor.yeni(kok, "Eski", tarih)
+        metin = yol.read_text(encoding="utf-8")
+        bas, son = rapor._blok(metin, yol)
+        metin = metin[:bas] + "\n" + rapor.tablo(kok, kimlikler) + "\n" + metin[son:]
+        for ad in rapor.ZORUNLU_BOLUMLER:
+            metin = bolum_doldur(metin, ad, DOLU[ad])
+        yol.write_text(metin, encoding="utf-8")
+        return yol
+
+    def _commit(self, kok: pathlib.Path) -> None:
+        git(kok, "add", "-A")
+        git(kok, "commit", "-q", "-m", "Rapor")
+
+    def test_a_bekliyor_satiri_alininca_raporsuzdur_uret_alindi_yapar_ve_denetim_gecer(self):
+        kok = dal_depo("GV-007: Ödeme")
+        kayit(kok, "GV-007", gorev_durumu("GV-007", "Ödeme", durum="taslak"))
+        eski = self._eski_tablolu(kok, ["GV-007"])
+        self.assertEqual(self._asamalar(eski), {"GV-007": "bekliyor"})
+        self._commit(kok)
+        kayit(kok, "GV-007", gorev_durumu("GV-007", "Ödeme", alindi=True))
+        self.assertEqual(z19(kok), [("raporsuz-gorev", "GV-007", "kirmizi")])
+        kod, cikti = cli(kok, "denetle", "--dal")
+        self.assertEqual(kod, 1)
+        self.assertIn("raporun tablosunu yenile: rapor uret", cikti)
+        kod, cikti = cli(kok, "rapor", "durum")   # rapor durum aynı kuralı kullanır
+        self.assertEqual(kod, 0)
+        self.assertIn("raporsuz-gorev GV-007", cikti)
+        rapor.uret(kok, eski)
+        self.assertEqual(self._asamalar(eski), {"GV-007": "alındı"})
+        self._commit(kok)
+        self.assertEqual(z19(kok), [])
+        self.assertEqual(cli(kok, "denetle", "--dal")[0], 0)
+        self.assertNotIn("raporsuz-gorev", cli(kok, "rapor", "durum")[1])
+
+    def test_b_yeni_rapor_eskide_bekliyor_olani_alir_alindi_olani_almaz(self):
+        kok = sablonlu_depo()
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Bir", alindi=True))
+        kayit(kok, "GV-002", gorev_durumu("GV-002", "İki", durum="taslak"))
+        eski = self._eski_tablolu(kok, ["GV-001", "GV-002"])
+        self.assertEqual(self._asamalar(eski), {"GV-001": "alındı", "GV-002": "bekliyor"})
+        kayit(kok, "GV-002", gorev_durumu("GV-002", "İki", alindi=True))
+        yeni = rapor.yeni(kok, "Yeni", "2026-11-25")
+        self.assertEqual(self._asamalar(yeni), {"GV-002": "alındı"})
+        # eski raporu yenilemek, yeni raporda kapanmış satırı eskiden çıkarır
+        rapor.uret(kok, eski)
+        self.assertEqual(self._asamalar(eski), {"GV-001": "alındı"})
+        rapor.uret(kok, yeni)
+        self.assertEqual(self._asamalar(yeni), {"GV-002": "alındı"})
+
+    def test_b_atilmis_gorev_kapanmistir_baska_rapora_girmez(self):
+        kok = sablonlu_depo()
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Bir", durum="atildi", yerine="GV-002"))
+        eski = rapor.yeni(kok, "Eski", "2026-11-24")
+        self.assertEqual(self._asamalar(eski), {"GV-001": "atıldı"})
+        self.assertEqual(self._asamalar(rapor.yeni(kok, "Yeni", "2026-11-25")), {})
+
+    def test_c_hic_kosmamis_gorev_tabloya_girmez_uret_var_olan_satirini_cikarir(self):
+        kok = sablonlu_depo()
+        kayit(kok, "GV-001", gorev_durumu("GV-001", "Bir", alindi=True))
+        kayit(kok, "GV-003", gorev_durumu("GV-003", "Koşmamış", durum="taslak"))
+        yeni = rapor.yeni(kok, "Yeni", "2026-11-25")
+        self.assertEqual(self._asamalar(yeni), {"GV-001": "alındı"})
+        eski = self._eski_tablolu(kok, ["GV-003"], "2026-11-24")
+        self.assertEqual(self._asamalar(eski), {"GV-003": "bekliyor"})
+        rapor.uret(kok, eski)
+        self.assertEqual(self._asamalar(eski), {})
+        self.assertNotIn("| GV-003 |", eski.read_text(encoding="utf-8"))
+
+    def test_d_kimligi_yalniz_serbest_metinde_gecen_alinmis_gorev_raporsuzdur(self):
+        kok = dal_depo("GV-007: Ödeme")
+        yol = rapor.yeni(kok, "Ödeme", "2026-11-25")   # GV-007'nin kaydı henüz yok: tablo boş
+        metin = yol.read_text(encoding="utf-8")
+        for ad in rapor.ZORUNLU_BOLUMLER:
+            metin = bolum_doldur(metin, ad, DOLU[ad])   # kısa özet GV-007'yi anar
+        metin += "\n## Duruşlar\n\n| Görev | Plan | Başlık | Aşama |\n|---|---|---|---|\n| GV-007 | — | Ödeme | alındı |\n"
+        yol.write_text(metin, encoding="utf-8")
+        self._commit(kok)
+        kayit(kok, "GV-007", gorev_durumu("GV-007", "Ödeme", alindi=True))
+        self.assertIn("GV-007", rapor._onerisiz(yol.read_text(encoding="utf-8")))
+        self.assertEqual(z19(kok), [("raporsuz-gorev", "GV-007", "kirmizi")])
 
 
 if __name__ == "__main__":

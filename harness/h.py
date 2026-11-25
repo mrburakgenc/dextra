@@ -56,8 +56,8 @@ VARSAYILAN_AYAR = {
     # Kapıların ayarı sayılan ek dosyalar (lint, tip, biçim ayarları gibi): ajan düzenlemek isterse kullanıcıya sorulur
     "korunan_ayar": [],
     "rol_modelleri": {},
-    # rapor: işin raporları bu dizinde durur; zorunlu ise `denetle --dal` bu dalda alınıp raporda geçmeyen görevi
-    # kırmızı bildirir (Z19, KR-015)
+    # rapor: işin raporları bu dizinde durur; zorunlu ise `denetle --dal` bu dalda alınıp hiçbir raporun tablosunda
+    # 'alındı' satırıyla yer almayan görevi kırmızı bildirir (Z19, KR-015)
     "rapor": {"dizin": "docs/rapor", "zorunlu": True},
     # denetim: push kapısında (`denetle --dal`) ve `denetim kos` ile koşan denetim komutunun süre sınırı; aşılırsa
     # komutun süreç grubu durdurulur ve bulgu kırmızıdır (ölçülemedi)
