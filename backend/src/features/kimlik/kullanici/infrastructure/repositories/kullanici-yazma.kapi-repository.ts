@@ -1,24 +1,17 @@
+// IKullaniciYazmaRepo'nun gerçeklemesi: kullanıcı yazmaları ve niyetleri yetki kapısının yazma yüzünden
+// (TS-002 AK-19, AK-39).
 import { Injectable } from '@nestjs/common';
-import type {
-  RepoFabrikasi,
-  RepoIstemcisi,
-} from '../../../../shared/database/registrar.js';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
-import type { OkumaKapisi } from '../../../../shared/yetki/okuma-kapisi.js';
-import { YazmaKapisi } from '../../../../shared/yetki/yazma-kapisi.js';
-import {
-  type KullaniciOkumaRepo,
-  KullaniciYazmaRepo,
-  type YeniKullanici,
-} from '../domain/kullanici.repository.js';
+import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import { YazmaKapisi } from '../../../../../shared/yetki/yazma-kapisi.js';
+import type { YeniKullanici } from '../../domain/entities/kullanici.entity.js';
+import type { IKullaniciYazmaRepo } from '../../domain/repositories/i-kullanici.repository.js';
+import type { GorunenAd } from '../../domain/value-objects/gorunen-ad.js';
 
 const KAYNAK = 'Kullanici';
 
 @Injectable()
-export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
-  constructor(private readonly kapi: YazmaKapisi) {
-    super();
-  }
+export class KapiKullaniciYazmaRepo implements IKullaniciYazmaRepo {
+  constructor(private readonly kapi: YazmaKapisi) {}
 
   olustur(
     islem: Islem,
@@ -32,7 +25,7 @@ export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
     islem: Islem,
     isAdi: string,
     id: string,
-    gorunenAd: string,
+    gorunenAd: GorunenAd,
   ): Promise<void> {
     return this.kapi.guncelle(islem, isAdi, KAYNAK, id, { gorunenAd });
   }
@@ -78,21 +71,4 @@ export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
       isaretiKaldir ? { pasifZamani: null } : {},
     );
   }
-}
-
-export function kullaniciPrismaRepository(
-  kapi: OkumaKapisi,
-): RepoFabrikasi<KullaniciOkumaRepo> {
-  return (istemci: RepoIstemcisi) => ({
-    liste: ({ pasif, siralama, atla, al }) =>
-      kapi.liste(istemci, KAYNAK, {
-        kosul:
-          pasif === undefined
-            ? []
-            : [{ alan: 'pasifZamani', islec: pasif ? 'dolu' : 'bos' }],
-        siralama: siralama === undefined ? [] : [siralama],
-        sayfa: { atla, al },
-      }),
-    tek: (id) => kapi.tek(istemci, KAYNAK, id),
-  });
 }

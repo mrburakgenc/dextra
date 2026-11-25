@@ -1,12 +1,13 @@
+// Kullanıcıları listele sorgusu: GET kimlik/kullanici sorgu dizgesinin şeması ve ondan türeyen sorgu
+// tipi (KR-014; TS-002 AK-39). Azalan sıra için alanın başına "-" yazılır; pasif süzgeci "true" ya da
+// "false" alır.
 import { z } from 'zod';
-import type { Siralama } from '../../../../shared/yetki/okuma-kapisi.js';
+import type { Siralama } from '../../../../../../shared/yetki/okuma-kapisi.js';
 
 // Listenin sıralanabildiği alanlar (TS-002 AK-39: kaynağın şemasında sabit liste).
 const SIRALANABILIR = ['gorunenAd', 'kullaniciAdi', 'olusturmaZamani'] as const;
 
-// GET kimlik/kullanici sorgusu (KR-014). Azalan sıra için alanın başına "-" yazılır; pasif süzgeci
-// "true" ya da "false" alır.
-export const kullaniciListeleSemasi = z.strictObject({
+export const kullaniciListeleSorgusuSemasi = z.strictObject({
   sayfa: z.coerce.number().int().min(1).default(1),
   boyut: z.coerce.number().int().min(1).max(100).default(20),
   sirala: z
@@ -23,6 +24,6 @@ export const kullaniciListeleSemasi = z.strictObject({
     .optional(),
 });
 
-export type KullaniciListeleParametreleri = z.infer<
-  typeof kullaniciListeleSemasi
+export type KullaniciListeleSorgusu = z.output<
+  typeof kullaniciListeleSorgusuSemasi
 >;
