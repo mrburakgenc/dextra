@@ -52,6 +52,28 @@ export const ParolaBelirleSemasi = z
     path: ['parolaTekrar'],
   });
 
+// Parolamı değiştir (TS-004 "Parola değiştirme ve oturumlar ekranları"): yeni parolanın kuralı
+// belirlemedeki gibidir; tekrar backend'e gitmez, yalnız ekranda sınanır.
+export const ParolaDegistirSemasi = z
+  .object({
+    eskiParola: z
+      .string({ error: 'Eski parola boş olamaz' })
+      .min(1, 'Eski parola boş olamaz'),
+    yeniParola: z
+      .string({ error: 'Parola boş olamaz' })
+      .refine((p) => kodNoktasiSayisi(p) >= PAROLA_EN_AZ, {
+        error: `Parola en az ${String(PAROLA_EN_AZ)} karakter olmalı`,
+      })
+      .refine((p) => kodNoktasiSayisi(p) <= PAROLA_EN_COK, {
+        error: `Parola en çok ${String(PAROLA_EN_COK)} karakter olabilir`,
+      }),
+    yeniParolaTekrar: z.string({ error: 'Parola tekrarı boş olamaz' }),
+  })
+  .refine((d) => d.yeniParola === d.yeniParolaTekrar, {
+    error: 'Parolalar birbirini tutmuyor',
+    path: ['yeniParolaTekrar'],
+  });
+
 // Kullanıcı işleri (TS-004 "Yönetim ekranları"); kurallar backend'in POST kimlik/kullanici
 // gövdesindeki gibidir: kullanıcı adı küçük harfe çevrilir, sonra 3-64 karakter ve yalnız küçük
 // harf, rakam, nokta, tire ve alt çizgi olur; görünen adın baştaki ve sondaki boşluğu atılır, sonra

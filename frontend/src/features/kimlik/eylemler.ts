@@ -9,9 +9,11 @@ import {
   oturumCerezleriniYaz,
 } from '../../shared/oturum/cerezler';
 import type { FormDurumu } from './form-durumu';
+import { isHatasi } from './is-hatasi';
 import {
   GirisSemasi,
   ParolaBelirleSemasi,
+  ParolaDegistirSemasi,
   semaAlanHatalari,
 } from './semalar';
 
@@ -115,4 +117,36 @@ export async function parolaBelirle(
   }
 
   redirect('/giris');
+}
+
+// Parolamı değiştir (TS-004 "Parola değiştirme ve oturumlar ekranları"): başarıda backend kişinin
+// bütün oturumlarını kapatır; üç çerez silinir ve giriş ekranına notla gidilir. Hata durumu
+// gönderilen değerleri taşımaz: parola alanları boş açılır. Hata iletisi yönetim işleriyle aynı
+// yerde kurulur (is-hatasi.ts; 401 çerezleri silip girişe döner).
+export async function parolaDegistir(
+  _onceki: FormDurumu,
+  form: FormData,
+): Promise<FormDurumu> {
+  const girdi = ParolaDegistirSemasi.safeParse({
+    eskiParola: form.get('eskiParola'),
+    yeniParola: form.get('yeniParola'),
+    yeniParolaTekrar: form.get('yeniParolaTekrar'),
+  });
+  if (!girdi.success) {
+    return { genelHata: null, alanHatalari: semaAlanHatalari(girdi.error) };
+  }
+
+  const { eskiParola, yeniParola } = girdi.data;
+  const sonuc = await backendIstegi({
+    yol: '/kimlik/parola/degistir',
+    yontem: 'POST',
+    govde: { eskiParola, yeniParola },
+    oturumlu: true,
+  });
+  if (!sonuc.basarili) {
+    return isHatasi(sonuc.hata);
+  }
+
+  await oturumCerezleriniSil();
+  redirect('/giris?parola=degisti');
 }

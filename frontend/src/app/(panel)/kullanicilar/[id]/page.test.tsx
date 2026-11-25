@@ -411,6 +411,23 @@ describe('KullaniciSayfasi parola belirleme kodu', () => {
   });
 });
 
+describe('KullaniciSayfasi oturumları bağlantısı', () => {
+  it('Oturum:oku kuralı olan kişi kişinin oturumlarına giden bağlantıyı görür; sayfa ek istek atmaz', async () => {
+    await goster(ETKIN_KAYIT, [...kurallar(...ISLER), { action: 'oku', subject: 'Oturum' }]);
+
+    expect(
+      screen.getByRole('link', { name: 'Oturumları' }).getAttribute('href'),
+    ).toBe(`/oturumlar?kullaniciId=${ID}`);
+    expect(sahteFetch).toHaveBeenCalledTimes(SAYFA_ISTEKLERI);
+  });
+
+  it('Oturum:oku kuralı olmayan kişi (kapat olsa da) bağlantıyı görmez', async () => {
+    await goster(ETKIN_KAYIT, [...kurallar(...ISLER), { action: 'kapat', subject: 'Oturum' }]);
+
+    expect(screen.queryByRole('link', { name: 'Oturumları' })).toBeNull();
+  });
+});
+
 describe('KullaniciSayfasi yetki', () => {
   it('bütün kurallar varken etkin kayıtta görünen ad formu, pasife al ve kod üret görünür', async () => {
     await goster(ETKIN_KAYIT);

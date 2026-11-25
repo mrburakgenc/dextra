@@ -30,6 +30,7 @@ const MENU = [
   { etiket: 'Gruplar', adres: '/gruplar', kaynak: 'Grup' },
   { etiket: 'İzinler', adres: '/izinler', kaynak: 'Izin' },
   { etiket: 'Yetenekler', adres: '/yetenekler', kaynak: 'Yetenek' },
+  { etiket: 'Oturumlar', adres: '/oturumlar', kaynak: 'Oturum' },
 ] as const;
 
 // Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden giriş ekranına dönülür. Bu bir
@@ -96,9 +97,15 @@ export default async function PanelDuzeni({
             ))}
           </ul>
         </nav>
-        <form action={cikisYap}>
-          <GonderDugmesi>Çıkış</GonderDugmesi>
-        </form>
+        {/* Parolamı değiştir oturumu olan herkesin işidir; yetenek aramaz (TS-004). */}
+        <div className="flex items-center gap-4">
+          <Link href="/parola" className={BAGLANTI}>
+            Parolamı değiştir
+          </Link>
+          <form action={cikisYap}>
+            <GonderDugmesi>Çıkış</GonderDugmesi>
+          </form>
+        </div>
       </header>
       {icerik}
     </YetkiSaglayici>
