@@ -1,6 +1,6 @@
 // Oturumları listele işinin işleyicisi (TS-002 "Uçlar ve izinler": Oturum:oku).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { istekBaglami } from '../../../../../../shared/http/istek-baglami.js';
 import { OTURUM_YONETIM_OKUMA_REPO } from '../../../domain/repositories/i-oturum-yonetim.repository.js';
 import type { OturumListeleSorgusu } from './oturum-listele.query.js';

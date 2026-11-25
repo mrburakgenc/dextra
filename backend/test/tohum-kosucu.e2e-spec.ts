@@ -15,18 +15,16 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { AppModule } from '../src/app.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import {
-  RepoBelirteci,
-  RepoKayitlari,
-} from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../src/shared/database/domain/repo-belirteci.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   TohumDefteri,
   type TohumGocu,
-} from '../src/shared/tohum/tohum-defteri.js';
-import { tohumGocuRepoKaydet } from '../src/shared/tohum/tohum-gocu.repository.js';
-import { tohumKomutu } from '../src/shared/tohum/tohum-komutu.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+} from '../src/shared/tohum/application/tohum-defteri.js';
+import { tohumGocuRepoKaydet } from '../src/shared/tohum/infrastructure/tohum-gocu.prisma-repository.js';
+import { tohumKomutu } from '../src/shared/tohum/infrastructure/tohum-komutu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import { TohumModule } from '../src/shared/tohum/tohum.module.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { derle } from './derleme.js';

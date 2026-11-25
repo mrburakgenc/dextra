@@ -1,6 +1,6 @@
 // ButunlukCekirdekRepo'nun gerçeklemesi: bütünlük sorularının okumalarını işlemin istemcisiyle, yetki
 // kapısından geçmeden yapar (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { ButunlukCekirdekRepo } from '../../domain/repositories/i-butunluk-cekirdek.repository.js';
 
 // SuperAdmin rolünün saklanan kodu (TS-002 AK-3).

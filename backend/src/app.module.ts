@@ -15,7 +15,7 @@ import { HttpTemeliModule } from './shared/http/http-temeli.module.js';
 import { OTURUM_DENETIMI } from './shared/kimlik/domain/i-oturum-denetimi.contract.js';
 import { YETKI_VERISI } from './shared/kimlik/domain/i-yetki-verisi.contract.js';
 import { MessagingModule } from './shared/messaging/messaging.module.js';
-import { OlayModule } from './shared/messaging/olay/olay.module.js';
+import { OlayModule } from './shared/messaging/olay.module.js';
 import { ErisimModule } from './shared/observability/erisim/erisim.module.js';
 import { IzModule } from './shared/observability/iz/iz.module.js';
 import { prismaKaynakKatalogu } from './shared/yetki/infrastructure/prisma-kaynak-katalogu.js';

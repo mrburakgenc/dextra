@@ -2,10 +2,13 @@ import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { PoolConfig } from 'pg';
 import { PrismaClient } from './generated/client.js';
-import { IZ_PRISMA_CLIENT, PRISMA_CLIENT } from './istemci-belirtecleri.js';
+import {
+  IZ_PRISMA_CLIENT,
+  PRISMA_CLIENT,
+} from './domain/istemci-belirtecleri.js';
 import { PrismaClient as IzPrismaClient } from './iz/generated/client.js';
-import { Registrar, RepoKayitlari } from './registrar.js';
-import { UnitOfWork } from './unit-of-work.js';
+import { Registrar, RepoKayitlari } from './infrastructure/registrar.js';
+import { UnitOfWork } from './infrastructure/unit-of-work.js';
 
 // İz veritabanına her ifadenin sunucu tarafı süre sınırı (TS-003 sözleşme 6); hem statement_timeout
 // hem lock_timeout olarak verilir. Asıl işlemin 5 saniyelik sınırından kısadır; iz aktarıcısı tek tek

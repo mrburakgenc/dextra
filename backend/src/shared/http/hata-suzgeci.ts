@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Prisma } from '../database/generated/client.js';
-import { yeniKimlik } from '../database/kimlik.js';
+import { yeniKimlik } from '../database/domain/kimlik.js';
 import { ISTEK_KIMLIGI_BASLIGI } from './istek-baglami.js';
 import { HATA_DURUMLARI, type HataKodu, KodluHata } from './kodlu-hata.js';
 

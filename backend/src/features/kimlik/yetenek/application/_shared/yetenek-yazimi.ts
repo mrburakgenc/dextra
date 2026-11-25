@@ -2,7 +2,7 @@
 // (TS-002 AK-39; KR-008 Seçim 5, 7, 11, 17, 21, 34). Kararı yetenek varlığı verir; burada yalnız
 // olgular toplanır ve ret bugünkü HTTP cevabına çevrilir.
 import { Inject, Injectable } from '@nestjs/common';
-import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import { istekBaglami } from '../../../../../shared/http/istek-baglami.js';
 import { KodluHata } from '../../../../../shared/http/kodlu-hata.js';
 import {

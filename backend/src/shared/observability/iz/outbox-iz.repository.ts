@@ -1,8 +1,8 @@
-import {
-  type Registrar,
-  RepoBelirteci,
-  type RepoIstemcisi,
-} from '../../database/registrar.js';
+import { RepoBelirteci } from '../../database/domain/repo-belirteci.js';
+import type {
+  Registrar,
+  RepoIstemcisi,
+} from '../../database/infrastructure/registrar.js';
 
 // Aktarılmayı bekleyen değişiklik kaydı notu. Zaman metin olarak okunur: JavaScript Date
 // milisaniyede keser, veritabanı mikrosaniye tutar.

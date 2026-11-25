@@ -1,8 +1,8 @@
 // Grup alt özelliğinin repository arayüzleri ve belirteçleri: Grup kaynağına yalnız yetki kapısından
 // erişilir; okuma okuma yüzünden, yazma yazma yüzünden geçer (TS-002 AK-19, AK-39). Gerçeklemeleri
 // infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
-import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
+import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import type {
   Kayit,
   Siralama,

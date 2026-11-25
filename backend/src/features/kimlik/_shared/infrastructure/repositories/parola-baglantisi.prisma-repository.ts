@@ -1,6 +1,6 @@
 // ParolaBaglantisiRepo'nun gerçeklemesi: parola_baglantisi tablosuna işlemin istemcisiyle, yetki
 // kapısından geçmeden erişir (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { ParolaBaglantisiRepo } from '../../domain/repositories/i-parola-baglantisi.repository.js';
 
 export function parolaBaglantisiRepo(

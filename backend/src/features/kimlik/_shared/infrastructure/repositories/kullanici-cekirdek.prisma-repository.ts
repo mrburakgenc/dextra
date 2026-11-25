@@ -1,6 +1,6 @@
 // KullaniciCekirdekRepo'nun gerçeklemesi: kullanici tablosuna işlemin istemcisiyle, yetki kapısından
 // geçmeden erişir (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { KullaniciCekirdekRepo } from '../../domain/repositories/i-kullanici-cekirdek.repository.js';
 
 export function kullaniciCekirdekRepo(

@@ -36,8 +36,8 @@ import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { OturumDenetimiHandler } from '../src/features/kimlik/oturum/application/commands/oturum-denetimi/oturum-denetimi.handler.js';
 import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
 import type { PrismaClient } from '../src/shared/database/generated/client.js';
-import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
 import {
@@ -46,7 +46,7 @@ import {
   istemciImzasiUret,
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { YetenekKurali } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';

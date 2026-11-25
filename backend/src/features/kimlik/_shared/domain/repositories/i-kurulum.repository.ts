@@ -2,7 +2,7 @@
 // kapısından geçmeden yazar (KR-010 Seçim 48'in adıyla istisnası; "tohum" çekirdek parçası).
 // Kullanıcı ve üyelik yazmaz; onları tohum yardımcısı yazar. Yalnız kurulum göçü kullanır.
 // Gerçeklemesi infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 
 export interface YeniYetenek {

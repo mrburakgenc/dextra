@@ -1,6 +1,6 @@
 // Parola bağlantısı üret işinin işleyicisi (TS-002 "İşlem sınırları"; KR-008 Seçim 47; KR-009 Seçim 9).
 import { Inject, Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { istekBaglami } from '../../../../../../shared/http/istek-baglami.js';
 import {
   type HataKodu,

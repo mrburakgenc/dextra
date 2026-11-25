@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
-import { Registrar } from '../../../shared/database/registrar.js';
+import { Registrar } from '../../../shared/database/infrastructure/registrar.js';
 import { KimlikYetkiVerisi } from './application/yetki-verisi.js';
 import { YETKI_VERISI_REPO } from './domain/repositories/i-yetki-verisi.repository.js';
 import { yetkiVerisiRepo } from './infrastructure/repositories/yetki-verisi.prisma-repository.js';

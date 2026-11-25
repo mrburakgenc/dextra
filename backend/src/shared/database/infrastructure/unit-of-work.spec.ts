@@ -1,7 +1,9 @@
 import { Test } from '@nestjs/testing';
-import { DatabaseModule } from './database.module.js';
-import { Registrar, RepoBelirteci, RepoKayitlari } from './registrar.js';
-import { type Islem, UnitOfWork } from './unit-of-work.js';
+import { DatabaseModule } from '../database.module.js';
+import type { Islem } from '../domain/islem.js';
+import { RepoBelirteci } from '../domain/repo-belirteci.js';
+import { Registrar, RepoKayitlari } from './registrar.js';
+import { UnitOfWork } from './unit-of-work.js';
 
 interface OrnekOkuma {
   adlar(): Promise<string[]>;

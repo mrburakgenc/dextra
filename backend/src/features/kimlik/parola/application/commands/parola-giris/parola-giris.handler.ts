@@ -1,10 +1,8 @@
 // Parola ile giriş işinin işleyicisi: oturum çekirdeğinin tükettiği giriş yöntemi sözleşmesini uygular;
 // sözleşme gereği tek calistir yerine iki adımı (doğrula, kesinleştir) vardır.
 import { Injectable } from '@nestjs/common';
-import {
-  type Islem,
-  UnitOfWork,
-} from '../../../../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../../../shared/database/domain/islem.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import type { GirisYontemi } from '../../../../../../shared/kimlik/application/i-giris-yontemi.port.js';
 import type {
   GirisDogrulamaSonucu,

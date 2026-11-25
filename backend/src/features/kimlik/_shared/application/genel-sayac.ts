@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../shared/database/domain/islem.js';
 import { YETKI_SURUMU_CEKIRDEK_REPO } from '../domain/repositories/i-yetki-surumu-cekirdek.repository.js';
 
 // Çekirdek parça "genel sayaç" (TS-002 "Yapı"): genel sayaç satırını anahtar dışı güncelleme

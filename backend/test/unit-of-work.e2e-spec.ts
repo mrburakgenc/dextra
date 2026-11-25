@@ -4,11 +4,10 @@ import { setTimeout as bekle } from 'node:timers/promises';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import {
-  RepoBelirteci,
-  RepoKayitlari,
-} from '../src/shared/database/registrar.js';
-import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../src/shared/database/domain/repo-belirteci.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import type { Islem } from '../src/shared/database/domain/islem.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 interface AdOkuma {

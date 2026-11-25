@@ -1,12 +1,12 @@
 // Oturum denetimi işinin işleyicisi (TS-002 "Yapı", AK-12, AK-13): ortak koddaki sözleşmeyi uygular;
 // sözleşme gereği tek calistir yerine denetle vardır.
 import { Injectable, Logger } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import type {
   OturumDenetimi,
   OturumDenetimiSonucu,
 } from '../../../../../../shared/kimlik/domain/i-oturum-denetimi.contract.js';
-import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { notunOrtakAlanlari } from '../../../../_shared/application/iz.js';
 import { denetimSonucu } from '../../../domain/entities/oturum.entity.js';
 import { OTURUM_DENETIMI_REPO } from '../../../domain/repositories/i-oturum-denetimi.repository.js';

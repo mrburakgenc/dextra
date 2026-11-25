@@ -1,15 +1,8 @@
-import type { Prisma } from './generated/client.js';
+import type { RepoBelirteci } from '../domain/repo-belirteci.js';
+import type { Prisma } from '../generated/client.js';
 
 // Fabrikanın aldığı istemci: run içinde işlemin istemcisi, read için işlemsiz istemci.
 export type RepoIstemcisi = Prisma.TransactionClient;
-
-// Belirteç, okuma arayüzünü ve onu genişleten tam arayüzü yalnız tip olarak taşır (KR-011 Yazım biçimi).
-export class RepoBelirteci<TOkuma, TTam extends TOkuma> {
-  declare private readonly okumaTipi: TOkuma;
-  declare private readonly tamTipi: TTam;
-
-  constructor(readonly ad: string) {}
-}
 
 export type RepoFabrikasi<TTam> = (istemci: RepoIstemcisi) => TTam;
 

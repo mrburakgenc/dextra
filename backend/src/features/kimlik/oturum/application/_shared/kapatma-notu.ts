@@ -1,6 +1,6 @@
 // Oturum alt özelliğinin işlerine ortak yardımcı: kapatılan oturumun değişiklik kaydı notu (çıkış,
 // giriş ve yenileme kullanır).
-import type { DegisiklikKaydiNotu } from '../../../../../shared/messaging/outbox/outbox-yazici.js';
+import type { DegisiklikKaydiNotu } from '../../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import type { KapatilmaNedeni } from '../../../_shared/domain/kapatilma-nedeni.js';
 import { type IzBilgisi, notunOrtakAlanlari } from '../../../_shared/application/iz.js';
 

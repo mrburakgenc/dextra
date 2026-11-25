@@ -14,7 +14,7 @@ import {
   type IsIsleyici,
   type IsKuyrugu,
   type KuyrukIsi,
-} from './is-kuyrugu.js';
+} from '../../domain/kuyruk/is-kuyrugu.js';
 
 // Kuyruk tabloları asıl veritabanında bu şemada durur (TS-003 Seçenek 2).
 export const KUYRUK_SEMASI = 'kuyruk';

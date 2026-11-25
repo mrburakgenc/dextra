@@ -12,12 +12,12 @@ import {
 } from '../src/shared/database/database.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
-import { RepoKayitlari } from '../src/shared/database/registrar.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
 import {
   ISLEM_SURE_SINIRI_MS,
   UnitOfWork,
-} from '../src/shared/database/unit-of-work.js';
-import { Dongu } from '../src/shared/messaging/aktarim/dongu.js';
+} from '../src/shared/database/infrastructure/unit-of-work.js';
+import { Dongu } from '../src/shared/messaging/infrastructure/aktarim/dongu.js';
 import {
   BOS_BEKLEME_MS,
   IzAktarici,

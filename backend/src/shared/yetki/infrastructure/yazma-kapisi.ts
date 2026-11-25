@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../../database/kimlik.js';
+import { yeniKimlik } from '../../database/domain/kimlik.js';
+import { RepoBelirteci } from '../../database/domain/repo-belirteci.js';
 import {
   Registrar,
-  RepoBelirteci,
   type RepoIstemcisi,
-} from '../../database/registrar.js';
-import type { Islem } from '../../database/unit-of-work.js';
+} from '../../database/infrastructure/registrar.js';
+import type { Islem } from '../../database/domain/islem.js';
 import { type IstekOturumu, istekBaglami } from '../../http/istek-baglami.js';
 import { KodluHata } from '../../http/kodlu-hata.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
-} from '../../messaging/outbox/outbox-yazici.js';
+} from '../../messaging/infrastructure/outbox/outbox-yazici.js';
 import type { PrismaKosulu } from '../application/sart-cevirici.js';
 import type {
   DerlemeSonucu,

@@ -1,7 +1,7 @@
 // YetkiVerisiOkumaRepo'nun gerçeklemesi: yetki verisini ve sürümleri işlemsiz istemciyle, yetki
 // kapısından geçmeden okur (KR-010 Seçim 48'in adıyla istisnası). Sürümler iki sorguyla (kişi, genel
 // sayaç), öbür metotlar birer sorguyla okunur; sorgular arasında ortak anlık görüntü yoktur.
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { YetkiVerisiOkumaRepo } from '../../domain/repositories/i-yetki-verisi.repository.js';
 
 // Genel sayaç tek satırdır; kimliği yalnız 1 olabilir (yetki_surumu_tek_satir_denetim).

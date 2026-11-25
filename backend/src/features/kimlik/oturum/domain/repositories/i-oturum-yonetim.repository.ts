@@ -2,8 +2,8 @@
 // Oturum kaynağına yalnız yetki kapısından erişir; çekirdek repository'leri kullanmaz (AK-39). Kayıtlar
 // yalnız isteyenin görebildiği kolonları ve her zaman kimliği taşır (AK-38); oturum sırrı kaynak
 // değildir ve gelmez. Gerçeklemeleri infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
-import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
+import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import type {
   Kayit,
   Siralama,

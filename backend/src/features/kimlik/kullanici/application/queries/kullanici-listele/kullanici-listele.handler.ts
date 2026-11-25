@@ -1,6 +1,6 @@
 // Kullanıcıları listele işinin işleyicisi (TS-002 AK-39; izin Kullanici:oku).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { KULLANICI_OKUMA_REPO } from '../../../domain/repositories/i-kullanici.repository.js';
 import type { KullaniciListeleSorgusu } from './kullanici-listele.query.js';
 import type { KullaniciListeleSonucu } from './kullanici-listele.result.js';

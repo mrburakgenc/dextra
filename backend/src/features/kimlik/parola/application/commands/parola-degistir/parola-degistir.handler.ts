@@ -1,8 +1,8 @@
 // Parola değiştir işinin işleyicisi (TS-002 "İşlem sınırları" Parola değiştir; AK-50).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
-import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/application/iz.js';
 import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
 import {

@@ -1,21 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { istekteYazmaAcildi } from '../http/istek-baglami.js';
-import type { PrismaClient } from './generated/client.js';
-import type {
-  RepoBelirteci,
-  RepoIstemcisi,
-  RepoKayitlari,
-} from './registrar.js';
+import { istekteYazmaAcildi } from '../../http/istek-baglami.js';
+import type { Islem } from '../domain/islem.js';
+import type { RepoBelirteci } from '../domain/repo-belirteci.js';
+import type { PrismaClient } from '../generated/client.js';
+import type { RepoIstemcisi, RepoKayitlari } from './registrar.js';
 
 // İşlemin süre sınırı (KR-011); aşılırsa Prisma işlemi geri alır.
 export const ISLEM_SURE_SINIRI_MS = 5000;
-
-// Çağrı başına örnek; yalnız run verir ve tam arayüz yalnız buradan alınır.
-export interface Islem {
-  repo<TOkuma, TTam extends TOkuma>(
-    belirtec: RepoBelirteci<TOkuma, TTam>,
-  ): TTam;
-}
 
 class AcikIslem implements Islem {
   private kapali = false;

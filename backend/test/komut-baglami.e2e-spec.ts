@@ -18,16 +18,16 @@ import { NestFactory } from '@nestjs/core';
 import pg from 'pg';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { BullmqIsKuyrugu } from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
+import { BullmqIsKuyrugu } from '../src/shared/messaging/infrastructure/kuyruk/bullmq-is-kuyrugu.js';
 import {
   IS_KUYRUGU,
   type IsKuyrugu,
-} from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
-import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
-import { OlayModule } from '../src/shared/messaging/olay/olay.module.js';
-import { tuketiciBaslat } from '../src/shared/messaging/tuketici/tuketici-tabani.js';
-import { tohumKomutu } from '../src/shared/tohum/tohum-komutu.js';
+} from '../src/shared/messaging/domain/kuyruk/is-kuyrugu.js';
+import { kuyrukGocunuKos } from '../src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.js';
+import { OlayModule } from '../src/shared/messaging/olay.module.js';
+import { tuketiciBaslat } from '../src/shared/messaging/infrastructure/tuketici/tuketici-tabani.js';
+import { tohumKomutu } from '../src/shared/tohum/infrastructure/tohum-komutu.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { type Derleme, derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';

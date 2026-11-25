@@ -1,6 +1,6 @@
 // IOturumDenetimiRepo'nun gerçeklemesi: oturum denetiminin okuması ve adres değişince kapatma, işlemin
 // istemcisiyle ve yetki kapısından geçmeden (çekirdek yol).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import { kimlikSistemAktoru } from '../../../_shared/infrastructure/repositories/sistem-aktoru-cekirdek.prisma-repository.js';
 import type { DenetimSatiri } from '../../domain/entities/oturum.entity.js';
 import type { IOturumDenetimiRepo } from '../../domain/repositories/i-oturum-denetimi.repository.js';

@@ -1,11 +1,11 @@
-import type { UnitOfWork } from '../../database/unit-of-work.js';
+import type { UnitOfWork } from '../../../database/infrastructure/unit-of-work.js';
 import { Dongu } from '../aktarim/dongu.js';
-import type { IsKuyrugu } from '../kuyruk/is-kuyrugu.js';
-import type { AboneDefteri } from './abone-defteri.js';
+import type { IsKuyrugu } from '../../domain/kuyruk/is-kuyrugu.js';
+import type { AboneDefteri } from '../../application/olay/abone-defteri.js';
 import {
   OUTBOX_OLAY_REPO,
   type OutboxOlayOlculeri,
-} from './outbox-olay.repository.js';
+} from '../../domain/olay/i-outbox-olay.repository.js';
 
 // Bir geçişte en çok alınan not sayısı.
 export const PARTI_BOYU = 100;

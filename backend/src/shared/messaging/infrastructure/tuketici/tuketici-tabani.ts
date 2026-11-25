@@ -5,10 +5,10 @@
 // olay yeniden işlenir. Bu yüzden işleyicinin çağırdığı komut tekrar güvenli yazılır.
 import { Logger } from '@nestjs/common';
 import { z } from 'zod';
-import { yeniKimlik } from '../../database/kimlik.js';
-import type { UnitOfWork } from '../../database/unit-of-work.js';
-import type { IsKuyrugu, KuyrukIsi } from '../kuyruk/is-kuyrugu.js';
-import { ISLENEN_OLAY_REPO } from './islenen-olay.repository.js';
+import { yeniKimlik } from '../../../database/domain/kimlik.js';
+import type { UnitOfWork } from '../../../database/infrastructure/unit-of-work.js';
+import type { IsKuyrugu, KuyrukIsi } from '../../domain/kuyruk/is-kuyrugu.js';
+import { ISLENEN_OLAY_REPO } from '../../domain/tuketici/i-islenen-olay.repository.js';
 
 // Sahiplenmenin süresi; dolunca başka işçi devralabilir. Kuyruğun yeniden deneme penceresi bundan
 // uzun tutulur (testle): işçisi ölen olay, sahiplenme dolduktan sonraki bir denemede işlenir.

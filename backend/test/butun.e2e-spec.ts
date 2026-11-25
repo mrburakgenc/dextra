@@ -13,26 +13,26 @@ import pg from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   IS_KUYRUGU,
   type IsKuyrugu,
-} from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
-import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
-import { AboneDefteri } from '../src/shared/messaging/olay/abone-defteri.js';
+} from '../src/shared/messaging/domain/kuyruk/is-kuyrugu.js';
+import { kuyrukGocunuKos } from '../src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.js';
+import { AboneDefteri } from '../src/shared/messaging/application/olay/abone-defteri.js';
 import {
   BOS_BEKLEME_MS,
   HATA_TABAN_BEKLEME_MS,
   OlayAktarici,
-} from '../src/shared/messaging/olay/olay-aktarici.js';
+} from '../src/shared/messaging/infrastructure/olay/olay-aktarici.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
-} from '../src/shared/messaging/outbox/outbox-yazici.js';
+} from '../src/shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import {
   type Zarf,
   tuketiciBaslat,
-} from '../src/shared/messaging/tuketici/tuketici-tabani.js';
+} from '../src/shared/messaging/infrastructure/tuketici/tuketici-tabani.js';
 import {
   IzAktarici,
   PARTI_HATASI_TABAN_BEKLEME_MS,

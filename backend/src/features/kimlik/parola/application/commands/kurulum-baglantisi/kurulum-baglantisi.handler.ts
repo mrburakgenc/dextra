@@ -1,6 +1,6 @@
 // Kurulum komutunun işleyicisi (TS-002 AK-15; KR-009 Seçim 9).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
 import type { IzBilgisi } from '../../../../_shared/application/iz.js';
 import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';

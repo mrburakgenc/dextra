@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { KOMUT_BAGLAMI } from '../komut-baglami.js';
-import { BullmqIsKuyrugu } from './bullmq-is-kuyrugu.js';
-import { IS_KUYRUGU } from './is-kuyrugu.js';
+import { KOMUT_BAGLAMI } from './komut-baglami.js';
+import { BullmqIsKuyrugu } from './infrastructure/kuyruk/bullmq-is-kuyrugu.js';
+import { IS_KUYRUGU } from './domain/kuyruk/is-kuyrugu.js';
 
 @Module({
   providers: [

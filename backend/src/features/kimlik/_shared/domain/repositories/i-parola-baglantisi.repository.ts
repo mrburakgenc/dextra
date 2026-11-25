@@ -1,7 +1,7 @@
 // Çekirdek repository: parola_baglantisi tablosuna yetki kapısından geçmeden erişir (KR-010 Seçim 48'in
 // adıyla istisnası). Tabloda kodun yalnız özeti durur (TS-002 değişmez 13). Gerçeklemesi
 // infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 
 export interface BulunanBaglanti {
   id: string;

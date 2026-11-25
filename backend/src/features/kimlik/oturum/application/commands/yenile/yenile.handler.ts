@@ -1,10 +1,10 @@
 // Yenileme işinin işleyicisi (TS-002 "İşlem sınırları" Yenile, AK-49).
 import { Injectable, Logger } from '@nestjs/common';
-import type { Islem } from '../../../../../../shared/database/unit-of-work.js';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../../../shared/database/domain/islem.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { BelirtecServisi } from '../../../../../../shared/guvenlik/application/belirtec.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
-import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import type { KapatilmaNedeni } from '../../../../_shared/domain/kapatilma-nedeni.js';
 import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/application/iz.js';
 import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
