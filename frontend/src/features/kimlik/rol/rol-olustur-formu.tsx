@@ -19,6 +19,7 @@ export function RolOlusturFormu() {
         tur="text"
         otomatikTamamlama="off"
         hata={durum.alanHatalari['ad']}
+        varsayilan={durum.degerler?.['ad']}
       />
       <GonderDugmesi>Rolü oluştur</GonderDugmesi>
     </form>

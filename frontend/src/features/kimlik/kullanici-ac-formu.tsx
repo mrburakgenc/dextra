@@ -26,6 +26,7 @@ export function KullaniciAcFormu() {
           tur="text"
           otomatikTamamlama="off"
           hata={durum.alanHatalari['kullaniciAdi']}
+          varsayilan={durum.degerler?.['kullaniciAdi']}
         />
         <Alan
           ad="gorunenAd"
@@ -33,6 +34,7 @@ export function KullaniciAcFormu() {
           tur="text"
           otomatikTamamlama="off"
           hata={durum.alanHatalari['gorunenAd']}
+          varsayilan={durum.degerler?.['gorunenAd']}
         />
         <GonderDugmesi>Kullanıcıyı aç</GonderDugmesi>
       </form>

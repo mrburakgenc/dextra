@@ -222,6 +222,66 @@ describe('YeniKullaniciSayfasi hatalar', () => {
   });
 });
 
+describe('YeniKullaniciSayfasi yazılanın korunması', () => {
+  function deger(etiket: string): string {
+    const girdi = screen.getByLabelText(etiket);
+    return girdi instanceof HTMLInputElement ? girdi.value : '';
+  }
+
+  it('409 dönünce yazılan kullanıcı adı ve görünen ad formda kalır', async () => {
+    sahteFetch.mockResolvedValue(
+      jsonCevap(
+        { kod: 'cakisma', ileti: 'Bu kullanıcı adı kullanılıyor', ayrinti: null },
+        409,
+      ),
+    );
+    goster();
+
+    await gonder('Ada.Yilmaz', '  Ada Yılmaz ');
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Kullanıcı adı')).toBe('Bu kullanıcı adı kullanılıyor');
+    });
+    expect(deger('Kullanıcı adı')).toBe('Ada.Yilmaz');
+    expect(deger('Görünen ad')).toBe('  Ada Yılmaz ');
+  });
+
+  it('alan hatasında yazılanlar formda kalır', async () => {
+    goster();
+
+    await gonder('ab', 'Ada Yılmaz');
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Kullanıcı adı')).toContain('3-64 karakter');
+    });
+    expect(deger('Kullanıcı adı')).toBe('ab');
+    expect(deger('Görünen ad')).toBe('Ada Yılmaz');
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
+
+  it('hatadan sonraki başarıda form bugünkü gibi boşalır', async () => {
+    sahteFetch
+      .mockResolvedValueOnce(
+        jsonCevap(
+          { kod: 'cakisma', ileti: 'Bu kullanıcı adı kullanılıyor', ayrinti: null },
+          409,
+        ),
+      )
+      .mockResolvedValueOnce(jsonCevap({ id: 'k1', parolaBaglantisiKodu: KOD }, 201));
+    goster();
+
+    await gonder('ada', 'Ada Yılmaz');
+    await vi.waitFor(() => {
+      expect(alanHatasi('Kullanıcı adı')).toBe('Bu kullanıcı adı kullanılıyor');
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Kullanıcıyı aç' }));
+
+    await screen.findByRole('status');
+    expect(deger('Kullanıcı adı')).toBe('');
+    expect(deger('Görünen ad')).toBe('');
+  });
+});
+
 describe('YeniKullaniciSayfasi yetki', () => {
   it('Kullanici olustur kuralı olmayan kişi formu görmez', () => {
     goster([{ action: 'oku', subject: 'Kullanici' }]);

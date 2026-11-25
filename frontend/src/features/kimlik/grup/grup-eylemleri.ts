@@ -4,7 +4,7 @@ import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { backendIstegi } from '../../../shared/backend/istek';
-import { BOS_FORM_DURUMU, type FormDurumu } from '../form-durumu';
+import { BOS_FORM_DURUMU, type FormDurumu, gonderilenDegerler } from '../form-durumu';
 import { isHatasi, KAYIT_BULUNAMADI } from '../is-hatasi';
 import {
   AdSemasi,
@@ -22,12 +22,13 @@ const IdCevabi = z.object({ id: KayitKimligi });
 
 // Silinmiş ya da var olmayan üst grup backend'de 409 olur; iletisi ekranda gösterilir.
 export async function grupOlustur(_onceki: FormDurumu, form: FormData): Promise<FormDurumu> {
+  const degerler = gonderilenDegerler(form, ['ad', 'ustGrupId']);
   const girdi = GrupOlusturSemasi.safeParse({
     ad: form.get('ad'),
     ustGrupId: form.get('ustGrupId'),
   });
   if (!girdi.success) {
-    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error) };
+    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error), degerler };
   }
   const sonuc = await backendIstegi({
     yol: '/kimlik/grup',
@@ -36,7 +37,7 @@ export async function grupOlustur(_onceki: FormDurumu, form: FormData): Promise<
     oturumlu: true,
   });
   if (!sonuc.basarili) {
-    return isHatasi(sonuc.hata);
+    return { ...(await isHatasi(sonuc.hata)), degerler };
   }
   const { id } = IdCevabi.parse(sonuc.govde);
   redirect(`/gruplar/${id}`);

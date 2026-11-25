@@ -9,7 +9,7 @@ import {
   kimlikGerekliyseGiriseDon,
 } from '../../shared/backend/hata';
 import { backendIstegi } from '../../shared/backend/istek';
-import type { KullaniciIsDurumu } from './form-durumu';
+import { gonderilenDegerler, type KullaniciIsDurumu } from './form-durumu';
 import {
   GorunenAdSemasi,
   KullaniciAcSemasi,
@@ -67,12 +67,13 @@ export async function kullaniciAc(
   _onceki: KullaniciIsDurumu,
   form: FormData,
 ): Promise<KullaniciIsDurumu> {
+  const degerler = gonderilenDegerler(form, ['kullaniciAdi', 'gorunenAd']);
   const girdi = KullaniciAcSemasi.safeParse({
     kullaniciAdi: form.get('kullaniciAdi'),
     gorunenAd: form.get('gorunenAd'),
   });
   if (!girdi.success) {
-    return { ...BASARILI, alanHatalari: semaAlanHatalari(girdi.error) };
+    return { ...BASARILI, alanHatalari: semaAlanHatalari(girdi.error), degerler };
   }
 
   const sonuc = await backendIstegi({
@@ -84,9 +85,9 @@ export async function kullaniciAc(
   if (!sonuc.basarili) {
     // Aynı kullanıcı adı: ileti kullanıcı adı alanının yanında gösterilir.
     if (sonuc.hata.kod === 'cakisma') {
-      return { ...BASARILI, alanHatalari: { kullaniciAdi: sonuc.hata.ileti } };
+      return { ...BASARILI, alanHatalari: { kullaniciAdi: sonuc.hata.ileti }, degerler };
     }
-    return isHatasi(sonuc.hata);
+    return { ...(await isHatasi(sonuc.hata)), degerler };
   }
   return parolaAdresi(sonuc.govde);
 }

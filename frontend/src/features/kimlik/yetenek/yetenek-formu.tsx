@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { startTransition, type SubmitEvent, useActionState, useRef, useState } from 'react';
 import { GonderDugmesi } from '../../../shared/ui/gonder-dugmesi';
 import { BOS_FORM_DURUMU } from '../form-durumu';
 import { GenelHata } from '../is-parcalari';
@@ -10,27 +10,46 @@ import { yetenekYaz, yetenekYenile } from './yetenek-eylemleri';
 import {
   DEGER_TURLERI,
   DEGER_TURU_ETIKETLERI,
+  type FormSatiri,
   ISLECLER,
   LISTELI_ISLECLER,
+  type SaklananSatir,
   type SartSatiri,
   YER_TUTUCULAR,
 } from './yetenek-sarti';
 
 // Yetenek yaz ve yenile formları (TS-004 "Yönetim ekranları" ve form kuralları). İçerik alanları
-// denetimlidir; böylece eylem doğrulama hatası döndürünce çatının form sıfırlaması onları silmez ve
-// sınırı boş kalan yeteneğin uyarısı yazarken görünür. Alan ve kolon adlarını ekran bilmez; hatayı
-// backend söyler.
+// denetimlidir; böylece sınırı boş kalan yeteneğin uyarısı yazarken görünür. Alan ve kolon adlarını
+// ekran bilmez; hatayı backend söyler.
+//
+// Çatı, action ile gönderilen formu iş bitince sıfırlar; denetimli seçim de ilk seçeneğine döner ve
+// durumu değişmediği için yeniden eşlenmez (işleç ekranda 'esit' görünür, sonraki gönderim onu
+// yollar). Bu yüzden iki form onSubmit ile, geçiş içinde ve sıfırlamasız gönderilir (React belgesi:
+// "Skip the reset with onSubmit"); gönderim sürerken düğme yine kapalıdır. action da verilir:
+// hidrasyondan önce ya da JavaScript'siz form Server Action'a POST ile gider; hidrasyondan sonra
+// onSubmit varsayılanı engellediği için React action'ı çalıştırmaz ve formu sıfırlamaz.
+function sifirlamadanGonder(eylem: (form: FormData) => void) {
+  return (olay: SubmitEvent<HTMLFormElement>) => {
+    olay.preventDefault();
+    const form = new FormData(olay.currentTarget);
+    startTransition(() => {
+      eylem(form);
+    });
+  };
+}
 
 const GIRDI =
   'rounded border border-gray-500 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
 const IKINCIL_DUGME =
   'self-start rounded border border-gray-500 px-4 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
 
+// sakliKolonlar: virgülle yazılınca kaybolacak kolon listesi; salt okunur gösterilir ve aynen gider.
 export interface YetenekIcerigi {
-  readonly sart: readonly SartSatiri[];
+  readonly sart: readonly FormSatiri[];
   readonly butunKayitlar: boolean;
   readonly butunBirimler: boolean;
   readonly kolonlar: string;
+  readonly sakliKolonlar: readonly string[] | null;
   readonly butunKolonlar: boolean;
 }
 
@@ -39,13 +58,12 @@ const BOS_ICERIK: YetenekIcerigi = {
   butunKayitlar: false,
   butunBirimler: false,
   kolonlar: '',
+  sakliKolonlar: null,
   butunKolonlar: false,
 };
 
 // Satırın anahtarı listede kalıcıdır; satır çıkarılınca öbürlerinin durumu kaymaz.
-interface AnahtarliSatir extends SartSatiri {
-  readonly anahtar: number;
-}
+type AnahtarliSatir<S extends FormSatiri = FormSatiri> = S & { readonly anahtar: number };
 
 function Kutu({
   ad,
@@ -72,18 +90,24 @@ function Kutu({
   );
 }
 
+// Satırın hatası satırın altında görünür; hatalı girdi işaretlidir ve iletiye bağlıdır.
 function SartSatirAlanlari({
   sira,
   satir,
+  alanHatasi,
+  degerHatasi,
   degistir,
   cikar,
 }: Readonly<{
   sira: number;
-  satir: AnahtarliSatir;
-  degistir: (satir: AnahtarliSatir) => void;
+  satir: AnahtarliSatir<SartSatiri>;
+  alanHatasi: string | undefined;
+  degerHatasi: string | undefined;
+  degistir: (satir: AnahtarliSatir<SartSatiri>) => void;
   cikar: () => void;
 }>) {
   const kimlik = `sart-${String(satir.anahtar)}`;
+  const hataKimligi = `${kimlik}-hata`;
   const listeli = LISTELI_ISLECLER.includes(satir.islec);
   return (
     <fieldset className="flex flex-col gap-2 rounded border border-gray-300 p-3">
@@ -98,6 +122,8 @@ function SartSatirAlanlari({
         onChange={(olay) => {
           degistir({ ...satir, alan: olay.target.value });
         }}
+        aria-invalid={alanHatasi !== undefined}
+        aria-describedby={alanHatasi === undefined ? undefined : hataKimligi}
         className={GIRDI}
       />
       <label htmlFor={`${kimlik}-islec`}>İşleç</label>
@@ -152,6 +178,8 @@ function SartSatirAlanlari({
           onChange={(olay) => {
             degistir({ ...satir, deger: olay.target.value });
           }}
+          aria-invalid={degerHatasi !== undefined}
+          aria-describedby={degerHatasi === undefined ? undefined : hataKimligi}
           className={GIRDI}
         >
           <option value="">Seç</option>
@@ -171,9 +199,43 @@ function SartSatirAlanlari({
           onChange={(olay) => {
             degistir({ ...satir, deger: olay.target.value });
           }}
+          aria-invalid={degerHatasi !== undefined}
+          aria-describedby={degerHatasi === undefined ? undefined : hataKimligi}
           className={GIRDI}
         />
       )}
+      <HataIletisi kimlik={hataKimligi} ileti={alanHatasi ?? degerHatasi} />
+      <button type="button" onClick={cikar} className={IKINCIL_DUGME}>
+        {`${String(sira + 1)}. şartı çıkar`}
+      </button>
+    </fieldset>
+  );
+}
+
+// Saklanan şart öğesi (TS-004 "Yönetim formlarının sertleştirilmesi"): düzenleme girdisi taşımaz;
+// saklandığı yazımla gösterilir, gizli alanlarla aynen gider ve yalnız çıkarılabilir.
+function SaklananSatirAlani({
+  sira,
+  satir,
+  hata,
+  cikar,
+}: Readonly<{
+  sira: number;
+  satir: AnahtarliSatir<SaklananSatir>;
+  hata: string | undefined;
+  cikar: () => void;
+}>) {
+  const { alan, islec, deger } = satir.oge;
+  return (
+    <fieldset className="flex flex-col gap-2 rounded border border-gray-300 p-3">
+      <legend className="font-medium">{`${String(sira + 1)}. şart`}</legend>
+      <input type="hidden" name="sartAlan" value={alan} />
+      <input type="hidden" name="sartIslec" value={islec} />
+      <input type="hidden" name="sartTur" value="saklanan" />
+      <input type="hidden" name="sartDeger" value={JSON.stringify(deger)} />
+      <code className="break-all">{JSON.stringify(satir.oge)}</code>
+      <p className="text-sm">Bu şart formda düzenlenemez; yalnız çıkarılabilir</p>
+      <HataIletisi kimlik={`sart-${String(satir.anahtar)}-hata`} ileti={hata} />
       <button type="button" onClick={cikar} className={IKINCIL_DUGME}>
         {`${String(sira + 1)}. şartı çıkar`}
       </button>
@@ -204,7 +266,17 @@ function IcerikAlanlari({
   const [butunKayitlar, butunKayitlarYap] = useState(baslangic.butunKayitlar);
   const [butunBirimler, butunBirimlerYap] = useState(baslangic.butunBirimler);
   const [kolonlar, kolonlarYap] = useState(baslangic.kolonlar);
+  const [sakliKolonlar, sakliKolonlariYap] = useState(baslangic.sakliKolonlar);
   const [butunKolonlar, butunKolonlarYap] = useState(baslangic.butunKolonlar);
+  // Satır hatasının anahtarı gönderimdeki sıradır; yeni hatalar gelince o anki satır anahtarları
+  // saklanır, böylece sonradan bir satır çıkarılınca hata başka satıra kaymaz.
+  const [hataSirasi, hataSirasiYap] = useState(() => ({
+    hatalar: alanHatalari,
+    anahtarlar: satirlar.map((satir) => satir.anahtar),
+  }));
+  if (hataSirasi.hatalar !== alanHatalari) {
+    hataSirasiYap({ hatalar: alanHatalari, anahtarlar: satirlar.map((satir) => satir.anahtar) });
+  }
   const sartHatasi = alanHatalari['sart'];
   const kolonHatasi = alanHatalari['kolonlar'];
   return (
@@ -220,19 +292,33 @@ function IcerikAlanlari({
         className="flex flex-col gap-3"
       >
         <legend className="font-medium">Şart</legend>
-        {satirlar.map((satir, sira) => (
-          <SartSatirAlanlari
-            key={satir.anahtar}
-            sira={sira}
-            satir={satir}
-            degistir={(yeni) => {
-              satirlariYap(satirlar.map((eski) => (eski.anahtar === yeni.anahtar ? yeni : eski)));
-            }}
-            cikar={() => {
-              satirlariYap(satirlar.filter((eski) => eski.anahtar !== satir.anahtar));
-            }}
-          />
-        ))}
+        {satirlar.map((satir, sira) => {
+          const onEk = `sart.${String(hataSirasi.anahtarlar.indexOf(satir.anahtar))}`;
+          const cikar = () => {
+            satirlariYap(satirlar.filter((eski) => eski.anahtar !== satir.anahtar));
+          };
+          return satir.tur === 'saklanan' ? (
+            <SaklananSatirAlani
+              key={satir.anahtar}
+              sira={sira}
+              satir={satir}
+              hata={alanHatalari[`${onEk}.deger`]}
+              cikar={cikar}
+            />
+          ) : (
+            <SartSatirAlanlari
+              key={satir.anahtar}
+              sira={sira}
+              satir={satir}
+              alanHatasi={alanHatalari[`${onEk}.alan`]}
+              degerHatasi={alanHatalari[`${onEk}.deger`]}
+              degistir={(yeni) => {
+                satirlariYap(satirlar.map((eski) => (eski.anahtar === yeni.anahtar ? yeni : eski)));
+              }}
+              cikar={cikar}
+            />
+          );
+        })}
         <button
           type="button"
           onClick={() => {
@@ -261,30 +347,53 @@ function IcerikAlanlari({
         isaretli={butunKolonlar}
         degistir={butunKolonlarYap}
       />
-      <div className="flex flex-col gap-1">
-        <label htmlFor="kolonlar" className="font-medium">
-          Kolonlar (virgülle ayrılmış)
-        </label>
-        <input
-          id="kolonlar"
-          name="kolonlar"
-          type="text"
-          autoComplete="off"
-          value={kolonlar}
-          onChange={(olay) => {
-            kolonlarYap(olay.target.value);
-          }}
-          aria-invalid={kolonHatasi !== undefined}
-          aria-describedby={kolonHatasi === undefined ? undefined : 'kolonlar-hata'}
-          className={GIRDI}
-        />
-        <HataIletisi kimlik="kolonlar-hata" ileti={kolonHatasi} />
-      </div>
+      {sakliKolonlar === null ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="kolonlar" className="font-medium">
+            Kolonlar (virgülle ayrılmış)
+          </label>
+          <input
+            id="kolonlar"
+            name="kolonlar"
+            type="text"
+            autoComplete="off"
+            value={kolonlar}
+            onChange={(olay) => {
+              kolonlarYap(olay.target.value);
+            }}
+            aria-invalid={kolonHatasi !== undefined}
+            aria-describedby={kolonHatasi === undefined ? undefined : 'kolonlar-hata'}
+            className={GIRDI}
+          />
+          <HataIletisi kimlik="kolonlar-hata" ileti={kolonHatasi} />
+        </div>
+      ) : (
+        // Virgülle yazılınca kaybolacak liste: saklandığı yazımla gösterilir ve aynen gider;
+        // Değiştir boş bir girdiyle baştan yazdırır.
+        <div className="flex flex-col gap-1">
+          <p className="font-medium">Kolonlar</p>
+          {sakliKolonlar.map((kolon, sira) => (
+            <input key={sira} type="hidden" name="sakliKolon" value={kolon} />
+          ))}
+          <code className="break-all">{JSON.stringify(sakliKolonlar)}</code>
+          <p className="text-sm">Bu kolon listesi formda düzenlenemez; değiştirirsen baştan yazılır</p>
+          <HataIletisi kimlik="kolonlar-hata" ileti={kolonHatasi} />
+          <button
+            type="button"
+            onClick={() => {
+              sakliKolonlariYap(null);
+            }}
+            className={IKINCIL_DUGME}
+          >
+            Değiştir
+          </button>
+        </div>
+      )}
       <div role="status" className="flex flex-col gap-1 text-sm">
         {!butunKayitlar && satirlar.length === 0 && (
           <p>Kayıt sınırı boş: bu yetenek kayıt vermez</p>
         )}
-        {!butunKolonlar && kolonlar.trim() === '' && (
+        {!butunKolonlar && sakliKolonlar === null && kolonlar.trim() === '' && (
           <p>Kolon sınırı boş: bu yetenek kolon vermez</p>
         )}
       </div>
@@ -296,7 +405,7 @@ function IcerikAlanlari({
 export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSecenekleri }>) {
   const [durum, eylem] = useActionState(yetenekYaz, BOS_FORM_DURUMU);
   return (
-    <form action={eylem} className="flex flex-col gap-4">
+    <form action={eylem} onSubmit={sifirlamadanGonder(eylem)} className="flex flex-col gap-4">
       <GenelHata ileti={durum.genelHata} />
       <SecimAlani
         ad="grupId"
@@ -304,6 +413,7 @@ export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSe
         secenekler={secenekler.gruplar}
         fazlasiNotu="İlk 100 grup gösteriliyor"
         hata={durum.alanHatalari['grupId']}
+        varsayilan={durum.degerler?.['grupId']}
       />
       <SecimAlani
         ad="rolId"
@@ -311,6 +421,7 @@ export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSe
         secenekler={secenekler.roller}
         fazlasiNotu="İlk 100 rol gösteriliyor"
         hata={durum.alanHatalari['rolId']}
+        varsayilan={durum.degerler?.['rolId']}
       />
       <SecimAlani
         ad="izinId"
@@ -318,6 +429,7 @@ export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSe
         secenekler={secenekler.izinler}
         fazlasiNotu="İlk 100 izin gösteriliyor"
         hata={durum.alanHatalari['izinId']}
+        varsayilan={durum.degerler?.['izinId']}
       />
       <IcerikAlanlari baslangic={BOS_ICERIK} alanHatalari={durum.alanHatalari} />
       <GonderDugmesi>Yeteneği yaz</GonderDugmesi>
@@ -333,7 +445,12 @@ export function YetenekYenileFormu({
 }: Readonly<{ id: string; baslangic: YetenekIcerigi }>) {
   const [durum, eylem] = useActionState(yetenekYenile, BOS_FORM_DURUMU);
   return (
-    <form action={eylem} aria-label="Yenile" className="flex flex-col gap-4">
+    <form
+      action={eylem}
+      onSubmit={sifirlamadanGonder(eylem)}
+      aria-label="Yenile"
+      className="flex flex-col gap-4"
+    >
       <h2 className="text-2xl font-bold">Yenile</h2>
       <GenelHata ileti={durum.genelHata} />
       <input type="hidden" name="id" value={id} />

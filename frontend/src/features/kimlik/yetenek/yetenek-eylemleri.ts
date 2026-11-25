@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { backendIstegi } from '../../../shared/backend/istek';
-import { BOS_FORM_DURUMU, type FormDurumu } from '../form-durumu';
+import { BOS_FORM_DURUMU, type FormDurumu, gonderilenDegerler } from '../form-durumu';
 import { isHatasi, KAYIT_BULUNAMADI } from '../is-hatasi';
 import {
   KayitKimligi,
@@ -19,7 +19,7 @@ import {
 const IdCevabi = z.object({ id: KayitKimligi });
 
 // Formun içerik alanları: şart satırlarının dört alanı aynı sırayla tekrar eder; kutular
-// işaretliyken formda bulunur.
+// işaretliyken formda bulunur. Saklanan kolon listesi varsa kolon metninin yerine o gider.
 function icerikGirdisi(form: FormData) {
   const islecler = form.getAll('sartIslec');
   const turler = form.getAll('sartTur');
@@ -33,14 +33,17 @@ function icerikGirdisi(form: FormData) {
     })),
     butunKayitlar: form.has('butunKayitlar'),
     butunBirimler: form.has('butunBirimler'),
-    kolonlar: form.get('kolonlar'),
+    kolonlar: form.has('sakliKolon') ? form.getAll('sakliKolon') : form.get('kolonlar'),
     butunKolonlar: form.has('butunKolonlar'),
   };
 }
 
 // Silinmiş grup ya da rol, katalogda olmayan izin ve izin veren kümenin kısıtına takılan yazma
 // backend'de 409 olur; iletisi ekranda gösterilir.
+// İçerik alanları denetimli olduğu için formda kalır; döndürülen değerler grup, rol ve izin
+// seçimleridir.
 export async function yetenekYaz(_onceki: FormDurumu, form: FormData): Promise<FormDurumu> {
+  const degerler = gonderilenDegerler(form, ['grupId', 'rolId', 'izinId']);
   const girdi = YetenekYazSemasi.safeParse({
     grupId: form.get('grupId'),
     rolId: form.get('rolId'),
@@ -48,7 +51,7 @@ export async function yetenekYaz(_onceki: FormDurumu, form: FormData): Promise<F
     ...icerikGirdisi(form),
   });
   if (!girdi.success) {
-    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error) };
+    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error), degerler };
   }
   const sonuc = await backendIstegi({
     yol: '/kimlik/yetenek',
@@ -57,7 +60,7 @@ export async function yetenekYaz(_onceki: FormDurumu, form: FormData): Promise<F
     oturumlu: true,
   });
   if (!sonuc.basarili) {
-    return isHatasi(sonuc.hata);
+    return { ...(await isHatasi(sonuc.hata)), degerler };
   }
   const { id } = IdCevabi.parse(sonuc.govde);
   redirect(`/yetenekler/${id}`);

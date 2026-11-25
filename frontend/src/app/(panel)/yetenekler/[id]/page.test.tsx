@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { redirect } from 'next/navigation';
 import { Component, type ReactNode } from 'react';
@@ -402,6 +402,181 @@ describe('YetenekSayfasi yenile', () => {
 
     expect(yenileFormu()).toBeNull();
     expect(dugme('Yenile')).toBeNull();
+  });
+
+  it.each(['sart', 'butunKayitlar', 'butunBirimler', 'kolonlar', 'butunKolonlar'])(
+    '%s kolonu gelmeyen kayıtta yenile formu yerine not görünür',
+    async (kolon) => {
+      await goster({ ...YETENEK, [kolon]: undefined });
+
+      expect(yenileFormu()).toBeNull();
+      expect(dugme('Yenile')).toBeNull();
+      expect(
+        screen.getByText('Bu yeteneğin içeriğinin tamamını göremediğin için yenileyemezsin'),
+      ).toBeDefined();
+    },
+  );
+
+  it('içerik kolonlarının hepsi gelince not yoktur ve form vardır', async () => {
+    await goster(YETENEK);
+
+    expect(yenileFormu()).not.toBeNull();
+    expect(
+      screen.queryByText('Bu yeteneğin içeriğinin tamamını göremediğin için yenileyemezsin'),
+    ).toBeNull();
+  });
+
+  it('409 dönünce şart satırlarının işleci, türü ve değeri formda kalır', async () => {
+    await goster(YETENEK, kurallar(...ISLER), hataCevabi('cakisma', 'Çakışma', 409));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Çakışma');
+    expect(degerler('İşleç')).toEqual(['esit', 'buyuk', 'esit_degil', 'listede', 'listede_degil']);
+    expect(degerler('Değer türü')).toEqual(['yerTutucu', 'sayi', 'mantiksal', 'metin', 'sayi']);
+    expect(degerler(DEGER)).toEqual(['isteyen', '18', 'false', 'a, b', '1, 2.5']);
+    expect(isaretli('Bütün birimler')).toBe(true);
+  });
+});
+
+describe('YetenekSayfasi yenile kayıpsız ön doldurma', () => {
+  // Metne çevrilip geri çevrilince kaybolan öğeler ve düzenlenebilir yer tutuculu öğe.
+  const KAYIPLI_SART = [
+    { alan: 'ad', islec: 'listede', deger: ['a,b', 'c'] },
+    { alan: 'durum', islec: 'esit', deger: ' x ' },
+    { alan: 'not', islec: 'esit', deger: '' },
+    { alan: 'kullaniciId', islec: 'esit', deger: { yerTutucu: 'isteyen' } },
+    { alan: 'sayi', islec: 'listede', deger: [1, '2'] },
+  ];
+
+  function satir(sira: number) {
+    return screen.getByRole('group', { name: `${String(sira)}. şart` });
+  }
+
+  async function yenile() {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+    expect(await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`)).toBeDefined();
+    return istekler()[1]?.govde;
+  }
+
+  it('değiştirilmeden gönderilen formun gövdesi kaydın içeriğine derinlemesine eşittir', async () => {
+    await goster(
+      { ...YETENEK, sart: KAYIPLI_SART },
+      kurallar(...ISLER),
+      jsonCevap({ id: YENI_ID }, 201),
+    );
+
+    expect(await yenile()).toEqual({
+      sart: KAYIPLI_SART,
+      butunKayitlar: false,
+      butunBirimler: true,
+      kolonlar: ['ad', 'kod'],
+      butunKolonlar: false,
+    });
+  });
+
+  it('satır sonu içeren metin değeri salt okunur görünür ve değiştirilmeden aynen gider', async () => {
+    // Metin girdisi değerinden satır sonlarını siler; böyle bir değer düzenlenebilir satırda kaybolur.
+    const sart = [
+      { alan: 'not', islec: 'esit', deger: 'a\nb' },
+      { alan: 'ad', islec: 'listede', deger: ['x\r\ny', 'z'] },
+    ];
+    await goster({ ...YETENEK, sart }, kurallar(...ISLER), jsonCevap({ id: YENI_ID }, 201));
+
+    for (const sira of [1, 2]) {
+      expect(within(satir(sira)).queryAllByRole('textbox')).toHaveLength(0);
+    }
+    expect(await yenile()).toMatchObject({ sart });
+  });
+
+  it('satır sonu içeren kolon adı taşıyan liste salt okunur görünür ve değiştirilmeden aynen gider', async () => {
+    const kolonlar = ['a\nb', 'kod'];
+    await goster({ ...YETENEK, kolonlar }, kurallar(...ISLER), jsonCevap({ id: YENI_ID }, 201));
+
+    expect(screen.queryByLabelText('Kolonlar (virgülle ayrılmış)')).toBeNull();
+    expect(await yenile()).toMatchObject({ kolonlar });
+  });
+
+  it('çevrilemeyen öğeler saklandığı yazımla salt okunur görünür ve düzenleme girdisi taşımaz; yer tutuculu öğe düzenlenebilir', async () => {
+    await goster({ ...YETENEK, sart: KAYIPLI_SART });
+
+    for (const [sira, oge] of [
+      [1, KAYIPLI_SART[0]],
+      [2, KAYIPLI_SART[1]],
+      [3, KAYIPLI_SART[2]],
+      [5, KAYIPLI_SART[4]],
+    ] as const) {
+      expect(within(satir(sira)).getByText(JSON.stringify(oge))).toBeDefined();
+      expect(within(satir(sira)).queryAllByRole('textbox')).toHaveLength(0);
+      expect(within(satir(sira)).queryAllByRole('combobox')).toHaveLength(0);
+      expect(within(satir(sira)).getByRole('button', { name: `${String(sira)}. şartı çıkar` })).toBeDefined();
+    }
+    expect(degerler('Alan')).toEqual(['kullaniciId']);
+    expect(degerler('Değer türü')).toEqual(['yerTutucu']);
+    expect(degerler(DEGER)).toEqual(['isteyen']);
+  });
+
+  it('salt okunur satır çıkarılınca gövdede yoktur', async () => {
+    await goster(
+      { ...YETENEK, sart: KAYIPLI_SART },
+      kurallar(...ISLER),
+      jsonCevap({ id: YENI_ID }, 201),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '1. şartı çıkar' }));
+
+    expect(await yenile()).toMatchObject({ sart: KAYIPLI_SART.slice(1) });
+  });
+
+  it('virgül içeren kolon adı taşıyan liste salt okunur görünür ve değiştirilmeden aynen gider', async () => {
+    const kolonlar = ['ad,soyad', 'kod'];
+    await goster({ ...YETENEK, kolonlar }, kurallar(...ISLER), jsonCevap({ id: YENI_ID }, 201));
+
+    expect(screen.queryByLabelText('Kolonlar (virgülle ayrılmış)')).toBeNull();
+    expect(screen.getByText(JSON.stringify(kolonlar))).toBeDefined();
+    expect(screen.queryByText('Kolon sınırı boş: bu yetenek kolon vermez')).toBeNull();
+
+    expect(await yenile()).toMatchObject({ kolonlar });
+  });
+
+  it('Değiştir boş bir kolon girdisi açar; yazılan liste gider', async () => {
+    await goster(
+      { ...YETENEK, kolonlar: [' ad', 'kod'] },
+      kurallar(...ISLER),
+      jsonCevap({ id: YENI_ID }, 201),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Değiştir' }));
+
+    expect(degerler('Kolonlar (virgülle ayrılmış)')).toEqual(['']);
+    await userEvent.type(screen.getByLabelText('Kolonlar (virgülle ayrılmış)'), 'soyad');
+    expect(await yenile()).toMatchObject({ kolonlar: ['soyad'] });
+  });
+});
+
+describe('YetenekSayfasi şart satırı hatası', () => {
+  it('ikinci satırdaki sayıya çevrilemeyen değerin iletisi o satırdadır ve girdisi geçersiz işaretlidir; backend çağrılmaz', async () => {
+    await goster(YETENEK);
+
+    const [, yas] = screen.getAllByLabelText(DEGER);
+    await userEvent.clear(yas ?? document.body);
+    await userEvent.type(yas ?? document.body, 'on sekiz');
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    const ikinci = screen.getByRole('group', { name: '2. şart' });
+    const ileti = await within(ikinci).findByRole('alert');
+    expect(ileti.textContent).toBe('2. şart: Değer sayıya çevrilemiyor');
+    const girdi = within(ikinci).getByLabelText(DEGER);
+    expect(girdi.getAttribute('aria-invalid')).toBe('true');
+    expect(girdi.getAttribute('aria-describedby')).toBe(ileti.id);
+    expect(within(ikinci).getByLabelText('Alan').getAttribute('aria-invalid')).toBe('false');
+    const birinci = screen.getByRole('group', { name: '1. şart' });
+    expect(birinci.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+    expect(within(birinci).queryByRole('alert')).toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByRole('group', { name: 'Şart' }).getAttribute('aria-describedby')).toBeNull();
+    expect(istekler()).toHaveLength(1);
   });
 });
 

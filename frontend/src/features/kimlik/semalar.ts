@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import { SartOgesi as SartOgesiSemasi } from './yetenek/yetenek-listesi';
 import {
   DEGER_TURLERI,
-  type DegerTuru,
   ISLECLER,
-  LISTELI_ISLECLER,
-  type SabitDeger,
+  type Islec,
+  kolonlaraCevir,
+  type SartCevrimi,
   type SartOgesi,
-  YER_TUTUCULAR,
+  sartOgesine,
 } from './yetenek/yetenek-sarti';
 
 // Kimlik ekranlarının Zod şemaları (KR-014: ön yüzün kendi şeması; backend'den içe aktarılmaz).
@@ -108,85 +109,62 @@ export const UyelikVerSemasi = z.object({
 // Yetenek yaz ve yenile (TS-004 "Yönetim ekranları"); kurallar backend'in POST kimlik/yetenek
 // gövdesindeki gibidir: boş şart ve boş kolon listesi null gider; işaret ile içerik birlikte
 // yazılamaz; ikisi de yoksa satır kayıt ya da kolon vermez ama yazılır. Alan ve kolon adlarını ekran
-// bilmez; onları backend sınar. Şart satırının hatası satır numarasıyla 'sart' alanına yazılır.
+// bilmez; onları backend sınar. Şart satırının hatası satır numarasıyla o satırın hatalı girdisine
+// yazılır.
+// Saklanan satır (TS-004 "Yönetim formlarının sertleştirilmesi") alanı ve işleci olduğu gibi, değeri
+// saklandığı yazımla (JSON) taşır; değer kaydın şemasıyla sınanır ve aynen gider. Saklanan kolon
+// listesi kolon kolon gelir ve aynen gider.
 const sartSatiri = z.object({
   alan: z.string(),
   islec: z.enum(ISLECLER),
-  tur: z.enum(DEGER_TURLERI),
+  tur: z.enum([...DEGER_TURLERI, 'saklanan']),
   deger: z.string(),
 });
 
-type Cevrim<T> = { readonly deger: T } | { readonly hata: string };
-
-function sabiteCevir(tur: DegerTuru, metin: string): Cevrim<SabitDeger> {
-  const parca = metin.trim();
-  if (parca === '') {
-    return { hata: 'Değer boş olamaz' };
+function saklananOge(alan: string, islec: Islec, yazim: string): SartCevrimi {
+  let deger: unknown;
+  try {
+    deger = JSON.parse(yazim);
+  } catch {
+    deger = undefined;
   }
-  if (tur === 'sayi') {
-    const sayi = Number(parca);
-    return Number.isFinite(sayi) ? { deger: sayi } : { hata: 'Değer sayıya çevrilemiyor' };
-  }
-  if (tur === 'mantiksal') {
-    return parca === 'true' || parca === 'false'
-      ? { deger: parca === 'true' }
-      : { hata: 'Değer true ya da false olmalı' };
-  }
-  return { deger: parca };
-}
-
-function sartOgesine(satir: z.infer<typeof sartSatiri>): Cevrim<SartOgesi> {
-  const alan = satir.alan.trim();
-  if (alan === '') {
-    return { hata: 'Alan boş olamaz' };
-  }
-  const { islec, tur } = satir;
-  if (tur === 'yerTutucu') {
-    const yerTutucu = z.enum(YER_TUTUCULAR).safeParse(satir.deger);
-    return yerTutucu.success
-      ? { deger: { alan, islec, deger: { yerTutucu: yerTutucu.data } } }
-      : { hata: 'Yer tutucu seçilmeli' };
-  }
-  if (!LISTELI_ISLECLER.includes(islec)) {
-    const deger = sabiteCevir(tur, satir.deger);
-    return 'hata' in deger ? deger : { deger: { alan, islec, deger: deger.deger } };
-  }
-  const degerler: SabitDeger[] = [];
-  for (const parca of satir.deger.split(',')) {
-    const deger = sabiteCevir(tur, parca);
-    if ('hata' in deger) {
-      return deger;
-    }
-    degerler.push(deger.deger);
-  }
-  return { deger: { alan, islec, deger: degerler } };
+  const oge = SartOgesiSemasi.safeParse({ alan, islec, deger });
+  return oge.success ? { oge: oge.data } : { hata: 'Şart okunamadı', girdi: 'deger' };
 }
 
 const yetenekIcerigi = {
   sart: z.array(sartSatiri).transform((satirlar, ctx) => {
     const ogeler: SartOgesi[] = [];
     for (const [sira, satir] of satirlar.entries()) {
-      const oge = sartOgesine(satir);
+      const oge =
+        satir.tur === 'saklanan'
+          ? saklananOge(satir.alan, satir.islec, satir.deger)
+          : sartOgesine({ ...satir, tur: satir.tur });
       if ('hata' in oge) {
-        ctx.addIssue({ code: 'custom', message: `${String(sira + 1)}. şart: ${oge.hata}` });
+        ctx.addIssue({
+          code: 'custom',
+          message: `${String(sira + 1)}. şart: ${oge.hata}`,
+          path: [sira, oge.girdi],
+        });
         return z.NEVER;
       }
-      ogeler.push(oge.deger);
+      ogeler.push(oge.oge);
     }
     return ogeler.length === 0 ? null : ogeler;
   }),
   butunKayitlar: z.boolean(),
   butunBirimler: z.boolean(),
-  kolonlar: z.string().transform((metin, ctx) => {
-    if (metin.trim() === '') {
-      return null;
+  // Çevirme union'ın dışındadır: içindeki ileti union'dan çıkmaz, yerine 'Invalid input' görünürdü.
+  kolonlar: z.union([z.array(z.string()), z.string()]).transform((girdi, ctx) => {
+    if (Array.isArray(girdi)) {
+      return girdi;
     }
-    const kolonlar = metin.split(',').map((kolon) => kolon.trim());
-    if (kolonlar.includes('')) {
-      ctx.addIssue({ code: 'custom', message: 'Kolon adı boş olamaz' });
+    const kolonlar = kolonlaraCevir(girdi);
+    if ('hata' in kolonlar) {
+      ctx.addIssue({ code: 'custom', message: kolonlar.hata });
       return z.NEVER;
     }
-    return kolonlar;
+    return kolonlar.deger;
   }),
   butunKolonlar: z.boolean(),
 };
@@ -221,13 +199,13 @@ export const YetenekYazSemasi = sinirlariDenetle(
 
 export const YetenekYenileSemasi = sinirlariDenetle(z.object(yetenekIcerigi));
 
-// Zod hatasından her alanın ilk iletisi.
+// Zod hatasından her alanın ilk iletisi. İç içe alanın anahtarı yolun noktayla birleşimidir; şart
+// satırının hatası 'sart.<sıra>.<girdi>' anahtarıyla o satırın altında gösterilir.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {
   const alanlar: Record<string, string> = {};
   for (const sorun of hata.issues) {
-    const alan = sorun.path[0];
-    if (typeof alan === 'string') {
-      alanlar[alan] ??= sorun.message;
+    if (typeof sorun.path[0] === 'string') {
+      alanlar[sorun.path.map(String).join('.')] ??= sorun.message;
     }
   }
   return alanlar;
