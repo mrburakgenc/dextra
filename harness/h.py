@@ -68,8 +68,8 @@ VARSAYILAN_AYAR = {
     "gorev": {"komut": "claude", "model": "sonnet", "max_tur": 40, "zaman_asimi_sn": 1200,
               # izin_modu: oturum soru soramaz; "bypassPermissions" hiçbir aracı izne takmaz, sınırı kum havuzu tutar
               "izin_modu": "bypassPermissions", "butce_usd": None, "izinli_araclar": [],
-              # onay "baslangic": epic yürütme, tek görev koşturma, alma ve atma sorulur · "her-adim": inceleme de
-              # sorulur · "yok": yalnız atma sorulur
+              # onay "baslangic": epic yürütme, tek görev koşturma, genişletme, alma ve atma sorulur · "her-adim":
+              # inceleme ve tazeleme de sorulur · "yok": yalnız atma sorulur
               "onay": "baslangic",
               "inceleme": "zorunlu", "inceleme_model": "",
               # yalitim "proje": oturum yalnız projenin ayarlarını yükler (kişisel CLAUDE.md, hook, izin, MCP gitmez)
@@ -85,6 +85,9 @@ VARSAYILAN_AYAR = {
               "mcp": {},
               # paralel: epic yürütülürken dosyaları kesişmeyen en çok kaç yaprak yan yana koşar; 1 = sırayla
               "paralel": 1,
+              # kendiliginden_devam: işçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik
+              # varsa aynı `gorev kos` çağrısında en çok kaç kez kendiliğinden sürdürülür; 0 = sürdürülmez
+              "kendiliginden_devam": 1,
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",

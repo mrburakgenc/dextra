@@ -61,11 +61,14 @@ YERINDE_DEGISTIREN = re.compile(r"\btee\b|\bsed\s+(?:-\S+\s+)*-i|\bperl\s+(?:-\S
 KABUL_KOMUTU = re.compile(r"h\.py[\"']?\s+kabul\b((?:[ \t]+[A-Z]{2}-\d{3,})*)")
 # Bu izin modlarında onay sorusu gösterilmez (biri soruları atlar, öteki soru gerektiren her çağrıyı reddeder).
 SORU_GOSTERMEYEN_MODLAR = ("bypassPermissions", "dontAsk")
-GOREV_ISLEM = re.compile(r"h\.py[\"']?\s+gorev\s+(kos|incele|al|at)\s+(GV-\d+)")
+GOREV_ISLEM = re.compile(r"h\.py[\"']?\s+gorev\s+(kos|incele|al|at|tazele|genislet)\s+(GV-\d+)")
+GENISLET_YOLU = re.compile(r"--yol[ \t]+(\"[^\"]*\"|'[^']*'|[^\s;&|]+)")
 PLAN_YURUT = re.compile(r"h\.py[\"']?\s+plan\s+yurut\s+(EP-\d+)")
 GOREV_SORUSU = {"kos": "Bu görev ayrı bir oturumda, kendi çalışma ağacında koşturulacak",
                 "incele": "Bu görev, işi yapmayan ikinci bir oturuma inceletilecek",
-                "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek"}
+                "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek",
+                "tazele": "Bu görevin ağacı oturum dalının ucuna getirilecek",
+                "genislet": "Bu görevin dosya listesi genişletilecek (kapsam genişletmek karardır)"}
 KANIT = re.compile(r"\.harness/gorev/GV-\d+/(?:(?:durum|rapor|inceleme-rapor|bitis|inceleme)\.json|kosular\.jsonl)$")
 PLAN_DOSYASI = re.compile(r"\.harness/plan/.+\.md$")
 CD = re.compile(r"^\s*cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)\s*(?:&&|;)")
@@ -428,10 +431,13 @@ def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
             return _karar("PreToolUse", "ask", "[harness] Bu epic baştan sona yürütülecek:\n"
                           + plan.yurutme_ozeti(kok, yurutme.group(1)))
         islem = m.group(1)
-        if not (islem == "at" or onay == "her-adim" or (onay == "baslangic" and islem in ("kos", "al"))):
+        if not (islem == "at" or onay == "her-adim" or (onay == "baslangic" and islem in ("kos", "al", "genislet"))):
             return None
+        # yalnız bu komutun kendi --yol'ları (zincirdeki başka komutunki değil); h.py '--yol=desen' biçimini okumaz
+        ekler = ([y.strip("\"'") for y in GENISLET_YOLU.findall(re.split(r"[;&|\n]", metin[m.end():], 1)[0])]
+                 if islem == "genislet" else None)
         return _karar("PreToolUse", "ask", "[harness] %s:\n%s"
-                      % (GOREV_SORUSU[islem], gorev.ozet(kok, m.group(2), islem)))
+                      % (GOREV_SORUSU[islem], gorev.ozet(kok, m.group(2), islem, ekler)))
     if kok is not None and PUSH.search(metin):
         kirmizi = _kirmizilar(kok)
         if kirmizi:

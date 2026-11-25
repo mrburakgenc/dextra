@@ -23,7 +23,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 
 1. İşin dokunacağı dosyaları belirle ve mümkün olan en dar yol desenini seç.
 2. Kartı aç: `python3 harness/h.py gorev yeni "<başlık>" --rol uygulayici --yol <desen> --hedef "<bittiğinde ne değişmiş olacak>" --olcut "<bunun nasıl sınanacağı>"`. İşçi yalnız kartı görür; gerekeni hedefe ve ölçüte yaz. Ölçüt gözlenebilir olsun: durum, eylem, beklenen sonuç, olmaması gereken ve nasıl doğrulanacağı. Komut işe düşen taslak kural ve kararları uyarı satırıyla sayarsa kullanıcıya söyle: kabul edilmeden bağlayıcı gitmez, kartta yalnız bilgi bloğundadır.
-3. Koştur: `python3 harness/h.py gorev kos GV-NNN`. Hook bu komutu kullanıcıya sorar.
+3. Koştur: `python3 harness/h.py gorev kos GV-NNN`. Hook bu komutu kullanıcıya sorar. İşçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik varsa araç onu aynı komutta bir kez kendiliğinden sürdürür (`gorev.kendiliginden_devam`; 0 kapatır). İşçiye karar iletmek için (örneğin inceleme kaldıktan sonra) `--not "..."` ver; not o koşuda ve sonrakilerde işçinin istemine girer.
 4. Raporu oku: durum, değişen dosyalar, sorunlar, uyarılar, işçinin kararları ve reddettiği seçenekler.
 5. Koşum temizse incelet: `python3 harness/h.py gorev incele GV-NNN`. İnceleyici işi yapmayan ayrı bir oturumdur ve işçinin öz değerlendirmesini görmez.
 6. İnceleme raporunu kullanıcıya ver: sonuç, bulgular, her kural için inceleyicinin hükmü ve işçiyle çeliştiği yerler.
@@ -33,7 +33,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 
 ## Yapma
 
-- Sorunlu ya da uyarılı koşumu kendin düzeltmeye girişme, gizleme: kullanıcıya olduğu gibi söyle; karar onundur (yeniden koştur ya da `gorev at`).
+- Sorunlu ya da uyarılı koşumu kendin düzeltmeye girişme, gizleme: kullanıcıya olduğu gibi söyle; karar onundur (yeniden koştur, ağacı oturum dalının ucuna getir: `gorev tazele GV-NNN`, dosya listesini genişlet: `gorev genislet GV-NNN --yol <desen>` (hook sorar) ya da `gorev at`).
 - Ölçüm kayıtlarını (`durum.json`, `rapor.json`, `inceleme-rapor.json`, koşu geçmişi `kosular.jsonl`) elle düzenleme; hook reddeder.
 - İşçinin "bitti" demesini kanıt sayma: kanıt ölçüm ve inceleme raporudur.
 - Görevin dosyalarında ya da `kb/` altında commit edilmemiş değişiklik varken koşturma: koşum reddedilir, önce kullanıcıya söyle.
