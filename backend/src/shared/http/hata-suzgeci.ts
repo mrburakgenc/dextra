@@ -77,6 +77,15 @@ export class HataSuzgeci implements ExceptionFilter {
       };
     }
     if (hata instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2003 yabancı anahtar kısıtı (TS-002 AK-45): ileti hangi kaydın ya da kısıtın söz konusu
+      // olduğunu söylemez.
+      if (hata.code === 'P2003') {
+        return {
+          kod: 'cakisma',
+          ileti: 'İlişkili kayıt nedeniyle işlem yapılamadı',
+          ayrinti: null,
+        };
+      }
       const kod = PRISMA_KODLARI[hata.code];
       if (kod !== undefined) {
         return { kod, ileti: SABIT_ILETILER[kod], ayrinti: null };
