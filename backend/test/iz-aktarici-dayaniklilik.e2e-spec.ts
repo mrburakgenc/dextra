@@ -23,7 +23,7 @@ import {
   IzAktarici,
   PartiHatasi,
 } from '../src/shared/observability/iz/iz-aktarici.js';
-import { outboxIzRepoKaydet } from '../src/shared/observability/iz/outbox-iz.repository.js';
+import { outboxIzRepoKaydet } from '../src/shared/observability/iz/outbox-iz.prisma-repository.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';

@@ -1,10 +1,15 @@
-// Alt özelliklerin dosya düzenini TS-005 "Yapı"ya karşı denetleyen işlev: features/<feature>/<alt>
-// klasörlerini dolaşır, ihlalleri features klasörüne göreli dosya yoluyla döndürür; hiçbir şey yazmaz.
-import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+// Dosya düzenini TS-005'e karşı denetleyen iki işlev; hiçbir şey yazmaz. yapiyiDenetle alt özellikleri
+// ("Yapı"; features/<feature>/<alt>) dolaşır, ihlalleri features klasörüne göreli yolla döndürür.
+// ortakKoduDenetle ortak kodun konularını (shared/<konu>) ve feature içi ortak klasörleri
+// (features/<feature>/_<ad>) "Ortak kodun ve feature içi ortak klasörün düzeni"ne karşı denetler,
+// ihlalleri src klasörüne göreli yolla döndürür.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, posix } from 'node:path';
 
-// a kök, b application, c domain, d infrastructure, e presentation.
-export type YapiKurali = 'a' | 'b' | 'c' | 'd' | 'e';
+// Alt özellik: a kök, b application, c domain, d infrastructure, e presentation.
+// Ortak kod: f konunun kökü, g domain'in içe aktarması, h application'ın içe aktarması,
+// i sözleşme ve repository arayüzü dosyasının adı.
+export type YapiKurali = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i';
 
 export interface Ihlal {
   readonly kural: YapiKurali;
@@ -15,8 +20,12 @@ export interface Ihlal {
 export interface AltOzellikRaporu {
   // <feature>/<alt>
   readonly ad: string;
-  // İçinde application/commands ya da application/queries var mı (TS-005 "Doğrulama").
-  readonly tasinmis: boolean;
+  readonly ihlaller: readonly Ihlal[];
+}
+
+export interface KonuRaporu {
+  // shared/<konu> ya da features/<feature>/_<ad>
+  readonly ad: string;
   readonly ihlaller: readonly Ihlal[];
 }
 
@@ -212,14 +221,11 @@ function altOzelligiDenetle(
     }
   }
 
-  return {
-    ad,
-    tasinmis: komutlarVar || uygulama.klasorler.includes('queries'),
-    ihlaller,
-  };
+  return { ad, ihlaller };
 }
 
-// Adı "_" ile başlayan alt özellik klasörleri (feature içi ortak kod) denetlenmez.
+// Adı "_" ile başlayan klasörler (feature içi ortak kod) alt özellik değildir; onları
+// ortakKoduDenetle sınar.
 export function yapiyiDenetle(featuresKlasoru: string): AltOzellikRaporu[] {
   return icerik(featuresKlasoru)
     .klasorler.sort()
@@ -235,4 +241,130 @@ export function yapiyiDenetle(featuresKlasoru: string): AltOzellikRaporu[] {
           ),
         ),
     );
+}
+
+const KONU_KLASORLERI = ['domain', 'application', 'infrastructure'];
+// Kökünde katman klasörü olmayan konular: TS-005 ağacında adıyla sayılan istisnalar (gözlemlenebilirliğin
+// alt alanları, süzgeçler, ortak sonuç tipi, kimliğin sözleşmeleri). Öbür kurallar bunlarda da geçer.
+const KOK_KURALI_DISI = [
+  'shared/observability',
+  'shared/filters',
+  'shared/domain',
+  'shared/kimlik',
+];
+// import ... from '…', export ... from '…', import '…' ve import('…').
+const ICE_AKTARMA = /\b(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
+
+// Konunun kaynak dosyaları, konuya göreli. Üretilen kod (generated klasörleri; veritabanı istemcisi)
+// kaynak değildir, sayılmaz.
+function kaynaklar(klasor: string): string[] {
+  return butunDosyalar(klasor).filter(
+    (y) => !y.split('/').includes('generated'),
+  );
+}
+
+// src'ye göreli yolun katmanı: shared/domain/…, shared/<konu>/<katman>/… ve
+// features/<feature>/<alt ya da _ortak>/<katman>/….
+function katman(yol: string): string | undefined {
+  const p = yol.split('/');
+  if (p[0] === 'shared') {
+    return p[1] === 'domain' ? 'domain' : p[2];
+  }
+  return p[0] === 'features' ? p[3] : undefined;
+}
+
+function konuyuDenetle(srcKlasoru: string, konu: string): KonuRaporu {
+  const ihlaller: Ihlal[] = [];
+  const ekle = (kural: YapiKurali, yol: string, neden: string): void => {
+    ihlaller.push({ kural, yol: `${konu}/${yol}`, neden });
+  };
+  const klasor = join(srcKlasoru, konu);
+  const dosyalar = kaynaklar(klasor);
+
+  // f) Kökte yalnız domain, application, infrastructure ve <ad>.module.ts. Kaynak dosyası olmayan
+  // klasör (yalnız üretilen kodu taşıyan) sayılmaz.
+  if (!KOK_KURALI_DISI.includes(konu)) {
+    const kok = icerik(klasor);
+    for (const k of kok.klasorler.filter(
+      (k) =>
+        !KONU_KLASORLERI.includes(k) &&
+        dosyalar.some((y) => y.startsWith(`${k}/`)),
+    )) {
+      ekle('f', k, 'konunun kökünde izinsiz klasör');
+    }
+    for (const d of kok.dosyalar.filter((d) => !d.endsWith('.module.ts'))) {
+      ekle(
+        'f',
+        d,
+        'konunun kökünde klasör dışında yalnız <ad>.module.ts durur',
+      );
+    }
+  }
+
+  for (const y of dosyalar) {
+    // i) Sözleşme i-<ad>.contract.ts, repository arayüzü i-<ad>.repository.ts adını taşır.
+    const ad = posix.basename(y);
+    for (const tur of ['contract', 'repository']) {
+      if (
+        ad.endsWith(`.${tur}.ts`) &&
+        !new RegExp(`^i-[a-z0-9-]+\\.${tur}\\.ts$`).test(ad)
+      ) {
+        ekle('i', y, `${tur} dosyası i-<ad>.${tur}.ts adını taşır`);
+      }
+    }
+
+    // g) domain yalnız domain dosyalarını ve dilin modüllerini (node:) içe aktarır.
+    // h) application veritabanı istemcisini ve kuyruk kitaplığını içe aktarmaz.
+    const yol = `${konu}/${y}`;
+    const dosyaKatmani = katman(yol);
+    if (dosyaKatmani !== 'domain' && dosyaKatmani !== 'application') {
+      continue;
+    }
+    const metin = readFileSync(join(klasor, y), 'utf8');
+    for (const [, kaynak = ''] of metin.matchAll(ICE_AKTARMA)) {
+      const hedef = kaynak.startsWith('.')
+        ? posix.join(posix.dirname(yol), kaynak)
+        : undefined;
+      if (dosyaKatmani === 'domain') {
+        if (
+          !kaynak.startsWith('node:') &&
+          (hedef === undefined || katman(hedef) !== 'domain')
+        ) {
+          ekle('g', y, `domain domain dışından içe aktarır: ${kaynak}`);
+        }
+      } else if (/^bullmq($|\/)/.test(kaynak)) {
+        ekle('h', y, `application kuyruk kitaplığını içe aktarır: ${kaynak}`);
+      } else if (
+        /^(@prisma\/|pg($|\/))/.test(kaynak) ||
+        hedef?.split('/').includes('generated')
+      ) {
+        ekle(
+          'h',
+          y,
+          `application veritabanı istemcisini içe aktarır: ${kaynak}`,
+        );
+      }
+    }
+  }
+
+  return { ad: konu, ihlaller };
+}
+
+// Ortak kodun her konusu (shared/<konu>) ve her feature'ın içindeki ortak klasör (adı "_" ile başlayan).
+export function ortakKoduDenetle(srcKlasoru: string): KonuRaporu[] {
+  const features = join(srcKlasoru, 'features');
+  const konular = [
+    ...icerik(join(srcKlasoru, 'shared'))
+      .klasorler.sort()
+      .map((k) => `shared/${k}`),
+    ...icerik(features)
+      .klasorler.sort()
+      .flatMap((feature) =>
+        icerik(join(features, feature))
+          .klasorler.filter((k) => k.startsWith('_'))
+          .sort()
+          .map((k) => `features/${feature}/${k}`),
+      ),
+  ];
+  return konular.map((konu) => konuyuDenetle(srcKlasoru, konu));
 }

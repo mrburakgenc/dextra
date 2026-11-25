@@ -7,7 +7,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { BAGLANTI_OMRU_MS } from './features/kimlik/_shared/application/parola-baglantisi.js';
 import { KurulumBaglantisiHandler } from './features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
-import { KomutBaglamiModule } from './shared/messaging/komut-baglami.js';
+import { KomutBaglamiModule } from './shared/messaging/komut-baglami.module.js';
 
 // Uygulama komut bağlamında açılır: aktarım döngüleri ve kuyruk dinleyicileri başlamaz (TS-002 AK-25).
 @Module({ imports: [AppModule, KomutBaglamiModule] })
