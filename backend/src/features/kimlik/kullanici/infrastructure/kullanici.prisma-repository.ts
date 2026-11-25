@@ -51,6 +51,33 @@ export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
       {},
     );
   }
+
+  pasifeAlNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    pasifZamani?: Date,
+  ): Promise<void> {
+    return this.kapi.niyet(islem, isAdi, KAYNAK, 'pasife_al', id, {
+      pasifZamani,
+    });
+  }
+
+  yenidenAcNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    isaretiKaldir: boolean,
+  ): Promise<void> {
+    return this.kapi.niyet(
+      islem,
+      isAdi,
+      KAYNAK,
+      'yeniden_ac',
+      id,
+      isaretiKaldir ? { pasifZamani: null } : {},
+    );
+  }
 }
 
 export function kullaniciPrismaRepository(

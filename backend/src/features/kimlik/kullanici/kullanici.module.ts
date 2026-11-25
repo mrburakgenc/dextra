@@ -7,6 +7,8 @@ import { KullaniciAcHandler } from './application/kullanici-ac.handler.js';
 import { KullaniciGuncelleHandler } from './application/kullanici-guncelle.handler.js';
 import { KullaniciListeleHandler } from './application/kullanici-listele.handler.js';
 import { KullaniciOkuHandler } from './application/kullanici-oku.handler.js';
+import { KullaniciPasifeAlHandler } from './application/kullanici-pasife-al.handler.js';
+import { KullaniciYenidenAcHandler } from './application/kullanici-yeniden-ac.handler.js';
 import { ParolaBaglantisiUretHandler } from './application/parola-baglantisi-uret.handler.js';
 import {
   KULLANICI_REPO,
@@ -29,6 +31,8 @@ import { KullaniciController } from './presentation/kullanici.controller.js';
     KullaniciAcHandler,
     KullaniciGuncelleHandler,
     ParolaBaglantisiUretHandler,
+    KullaniciPasifeAlHandler,
+    KullaniciYenidenAcHandler,
     { provide: KullaniciYazmaRepo, useClass: KullaniciKapiYazmaRepo },
   ],
 })

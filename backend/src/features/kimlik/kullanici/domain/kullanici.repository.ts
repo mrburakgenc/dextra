@@ -50,6 +50,26 @@ export abstract class KullaniciYazmaRepo {
     isAdi: string,
     id: string,
   ): Promise<void>;
+
+  // Pasife alma niyeti (Kullanici:pasife_al): kişinin satırını yeteneğin şartıyla kilitler ve not
+  // bırakır; pasif zamanı verilirse onu yazar, verilmezse hiçbir kolon yazmaz. Satırı tutan yetenek
+  // yoksa bulunamadi.
+  abstract pasifeAlNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    pasifZamani?: Date,
+  ): Promise<void>;
+
+  // Yeniden açma niyeti (Kullanici:yeniden_ac): kişinin satırını yeteneğin şartıyla kilitler ve not
+  // bırakır; isaretiKaldir doğruysa pasif zamanını boşaltır, değilse hiçbir kolon yazmaz. Satırı
+  // tutan yetenek yoksa bulunamadi.
+  abstract yenidenAcNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    isaretiKaldir: boolean,
+  ): Promise<void>;
 }
 
 export const KULLANICI_REPO = new RepoBelirteci<
