@@ -8,6 +8,7 @@ import { ParolaModule } from '../parola/parola.module.js';
 import { CikisHandler } from './application/cikis.handler.js';
 import { GirisHandler } from './application/giris.handler.js';
 import { OturumDenetimiHandler } from './application/oturum-denetimi.handler.js';
+import { YenileHandler } from './application/yenile.handler.js';
 import { OTURUM_DENETIMI_REPO } from './domain/oturum-denetimi.repository.js';
 import { OTURUM_REPO } from './domain/oturum.repository.js';
 import { oturumDenetimiPrismaRepository } from './infrastructure/oturum-denetimi.prisma-repository.js';
@@ -25,7 +26,7 @@ import { OturumController } from './presentation/oturum.controller.js';
     ParolaModule,
   ],
   controllers: [OturumController],
-  providers: [OturumDenetimiHandler, GirisHandler, CikisHandler],
+  providers: [OturumDenetimiHandler, GirisHandler, CikisHandler, YenileHandler],
   exports: [OturumDenetimiHandler],
 })
 export class OturumModule {

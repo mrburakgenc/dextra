@@ -106,11 +106,18 @@ export class BelirtecServisi {
     );
   }
 
-  yenilemeBelirteciUret(icerik: YenilemeIcerigi): Promise<string> {
+  // Verilme zamanı verilirse belirtecin verilme ve bitiş zamanı ondan türer (saniyeye indirilir) ve
+  // aynı girdi aynı dizgeyi üretir (RS256 belirlenimcidir; TS-002 AK-49 madde 3). Verilmezse şimdiki
+  // zaman kullanılır.
+  yenilemeBelirteciUret(
+    icerik: YenilemeIcerigi,
+    verilmeZamani?: Date,
+  ): Promise<string> {
     return this.imzala(
       { oturum: icerik.oturumId, nesil: icerik.nesil, tur: 'yenileme' },
       icerik.kullaniciId,
       YENILEME_BELIRTECI_SURESI_SN,
+      verilmeZamani,
     );
   }
 
@@ -150,12 +157,21 @@ export class BelirtecServisi {
     yuk: JWTPayload,
     kullaniciId: string,
     sureSn: number,
+    verilmeZamani?: Date,
   ): Promise<string> {
-    return new SignJWT(yuk)
+    const jwt = new SignJWT(yuk)
       .setProtectedHeader({ alg: ALGORITMA })
-      .setSubject(kullaniciId)
-      .setIssuedAt()
-      .setExpirationTime(`${String(sureSn)}s`)
+      .setSubject(kullaniciId);
+    if (verilmeZamani === undefined) {
+      return jwt
+        .setIssuedAt()
+        .setExpirationTime(`${String(sureSn)}s`)
+        .sign(this.ozelAnahtar);
+    }
+    const verilmeSn = Math.floor(verilmeZamani.getTime() / 1000);
+    return jwt
+      .setIssuedAt(verilmeSn)
+      .setExpirationTime(verilmeSn + sureSn)
       .sign(this.ozelAnahtar);
   }
 

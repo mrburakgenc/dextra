@@ -55,6 +55,68 @@ describe('belirteç servisi', () => {
     });
   });
 
+  describe('verilme zamanı verilen yenileme belirteci', () => {
+    const yuk = (b: string): { iat: number; exp: number } =>
+      JSON.parse(
+        Buffer.from(b.split('.')[1] ?? '', 'base64url').toString(),
+      ) as { iat: number; exp: number };
+    // Saniyenin ortasında bir an: saniyeye indirilince milisaniyeler düşer.
+    const saniye = Math.floor(Date.now() / 1000) - 5;
+    const verilme = new Date(saniye * 1000 + 750);
+
+    it('aynı girdi aynı dizgeyi üretir; verilme ve bitiş zamanı ondan türer; doğrulanır', async () => {
+      const birinci = await servis.yenilemeBelirteciUret(YENILEME, verilme);
+      const ikinci = await servis.yenilemeBelirteciUret(
+        YENILEME,
+        new Date(saniye * 1000),
+      );
+      expect(ikinci).toBe(birinci);
+      expect(yuk(birinci)).toMatchObject({
+        iat: saniye,
+        exp: saniye + YENILEME_BELIRTECI_SURESI_SN,
+      });
+      expect(await servis.yenilemeBelirteciDogrula(birinci)).toEqual({
+        gecerli: true,
+        icerik: YENILEME,
+      });
+    });
+
+    it('bir saniye sonrası için farklı dizge üretir ve o da doğrulanır', async () => {
+      const birinci = await servis.yenilemeBelirteciUret(YENILEME, verilme);
+      const sonraki = await servis.yenilemeBelirteciUret(
+        YENILEME,
+        new Date(verilme.getTime() + 1000),
+      );
+      expect(sonraki).not.toBe(birinci);
+      expect(yuk(sonraki).iat).toBe(saniye + 1);
+      expect(await servis.yenilemeBelirteciDogrula(sonraki)).toEqual({
+        gecerli: true,
+        icerik: YENILEME,
+      });
+    });
+
+    it('verilme zamanı verilmeyince şimdiki zaman kullanılır', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(verilme);
+      try {
+        const belirtec = await servis.yenilemeBelirteciUret(YENILEME);
+        expect(yuk(belirtec)).toMatchObject({
+          iat: saniye,
+          exp: saniye + YENILEME_BELIRTECI_SURESI_SN,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(
+        (
+          await servis.yenilemeBelirteciDogrula(
+            await servis.yenilemeBelirteciUret(YENILEME),
+          )
+        ).gecerli,
+      ).toBe(true);
+    });
+  });
+
   it('belirteçler türünü taşır', async () => {
     const yuk = (b: string): unknown =>
       JSON.parse(Buffer.from(b.split('.')[1] ?? '', 'base64url').toString());

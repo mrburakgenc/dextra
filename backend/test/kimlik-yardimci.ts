@@ -79,6 +79,52 @@ async function girisYap(
   return (cevap.body as { erisimBelirteci: string }).erisimBelirteci;
 }
 
+// Yardımcının adresi ve tarayıcı bilgisi yerine verilenlerle, aracı katmanın yaptığı gibi imzalanmış
+// istemci başlıkları (GV-094). Verilmezse yardımcının kendi adresi ve tarayıcı bilgisi kullanılır.
+export function imzaliAdresBasliklari(
+  ip = IP,
+  tarayici = TARAYICI,
+): Record<string, string> {
+  const zaman = Date.now();
+  const imza = istemciImzasiUret(
+    process.env[ARACI_KATMAN_SIRRI_DEGISKENI] ?? '',
+    { adres: ip, tarayici, zaman },
+  );
+  return {
+    [ISTEMCI_BASLIKLARI.adres]: ip,
+    [ISTEMCI_BASLIKLARI.tarayici]: tarayici,
+    [ISTEMCI_BASLIKLARI.zaman]: String(zaman),
+    [ISTEMCI_BASLIKLARI.imza]: imza,
+  };
+}
+
+// Yardımcının açtığı bir kişiyle uçtan giriş yapar ve girişin bütün cevabını döner (GV-094).
+export async function tamGiris(
+  app: INestApplication<App>,
+  kullaniciAdi: string,
+): Promise<{
+  erisimBelirteci: string;
+  yenilemeBelirteci: string;
+  cihazSirri: string;
+  oturumId: string;
+}> {
+  const cevap = await request(app.getHttpServer())
+    .post('/kimlik/oturum/giris')
+    .set(adresBasliklari())
+    .send({ kullaniciAdi, parola: PAROLA });
+  if (cevap.status !== 200) {
+    throw new Error(
+      `${kullaniciAdi} giriş yapamadı: ${String(cevap.status)} ${JSON.stringify(cevap.body)}`,
+    );
+  }
+  return cevap.body as {
+    erisimBelirteci: string;
+    yenilemeBelirteci: string;
+    cihazSirri: string;
+    oturumId: string;
+  };
+}
+
 async function superadminKur(
   app: INestApplication<App>,
   db: pg.Client,
