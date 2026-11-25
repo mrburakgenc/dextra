@@ -27,6 +27,7 @@ argument-hint: <yükümlülük>
    - `rol`: kural yalnız bazı rollere gidecekse (`rol: [uygulayici, inceleyici]`).
    - `kesinlik`: her ajanın doğarken bilmesi gerekiyorsa `kesin`; değilse `olagan`.
    - `denetim_duzey`: önce kuralı yapıya taşımayı dene (çiğnenince derlenmesin); olmuyorsa `mekanik` ya da `test`; o da olmuyorsa `gozden-gecirme` ve bir `bakis` tarihi.
+   - `denetim_ref` (mekanik kuralda): denetim düğümünün kimliği. Denetimin push kapısında koşması için o düğümün baş bloğuna `komut: <deponun kökünde çalışan kabuk komutu>` yazılır (aracın kendi denetimiyse `cesit: yerlesik`); komutu `python3 harness/h.py denetim kos <DN-NNN>` ile dene. Kapı yalnız kabul edilmiş kurala bağlı, kabul edilmiş denetimi koşturur.
 5. Kesin kuralda "İhlal örneği" ve "Uygun örnek" bölümlerini somut yaz.
 6. `python3 harness/h.py denetle` ile kontrol et; kuralın hangi dosyalara düştüğünü `python3 harness/h.py sor <KİMLİK>` ile göster.
 7. Kullanıcıya kuralı özetle ve kabul etmek isteyip istemediğini sor. İsterse `python3 harness/h.py kabul <KİMLİK>` çalıştır (kararı da taslaksa onu da aynı komuta yaz); hook taslağı kullanıcıya gösterip sorar. Kimlikleri kullanıcıya yazdırma, komutu sen çalıştır.
