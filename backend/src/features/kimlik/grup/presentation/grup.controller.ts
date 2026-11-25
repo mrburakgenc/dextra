@@ -1,3 +1,6 @@
+// Grup yönetiminin uçları (TS-002 AK-39): okuma (Grup:oku), oluştur (Grup:olustur), adını
+// değiştir (Grup:guncelle), taşı (Grup:tasi) ve sil (Grup:sil). Her uç girdisini işin şemasıyla
+// doğrular ve işin tek işleyicisini çağırır.
 import {
   Body,
   Controller,
@@ -10,69 +13,80 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { z } from 'zod';
-import { Izin } from '../../../../shared/guvenlik/isaretler.js';
-import type { Kayit } from '../../../../shared/yetki/okuma-kapisi.js';
-import { GrupGuncelleHandler } from '../application/grup-guncelle.handler.js';
-import { GrupListeleHandler } from '../application/grup-listele.handler.js';
-import type { GrupListesi } from '../application/grup-listele.query.js';
-import { GrupOkuHandler } from '../application/grup-oku.handler.js';
-import { GrupOlusturHandler } from '../application/grup-olustur.handler.js';
-import { GrupSilHandler } from '../application/grup-sil.handler.js';
-import { GrupTasiHandler } from '../application/grup-tasi.handler.js';
-import {
-  type GrupListeleParametreleri,
-  grupListeleSemasi,
-} from './grup-listele.schema.js';
+import { Izin } from '../../../../shared/guvenlik/application/isaretler.js';
 import {
   type GrupGuncelleGovdesi,
-  type GrupOlusturGovdesi,
+  grupGuncelleGovdesiSemasi,
+  type GrupGuncelleYolu,
+  grupGuncelleYoluSemasi,
+} from '../application/commands/grup-guncelle/grup-guncelle.command.js';
+import { GrupGuncelleHandler } from '../application/commands/grup-guncelle/grup-guncelle.handler.js';
+import {
+  type GrupOlusturKomutu,
+  grupOlusturKomutuSemasi,
+} from '../application/commands/grup-olustur/grup-olustur.command.js';
+import { GrupOlusturHandler } from '../application/commands/grup-olustur/grup-olustur.handler.js';
+import type { GrupOlusturSonucu } from '../application/commands/grup-olustur/grup-olustur.result.js';
+import {
+  type GrupSilKomutu,
+  grupSilKomutuSemasi,
+} from '../application/commands/grup-sil/grup-sil.command.js';
+import { GrupSilHandler } from '../application/commands/grup-sil/grup-sil.handler.js';
+import {
   type GrupTasiGovdesi,
-  grupGuncelleSemasi,
-  grupOlusturSemasi,
-  grupTasiSemasi,
-} from './grup-yaz.schema.js';
+  grupTasiGovdesiSemasi,
+  type GrupTasiYolu,
+  grupTasiYoluSemasi,
+} from '../application/commands/grup-tasi/grup-tasi.command.js';
+import { GrupTasiHandler } from '../application/commands/grup-tasi/grup-tasi.handler.js';
+import { GrupListeleHandler } from '../application/queries/grup-listele/grup-listele.handler.js';
+import {
+  type GrupListeleSorgusu,
+  grupListeleSorgusuSemasi,
+} from '../application/queries/grup-listele/grup-listele.query.js';
+import type { GrupListeleSonucu } from '../application/queries/grup-listele/grup-listele.result.js';
+import { GrupOkuHandler } from '../application/queries/grup-oku/grup-oku.handler.js';
+import {
+  type GrupOkuSorgusu,
+  grupOkuSorgusuSemasi,
+} from '../application/queries/grup-oku/grup-oku.query.js';
+import type { GrupOkuSonucu } from '../application/queries/grup-oku/grup-oku.result.js';
 
-// Grup yönetiminin uçları (TS-002 AK-39): okuma (Grup:oku), oluştur (Grup:olustur), adını
-// değiştir (Grup:guncelle), taşı (Grup:tasi) ve sil (Grup:sil). Liste düzdür; ağacı ekran kayıtların
-// ustGrupId alanından kurar.
+// Liste düzdür; ağacı ekran kayıtların ustGrupId alanından kurar. Oluşturma 201 ve { id }, adını
+// değiştirme, taşıma ve silme gövdesiz 204 döner.
 @Controller('kimlik/grup')
 export class GrupController {
   constructor(
-    private readonly listeleHandler: GrupListeleHandler,
-    private readonly okuHandler: GrupOkuHandler,
-    private readonly olusturHandler: GrupOlusturHandler,
-    private readonly guncelleHandler: GrupGuncelleHandler,
-    private readonly tasiHandler: GrupTasiHandler,
-    private readonly silHandler: GrupSilHandler,
+    private readonly grupListele: GrupListeleHandler,
+    private readonly grupOku: GrupOkuHandler,
+    private readonly grupOlustur: GrupOlusturHandler,
+    private readonly grupGuncelle: GrupGuncelleHandler,
+    private readonly grupTasi: GrupTasiHandler,
+    private readonly grupSil: GrupSilHandler,
   ) {}
 
   @Get()
   @Izin('Grup', 'oku')
   listele(
-    @Query({ schema: grupListeleSemasi })
-    { sayfa, boyut, sirala, ustGrupId }: GrupListeleParametreleri,
-  ): Promise<GrupListesi> {
-    return this.listeleHandler.calistir({
-      sayfa,
-      boyut,
-      ...(sirala === undefined ? {} : { siralama: sirala }),
-      ...(ustGrupId === undefined ? {} : { ustGrupId }),
-    });
+    @Query({ schema: grupListeleSorgusuSemasi }) sorgu: GrupListeleSorgusu,
+  ): Promise<GrupListeleSonucu> {
+    return this.grupListele.calistir(sorgu);
   }
 
   @Get(':id')
   @Izin('Grup', 'oku')
-  oku(@Param('id', { schema: z.uuid() }) id: string): Promise<Kayit> {
-    return this.okuHandler.calistir(id);
+  oku(
+    @Param({ schema: grupOkuSorgusuSemasi }) sorgu: GrupOkuSorgusu,
+  ): Promise<GrupOkuSonucu> {
+    return this.grupOku.calistir(sorgu);
   }
 
   @Post()
   @Izin('Grup', 'olustur')
-  async olustur(
-    @Body({ schema: grupOlusturSemasi }) govde: GrupOlusturGovdesi,
-  ): Promise<{ id: string }> {
-    return { id: await this.olusturHandler.calistir(govde) };
+  olustur(
+    @Body({ schema: grupOlusturKomutuSemasi }) komut: GrupOlusturKomutu,
+  ): Promise<GrupOlusturSonucu> {
+    return this.grupOlustur.calistir(komut);
   }
 
   // Gövdesiz 204 döner; ekran kaydı yeniden çeker.
@@ -80,26 +94,28 @@ export class GrupController {
   @Izin('Grup', 'guncelle')
   @HttpCode(HttpStatus.NO_CONTENT)
   guncelle(
-    @Param('id', { schema: z.uuid() }) id: string,
-    @Body({ schema: grupGuncelleSemasi }) { ad }: GrupGuncelleGovdesi,
+    @Param({ schema: grupGuncelleYoluSemasi }) { id }: GrupGuncelleYolu,
+    @Body({ schema: grupGuncelleGovdesiSemasi }) { ad }: GrupGuncelleGovdesi,
   ): Promise<void> {
-    return this.guncelleHandler.calistir(id, ad);
+    return this.grupGuncelle.calistir({ id, ad });
   }
 
   @Post(':id/tasi')
   @Izin('Grup', 'tasi')
   @HttpCode(HttpStatus.NO_CONTENT)
   tasi(
-    @Param('id', { schema: z.uuid() }) id: string,
-    @Body({ schema: grupTasiSemasi }) { ustGrupId }: GrupTasiGovdesi,
+    @Param({ schema: grupTasiYoluSemasi }) { id }: GrupTasiYolu,
+    @Body({ schema: grupTasiGovdesiSemasi }) { ustGrupId }: GrupTasiGovdesi,
   ): Promise<void> {
-    return this.tasiHandler.calistir(id, ustGrupId);
+    return this.grupTasi.calistir({ id, ustGrupId });
   }
 
   @Delete(':id')
   @Izin('Grup', 'sil')
   @HttpCode(HttpStatus.NO_CONTENT)
-  sil(@Param('id', { schema: z.uuid() }) id: string): Promise<void> {
-    return this.silHandler.calistir(id);
+  sil(
+    @Param({ schema: grupSilKomutuSemasi }) komut: GrupSilKomutu,
+  ): Promise<void> {
+    return this.grupSil.calistir(komut);
   }
 }

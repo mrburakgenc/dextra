@@ -26,33 +26,33 @@ import {
   ACIK_ANAHTAR_DEGISKENI,
   BelirtecServisi,
   OZEL_ANAHTAR_DEGISKENI,
-} from '../src/shared/guvenlik/belirtec.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
 import {
   HerkeseAcik,
   ISARET_ANAHTARI,
   Izin,
   isaretleriOku,
   YalnizKendisi,
-} from '../src/shared/guvenlik/isaretler.js';
+} from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import {
   YALNIZ_KENDISI_LISTESI,
   YALNIZ_KENDISI_UCLARI,
-} from '../src/shared/guvenlik/yalniz-kendisi-listesi.js';
-import { HealthController } from '../src/shared/health/health.controller.js';
+} from '../src/shared/guvenlik/domain/yalniz-kendisi-listesi.js';
+import { HealthController } from '../src/shared/observability/health/health.controller.js';
 import {
   type IstekOturumu,
   istekBaglami,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import {
   OTURUM_DENETIMI,
   type OturumDenetimi,
   type OturumDenetimiSonucu,
-} from '../src/shared/kimlik/oturum-denetimi.contract.js';
+} from '../src/shared/kimlik/domain/i-oturum-denetimi.contract.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

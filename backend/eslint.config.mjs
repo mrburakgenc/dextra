@@ -86,7 +86,7 @@ export default defineConfig(
         // Ham Prisma istemcisine götüren dosyalar: belirteçler ve üretilen istemci modülleri.
         {
           pattern: [
-            'src/shared/database/istemci-belirtecleri.ts',
+            'src/shared/database/domain/istemci-belirtecleri.ts',
             'src/shared/database/generated/**',
             'src/shared/database/iz/generated/**',
           ],
@@ -94,7 +94,7 @@ export default defineConfig(
         },
         // Outbox repository'si ve belirteci; feature outbox'a yalnız yazma yüzeyinden ulaşır (KR-011).
         {
-          pattern: 'src/shared/messaging/outbox/outbox-repo.ts',
+          pattern: 'src/shared/messaging/infrastructure/outbox/outbox-repo.ts',
           category: 'outbox-repo',
         },
         // Olay ve iz yolunun feature'a kapalı parçaları (KR-012 Yükümlülük 2): kuyruk kapısının
@@ -102,20 +102,26 @@ export default defineConfig(
         // Feature olay yoluna yazma yüzeyinden, abone defterinden ve tüketici tabanından ulaşır.
         {
           pattern: [
-            'src/shared/messaging/kuyruk/bullmq-is-kuyrugu.ts',
-            'src/shared/messaging/kuyruk/kuyruk-gocu.ts',
-            'src/shared/messaging/olay/olay-aktarici.ts',
-            'src/shared/messaging/olay/outbox-olay.repository.ts',
-            'src/shared/messaging/tuketici/islenen-olay.repository.ts',
+            'src/shared/messaging/infrastructure/kuyruk/bullmq-is-kuyrugu.ts',
+            'src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.ts',
+            'src/shared/messaging/infrastructure/olay/olay-aktarici.ts',
+            'src/shared/messaging/domain/olay/i-outbox-olay.repository.ts',
+            'src/shared/messaging/infrastructure/olay/outbox-olay.prisma-repository.ts',
+            'src/shared/messaging/domain/tuketici/i-islenen-olay.repository.ts',
+            'src/shared/messaging/infrastructure/tuketici/islenen-olay.prisma-repository.ts',
             'src/shared/observability/iz/iz-aktarici.ts',
-            'src/shared/observability/iz/outbox-iz.repository.ts',
+            'src/shared/observability/iz/i-outbox-iz.repository.ts',
+            'src/shared/observability/iz/outbox-iz.prisma-repository.ts',
           ],
           category: 'olay-altyapisi',
         },
-        // Kimlik'in çekirdek repository belirteçleri ve onları içe aktaramayan yönetim alt
-        // özellikleri (TS-002 AK-27; KR-010 Seçim 48).
+        // Kimlik'in çekirdek repository arayüzleri, belirteçleri ve gerçeklemeleri ile onları içe
+        // aktaramayan yönetim alt özellikleri (TS-002 AK-27; KR-010 Seçim 48).
         {
-          pattern: 'src/features/kimlik/_shared/cekirdek/**',
+          pattern: [
+            'src/features/kimlik/_shared/domain/repositories/*-cekirdek.*',
+            'src/features/kimlik/_shared/infrastructure/repositories/*-cekirdek.*',
+          ],
           category: 'cekirdek-repo',
         },
         {

@@ -18,17 +18,17 @@ import { OturumController } from '../src/features/kimlik/oturum/presentation/otu
 import {
   ACIK_ANAHTAR_DEGISKENI,
   OZEL_ANAHTAR_DEGISKENI,
-} from '../src/shared/guvenlik/belirtec.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
 import {
   HerkeseAcik,
   Izin,
   isaretleriOku,
   YalnizKendisi,
-} from '../src/shared/guvenlik/isaretler.js';
-import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/yalniz-kendisi-listesi.js';
+} from '../src/shared/guvenlik/application/isaretler.js';
+import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/domain/yalniz-kendisi-listesi.js';
 import { HttpTemeliModule } from '../src/shared/http/http-temeli.module.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
-import { YetkiGuard } from '../src/shared/yetki/yetki.guard.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
+import { YetkiGuard } from '../src/shared/yetki/infrastructure/yetki.guard.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
@@ -277,29 +277,40 @@ function lintStdin(
 describe('d) lint: çekirdek sınırı (AK-27)', () => {
   // Alt özelliğin kökündeki dosyadan kimlik'in çekirdek repository belirtecini içe aktaran içerik.
   const CEKIRDEK = [
-    "import { KULLANICI_CEKIRDEK_REPO } from '../_shared/cekirdek/kullanici.repository.js';",
+    "import { KULLANICI_CEKIRDEK_REPO } from '../_shared/domain/repositories/i-kullanici-cekirdek.repository.js';",
     'export const belirtec = KULLANICI_CEKIRDEK_REPO;',
     '',
   ].join('\n');
 
   it('yönetim alt özelliklerinin yolundan çekirdek repository içe aktarılamaz', async () => {
+    // Çekirdek sınırı hem arayüzü (domain/repositories) hem gerçeklemeyi (infrastructure/repositories) korur.
+    const GERCEKLEME = [
+      "import { kullaniciCekirdekRepo } from '../_shared/infrastructure/repositories/kullanici-cekirdek.prisma-repository.js';",
+      'export const gercekleme = kullaniciCekirdekRepo;',
+      '',
+    ].join('\n');
     const sonuclar = await Promise.all(
-      ['kullanici', 'grup', 'rol', 'uyelik', 'yetenek'].map((alt) =>
-        lintStdin(`src/features/kimlik/${alt}/${alt}.module.ts`, CEKIRDEK),
+      ['kullanici', 'grup', 'rol', 'uyelik', 'yetenek'].flatMap((alt) =>
+        [CEKIRDEK, GERCEKLEME].map((kod) =>
+          lintStdin(`src/features/kimlik/${alt}/${alt}.module.ts`, kod),
+        ),
       ),
     );
+    expect(sonuclar).toHaveLength(10);
     for (const sonuc of sonuclar) {
       expect(sonuc.cikis).toBe(1);
+      expect(sonuc.cikti).toContain('"cekirdek-repo"');
       expect(sonuc.cikti).toContain(
-        'Dependencies to file of category "cekirdek-repo" are not allowed in file of category "yonetim"',
+        'are not allowed in file of category "yonetim"',
       );
+      expect(sonuc.cikti).toContain('Denied by policy');
     }
   }, 180_000);
 
   it('_shared, oturum ve parola yollarından çekirdek repository içe aktarılabilir', async () => {
     const sonuclar = await Promise.all(
       [
-        'src/features/kimlik/_shared/genel-sayac.ts',
+        'src/features/kimlik/_shared/kimlik-cekirdek.module.ts',
         'src/features/kimlik/oturum/oturum.module.ts',
         'src/features/kimlik/parola/parola.module.ts',
       ].map((dosya) => lintStdin(dosya, CEKIRDEK)),
@@ -316,9 +327,9 @@ describe('d) lint: katman yönü (AK-36)', () => {
   it('uygulama katmanından sunum katmanı içe aktarılamaz; sunumdan uygulama aktarılabilir', async () => {
     const [uygulamadan, sunumdan] = await Promise.all([
       lintStdin(
-        'src/features/kimlik/oturum/application/cikis.handler.ts',
+        'src/features/kimlik/oturum/application/commands/cikis/cikis.handler.ts',
         [
-          "import { OturumController } from '../presentation/oturum.controller.js';",
+          "import { OturumController } from '../../../presentation/oturum.controller.js';",
           'export const denetleyici = OturumController;',
           '',
         ].join('\n'),
@@ -326,7 +337,7 @@ describe('d) lint: katman yönü (AK-36)', () => {
       lintStdin(
         'src/features/kimlik/oturum/presentation/oturum.controller.ts',
         [
-          "import { CikisHandler } from '../application/cikis.handler.js';",
+          "import { CikisHandler } from '../application/commands/cikis/cikis.handler.js';",
           'export const isleyici = CikisHandler;',
           '',
         ].join('\n'),

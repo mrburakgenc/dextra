@@ -15,22 +15,22 @@ import { PrismaClient } from '../src/shared/database/generated/client.js';
 import {
   istekBaglamiAraKatmani,
   istekYetkisiniYaz,
-} from '../src/shared/http/istek-baglami.js';
-import { KodluHata } from '../src/shared/http/kodlu-hata.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
+import { KodluHata } from '../src/shared/http/domain/kodlu-hata.js';
 import type {
   KisininSatirlari,
   SartOgesi,
   UyelikSatiri,
   YetenekSatiri,
-} from '../src/shared/kimlik/yetki-verisi.contract.js';
-import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
+} from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
+import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derleyici.js';
+import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
 import {
-  type Kayit,
   OkumaKapisi,
   okumaBirikimi,
-} from '../src/shared/yetki/okuma-kapisi.js';
-import type { DerlemeSonucu } from '../src/shared/yetki/yetenek-derleyici.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+} from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
@@ -972,7 +972,7 @@ describe('yetki kapısı - okuma', () => {
   it('j) kayıt üzerinde karar veren kütüphane çağrısı lint hatasıdır', async () => {
     const yasak = [
       "import { permittedFieldsOf } from '@casl/ability/extra';",
-      "import type { YetkiYetenegi } from './yetenek-derleyici.js';",
+      "import type { YetkiYetenegi } from '../application/yetenek-derleyici.js';",
       'export function f(y: YetkiYetenegi): boolean {',
       "  return y.can('oku', 'Grup');",
       '}',
@@ -980,14 +980,17 @@ describe('yetki kapısı - okuma', () => {
       '',
     ].join('\n');
     const izinli = [
-      "import type { YetkiYetenegi } from './yetenek-derleyici.js';",
+      "import type { YetkiYetenegi } from '../application/yetenek-derleyici.js';",
       'export function f(y: YetkiYetenegi): boolean {',
       "  return y.possibleRulesFor('oku', 'Grup').length > 0;",
       '}',
       '',
     ].join('\n');
 
-    const ortak = await lintStdin('src/shared/yetki/okuma-kapisi.ts', yasak);
+    const ortak = await lintStdin(
+      'src/shared/yetki/infrastructure/okuma-kapisi.ts',
+      yasak,
+    );
     expect(ortak.cikis).toBe(1);
     expect(
       ortak.cikti.match(/Kayıt üzerinde karar veren yetki çağrısı/g),
@@ -1000,8 +1003,11 @@ describe('yetki kapısı - okuma', () => {
     expect(feature.cikis).toBe(1);
     expect(feature.cikti).toContain('Kayıt üzerinde karar veren yetki çağrısı');
 
-    expect(await lintStdin('src/shared/yetki/okuma-kapisi.ts', izinli)).toEqual(
-      { cikis: 0, cikti: '' },
-    );
+    expect(
+      await lintStdin(
+        'src/shared/yetki/infrastructure/okuma-kapisi.ts',
+        izinli,
+      ),
+    ).toEqual({ cikis: 0, cikti: '' });
   }, 120_000);
 });

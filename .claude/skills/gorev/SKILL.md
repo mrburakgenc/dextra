@@ -29,6 +29,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 6. İnceleme raporunu kullanıcıya ver: sonuç, bulgular, her kural için inceleyicinin hükmü ve işçiyle çeliştiği yerler.
 7. İnceleme geçtiyse al: `python3 harness/h.py gorev al GV-NNN` (hook sorar). İş bu oturumun dalına birleştirilir; görevin ağacı ve dalı silinir.
 8. İşçinin verdiği her karar için bir karar taslağı öner (`karar`); bilgi tabanına işçi değil sen yazarsın, kabulü kullanıcı verir.
+9. Dalı göndermeden önce raporu yaz: `python3 harness/h.py rapor yeni "<konu>"` raporu açar ve görev tablosunu kayıtlardan üretir; elle yazılan bölümleri (en az kısa özet ve kullanıcıdan beklenenler) doldur; `python3 harness/h.py rapor durum` raporsuz görev ve boş bölüm göstermiyorsa gönder. Push kapısı raporsuz görevde durur.
 
 ## Yapma
 

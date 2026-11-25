@@ -2,18 +2,18 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   HerkeseAcik,
   YalnizKendisi,
-} from '../../../../shared/guvenlik/isaretler.js';
-import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
-import { ParolaBelirleHandler } from '../application/parola-belirle.handler.js';
-import { ParolaDegistirHandler } from '../application/parola-degistir.handler.js';
+} from '../../../../shared/guvenlik/application/isaretler.js';
+import { istekBaglami } from '../../../../shared/observability/istek-baglami/istek-baglami.js';
 import {
-  type ParolaBelirleGovdesi,
-  parolaBelirleSemasi,
-} from './parola-belirle.schema.js';
+  type ParolaBelirleKomutu,
+  parolaBelirleKomutuSemasi,
+} from '../application/commands/parola-belirle/parola-belirle.command.js';
+import { ParolaBelirleHandler } from '../application/commands/parola-belirle/parola-belirle.handler.js';
 import {
   type ParolaDegistirGovdesi,
-  parolaDegistirSemasi,
-} from './parola-degistir.schema.js';
+  parolaDegistirGovdesiSemasi,
+} from '../application/commands/parola-degistir/parola-degistir.command.js';
+import { ParolaDegistirHandler } from '../application/commands/parola-degistir/parola-degistir.handler.js';
 
 // Parola uçları. "Bağlantıyla parola belirle" oturumsuzdur (herkese açık; AK-12); deneme sınırı
 // sonraki görevlerde gelir; uç deneme sınırı kurulmadan yayına çıkmaz (KR-009 Seçim 9).
@@ -29,9 +29,9 @@ export class ParolaController {
   @HerkeseAcik()
   @HttpCode(HttpStatus.NO_CONTENT)
   belirle(
-    @Body({ schema: parolaBelirleSemasi }) govde: ParolaBelirleGovdesi,
+    @Body({ schema: parolaBelirleKomutuSemasi }) komut: ParolaBelirleKomutu,
   ): Promise<void> {
-    return this.parolaBelirle.calistir(govde);
+    return this.parolaBelirle.calistir(komut);
   }
 
   // Oturumu açık kişinin parolasını değiştirir (AK-50); kişi ve oturum istek bağlamından gelir.
@@ -41,7 +41,7 @@ export class ParolaController {
   @YalnizKendisi()
   @HttpCode(HttpStatus.NO_CONTENT)
   degistir(
-    @Body({ schema: parolaDegistirSemasi }) govde: ParolaDegistirGovdesi,
+    @Body({ schema: parolaDegistirGovdesiSemasi }) govde: ParolaDegistirGovdesi,
   ): Promise<void> {
     const { oturum } = istekBaglami();
     // Yalnız kendisi işaretli uçta guard oturumu bağlama yazmadan isteği geçirmez.

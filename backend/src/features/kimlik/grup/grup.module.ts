@@ -1,23 +1,26 @@
+// Grup alt özelliğinin modülü (TS-002 AK-30): altı işin işleyicilerini, denetleyiciyi ve iki
+// repository gerçeklemesini bağlar.
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
-import { Registrar } from '../../../shared/database/registrar.js';
-import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
+import { Registrar } from '../../../shared/database/infrastructure/registrar.js';
+import { OkumaKapisi } from '../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
-import { GrupGuncelleHandler } from './application/grup-guncelle.handler.js';
-import { GrupListeleHandler } from './application/grup-listele.handler.js';
-import { GrupOkuHandler } from './application/grup-oku.handler.js';
-import { GrupOlusturHandler } from './application/grup-olustur.handler.js';
-import { GrupSilHandler } from './application/grup-sil.handler.js';
-import { GrupTasiHandler } from './application/grup-tasi.handler.js';
-import { GRUP_REPO, GrupYazmaRepo } from './domain/grup.repository.js';
+import { GrupGuncelleHandler } from './application/commands/grup-guncelle/grup-guncelle.handler.js';
+import { GrupOlusturHandler } from './application/commands/grup-olustur/grup-olustur.handler.js';
+import { GrupSilHandler } from './application/commands/grup-sil/grup-sil.handler.js';
+import { GrupTasiHandler } from './application/commands/grup-tasi/grup-tasi.handler.js';
+import { GrupListeleHandler } from './application/queries/grup-listele/grup-listele.handler.js';
+import { GrupOkuHandler } from './application/queries/grup-oku/grup-oku.handler.js';
 import {
-  GrupKapiYazmaRepo,
-  grupPrismaRepository,
-} from './infrastructure/grup.prisma-repository.js';
+  GRUP_OKUMA_REPO,
+  GRUP_YAZMA_REPO,
+} from './domain/repositories/i-grup.repository.js';
+import { grupOkumaPrismaRepository } from './infrastructure/repositories/grup-okuma.prisma-repository.js';
+import { KapiGrupYazmaRepo } from './infrastructure/repositories/grup-yazma.kapi-repository.js';
 import { GrupController } from './presentation/grup.controller.js';
 
-// Grup alt özelliği (TS-002 AK-30). Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez
-// kurulan genel YetkiModule verir (TS-002 AK-42).
+// Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
+// AK-42). Genel sayaç ve bütünlük sorusu çekirdek modülden gelir.
 @Module({
   imports: [DatabaseModule, KimlikCekirdekModule],
   controllers: [GrupController],
@@ -28,11 +31,11 @@ import { GrupController } from './presentation/grup.controller.js';
     GrupGuncelleHandler,
     GrupTasiHandler,
     GrupSilHandler,
-    { provide: GrupYazmaRepo, useClass: GrupKapiYazmaRepo },
+    { provide: GRUP_YAZMA_REPO, useClass: KapiGrupYazmaRepo },
   ],
 })
 export class GrupModule {
   constructor(registrar: Registrar, kapi: OkumaKapisi) {
-    registrar.register(GRUP_REPO, grupPrismaRepository(kapi));
+    registrar.register(GRUP_OKUMA_REPO, grupOkumaPrismaRepository(kapi));
   }
 }

@@ -5,22 +5,22 @@ import {
   KIMLIK_KAYNAKLARI,
   KIMLIK_SISTEM_ALANLARI,
   KimlikYetkiVerisi,
-} from './features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
-import { OturumDenetimiHandler } from './features/kimlik/oturum/application/oturum-denetimi.handler.js';
+} from './features/kimlik/_shared/application/yetki-verisi.js';
+import { OturumDenetimiHandler } from './features/kimlik/oturum/application/commands/oturum-denetimi/oturum-denetimi.handler.js';
 import { DatabaseModule } from './shared/database/database.module.js';
 import { GuvenlikModule } from './shared/guvenlik/guvenlik.module.js';
-import { KimlikGuard } from './shared/guvenlik/kimlik.guard.js';
-import { HealthModule } from './shared/health/health.module.js';
+import { KimlikGuard } from './shared/guvenlik/infrastructure/kimlik.guard.js';
+import { HealthModule } from './shared/observability/health/health.module.js';
 import { HttpTemeliModule } from './shared/http/http-temeli.module.js';
-import { OTURUM_DENETIMI } from './shared/kimlik/oturum-denetimi.contract.js';
-import { YETKI_VERISI } from './shared/kimlik/yetki-verisi.contract.js';
+import { OTURUM_DENETIMI } from './shared/kimlik/domain/i-oturum-denetimi.contract.js';
+import { YETKI_VERISI } from './shared/kimlik/domain/i-yetki-verisi.contract.js';
 import { MessagingModule } from './shared/messaging/messaging.module.js';
-import { OlayModule } from './shared/messaging/olay/olay.module.js';
+import { OlayModule } from './shared/messaging/olay.module.js';
 import { ErisimModule } from './shared/observability/erisim/erisim.module.js';
 import { IzModule } from './shared/observability/iz/iz.module.js';
-import { prismaKaynakKatalogu } from './shared/yetki/kaynak-katalogu.js';
-import { YetkiBellegi } from './shared/yetki/yetki-bellegi.js';
-import { YetkiGuard } from './shared/yetki/yetki.guard.js';
+import { prismaKaynakKatalogu } from './shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
+import { YetkiBellegi } from './shared/yetki/infrastructure/yetki-bellegi.js';
+import { YetkiGuard } from './shared/yetki/infrastructure/yetki.guard.js';
 import { YetkiModule } from './shared/yetki/yetki.module.js';
 
 @Module({

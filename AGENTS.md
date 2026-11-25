@@ -43,6 +43,9 @@ Tasarımın tamamı: `docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md` (bu d
 | `python3 harness/h.py gorev al GV-NNN` | Temiz ve incelenmiş işi bu oturumun dalına birleştir; kullanıcıya sorulur |
 | `python3 harness/h.py gorev at GV-NNN` | Görevin ağacını ve dalını sil; kullanıcıya sorulur |
 | `python3 harness/h.py gorev durum` | Bütün görevler ve aşamaları |
+| `python3 harness/h.py rapor yeni "<konu>"` | İşin raporunu şablondan aç; görev tablosunu araç üretir, kısa özet ve kullanıcıdan beklenenler elle yazılır |
+| `python3 harness/h.py rapor uret <dosya>` | Raporun görev tablosunu kayıtlardan yenile |
+| `python3 harness/h.py rapor durum` | Raporsuz görevler ve boş bölümler; push kapısı aynı şeyi arar ve raporsuz dalı göndermez |
 
 Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 

@@ -10,12 +10,14 @@ import { Logger } from '@nestjs/common';
 import pg from 'pg';
 import request from 'supertest';
 import type { MockInstance } from 'vitest';
-import { HAREKETSIZLIK_SINIRI_MS } from '../src/features/kimlik/oturum/domain/oturum-denetimi.js';
-import { HOSGORU_PENCERESI_MS } from '../src/features/kimlik/oturum/domain/yenileme.js';
+import {
+  HAREKETSIZLIK_SINIRI_MS,
+  HOSGORU_PENCERESI_MS,
+} from '../src/features/kimlik/oturum/domain/entities/oturum.entity.js';
 import {
   BelirtecServisi,
   YENILEME_BELIRTECI_SURESI_SN,
-} from '../src/shared/guvenlik/belirtec.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
 import {
   imzaliAdresBasliklari,
   type KimlikOrtami,

@@ -4,7 +4,7 @@
 Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 Tasarım: docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md
 
-Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · etki · sorgu · dizin · graf
+Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · rapor · etki · sorgu · dizin · graf
 Çıkış kodu: 0 temiz · 1 bulgu var · 2 ölçülemedi (kapılar 2'yi kırmızı sayar)
 """
 from __future__ import annotations
@@ -54,6 +54,9 @@ VARSAYILAN_AYAR = {
     # Kapıların ayarı sayılan ek dosyalar (lint, tip, biçim ayarları gibi): ajan düzenlemek isterse kullanıcıya sorulur
     "korunan_ayar": [],
     "rol_modelleri": {},
+    # rapor: işin raporları bu dizinde durur; zorunlu ise `denetle --dal` bu dalda alınıp raporda geçmeyen görevi
+    # kırmızı bildirir (Z19, KR-015)
+    "rapor": {"dizin": "docs/rapor", "zorunlu": True},
     # hook_ms: bir hook çağrısı bunu aşarsa deftere yazılır; sık aşılıyorsa dizin hook yoluna alınır (tasarım 12.2)
     "butce": {"agents_bayt": 24576, "ifade_karakter": 400, "dosya_basina_kural": 12,
               "paket_karakter": 6000, "hook_ms": 300},
@@ -719,6 +722,9 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
               for yol in uret(kok, yaz=False)]
     if taban:
         s += _surum_denetle(dz)
+        if dz.ayar["rapor"]["zorunlu"]:
+            import rapor  # aynı dizinde; yalnız taban dalla karşılaştırmada yüklenir
+            s += rapor.dal_bulgulari(kok, dz.ayar)
     for b in s:  # açık düzeyin üstündeki kurallar yalnız uyarıdır
         if _DUZEY.get(b["kod"], 1) > dz.ayar["duzey"]:
             b["seviye"] = "uyari"
@@ -726,6 +732,7 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
 
 
 _DUZEY = {("Z%d" % i): (1 if i <= 18 else 2 if i <= 23 else 3) for i in range(1, 32)}
+_DUZEY["Z19"] = 1   # rapor denetimi düzeyle değil `rapor.zorunlu` ayarıyla açılıp kapanır (KR-015)
 
 
 def denetle(kok: pathlib.Path, bugun: datetime.date | None = None, taban: bool = False) -> list:
@@ -1257,6 +1264,11 @@ def _komut_plan(kok: pathlib.Path, arg: list) -> int:
     return plan.komut(kok, arg)
 
 
+def _komut_rapor(kok: pathlib.Path, arg: list) -> int:
+    import rapor  # aynı dizinde; yalnız bu komutta yüklenir
+    return rapor.komut(kok, arg)
+
+
 def _graf_komutu(ad: str):
     def kos(kok: pathlib.Path, arg: list) -> int:
         import graf  # aynı dizinde; yalnız bu komutlarda yüklenir
@@ -1267,6 +1279,7 @@ def _graf_komutu(ad: str):
 KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
+            "rapor": _komut_rapor,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}

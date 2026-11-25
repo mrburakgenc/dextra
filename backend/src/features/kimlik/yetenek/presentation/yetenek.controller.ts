@@ -1,3 +1,6 @@
+// Yetenek yönetiminin uçları (TS-002 AK-39): okuma (Yetenek:oku), yaz (Yetenek:olustur), yenile
+// (Yetenek:yenile; yeni satırı yazmak ayrıca Yetenek:olustur ister) ve sil (Yetenek:sil). Her uç
+// girdisini işin şemasıyla doğrular ve işin tek işleyicisini çağırır.
 import {
   Body,
   Controller,
@@ -9,92 +12,93 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { z } from 'zod';
-import { Izin } from '../../../../shared/guvenlik/isaretler.js';
-import type { Kayit } from '../../../../shared/yetki/okuma-kapisi.js';
-import { YetenekListeleHandler } from '../application/yetenek-listele.handler.js';
-import type { YetenekListesi } from '../application/yetenek-listele.query.js';
-import { YetenekOkuHandler } from '../application/yetenek-oku.handler.js';
-import { YetenekOlusturHandler } from '../application/yetenek-olustur.handler.js';
-import { YetenekSilHandler } from '../application/yetenek-sil.handler.js';
-import { YetenekYenileHandler } from '../application/yetenek-yenile.handler.js';
+import { Izin } from '../../../../shared/guvenlik/application/isaretler.js';
 import {
-  type YetenekListeleParametreleri,
-  yetenekListeleSemasi,
-} from './yetenek-listele.schema.js';
+  type YetenekOlusturKomutu,
+  yetenekOlusturKomutuSemasi,
+} from '../application/commands/yetenek-olustur/yetenek-olustur.command.js';
+import { YetenekOlusturHandler } from '../application/commands/yetenek-olustur/yetenek-olustur.handler.js';
+import type { YetenekOlusturSonucu } from '../application/commands/yetenek-olustur/yetenek-olustur.result.js';
 import {
-  type YetenekYazGovdesi,
+  type YetenekSilKomutu,
+  yetenekSilKomutuSemasi,
+} from '../application/commands/yetenek-sil/yetenek-sil.command.js';
+import { YetenekSilHandler } from '../application/commands/yetenek-sil/yetenek-sil.handler.js';
+import {
   type YetenekYenileGovdesi,
-  yetenekYazSemasi,
-  yetenekYenileSemasi,
-} from './yetenek-yaz.schema.js';
+  yetenekYenileGovdesiSemasi,
+  type YetenekYenileYolu,
+  yetenekYenileYoluSemasi,
+} from '../application/commands/yetenek-yenile/yetenek-yenile.command.js';
+import { YetenekYenileHandler } from '../application/commands/yetenek-yenile/yetenek-yenile.handler.js';
+import type { YetenekYenileSonucu } from '../application/commands/yetenek-yenile/yetenek-yenile.result.js';
+import { YetenekListeleHandler } from '../application/queries/yetenek-listele/yetenek-listele.handler.js';
+import {
+  type YetenekListeleSorgusu,
+  yetenekListeleSorgusuSemasi,
+} from '../application/queries/yetenek-listele/yetenek-listele.query.js';
+import type { YetenekListeleSonucu } from '../application/queries/yetenek-listele/yetenek-listele.result.js';
+import { YetenekOkuHandler } from '../application/queries/yetenek-oku/yetenek-oku.handler.js';
+import {
+  type YetenekOkuSorgusu,
+  yetenekOkuSorgusuSemasi,
+} from '../application/queries/yetenek-oku/yetenek-oku.query.js';
+import type { YetenekOkuSonucu } from '../application/queries/yetenek-oku/yetenek-oku.result.js';
 
-// Yetenek yönetiminin uçları (TS-002 AK-39): okuma (Yetenek:oku), yaz (Yetenek:olustur), yenile
-// (Yetenek:yenile; yeni satırı yazmak ayrıca Yetenek:olustur ister) ve sil (Yetenek:sil). Liste yalnız
-// silinmemiş yetenekleri verir; kayıt şartı ve kolon listesini saklandığı biçimde taşır. Güncelleme ucu
-// yoktur: satır yerinde düzenlenmez, yenile eskisini silip yerine yenisini yazar (TS-002 değişmez 6).
+// Liste yalnız silinmemiş yetenekleri verir; kayıt şartı ve kolon listesini saklandığı biçimde taşır.
+// Yaz ve yenile 201 ile yeni satırın { id }'sini, sil gövdesiz 204 döner. Güncelleme ucu yoktur: satır
+// yerinde düzenlenmez, yenile eskisini silip yerine yenisini yazar (TS-002 değişmez 6).
 @Controller('kimlik/yetenek')
 export class YetenekController {
   constructor(
-    private readonly listeleHandler: YetenekListeleHandler,
-    private readonly okuHandler: YetenekOkuHandler,
-    private readonly olusturHandler: YetenekOlusturHandler,
-    private readonly silHandler: YetenekSilHandler,
-    private readonly yenileHandler: YetenekYenileHandler,
+    private readonly yetenekListele: YetenekListeleHandler,
+    private readonly yetenekOku: YetenekOkuHandler,
+    private readonly yetenekOlustur: YetenekOlusturHandler,
+    private readonly yetenekSil: YetenekSilHandler,
+    private readonly yetenekYenile: YetenekYenileHandler,
   ) {}
 
   @Post()
   @Izin('Yetenek', 'olustur')
-  async olustur(
-    @Body({ schema: yetenekYazSemasi }) govde: YetenekYazGovdesi,
-  ): Promise<{ id: string }> {
-    return { id: await this.olusturHandler.calistir(govde) };
+  olustur(
+    @Body({ schema: yetenekOlusturKomutuSemasi }) komut: YetenekOlusturKomutu,
+  ): Promise<YetenekOlusturSonucu> {
+    return this.yetenekOlustur.calistir(komut);
   }
 
-  // Yeni satırın kimliğini döner.
   @Post(':id/yenile')
   @Izin('Yetenek', 'yenile')
-  async yenile(
-    @Param('id', { schema: z.uuid() }) id: string,
-    @Body({ schema: yetenekYenileSemasi }) govde: YetenekYenileGovdesi,
-  ): Promise<{ id: string }> {
-    return { id: await this.yenileHandler.calistir(id, govde) };
+  yenile(
+    @Param({ schema: yetenekYenileYoluSemasi }) { id }: YetenekYenileYolu,
+    @Body({ schema: yetenekYenileGovdesiSemasi })
+    { icerik }: YetenekYenileGovdesi,
+  ): Promise<YetenekYenileSonucu> {
+    return this.yetenekYenile.calistir({ id, icerik });
   }
 
-  // Gövdesiz 204 döner.
   @Delete(':id')
   @Izin('Yetenek', 'sil')
   @HttpCode(HttpStatus.NO_CONTENT)
-  sil(@Param('id', { schema: z.uuid() }) id: string): Promise<void> {
-    return this.silHandler.calistir(id);
+  sil(
+    @Param({ schema: yetenekSilKomutuSemasi }) komut: YetenekSilKomutu,
+  ): Promise<void> {
+    return this.yetenekSil.calistir(komut);
   }
 
   @Get()
   @Izin('Yetenek', 'oku')
   listele(
-    @Query({ schema: yetenekListeleSemasi })
-    {
-      sayfa,
-      boyut,
-      sirala,
-      grupId,
-      rolId,
-      izinId,
-    }: YetenekListeleParametreleri,
-  ): Promise<YetenekListesi> {
-    return this.listeleHandler.calistir({
-      sayfa,
-      boyut,
-      ...(sirala === undefined ? {} : { siralama: sirala }),
-      ...(grupId === undefined ? {} : { grupId }),
-      ...(rolId === undefined ? {} : { rolId }),
-      ...(izinId === undefined ? {} : { izinId }),
-    });
+    @Query({ schema: yetenekListeleSorgusuSemasi })
+    sorgu: YetenekListeleSorgusu,
+  ): Promise<YetenekListeleSonucu> {
+    return this.yetenekListele.calistir(sorgu);
   }
 
   @Get(':id')
   @Izin('Yetenek', 'oku')
-  oku(@Param('id', { schema: z.uuid() }) id: string): Promise<Kayit> {
-    return this.okuHandler.calistir(id);
+  oku(
+    @Param({ schema: yetenekOkuSorgusuSemasi }) sorgu: YetenekOkuSorgusu,
+  ): Promise<YetenekOkuSonucu> {
+    return this.yetenekOku.calistir(sorgu);
   }
 }

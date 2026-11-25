@@ -1,10 +1,14 @@
 // Yerel deneme (GV-049): uygulamanın tamamını kalıcı hiçbir şeye dokunmadan açar.
-// Kullanım: node scripts/yerel-deneme.mjs (ayrıntı: docs/yerel-deneme.md).
+// Kullanım: node scripts/yerel-deneme.mjs [--kalici [--kurulum]] (ayrıntı: docs/yerel-deneme.md).
 // Geçici asıl ve iz veritabanlarını açar, göçleri uygular, anahtar çiftini ve aracı katman sırrını
 // bellekte üretir, backend'i derleyip tohum ve kurulum komutlarını koşturur, backend'i 3001'de,
 // derlenmiş ön yüzü 3100'de başlatır. Ctrl-C ya da SIGTERM gelince süreçleri kapatır ve geçici
 // veritabanlarını siler. Anahtar ve sır yalnız alt süreçlerin ortamına verilir: diske yazılmaz,
 // ekrana basılmaz.
+// Kalıcı kip (GV-105, TS-001 "Yerel veritabanı kum havuzudur"): geçici veritabanı açmaz, hiçbir
+// veritabanını silmez; yerel asıl ve iz veritabanlarının bekleyen göçlerini uygular, kurulum
+// komutunu yalnız --kurulum ile koşturur. Kapılar YEREL_BACKEND_KAPISI ve YEREL_ONYUZ_KAPISI ile
+// değiştirilebilir.
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { setTimeout as bekle } from 'node:timers/promises';
@@ -16,11 +20,33 @@ const backendDir = fileURLToPath(new URL('../backend/', import.meta.url));
 const frontendDir = fileURLToPath(new URL('../frontend/', import.meta.url));
 const prisma = `${backendDir}node_modules/.bin/prisma`;
 const next = `${frontendDir}node_modules/next/dist/bin/next`;
-const BACKEND_ADRESI = 'http://localhost:3001';
-const ONYUZ_ADRESI = 'http://localhost:3100';
+const BACKEND_KAPISI = process.env.YEREL_BACKEND_KAPISI ?? '3001';
+const ONYUZ_KAPISI = process.env.YEREL_ONYUZ_KAPISI ?? '3100';
+const BACKEND_ADRESI = `http://localhost:${BACKEND_KAPISI}`;
+const ONYUZ_ADRESI = `http://localhost:${ONYUZ_KAPISI}`;
 // İlk yöneticinin kullanıcı adı kimlik kurulum göçünde tanımlıdır
 // (backend/src/features/kimlik/_shared/tohum/kimlik-kurulum.goc.ts).
 const ILK_YONETICI = 'superadmin';
+
+// Kullanım hataları hiçbir sürece ve veritabanına dokunmadan önce yakalanır.
+function kullanimHatasi(ileti) {
+  process.stderr.write(
+    `[yerel-deneme] ${ileti} (kullanım: node scripts/yerel-deneme.mjs [--kalici [--kurulum]])\n`,
+  );
+  process.exit(1);
+}
+const bayraklar = process.argv.slice(2);
+const bilinmeyen = bayraklar.find((b) => b !== '--kalici' && b !== '--kurulum');
+if (bilinmeyen !== undefined) kullanimHatasi(`Bilinmeyen bayrak: ${bilinmeyen}`);
+const KALICI = bayraklar.includes('--kalici');
+const KURULUM = bayraklar.includes('--kurulum');
+if (KURULUM && !KALICI) kullanimHatasi('--kurulum yalnız --kalici ile birlikte verilir');
+const { YEREL_DATABASE_URL, YEREL_IZ_DATABASE_URL } = process.env;
+if (KALICI && (YEREL_DATABASE_URL === undefined) !== (YEREL_IZ_DATABASE_URL === undefined)) {
+  kullanimHatasi(
+    'YEREL_DATABASE_URL ve YEREL_IZ_DATABASE_URL birlikte verilir (ya da ikisi de verilmez)',
+  );
+}
 
 const cocuklar = new Set();
 const veritabanlari = [];
@@ -130,7 +156,8 @@ function grubaGonder(cocuk, sinyal) {
 }
 
 // Bir kez koşar; ilk çağıranın kodu geçerlidir. Süreçler önce SIGTERM ile, 10 sn içinde
-// kapanmayan kalırsa SIGKILL ile durdurulur; sonra iki geçici veritabanı silinir.
+// kapanmayan kalırsa SIGKILL ile durdurulur; sonra iki geçici veritabanı silinir (kalıcı kipte
+// liste boştur, hiçbir veritabanı silinmez).
 function kapat(kod) {
   kapanis ??= (async () => {
     yaz('Kapanıyor…');
@@ -157,28 +184,43 @@ function kapat(kod) {
 }
 
 async function ac() {
-  const ek = randomBytes(6).toString('hex');
-  const asil = `dextra_test_yerel_asil_${ek}`;
-  const iz = `dextra_test_yerel_iz_${ek}`;
+  let asil;
+  let iz;
+  let asilAdresi;
+  let izAdresi;
+  if (KALICI) {
+    // Kalıcı kipte veritabanı açılmaz ve `veritabanlari` boş kalır: kapanış hiçbir şey silmez.
+    asilAdresi = YEREL_DATABASE_URL ?? localInfrastructure.databaseUrl;
+    izAdresi = YEREL_IZ_DATABASE_URL ?? localInfrastructure.traceDatabaseUrl;
+    asil = new URL(asilAdresi).pathname.slice(1);
+    iz = new URL(izAdresi).pathname.slice(1);
+    yaz(`1. Kalıcı veritabanları kullanılıyor (silinmez): ${asil}, ${iz}`);
+  } else {
+    const ek = randomBytes(6).toString('hex');
+    asil = `dextra_test_yerel_asil_${ek}`;
+    iz = `dextra_test_yerel_iz_${ek}`;
+    asilAdresi = veritabaniAdresi(asil);
+    izAdresi = veritabaniAdresi(iz);
 
-  await adim(`1. Geçici veritabanları açıldı: ${asil}, ${iz}`, async () => {
-    for (const ad of [asil, iz]) {
-      veritabanlari.push(ad);
-      await sunucuda(`CREATE DATABASE ${ad}`);
-    }
-  });
+    await adim(`1. Geçici veritabanları açıldı: ${asil}, ${iz}`, async () => {
+      for (const ad of [asil, iz]) {
+        veritabanlari.push(ad);
+        await sunucuda(`CREATE DATABASE ${ad}`);
+      }
+    });
+  }
 
   await adim('2. Asıl ve iz şemalarının göçleri uygulandı', () =>
     Promise.all([
       kos('Asıl göçler', prisma, ['migrate', 'deploy'], {
         cwd: backendDir,
-        env: { DATABASE_URL: veritabaniAdresi(asil) },
+        env: { DATABASE_URL: asilAdresi },
       }),
       kos(
         'İz göçleri',
         prisma,
         ['migrate', 'deploy', '--config', 'prisma.iz.config.ts'],
-        { cwd: backendDir, env: { IZ_DATABASE_URL: veritabaniAdresi(iz) } },
+        { cwd: backendDir, env: { IZ_DATABASE_URL: izAdresi } },
       ),
     ]),
   );
@@ -198,9 +240,9 @@ async function ac() {
   });
   const backendOrtami = {
     ...sir,
-    DATABASE_URL: veritabaniAdresi(asil),
-    IZ_DATABASE_URL: veritabaniAdresi(iz),
-    PORT: '3001',
+    DATABASE_URL: asilAdresi,
+    IZ_DATABASE_URL: izAdresi,
+    PORT: BACKEND_KAPISI,
   };
 
   await adim('4a. Backend derlendi (Prisma istemcisi dahil)', async () => {
@@ -215,26 +257,30 @@ async function ac() {
       env: backendOrtami,
     }),
   );
-  const kurulumCiktisi = await adim('4c. Kurulum komutu koştu', () =>
-    kos('Kurulum komutu', 'pnpm', ['run', 'kurulum'], {
-      cwd: backendDir,
-      env: backendOrtami,
-    }),
-  );
-  const kod = /bağlantısı kodu[^\n]*:\n(\S+)/.exec(kurulumCiktisi)?.[1];
-  if (kod === undefined) {
-    throw new Error('Kurulum komutunun çıktısında kod bulunamadı');
+  if (KALICI && !KURULUM) {
+    yaz('4c. Kurulum komutu koşmadı: ilk yöneticinin parolası yoksa --kurulum ile başlat');
+  } else {
+    const kurulumCiktisi = await adim('4c. Kurulum komutu koştu', () =>
+      kos('Kurulum komutu', 'pnpm', ['run', 'kurulum'], {
+        cwd: backendDir,
+        env: backendOrtami,
+      }),
+    );
+    const kod = /bağlantısı kodu[^\n]*:\n(\S+)/.exec(kurulumCiktisi)?.[1];
+    if (kod === undefined) {
+      throw new Error('Kurulum komutunun çıktısında kod bulunamadı');
+    }
+    yaz(`İlk yöneticinin kullanıcı adı: ${ILK_YONETICI}`);
+    yaz(
+      `Parola belirleme adresi (kod yalnız ${KALICI ? `${asil} veritabanı` : 'bu geçici veritabanı'} içindir): ${ONYUZ_ADRESI}/parola-belirle?kod=${encodeURIComponent(kod)}`,
+    );
   }
-  yaz(`İlk yöneticinin kullanıcı adı: ${ILK_YONETICI}`);
-  yaz(
-    `Parola belirleme adresi (kod yalnız bu geçici veritabanı içindir): ${ONYUZ_ADRESI}/parola-belirle?kod=${encodeURIComponent(kod)}`,
-  );
 
   await adim('5a. Ön yüz derlendi', () =>
     kos('Ön yüz derlemesi', 'pnpm', ['run', 'build'], { cwd: frontendDir }),
   );
   sunucu('Backend', ['dist/main.js'], backendDir, backendOrtami);
-  sunucu('Ön yüz', [next, 'start', '--port', '3100'], frontendDir, {
+  sunucu('Ön yüz', [next, 'start', '--port', ONYUZ_KAPISI], frontendDir, {
     NEXT_TELEMETRY_DISABLED: '1',
     BACKEND_ADRESI,
     ARACI_KATMAN_SIRRI: sir.ARACI_KATMAN_SIRRI,
@@ -245,7 +291,10 @@ async function ac() {
       cevapVerir(`${ONYUZ_ADRESI}/giris`),
     ]),
   );
-  yaz(`hazır — ön yüz: ${ONYUZ_ADRESI}  backend: ${BACKEND_ADRESI}  (kapatmak için Ctrl-C)`);
+  const kip = KALICI ? `  kip: kalıcı, veritabanları: ${asil}, ${iz}` : '';
+  yaz(
+    `hazır — ön yüz: ${ONYUZ_ADRESI}  backend: ${BACKEND_ADRESI}${kip}  (kapatmak için Ctrl-C)`,
+  );
 }
 
 process.on('SIGINT', () => void kapat(0));

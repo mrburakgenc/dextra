@@ -15,21 +15,21 @@ import pg from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
-import { ParolaBaglantisi } from '../src/features/kimlik/_shared/baglanti/parola-baglantisi.js';
-import { KisiKilidi } from '../src/features/kimlik/_shared/kisi-kilidi.js';
-import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/kurulum-baglantisi.handler.js';
-import { ParolaGirisYontemi } from '../src/features/kimlik/parola/application/parola-giris-yontemi.js';
+import { ParolaBaglantisi } from '../src/features/kimlik/_shared/application/parola-baglantisi.js';
+import { KisiKilidi } from '../src/features/kimlik/_shared/application/kisi-kilidi.js';
+import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
+import { ParolaGirisYontemi } from '../src/features/kimlik/parola/application/commands/parola-giris/parola-giris.handler.js';
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
-import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici.argon2id.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
+import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici/parola-ozetleyici.argon2id.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
+import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 

@@ -10,38 +10,48 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { z } from 'zod';
 import {
   HerkeseAcik,
   Izin,
   YalnizKendisi,
-} from '../../../../shared/guvenlik/isaretler.js';
-import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/istemci-adresi-imzasi.js';
-import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
-import type { Kayit } from '../../../../shared/yetki/okuma-kapisi.js';
-import type { YetenekKurali } from '../../../../shared/yetki/yetenek-derleyici.js';
-import { ParolaGirisYontemi } from '../../parola/application/parola-giris-yontemi.js';
+} from '../../../../shared/guvenlik/application/isaretler.js';
+import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/application/istemci-adresi-imzasi.js';
+import { istekBaglami } from '../../../../shared/observability/istek-baglami/istek-baglami.js';
+import type { YetenekKurali } from '../../../../shared/yetki/application/yetenek-derleyici.js';
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,
-} from '../../parola/application/parola-giris.schema.js';
-import { CikisHandler } from '../application/cikis.handler.js';
-import type { GirisCevabi } from '../application/giris.command.js';
-import { GirisHandler, girisBasarisiz } from '../application/giris.handler.js';
-import { OturumKapatHandler } from '../application/oturum-kapat.handler.js';
-import { OturumListeleHandler } from '../application/oturum-listele.handler.js';
-import type { OturumListesi } from '../application/oturum-listele.query.js';
-import { OturumOkuHandler } from '../application/oturum-oku.handler.js';
-import type { YenileCevabi } from '../application/yenile.command.js';
+} from '../../parola/application/commands/parola-giris/parola-giris.command.js';
+import { ParolaGirisYontemi } from '../../parola/application/commands/parola-giris/parola-giris.handler.js';
+import { CikisHandler } from '../application/commands/cikis/cikis.handler.js';
+import {
+  GirisHandler,
+  girisBasarisiz,
+} from '../application/commands/giris/giris.handler.js';
+import type { GirisSonucu } from '../application/commands/giris/giris.result.js';
+import {
+  oturumKapatGovdesiSemasi,
+  oturumKapatIdSemasi,
+} from '../application/commands/oturum-kapat/oturum-kapat.command.js';
+import { OturumKapatHandler } from '../application/commands/oturum-kapat/oturum-kapat.handler.js';
+import {
+  type YenileGovdesi,
+  yenileGovdesiSemasi,
+} from '../application/commands/yenile/yenile.command.js';
 import {
   YenileHandler,
   yenilemeBasarisiz,
-} from '../application/yenile.handler.js';
+} from '../application/commands/yenile/yenile.handler.js';
+import type { YenileSonucu } from '../application/commands/yenile/yenile.result.js';
+import { OturumListeleHandler } from '../application/queries/oturum-listele/oturum-listele.handler.js';
 import {
   type OturumListeleParametreleri,
   oturumListeleSemasi,
-} from './oturum-listele.schema.js';
-import { type YenileGovdesi, yenileSemasi } from './yenile.schema.js';
+} from '../application/queries/oturum-listele/oturum-listele.query.js';
+import type { OturumListeleSonucu } from '../application/queries/oturum-listele/oturum-listele.result.js';
+import { OturumOkuHandler } from '../application/queries/oturum-oku/oturum-oku.handler.js';
+import { oturumOkuIdSemasi } from '../application/queries/oturum-oku/oturum-oku.query.js';
+import type { OturumOkuSonucu } from '../application/queries/oturum-oku/oturum-oku.result.js';
 
 // Oturum uçları (TS-002 "Uçlar ve izinler"; AK-7). Giriş oturumsuzdur (herkese açık); deneme sınırı
 // sonraki görevlerde gelir ve uç ondan önce yayına çıkmaz. Belirteçler cevap gövdesinde verilir.
@@ -66,7 +76,7 @@ export class OturumController {
   giris(
     @Body({ schema: parolaGirisSemasi }) govde: ParolaGirisGovdesi,
     @Headers() basliklar: IncomingHttpHeaders,
-  ): Promise<GirisCevabi> {
+  ): Promise<GirisSonucu> {
     const adres = this.adresler.dogrula(basliklar);
     if (!adres.gecerli) {
       throw girisBasarisiz();
@@ -86,9 +96,9 @@ export class OturumController {
   @HerkeseAcik()
   @HttpCode(HttpStatus.OK)
   yenile(
-    @Body({ schema: yenileSemasi }) govde: YenileGovdesi,
+    @Body({ schema: yenileGovdesiSemasi }) govde: YenileGovdesi,
     @Headers() basliklar: IncomingHttpHeaders,
-  ): Promise<YenileCevabi> {
+  ): Promise<YenileSonucu> {
     const adres = this.adresler.dogrula(basliklar);
     if (!adres.gecerli) {
       throw yenilemeBasarisiz();
@@ -136,7 +146,7 @@ export class OturumController {
   listele(
     @Query({ schema: oturumListeleSemasi })
     { sayfa, boyut, sirala, kullaniciId, acik }: OturumListeleParametreleri,
-  ): Promise<OturumListesi> {
+  ): Promise<OturumListeleSonucu> {
     return this.listeleHandler.calistir({
       sayfa,
       boyut,
@@ -148,8 +158,10 @@ export class OturumController {
 
   @Get(':id')
   @Izin('Oturum', 'oku')
-  oku(@Param('id', { schema: z.uuid() }) id: string): Promise<Kayit> {
-    return this.okuHandler.calistir(id);
+  oku(
+    @Param('id', { schema: oturumOkuIdSemasi }) id: string,
+  ): Promise<OturumOkuSonucu> {
+    return this.okuHandler.calistir({ id });
   }
 
   // Gövdesizdir (alan taşıyan gövde reddedilir); 204 döner.
@@ -157,9 +169,9 @@ export class OturumController {
   @Izin('Oturum', 'kapat')
   @HttpCode(HttpStatus.NO_CONTENT)
   kapat(
-    @Body({ schema: z.strictObject({}).optional() }) _govde: unknown,
-    @Param('id', { schema: z.uuid() }) id: string,
+    @Body({ schema: oturumKapatGovdesiSemasi }) _govde: unknown,
+    @Param('id', { schema: oturumKapatIdSemasi }) id: string,
   ): Promise<void> {
-    return this.kapatHandler.calistir(id);
+    return this.kapatHandler.calistir({ id });
   }
 }

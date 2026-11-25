@@ -51,6 +51,7 @@ Koşturulan birim **yapraktır**: her yaprağın bir görev kartı vardır ve ke
 11. Epic'i yürüt: `python3 harness/h.py plan yurut EP-NNN`. Hook kullanıcıya bir kez sorar; onaydan sonra hazır yapraklar sırayla koşar, incelenir ve bu dala alınır. Uzun epic'te komutu arka planda koştur ya da `--en-cok N` ile parça parça yürüt.
 12. Yürütme ilk sorunda durur. Durduğu yeri ve nedeni kullanıcıya olduğu gibi söyle. Karar kullanıcınındır: yaprağı yeniden koştur (`gorev kos GV-NNN`) ya da at (`gorev at GV-NNN`), sonra yürütmeyi sürdür.
 13. Epic bitince kullanıcıya şunu ver: alınan ve atılan yapraklar, işçilerin verdiği kararlar (taslak karar önerileriyle) ve inceleyicilerin önerileri.
+14. Dalı göndermeden önce raporu yaz: `python3 harness/h.py rapor yeni "<konu>"` raporu açar ve görev tablosunu kayıtlardan üretir; elle yazılan bölümleri (en az kısa özet ve kullanıcıdan beklenenler) doldur; `python3 harness/h.py rapor durum` raporsuz görev ve boş bölüm göstermiyorsa gönder. Push kapısı raporsuz görevde durur.
 
 ## Yapma
 

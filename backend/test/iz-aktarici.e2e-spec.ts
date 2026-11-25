@@ -8,16 +8,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
-import { RepoKayitlari } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   IzAktarici,
   PartiHatasi,
 } from '../src/shared/observability/iz/iz-aktarici.js';
-import {
-  OUTBOX_IZ_REPO,
-  outboxIzRepoKaydet,
-} from '../src/shared/observability/iz/outbox-iz.repository.js';
+import { OUTBOX_IZ_REPO } from '../src/shared/observability/iz/i-outbox-iz.repository.js';
+import { outboxIzRepoKaydet } from '../src/shared/observability/iz/outbox-iz.prisma-repository.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 

@@ -9,23 +9,23 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import { RepoKayitlari } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   IS_KUYRUGU,
   type IsKuyrugu,
   type KuyrukIsi,
-} from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
-import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
-import { KuyrukModule } from '../src/shared/messaging/kuyruk/kuyruk.module.js';
-import { AboneDefteri } from '../src/shared/messaging/olay/abone-defteri.js';
-import { OlayAktarici } from '../src/shared/messaging/olay/olay-aktarici.js';
-import { outboxOlayRepoKaydet } from '../src/shared/messaging/olay/outbox-olay.repository.js';
+} from '../src/shared/messaging/domain/kuyruk/is-kuyrugu.js';
+import { kuyrukGocunuKos } from '../src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.js';
+import { KuyrukModule } from '../src/shared/messaging/kuyruk.module.js';
+import { AboneDefteri } from '../src/shared/messaging/application/olay/abone-defteri.js';
+import { OlayAktarici } from '../src/shared/messaging/infrastructure/olay/olay-aktarici.js';
+import { outboxOlayRepoKaydet } from '../src/shared/messaging/infrastructure/olay/outbox-olay.prisma-repository.js';
 import {
   OUTBOX_REPO,
   outboxRepo,
-} from '../src/shared/messaging/outbox/outbox-repo.js';
-import { OutboxYazici } from '../src/shared/messaging/outbox/outbox-yazici.js';
+} from '../src/shared/messaging/infrastructure/outbox/outbox-repo.js';
+import { OutboxYazici } from '../src/shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';

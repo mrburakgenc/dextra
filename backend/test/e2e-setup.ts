@@ -2,8 +2,8 @@ import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import {
   ACIK_ANAHTAR_DEGISKENI,
   OZEL_ANAHTAR_DEGISKENI,
-} from '../src/shared/guvenlik/belirtec.js';
-import { ARACI_KATMAN_SIRRI_DEGISKENI } from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
+import { ARACI_KATMAN_SIRRI_DEGISKENI } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 
 // Uçtan uca testler asıl ve iz veritabanlarının yerel test adreslerine bağlanır.

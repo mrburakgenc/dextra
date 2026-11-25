@@ -10,28 +10,29 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import { RepoKayitlari } from '../src/shared/database/registrar.js';
-import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import type { Islem } from '../src/shared/database/domain/islem.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   istekBaglami,
   istekBaglamiAraKatmani,
   istekOturumunuYaz,
   istekYetkisiniYaz,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import type {
   KisininSatirlari,
   UyelikSatiri,
   YetenekSatiri,
-} from '../src/shared/kimlik/yetki-verisi.contract.js';
+} from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import {
   OUTBOX_REPO,
   outboxRepo,
-} from '../src/shared/messaging/outbox/outbox-repo.js';
-import { OutboxYazici } from '../src/shared/messaging/outbox/outbox-yazici.js';
-import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
-import type { DerlemeSonucu } from '../src/shared/yetki/yetenek-derleyici.js';
-import { YazmaKapisi } from '../src/shared/yetki/yazma-kapisi.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
+} from '../src/shared/messaging/infrastructure/outbox/outbox-repo.js';
+import { OutboxYazici } from '../src/shared/messaging/infrastructure/outbox/outbox-yazici.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
+import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derleyici.js';
+import { YazmaKapisi } from '../src/shared/yetki/infrastructure/yazma-kapisi.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 

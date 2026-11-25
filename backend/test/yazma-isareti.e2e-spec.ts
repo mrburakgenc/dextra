@@ -9,13 +9,14 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
-import { Registrar, RepoBelirteci } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
+import { RepoBelirteci } from '../src/shared/database/domain/repo-belirteci.js';
+import { Registrar } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   istekBaglami,
   varsaIstekBaglami,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

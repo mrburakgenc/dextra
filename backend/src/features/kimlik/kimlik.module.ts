@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { KimlikCekirdekModule } from './_shared/kimlik-cekirdek.module.js';
-import { KimlikYetkiVerisiModule } from './_shared/yetki-verisi/yetki-verisi.module.js';
+import { KimlikYetkiVerisiModule } from './_shared/yetki-verisi.module.js';
 import { GrupModule } from './grup/grup.module.js';
 import { KullaniciModule } from './kullanici/kullanici.module.js';
 import { OturumModule } from './oturum/oturum.module.js';
