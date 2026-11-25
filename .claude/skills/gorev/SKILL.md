@@ -33,7 +33,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 
 ## Yapma
 
-- Sorunlu ya da uyarılı koşumu kendin düzeltmeye girişme, gizleme: kullanıcıya olduğu gibi söyle; karar onundur (yeniden koştur, ağacı oturum dalının ucuna getir: `gorev tazele GV-NNN`, dosya listesini genişlet: `gorev genislet GV-NNN --yol <desen>` (hook sorar) ya da `gorev at`).
+- Sorunlu ya da uyarılı koşumu kendin düzeltmeye girişme, gizleme: kullanıcıya olduğu gibi söyle; karar onundur (yeniden koştur, ağacı oturum dalının ucuna getir: `gorev tazele GV-NNN`, dosya listesini genişlet: `gorev genislet GV-NNN --yol <desen>` (hook sorar) ya da `gorev at`; işi başka bir görevle yaptıysan eskisini `gorev at GV-ESKİ --yerine GV-YENİ` ile at, zaten atılmışsa `gorev yerine GV-ESKİ GV-YENİ`).
 - Ölçüm kayıtlarını (`durum.json`, `rapor.json`, `inceleme-rapor.json`, koşu geçmişi `kosular.jsonl`) elle düzenleme; hook reddeder.
 - İşçinin "bitti" demesini kanıt sayma: kanıt ölçüm ve inceleme raporudur.
 - Görevin dosyalarında ya da `kb/` altında commit edilmemiş değişiklik varken koşturma: koşum reddedilir, önce kullanıcıya söyle.

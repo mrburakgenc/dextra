@@ -296,7 +296,7 @@ def asama(d: dict, rapor: dict, inceleme_zorunlu: bool, kosu: dict | None = None
 
     `kosu`, görevin koşu işaretidir (kosu_isareti); verilirse süren oturum aşama olarak gösterilir."""
     if d["durum"] == "atildi":
-        return False, "atıldı"
+        return False, "atıldı" + (" · yerine %s" % d["yerine"] if d.get("yerine") else "")
     if d.get("alindi"):
         return True, "alındı"
     if kosu:
@@ -1076,13 +1076,45 @@ def _birlestirme_suruyor(kok: pathlib.Path) -> bool:
                           capture_output=True).returncode == 0
 
 
-def at(kok: pathlib.Path, kimlik: str) -> dict:
-    """Görevin işini atar: ağacı ve dalı siler. Ana ağaca dokunmaz."""
+def _yerine_gecebilir(kok: pathlib.Path, eski: str, yeni: str) -> None:
+    """`yeni`, atılan `eski`nin yerine geçen görev olarak kaydedilebilir mi; değilse hangi koşulun tutmadığını söyler."""
+    if yeni == eski:
+        raise h.HarnessHata("%s kendi yerine geçemez; yerine geçen görev başka bir görev olmalı. Hiçbir şey yazılmadı"
+                            % eski)
+    y = _durum_oku(kok, yeni, _kayit(kok, yeni))
+    if y["durum"] == "atildi":
+        raise h.HarnessHata("%s atılmış; atılmış görev yerine geçemez. Hiçbir şey yazılmadı" % yeni)
+    if not y.get("alindi"):
+        raise h.HarnessHata("%s alınmamış (%s); yerine geçen görev önce alınmalı. Hiçbir şey yazılmadı"
+                            % (yeni, asama(y, {}, True)[1]))
+
+
+def yerine(kok: pathlib.Path, eski: str, yeni: str) -> dict:
+    """Atılmış görevin işini yapan (alınmış) görevi kaydeder; plan işareti ondan türer. Yeniden çağrı kaydı değiştirir."""
+    kok = pathlib.Path(kok)
+    kayit = _kayit(kok, eski)
+    d = _durum_oku(kok, eski, kayit)
+    if d["durum"] != "atildi":
+        raise h.HarnessHata("%s atılmamış (%s); yerine geçen görev yalnız atılmış göreve yazılır. Hiçbir şey yazılmadı"
+                            % (eski, asama(d, {}, True)[1]))
+    _yerine_gecebilir(kok, eski, yeni)
+    d["yerine"] = yeni
+    _json_yaz(kayit / "durum.json", d)
+    _plani_guncelle(kok, d)
+    return {"gorev": eski, "yerine": yeni}
+
+
+def at(kok: pathlib.Path, kimlik: str, yerine: str | None = None) -> dict:
+    """Görevin işini atar: ağacı ve dalı siler. Ana ağaca dokunmaz. `yerine` verilirse işi yapan görev de kaydedilir;
+    o görev yerine geçemiyorsa (alınmamış, atılmış ya da aynı görev) atma da yapılmaz."""
     kok = pathlib.Path(kok)
     kayit = _kayit(kok, kimlik)
     d = _durum_oku(kok, kimlik, kayit)
     if d.get("alindi"):
         raise h.HarnessHata("%s alınmış; atılamaz" % kimlik)
+    if yerine:
+        _yerine_gecebilir(kok, kimlik, yerine)
+        d["yerine"] = yerine
     agac, dal = _agac(kok, kimlik), d.get("dal") or "gorev/" + kimlik
     if agac.is_dir():
         h._git(kok, "worktree", "remove", "--force", str(agac))
@@ -1270,8 +1302,13 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                  % (s["uyari"], s["gorev"])))
         return 0
     if arg[:1] == ["at"] and len(arg) > 1:
-        at(kok, arg[1])
-        print("%s atıldı: ağaç ve dal silindi" % arg[1])
+        yerine_gecen = (h._secenek(arg, "--yerine") or [None])[0]
+        at(kok, arg[1], yerine=yerine_gecen)
+        print("%s atıldı: ağaç ve dal silindi" % arg[1] + ("; yerine %s kaydedildi" % yerine_gecen if yerine_gecen else ""))
+        return 0
+    if arg[:1] == ["yerine"] and len(arg) > 2:
+        s = yerine(kok, arg[1], arg[2])
+        print("%s: yerine %s kaydedildi; plandaki yaprağı işaretli görünür" % (s["gorev"], s["yerine"]))
         return 0
     if arg[:1] == ["durum"]:
         zorunlu = h.ayar_oku(kok)["gorev"].get("inceleme", "zorunlu") == "zorunlu"
@@ -1284,4 +1321,4 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                 (" · %s %s" % (d["plan"], d["adim"])) if d.get("plan") else ""))
         return 0
     raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] [--not "..."] | incele GV-NNN | '
-                        'al GV-NNN | at GV-NNN | tazele GV-NNN | genislet GV-NNN --yol <desen> [--yol ...] | durum>')
+                        'al GV-NNN | at GV-NNN [--yerine GV-YENİ] | yerine GV-ESKİ GV-YENİ | tazele GV-NNN |genislet GV-NNN --yol <desen> [--yol ...] | durum>')

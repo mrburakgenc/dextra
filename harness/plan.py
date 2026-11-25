@@ -148,6 +148,9 @@ def _gorev_asamasi(kok: pathlib.Path, kimlik: str, zorunlu: bool) -> tuple:
     d = gorev._json_oku(kayit / "durum.json")
     if not d:
         return False, "görev kaydı yok"
+    if d["durum"] == "atildi" and d.get("yerine") and \
+            gorev._json_oku(gorev._kayit(kok, d["yerine"]) / "durum.json").get("alindi"):
+        return True, "atıldı · yerine %s alındı" % d["yerine"]   # işi yerine geçen görev yaptı: işaret ondan türer
     return gorev.asama(d, gorev._json_oku(kayit / "rapor.json"), zorunlu, gorev.kosu_isareti(kayit))
 
 
@@ -170,6 +173,11 @@ def _coz(metin: str) -> tuple:
     return baslik, tasklar
 
 
+def _atildi(y: dict) -> bool:
+    """Yaprak atılmış mı (yerine geçeni alınmış olsa da: atılan yaprak alınmış sayılmaz)."""
+    return y["durum"].startswith("atıldı")
+
+
 def _turet(kok: pathlib.Path, tasklar: list) -> dict:
     """Yaprakların durumunu görev kayıtlarından okur; task ve epic durumunu alttan yukarı türetir."""
     zorunlu = _zorunlu(kok)
@@ -179,18 +187,19 @@ def _turet(kok: pathlib.Path, tasklar: list) -> dict:
             a["isaret"], a["durum"] = _gorev_asamasi(kok, a["gorev"], zorunlu)
         if t["gorev"]:
             t["isaret"], t["durum"] = _gorev_asamasi(kok, t["gorev"], zorunlu)
-            t["kapali"] = t["isaret"] or t["durum"] == "atıldı"
+            t["kapali"] = t["isaret"] or _atildi(t)
             yapraklar = [t]
         else:
             yapraklar = t["subtasklar"]
-            n, al, at = len(yapraklar), sum(a["isaret"] for a in yapraklar), sum(a["durum"] == "atıldı" for a in yapraklar)
-            t["isaret"] = al > 0 and al + at == n
+            n, at = len(yapraklar), sum(_atildi(a) for a in yapraklar)
+            al = sum(a["isaret"] and not _atildi(a) for a in yapraklar)
+            t["isaret"] = any(a["isaret"] for a in yapraklar) and al + at == n
             t["kapali"] = n > 0 and al + at == n
             t["durum"] = ("%d/%d subtask alındı%s" % (al, n, (" · %d atıldı" % at) if at else "")) if n \
                 else "subtask bekliyor"
         yaprak += len(yapraklar)
-        alinan += sum(y["isaret"] for y in yapraklar)
-        atilan += sum(y["durum"] == "atıldı" for y in yapraklar)
+        alinan += sum(y["isaret"] and not _atildi(y) for y in yapraklar)
+        atilan += sum(_atildi(y) for y in yapraklar)
     isaret = bool(tasklar) and all(t["kapali"] for t in tasklar) and any(t["isaret"] for t in tasklar)
     return {"isaret": isaret, "yaprak": yaprak, "alinan": alinan,
             "durum": "%d/%d iş alındı%s" % (alinan, yaprak, (" · %d atıldı" % atilan) if atilan else "")}
