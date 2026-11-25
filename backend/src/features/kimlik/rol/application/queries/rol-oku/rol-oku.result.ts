@@ -1,4 +1,4 @@
 // Rolü oku işinin sonucu: isteyenin görebildiği kolonları ve kimliği taşıyan düz kayıt.
-import type { Kayit } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { RolGorunumu } from '../../../domain/repositories/i-rol.repository.js';
 
-export type RolOkuSonucu = Kayit;
+export type RolOkuSonucu = RolGorunumu;

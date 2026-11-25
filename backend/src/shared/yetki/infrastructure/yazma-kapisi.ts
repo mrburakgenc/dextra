@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { Prisma } from '../../database/generated/client.js';
 import { yeniKimlik } from '../../database/domain/kimlik.js';
 import { RepoBelirteci } from '../../database/domain/repo-belirteci.js';
 import {
@@ -24,9 +25,42 @@ import {
   KAYNAK_KATALOGU,
   type YazmaKatalogu,
 } from '../domain/kaynak-katalogu.js';
+import {
+  type GuncellemeVerisi,
+  modelAdi,
+  type OlusturmaVerisi,
+  type SatirSuzgeci,
+} from './model-tipleri.js';
 
 // Yazılacak alanlar ve değerleri; anahtarlar modelin alan adlarıdır. Tanımsız değer yazılmaz.
 export type YazmaVerisi = Readonly<Record<string, unknown>>;
+
+// Repository'nin yazma deyimleri (TS-007 "Yapı"): deyimi repository yazar, koşulu ve veriyi motor verir.
+// Oluşturma deyimi yeni satırı bütün alanlarıyla döner (değişiklik kaydı notu için).
+export type OlusturmaDeyimi<M extends Prisma.ModelName> = (
+  vt: RepoIstemcisi,
+  veri: OlusturmaVerisi<M>,
+) => Promise<object>;
+
+// Güncelleme, niyet ve silme deyimi; where satırın kimliği ile yeteneğin şartıdır. Silmede veri,
+// silinme zamanı alanı olan kaynakta o alandır ve deyim onu yazar; olmayan kaynakta boştur ve deyim
+// satırı siler.
+export type YazmaDeyimi<M extends Prisma.ModelName> = (
+  vt: RepoIstemcisi,
+  where: SatirSuzgeci<M>,
+  veri: GuncellemeVerisi<M>,
+) => Promise<unknown>;
+
+// Deyimlerin motorun kullandığı genel hâlleri.
+type GenelOlusturmaDeyimi = (
+  vt: RepoIstemcisi,
+  veri: Record<string, unknown>,
+) => Promise<Record<string, unknown>>;
+type GenelYazmaDeyimi = (
+  vt: RepoIstemcisi,
+  where: PrismaKosulu,
+  veri: Record<string, unknown>,
+) => Promise<unknown>;
 
 const OKUMA_EYLEMI = 'oku';
 const OLUSTURMA_EYLEMI = 'olustur';
@@ -90,6 +124,12 @@ type JsonDegeri = Extract<
 // ve yeni değeri, oluşturmada yeni hâl, silmede eski hâl. Not anahtarları kolon adlarıdır (alan adının
 // küçük harf ve alt çizgili hâli; KR-011 Seçim 7). Hiçbir alan değişmezse yazma deyimi gitmez, not
 // boş değişiklikle yine yazılır.
+//
+// İki yüzü vardır (TS-007 "Yapı"). Yeni yüz deyimleOlustur, deyimleGuncelle, deyimleNiyet ve
+// deyimleSil'dir: kaynağa yazan deyimi repository'nin işlevi, motorun verdiği koşul ve veriyle
+// koşturur; adayları, kilidi, eski hâli, değişen alanları, iki hâl kuralını ve notu motor yürütür.
+// Kaynak adıyla çalışan olustur, guncelle, niyet ve sil eski yüzdür: deyimi addan bulunan vekille
+// kurar ve yeni yüzü çağırır.
 @Injectable()
 export class YazmaKapisi {
   constructor(
@@ -100,14 +140,81 @@ export class YazmaKapisi {
     registrar.register(ISLEM_ISTEMCISI, (istemci) => istemci);
   }
 
-  // Yeni kaydın kimliğini döner; kimliği ortak üretici üretir.
-  async olustur(
+  olustur(
     islem: Islem,
     isAdi: string,
     kaynak: string,
     veri: YazmaVerisi,
   ): Promise<string> {
-    const { alanlar, vekil } = this.kaynak(islem, kaynak);
+    return this.deyimleOlustur(
+      islem,
+      isAdi,
+      modelAdi(kaynak),
+      veri,
+      (vt, data) => modelVekili(vt, kaynak).create({ data }),
+    );
+  }
+
+  guncelle(
+    islem: Islem,
+    isAdi: string,
+    kaynak: string,
+    id: string,
+    veri: YazmaVerisi,
+  ): Promise<void> {
+    return this.deyimleGuncelle(
+      islem,
+      isAdi,
+      modelAdi(kaynak),
+      id,
+      veri,
+      (vt, where, data) => modelVekili(vt, kaynak).updateMany({ where, data }),
+    );
+  }
+
+  niyet(
+    islem: Islem,
+    isAdi: string,
+    kaynak: string,
+    eylem: string,
+    id: string,
+    veri: YazmaVerisi,
+  ): Promise<void> {
+    return this.deyimleNiyet(
+      islem,
+      isAdi,
+      modelAdi(kaynak),
+      eylem,
+      id,
+      veri,
+      (vt, where, data) => modelVekili(vt, kaynak).updateMany({ where, data }),
+    );
+  }
+
+  sil(islem: Islem, isAdi: string, kaynak: string, id: string): Promise<void> {
+    return this.deyimleSil(
+      islem,
+      isAdi,
+      modelAdi(kaynak),
+      id,
+      (vt, where, data) =>
+        SILINME_ALANI in data
+          ? modelVekili(vt, kaynak).updateMany({ where, data })
+          : modelVekili(vt, kaynak).deleteMany({ where }),
+    );
+  }
+
+  // Yeni kaydın kimliğini döner; kimliği ortak üretici üretir.
+  async deyimleOlustur<M extends Prisma.ModelName>(
+    islem: Islem,
+    isAdi: string,
+    kaynak: M,
+    veri: YazmaVerisi,
+    deyim: OlusturmaDeyimi<M>,
+  ): Promise<string> {
+    const yaz = deyim as unknown as GenelOlusturmaDeyimi;
+    const vt = islem.repo(ISLEM_ISTEMCISI);
+    const { alanlar, vekil } = this.kaynak(vt, kaynak);
     const yazilan = this.istekVerisi(kaynak, alanlar, veri);
     const adaylar = kurallar(kaynak, OLUSTURMA_EYLEMI).filter((kural) =>
       kolonlariKapsar(kural, Object.keys(yazilan)),
@@ -116,7 +223,7 @@ export class YazmaKapisi {
       throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
     }
     const id = yeniKimlik();
-    const yeni = await vekil.create({ data: { ...yazilan, id } });
+    const yeni = await yaz(vt, { ...yazilan, id });
     for (const kural of adaylar) {
       if ((await vekil.count({ where: kayitKosulu(id, kural) })) > 0) {
         await this.yazici.degisiklikKaydi(islem, {
@@ -130,14 +237,17 @@ export class YazmaKapisi {
     throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
   }
 
-  async guncelle(
+  async deyimleGuncelle<M extends Prisma.ModelName>(
     islem: Islem,
     isAdi: string,
-    kaynak: string,
+    kaynak: M,
     id: string,
     veri: YazmaVerisi,
+    deyim: YazmaDeyimi<M>,
   ): Promise<void> {
-    const { alanlar, vekil } = this.kaynak(islem, kaynak);
+    const yaz = deyim as unknown as GenelYazmaDeyimi;
+    const vt = islem.repo(ISLEM_ISTEMCISI);
+    const { alanlar, vekil } = this.kaynak(vt, kaynak);
     await this.sartliGuncelle(islem, vekil, {
       isAdi,
       kaynak,
@@ -146,22 +256,26 @@ export class YazmaKapisi {
       veri: this.istekVerisi(kaynak, alanlar, veri),
       duz: true,
       yumusak: alanlar.includes(SILINME_ALANI),
+      yaz: (where, data) => yaz(vt, where, data),
     });
   }
 
   // Niyet eylemi (KR-008 Seçim 34 ve 42): veriyi komutun kodu verir; sistem alanları yazılabilir.
-  async niyet(
+  async deyimleNiyet<M extends Prisma.ModelName>(
     islem: Islem,
     isAdi: string,
-    kaynak: string,
+    kaynak: M,
     eylem: string,
     id: string,
     veri: YazmaVerisi,
+    deyim: YazmaDeyimi<M>,
   ): Promise<void> {
     if (DUZ_EYLEMLER.includes(eylem)) {
       throw new Error(`Niyet eylemi değil: ${eylem}`);
     }
-    const { alanlar, vekil } = this.kaynak(islem, kaynak);
+    const yaz = deyim as unknown as GenelYazmaDeyimi;
+    const vt = islem.repo(ISLEM_ISTEMCISI);
+    const { alanlar, vekil } = this.kaynak(vt, kaynak);
     await this.sartliGuncelle(islem, vekil, {
       isAdi,
       kaynak,
@@ -170,16 +284,20 @@ export class YazmaKapisi {
       veri: bilinenVeri(alanlar, veri),
       duz: false,
       yumusak: alanlar.includes(SILINME_ALANI),
+      yaz: (where, data) => yaz(vt, where, data),
     });
   }
 
-  async sil(
+  async deyimleSil<M extends Prisma.ModelName>(
     islem: Islem,
     isAdi: string,
-    kaynak: string,
+    kaynak: M,
     id: string,
+    deyim: YazmaDeyimi<M>,
   ): Promise<void> {
-    const { alanlar, vekil } = this.kaynak(islem, kaynak);
+    const yaz = deyim as unknown as GenelYazmaDeyimi;
+    const vt = islem.repo(ISLEM_ISTEMCISI);
+    const { alanlar, vekil } = this.kaynak(vt, kaynak);
     const yumusak = alanlar.includes(SILINME_ALANI);
     for (const kural of kurallar(kaynak, SILME_EYLEMI)) {
       // Yumuşak silinmiş kayıt yeniden silinmez: silinme zamanı bir kez yazılır.
@@ -193,14 +311,7 @@ export class YazmaKapisi {
         continue;
       }
       const eski = await vekil.findUniqueOrThrow({ where: { id } });
-      if (yumusak) {
-        await vekil.updateMany({
-          where: kosul,
-          data: { [SILINME_ALANI]: new Date() },
-        });
-      } else {
-        await vekil.deleteMany({ where: kosul });
-      }
+      await yaz(vt, kosul, yumusak ? { [SILINME_ALANI]: new Date() } : {});
       await this.yazici.degisiklikKaydi(islem, {
         ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
         eylem: 'silme',
@@ -222,9 +333,13 @@ export class YazmaKapisi {
       veri: Record<string, unknown>;
       duz: boolean;
       yumusak: boolean;
+      yaz: (
+        where: PrismaKosulu,
+        veri: Record<string, unknown>,
+      ) => Promise<unknown>;
     },
   ): Promise<void> {
-    const { isAdi, kaynak, eylem, id, veri, duz, yumusak } = istek;
+    const { isAdi, kaynak, eylem, id, veri, duz, yumusak, yaz } = istek;
     // Yeni hâl yetenekten bağımsızdır (aynı veri aynı satıra yazılır); bu yüzden önce önceki hâli
     // tutan ve kolonları kapsayan yetenekler sırayla toplanır, satır bir kez yazılır ve adaylar
     // sırayla yeni hâlde denenir. Önceki hâl yazmadan sonra sorulamayacağı için adaylar yazmadan önce
@@ -273,7 +388,7 @@ export class YazmaKapisi {
     // yetki_yok atılır ve run'dan çıkan hata yazmayı işin bütünüyle geri alır.
     let yazan: YetenekKurali | undefined = ilk;
     if (Object.keys(degisen).length > 0) {
-      await vekil.updateMany({ where: kayitKosulu(id, ilk), data: degisen });
+      await yaz(kayitKosulu(id, ilk), degisen);
       if (duz) {
         yazan = undefined;
         for (const kural of adaylar) {
@@ -300,20 +415,14 @@ export class YazmaKapisi {
   }
 
   private kaynak(
-    islem: Islem,
+    vt: RepoIstemcisi,
     kaynak: string,
   ): { alanlar: readonly string[]; vekil: YazmaVekili } {
     const alanlar = this.katalog.alanlar(kaynak);
-    // Prisma istemcisinde modelin vekili, model adının ilk harfi küçük hâlidir.
-    const vekil = (
-      islem.repo(ISLEM_ISTEMCISI) as unknown as Partial<
-        Record<string, YazmaVekili>
-      >
-    )[kaynak.charAt(0).toLowerCase() + kaynak.slice(1)];
-    if (alanlar === undefined || vekil === undefined) {
+    if (alanlar === undefined) {
       throw new Error(`Kaynak kataloğunda olmayan kaynak: ${kaynak}`);
     }
-    return { alanlar, vekil };
+    return { alanlar, vekil: modelVekili(vt, kaynak) };
   }
 
   // İstek gövdesinden gelen veri: sistemin yazdığı alan kabul edilmez ve hiçbir sorgu gitmeden reddedilir.
@@ -330,6 +439,18 @@ export class YazmaKapisi {
     }
     return bilinen;
   }
+}
+
+// Prisma istemcisinde modelin vekili, model adının ilk harfi küçük hâlidir. Motor kilidi, eski hâli ve
+// görünürlüğü bununla sorar; eski yüz yazma deyimini bununla kurar.
+function modelVekili(vt: RepoIstemcisi, kaynak: string): YazmaVekili {
+  const vekil = (vt as unknown as Partial<Record<string, YazmaVekili>>)[
+    kaynak.charAt(0).toLowerCase() + kaynak.slice(1)
+  ];
+  if (vekil === undefined) {
+    throw new Error(`Kaynak kataloğunda olmayan kaynak: ${kaynak}`);
+  }
+  return vekil;
 }
 
 // Tanımsız değerler atılır; kaynağın alanı olmayan ad hatadır.
