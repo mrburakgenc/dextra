@@ -3,8 +3,8 @@
 // olgular toplanır ve ret bugünkü HTTP cevabına çevrilir.
 import { Inject, Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import { istekBaglami } from '../../../../../shared/http/istek-baglami.js';
-import { KodluHata } from '../../../../../shared/http/kodlu-hata.js';
+import { istekBaglami } from '../../../../../shared/observability/istek-baglami/istek-baglami.js';
+import { KodluHata } from '../../../../../shared/http/domain/kodlu-hata.js';
 import {
   KAYNAK_KATALOGU,
   type KaynakKatalogu,

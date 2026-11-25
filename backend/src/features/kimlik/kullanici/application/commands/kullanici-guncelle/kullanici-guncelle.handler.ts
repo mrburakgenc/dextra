@@ -1,7 +1,7 @@
 // Kullanıcı güncelle işinin işleyicisi: kullanıcının görünen adını değiştirir (TS-002 AK-39).
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
-import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { KodluHata } from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
 import {
   type KullaniciGuncellemeReddi,

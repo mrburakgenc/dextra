@@ -10,7 +10,7 @@ import pg from 'pg';
 import request from 'supertest';
 import { IZ_PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
-import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
+import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { IzAktarici } from '../src/shared/observability/iz/iz-aktarici.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';

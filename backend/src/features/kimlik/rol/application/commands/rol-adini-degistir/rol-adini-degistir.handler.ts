@@ -1,7 +1,7 @@
 // Rol adını değiştir işinin işleyicisi (TS-002 "İşlem sınırları": rol yaz, "Durum geçişleri"; AK-43).
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
-import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { KodluHata } from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import { rolAdDegistirmeKarari } from '../../../domain/entities/rol.entity.js';

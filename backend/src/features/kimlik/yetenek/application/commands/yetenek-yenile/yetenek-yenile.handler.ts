@@ -5,7 +5,7 @@ import { UnitOfWork } from '../../../../../../shared/database/infrastructure/uni
 import {
   type HataKodu,
   KodluHata,
-} from '../../../../../../shared/http/kodlu-hata.js';
+} from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   type YetenekYenilemeReddi,

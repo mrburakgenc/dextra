@@ -43,11 +43,11 @@ import {
   YALNIZ_KENDISI_LISTESI,
   YALNIZ_KENDISI_UCLARI,
 } from '../src/shared/guvenlik/domain/yalniz-kendisi-listesi.js';
-import { HealthController } from '../src/shared/health/health.controller.js';
+import { HealthController } from '../src/shared/observability/health/health.controller.js';
 import {
   type IstekOturumu,
   istekBaglami,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import {
   OTURUM_DENETIMI,
   type OturumDenetimi,

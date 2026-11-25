@@ -28,7 +28,7 @@ import {
   istekBaglamiAraKatmani,
   istekOturumunuYaz,
   istekYetkisiniYaz,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import {
   YETKI_VERISI,
   type YetkiVerisi,

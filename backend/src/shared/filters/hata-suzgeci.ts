@@ -9,8 +9,12 @@ import {
 import { HttpAdapterHost } from '@nestjs/core';
 import { Prisma } from '../database/generated/client.js';
 import { yeniKimlik } from '../database/domain/kimlik.js';
-import { ISTEK_KIMLIGI_BASLIGI } from './istek-baglami.js';
-import { HATA_DURUMLARI, type HataKodu, KodluHata } from './kodlu-hata.js';
+import { ISTEK_KIMLIGI_BASLIGI } from '../observability/istek-baglami/istek-baglami.js';
+import {
+  HATA_DURUMLARI,
+  type HataKodu,
+  KodluHata,
+} from '../http/domain/kodlu-hata.js';
 
 export interface HataCevabi {
   readonly kod: HataKodu;

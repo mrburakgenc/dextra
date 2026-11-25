@@ -32,12 +32,12 @@ import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ISTEK_KIMLIGI_BASLIGI,
   istekBaglami,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import {
   HATA_DURUMLARI,
   type HataKodu,
   KodluHata,
-} from '../src/shared/http/kodlu-hata.js';
+} from '../src/shared/http/domain/kodlu-hata.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 

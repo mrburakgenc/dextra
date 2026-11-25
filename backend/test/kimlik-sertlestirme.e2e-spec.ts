@@ -45,7 +45,7 @@ import {
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
-import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
+import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { YetenekKurali } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';

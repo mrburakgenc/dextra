@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { istekteYazmaAcildi } from '../../http/istek-baglami.js';
+import { istekteYazmaAcildi } from '../../observability/istek-baglami/istek-baglami.js';
 import type { Islem } from '../domain/islem.js';
 import type { RepoBelirteci } from '../domain/repo-belirteci.js';
 import type { PrismaClient } from '../generated/client.js';

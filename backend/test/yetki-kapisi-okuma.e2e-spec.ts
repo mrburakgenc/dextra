@@ -15,8 +15,8 @@ import { PrismaClient } from '../src/shared/database/generated/client.js';
 import {
   istekBaglamiAraKatmani,
   istekYetkisiniYaz,
-} from '../src/shared/http/istek-baglami.js';
-import { KodluHata } from '../src/shared/http/kodlu-hata.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
+import { KodluHata } from '../src/shared/http/domain/kodlu-hata.js';
 import type {
   KisininSatirlari,
   SartOgesi,

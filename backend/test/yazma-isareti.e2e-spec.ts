@@ -16,7 +16,7 @@ import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   istekBaglami,
   varsaIstekBaglami,
-} from '../src/shared/http/istek-baglami.js';
+} from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

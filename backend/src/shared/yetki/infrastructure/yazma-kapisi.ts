@@ -6,8 +6,11 @@ import {
   type RepoIstemcisi,
 } from '../../database/infrastructure/registrar.js';
 import type { Islem } from '../../database/domain/islem.js';
-import { type IstekOturumu, istekBaglami } from '../../http/istek-baglami.js';
-import { KodluHata } from '../../http/kodlu-hata.js';
+import {
+  type IstekOturumu,
+  istekBaglami,
+} from '../../observability/istek-baglami/istek-baglami.js';
+import { KodluHata } from '../../http/domain/kodlu-hata.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,

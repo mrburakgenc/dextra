@@ -16,7 +16,7 @@ import { ParolaSirri } from '../src/features/kimlik/_shared/application/parola-s
 import type { Islem } from '../src/shared/database/domain/islem.js';
 import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
-import { istekBaglami } from '../src/shared/http/istek-baglami.js';
+import { istekBaglami } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';
 

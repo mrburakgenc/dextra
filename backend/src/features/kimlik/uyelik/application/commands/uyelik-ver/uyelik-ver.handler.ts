@@ -1,11 +1,11 @@
 // Üyelik ver işinin işleyicisi (TS-002 "İşlem sınırları"; KR-008 Seçim 47 ve eki; AK-39).
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
-import { istekBaglami } from '../../../../../../shared/http/istek-baglami.js';
+import { istekBaglami } from '../../../../../../shared/observability/istek-baglami/istek-baglami.js';
 import {
   type HataKodu,
   KodluHata,
-} from '../../../../../../shared/http/kodlu-hata.js';
+} from '../../../../../../shared/http/domain/kodlu-hata.js';
 import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
 import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
