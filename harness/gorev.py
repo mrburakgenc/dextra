@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime
+import fcntl
 import hashlib
 import json
 import os
@@ -25,6 +26,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 import h
 
@@ -325,6 +327,8 @@ def ozet(kok: pathlib.Path, kimlik: str, islem: str = "kos", ekler: list | None 
         return ("%s\nİşi yapmayan ikinci bir oturum bu işi inceleyecek: %d dosya değişti\n"
                 "model: %s · en çok %s tur · %s sn sonra durdurulur · ağaç: %s"
                 % (bas, len(degisen), g.get("inceleme_model") or g["model"], g["max_tur"], g["zaman_asimi_sn"], agac))
+    if islem == "al" and d.get("alindi"):
+        return "%s\nGörev alınmış; yalnız yarım kalan temizlik yapılacak: görevin ağacı ve dalı silinecek" % bas
     if islem == "al":
         return ("%s\n%d dosyalık değişiklik `%s` dalına birleştirilecek; görevin ağacı ve dalı silinecek\n%s"
                 % (bas, len(degisen), h.dal_adi(kok) or "?", "\n".join("  " + f for f in degisen[:20])))
@@ -936,14 +940,39 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
 
 
 def al(kok: pathlib.Path, kimlik: str) -> dict:
-    """Temiz koşan ve incelenen işi orchestrator'ın dalına birleştirir; ağacı ve dalı temizler."""
+    """Yan yana gelen almaları sıraya sokar: bütün ağaçların paylaştığı bir dosya kilidi alınana kadar en çok
+    `gorev.alma_bekleme_sn` bekler. Kilidi süreç tutar; süreç ölünce işletim sistemi bırakır."""
+    kok = pathlib.Path(kok)
+    sinir = h.ayar_oku(kok)["gorev"]["alma_bekleme_sn"]
+    yol = h.ortak_kok(kok) / ".harness" / "alma.kilit"
+    yol.parent.mkdir(parents=True, exist_ok=True)
+    son = time.monotonic() + sinir
+    with open(yol, "a") as kilit:
+        while True:
+            try:
+                fcntl.flock(kilit, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= son:
+                    raise h.HarnessHata("%s alınamadı: başka bir alma %s sn içinde bitmedi; hiçbir şey değişmedi. "
+                                        "O bitince yeniden dene (süre sınırı: gorev.alma_bekleme_sn; kilit: %s)"
+                                        % (kimlik, sinir, yol))
+                time.sleep(0.2)
+        return _al(kok, kimlik)
+
+
+def _al(kok: pathlib.Path, kimlik: str) -> dict:
+    """Temiz koşan ve incelenen işi orchestrator'ın dalına birleştirir; ağacı ve dalı temizler. Yarıda kalırsa
+    oturum dalı ve görev ağacı alma öncesine döner; görevin imzası değişmez, iş yeniden koşmadan alınabilir."""
     kok = pathlib.Path(kok)
     g = h.ayar_oku(kok)["gorev"]
     kayit = _kayit(kok, kimlik)
     d = _durum_oku(kok, kimlik, kayit)
     agac = _agac(kok, kimlik)
     if d.get("alindi"):
-        raise h.HarnessHata("%s zaten alınmış" % kimlik)
+        if not agac.is_dir() and not _dal_var(kok, d["dal"]):
+            raise h.HarnessHata("%s zaten alınmış" % kimlik)
+        return dict(_alma_temizligi(kok, kimlik, kayit, d, agac), onceden=True)   # yarım kalan temizlik
     if d["durum"] != "tamam" or not agac.is_dir():
         raise h.HarnessHata("%s alınamaz: koşum temiz değil (%s)"
                             % (kimlik, asama(d, _json_oku(kayit / "rapor.json"), True)[1]))
@@ -958,24 +987,93 @@ def al(kok: pathlib.Path, kimlik: str) -> dict:
         _degismedi_mi(kok, kimlik, d, d.get("kosum_imza"), "koşumdan sonra",
                       "Yeniden koştur: python3 harness/h.py gorev kos %s" % kimlik)
     mesaj = "%s: %s" % (kimlik, d["baslik"])
+    if _birlestirme_suruyor(kok):
+        raise h.HarnessHata("%s alınamadı: oturum ağacında süren bir birleştirme var; hiçbir şeye dokunulmadı. "
+                            "Önce onu bitir ya da geri al, sonra yeniden al" % kimlik)
     _yerel_durumu_yoksay(kok)
-    h._git(agac, "add", "-A")
-    if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=agac).returncode != 0:
-        h._git(agac, "commit", "-q", "-m", mesaj)
-    r = subprocess.run(["git", "merge", "--no-ff", "--no-edit", "-m", mesaj, d["dal"]], cwd=kok,
-                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # Birleştirilecek commit görev ağacına ve dalına dokunmadan üretilir; birleştirme yarıda kalırsa (hata, Ctrl-C ya
+    # da öldürülen süreç) görev ağacında geri alınacak bir şey yoktur, imza değişmez. Oturum ağacında bu almanın
+    # bıraktığı yarım birleştirme geri alınır. Başarılı birleştirme kesinleşme noktasıdır: 'alındı' kaydı ve plan
+    # işareti temizlikten önce yazılır; ağacın ve dalın silinmesi hata verirse alma geçerli kalır, hata uyarı olur.
+    is_commiti = _is_commiti(agac, kimlik, mesaj)
+    try:
+        r = subprocess.run(["git", "merge", "--no-ff", "--no-edit", "-m", mesaj, is_commiti], cwd=kok,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        cakisan = ([f for f in h._git(kok, "diff", "--name-only", "--diff-filter=U").split("\n") if f]
+                   if r.returncode != 0 else [])
+    except BaseException:
+        _yarim_birlestirmeyi_geri_al(kok, kimlik, d, "kesildi")
+        raise
     if r.returncode != 0:
-        subprocess.run(["git", "merge", "--abort"], cwd=kok, capture_output=True)
+        if cakisan:
+            _yarim_birlestirmeyi_geri_al(kok, kimlik, d, "oturum dalıyla çakışıyor (çakışan dosyalar: %s)"
+                                         % ", ".join(cakisan))
+            raise h.HarnessHata("%s alınamadı: oturum dalıyla çakışıyor; birleştirme geri alındı, iş %s ağacında "
+                                "alma öncesindeki gibi duruyor. Çakışan dosyalar: %s. Çakışmayı giderdikten sonra "
+                                "yeniden al; yeniden koşturmak gerekmez"
+                                % (kimlik, d["agac"], ", ".join(cakisan)))
+        _yarim_birlestirmeyi_geri_al(kok, kimlik, d, "birleştirme başarısız oldu")
         raise h.HarnessHata("%s alınamadı: birleştirme başarısız oldu ve geri alındı; iş %s ağacında duruyor. %s"
                             % (kimlik, d["agac"], (r.stdout + r.stderr).strip()[-300:]))
     sha = h._git(kok, "rev-parse", "HEAD").strip()
-    h._git(kok, "worktree", "remove", "--force", str(agac))
-    h._git(kok, "branch", "-d", d["dal"])
     d.update({"alindi": True, "alindi_sha": sha, "alindi_dal": h.dal_adi(kok), "alindi_zaman": _simdi()})
     _json_yaz(kayit / "durum.json", d)
     _plani_guncelle(kok, d)
-    return {"gorev": kimlik, "dal": d["alindi_dal"], "sha": sha[:8],
-            "degisen": _json_oku(kayit / "rapor.json").get("degisen") or []}
+    return _alma_temizligi(kok, kimlik, kayit, d, agac)
+
+
+def _alma_temizligi(kok: pathlib.Path, kimlik: str, kayit: pathlib.Path, d: dict, agac: pathlib.Path) -> dict:
+    """Alınmış görevin ağacını ve dalını siler. Hata verirse alma geçerli kalır; hata 'uyari' olarak döner ve aynı
+    komut yeniden çalıştırılınca yalnız kalan temizlik yapılır."""
+    uyari = None
+    try:
+        if agac.is_dir():
+            h._git(kok, "worktree", "remove", "--force", str(agac))
+        if _dal_var(kok, d["dal"]):
+            h._git(kok, "branch", "-d", d["dal"])
+    except h.HarnessHata as e:
+        uyari = str(e)
+    return {"gorev": kimlik, "dal": d["alindi_dal"], "sha": d["alindi_sha"][:8],
+            "degisen": _json_oku(kayit / "rapor.json").get("degisen") or [], "uyari": uyari}
+
+
+def _is_commiti(agac: pathlib.Path, kimlik: str, mesaj: str) -> str:
+    """Görev ağacındaki işi (commit'li, commit'siz ve yeni dosyalar) ağaca ve dala dokunmadan tek commit olarak üretir:
+    geçici hazırlık alanı, write-tree ve commit-tree. Commit kapısı (pre-commit) `git commit`teki gibi aynı ağaçta ve
+    aynı içerikle koşar; kırmızıysa alma hiçbir şeyi değiştirmeden durur. İş yoksa görev dalının ucu döner."""
+    with tempfile.TemporaryDirectory(prefix="harness-al-") as gecici:
+        ortam = dict(os.environ, GIT_INDEX_FILE=str(pathlib.Path(gecici) / "index"))
+        for arg in (["read-tree", "HEAD"], ["add", "-A"]):
+            subprocess.run(["git", *arg], cwd=agac, env=ortam, check=True, capture_output=True)
+        agac_ozeti = subprocess.run(["git", "write-tree"], cwd=agac, env=ortam, check=True,
+                                    capture_output=True, text=True).stdout.strip()
+        if agac_ozeti == h._git(agac, "rev-parse", "HEAD^{tree}").strip():
+            return h._git(agac, "rev-parse", "HEAD").strip()
+        r = subprocess.run(["git", "hook", "run", "--ignore-missing", "pre-commit"], cwd=agac, env=ortam,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode != 0:
+            raise h.HarnessHata("%s alınamadı: commit kapısı (pre-commit) geçmedi; hiçbir şey değişmedi. %s"
+                                % (kimlik, (r.stdout + r.stderr).strip()[-300:]))
+    return h._git(agac, "commit-tree", agac_ozeti, "-p", "HEAD", "-m", mesaj).strip()
+
+
+def _yarim_birlestirmeyi_geri_al(kok: pathlib.Path, kimlik: str, d: dict, neden: str) -> None:
+    """Oturum ağacında bu almanın bıraktığı yarım birleştirmeyi geri alır; geri alamazsa durumu olduğu gibi bildirir."""
+    if not _birlestirme_suruyor(kok):
+        return
+    r = subprocess.run(["git", "merge", "--abort"], cwd=kok, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace")
+    if r.returncode != 0:
+        raise h.HarnessHata("%s alınamadı: %s; oturum ağacındaki yarım birleştirme geri ALINAMADI (git merge --abort: "
+                            "%s). Oturum ağacı birleştirmenin ortasında duruyor: elle geri al (git merge --abort), "
+                            "sonra yeniden al. Görev ağacına dokunulmadı; iş %s ağacında alma öncesindeki gibi duruyor"
+                            % (kimlik, neden, (r.stdout + r.stderr).strip()[-300:] or "çıkış kodu %d" % r.returncode,
+                               d["agac"]))
+
+
+def _birlestirme_suruyor(kok: pathlib.Path) -> bool:
+    return subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=kok,
+                          capture_output=True).returncode == 0
 
 
 def at(kok: pathlib.Path, kimlik: str) -> dict:
@@ -1164,8 +1262,12 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         return 0 if rapor["sonuc"] == "gecti" else 1
     if arg[:1] == ["al"] and len(arg) > 1:
         s = al(kok, arg[1])
-        print("%s alındı: `%s` dalına birleştirildi (%s), %d dosya; ağaç ve dal silindi"
-              % (s["gorev"], s["dal"], s["sha"], len(s["degisen"])))
+        print(("%s zaten alınmıştı: `%s` dalına birleştirilmişti (%s), %d dosya; " if s.get("onceden") else
+               "%s alındı: `%s` dalına birleştirildi (%s), %d dosya; ")
+              % (s["gorev"], s["dal"], s["sha"], len(s["degisen"]))
+              + ("ağaç ve dal silindi" if not s["uyari"] else
+                 "ağaç ve dal silinemedi (%s). Kalanı silmek için yeniden çalıştır: python3 harness/h.py gorev al %s"
+                 % (s["uyari"], s["gorev"])))
         return 0
     if arg[:1] == ["at"] and len(arg) > 1:
         at(kok, arg[1])

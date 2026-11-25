@@ -457,12 +457,13 @@ def yurut(kok: pathlib.Path, ep: str, en_cok: int | None = None, bildir=None) ->
         for y, neden in zip(tur, nedenler):
             if neden is None:
                 try:
-                    gorev.al(kok, y["gorev"])
+                    s = gorev.al(kok, y["gorev"])
                 except h.HarnessHata as e:
                     neden = ("alma", str(e))
                 else:
                     alinan.append(y["gorev"])
-                    bildir("%s %s (%s): alındı" % (ep, y["no"], y["gorev"]))
+                    bildir("%s %s (%s): alındı" % (ep, y["no"], y["gorev"])
+                           + ("; ağaç ve dal silinemedi (%s)" % s["uyari"] if s["uyari"] else ""))
             if neden is not None and duran is None:
                 duran = {"no": y["no"], "gorev": y["gorev"], "baslik": y["baslik"], "asama": neden[0], "neden": neden[1]}
     return {"epic": ep, "alinan": alinan, "duran": duran, "kalan": [y["no"] for y in hazir(kok, ep)],
