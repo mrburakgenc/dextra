@@ -2,6 +2,8 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tarihSaat } from '../../../shared/bicim/bicim';
+import type { YetkiKurali } from '../../../shared/yetki/yetki';
+import { YetkiSaglayici } from '../../../shared/yetki/yetki-saglayici';
 import GruplarSayfasi from './page';
 
 vi.mock('server-only', () => ({}));
@@ -53,8 +55,16 @@ function listeCevabi(
   );
 }
 
-async function goster(sorgu: Record<string, string | string[]> = {}) {
-  render(await GruplarSayfasi({ searchParams: Promise.resolve(sorgu) }));
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+async function goster(
+  sorgu: Record<string, string | string[]> = {},
+  kurallar: YetkiKurali[] = [],
+) {
+  render(
+    <YetkiSaglayici kurallar={kurallar}>
+      {await GruplarSayfasi({ searchParams: Promise.resolve(sorgu) })}
+    </YetkiSaglayici>,
+  );
 }
 
 function istekAdresi(): URL {
@@ -67,6 +77,14 @@ function istekAdresi(): URL {
 
 function baglanti(ad: string): string | null {
   return screen.getByRole('link', { name: ad }).getAttribute('href');
+}
+
+// Adı verilen grubun satırındaki 'Alt gruplar' bağlantısının adresi.
+function altGruplar(ad: string): string | null {
+  const satir = screen.getByRole('link', { name: ad }).closest('tr');
+  return within(satir ?? document.body)
+    .getByRole('link', { name: 'Alt gruplar' })
+    .getAttribute('href');
 }
 
 function hucreler(satir: HTMLElement | undefined): (string | null)[] {
@@ -102,11 +120,26 @@ describe('GruplarSayfasi liste', () => {
       within(tablo)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Ad', 'Üst grup', 'Oluşturma zamanı']);
+    ).toEqual(['Ad', 'Üst grup', 'Oluşturma zamanı', 'Alt gruplar']);
     const [, kok, alt, baska] = within(tablo).getAllByRole('row');
-    expect(hucreler(kok)).toEqual(['Merkez', '—', tarihSaat(OLUSTURMA)]);
-    expect(hucreler(alt)).toEqual(['Muhasebe', 'Merkez', tarihSaat(OLUSTURMA)]);
-    expect(hucreler(baska)).toEqual(['Satış', '—', tarihSaat(OLUSTURMA)]);
+    expect(hucreler(kok)).toEqual([
+      'Merkez',
+      '—',
+      tarihSaat(OLUSTURMA),
+      'Alt gruplar',
+    ]);
+    expect(hucreler(alt)).toEqual([
+      'Muhasebe',
+      'Merkez',
+      tarihSaat(OLUSTURMA),
+      'Alt gruplar',
+    ]);
+    expect(hucreler(baska)).toEqual([
+      'Satış',
+      '—',
+      tarihSaat(OLUSTURMA),
+      'Alt gruplar',
+    ]);
   });
 
   it('kayıtta gelmeyen kolonlar boş işaretle gösterilir', async () => {
@@ -115,7 +148,16 @@ describe('GruplarSayfasi liste', () => {
     await goster();
 
     const [, satir] = screen.getAllByRole('row');
-    expect(hucreler(satir)).toEqual(['—', '—', '—']);
+    expect(hucreler(satir)).toEqual(['—', '—', '—', 'Alt gruplar']);
+  });
+
+  it('grup adı kayıt sayfasına bağlantıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({ sirala: 'ad' });
+
+    expect(baglanti('Merkez')).toBe(`/gruplar/${KOK}`);
+    expect(baglanti('Muhasebe')).toBe(`/gruplar/${ALT}`);
   });
 
   it('backend\'e oturumlu GET isteği atar; sayfa ve sıralama adresten gider', async () => {
@@ -134,19 +176,19 @@ describe('GruplarSayfasi liste', () => {
 });
 
 describe('GruplarSayfasi üst grup süzgeci', () => {
-  it('grup adına tıklama bağlantısı ustGrupId süzgecini adrese yazar, sıralamayı korur ve ilk sayfaya döner', async () => {
+  it('Alt gruplar bağlantısı ustGrupId süzgecini adrese yazar, sıralamayı korur ve ilk sayfaya döner', async () => {
     sahteFetch.mockResolvedValue(listeCevabi({ sayfa: 2 }));
 
     await goster({ sayfa: '2', sirala: 'ad' });
 
-    expect(baglanti('Merkez')).toBe(`/gruplar?sirala=ad&ustGrupId=${KOK}`);
-    expect(baglanti('Muhasebe')).toBe(`/gruplar?sirala=ad&ustGrupId=${ALT}`);
+    expect(altGruplar('Merkez')).toBe(`/gruplar?sirala=ad&ustGrupId=${KOK}`);
+    expect(altGruplar('Muhasebe')).toBe(`/gruplar?sirala=ad&ustGrupId=${ALT}`);
   });
 
-  it('grup adının bağlantısı izlenince ustGrupId backend isteğine gider', async () => {
+  it('Alt gruplar bağlantısı izlenince ustGrupId backend isteğine gider', async () => {
     sahteFetch.mockResolvedValue(listeCevabi());
     await goster({ sirala: '-ad' });
-    const hedef = new URL(baglanti('Muhasebe') ?? '', 'http://ekran.sinama');
+    const hedef = new URL(altGruplar('Muhasebe') ?? '', 'http://ekran.sinama');
     cleanup();
     sahteFetch.mockClear();
 
@@ -192,6 +234,34 @@ describe('GruplarSayfasi üst grup süzgeci', () => {
     await goster({ sayfa: '0', sirala: 'kod', ustGrupId: 'kok&sayfa=9' });
 
     expect(istekAdresi().search).toBe('?sayfa=1');
+  });
+});
+
+describe('GruplarSayfasi Yeni grup bağlantısı', () => {
+  const OLUSTURUR: YetkiKurali[] = [{ action: 'olustur', subject: 'Grup' }];
+
+  it('Grup olustur kuralı olan kişi Yeni grup bağlantısını görür', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, OLUSTURUR);
+
+    expect(baglanti('Yeni grup')).toBe('/gruplar/yeni');
+  });
+
+  it('liste bir grubun altıyla süzülmüşse bağlantı o grubu ustGrupId olarak taşır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({ sirala: 'ad', ustGrupId: KOK }, OLUSTURUR);
+
+    expect(baglanti('Yeni grup')).toBe(`/gruplar/yeni?ustGrupId=${KOK}`);
+  });
+
+  it('Grup olustur kuralı olmayan kişi Yeni grup bağlantısını görmez', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Grup' }]);
+
+    expect(screen.queryByRole('link', { name: 'Yeni grup' })).toBeNull();
   });
 });
 

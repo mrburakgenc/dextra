@@ -13,7 +13,7 @@ export const RolListesiSorgusu = z.object({
 export type RolListesiSorgusu = z.infer<typeof RolListesiSorgusu>;
 
 // kod yalnız sistem rollerinde doludur; kişinin göremediği kolon gelmez (undefined).
-const RolKaydi = z.object({
+export const RolKaydi = z.object({
   id: z.string(),
   kod: z.string().nullable().optional(),
   ad: z.string().optional(),
