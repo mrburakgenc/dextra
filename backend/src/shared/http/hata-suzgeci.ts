@@ -43,7 +43,8 @@ const DURUM_KODLARI = new Map<number, HataKodu>(
 );
 
 // Bütün uçların tek hata süzgeci (TS-002 AK-11, AK-26). Kodlu olmayan hata beklenmeyen_hata olur;
-// cevap iç ayrıntı taşımaz. 5xx üreten her hata istek kimliğiyle günlüğe yazılır; 4xx yazılmaz.
+// cevap iç ayrıntı taşımaz. 5xx üreten her hata istek kimliğiyle günlüğe yazılır; 4xx yazılmaz,
+// yalnız "kayıt yok" (P2025) uyarı düzeyinde yazılır (AK-48 eki).
 @Catch()
 export class HataSuzgeci implements ExceptionFilter {
   private readonly gunluk = new Logger(HataSuzgeci.name);
@@ -59,10 +60,19 @@ export class HataSuzgeci implements ExceptionFilter {
       yanit.setHeader(ISTEK_KIMLIGI_BASLIGI, yeniKimlik());
     }
     const durum = HATA_DURUMLARI[cevap.kod];
+    const istekKimligi = String(yanit.getHeader(ISTEK_KIMLIGI_BASLIGI));
     if (durum >= 500) {
-      const istekKimligi = String(yanit.getHeader(ISTEK_KIMLIGI_BASLIGI));
       this.gunluk.error(
         `istek ${istekKimligi}: ${String(hata instanceof Error ? hata.stack : hata)}`,
+      );
+    } else if (
+      hata instanceof Prisma.PrismaClientKnownRequestError &&
+      hata.code === 'P2025'
+    ) {
+      // 404'e çevrilen "kayıt yok" sunucu içi bir aramanın boş dönmesinden de gelebilir; sessiz
+      // kalmaz (TS-002 AK-48 eki). Satır yalnız hatanın türünü ve modelin adını taşır, değer taşımaz.
+      this.gunluk.warn(
+        `istek ${istekKimligi}: kayıt yok (P2025), model ${String(hata.meta?.['modelName'])}`,
       );
     }
     this.adaptor.httpAdapter.reply(yanit, cevap, durum);

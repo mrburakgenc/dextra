@@ -67,6 +67,11 @@ function hataGunluguGozle() {
   return vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 }
 
+// Uyarı düzeyi Logger.prototype.warn'dır; "kayıt yok" dalı bu düzeyde yazar (AK-48 eki).
+function uyariGunluguGozle() {
+  return vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+}
+
 @Controller('sinama')
 class SinamaController {
   constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
@@ -375,6 +380,47 @@ describe('HTTP temeli', () => {
         gunluk.mockRestore();
       }
     });
+
+    it('kayıt yok hatası uyarı düzeyinde tek satır yazar: istek kimliği, hatanın türü ve model adı; değer taşımaz (AK-48 eki)', async () => {
+      const hataGunlugu = hataGunluguGozle();
+      const uyariGunlugu = uyariGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/kayit-yok');
+
+        expect(cevap.status).toBe(404);
+        const istekKimligi = String(cevap.headers[ISTEK_KIMLIGI_BASLIGI]);
+        expect(istekKimligi).toMatch(UUID_V7);
+        expect(uyariGunlugu).toHaveBeenCalledTimes(1);
+        expect(uyariGunlugu).toHaveBeenCalledWith(
+          `istek ${istekKimligi}: kayıt yok (P2025), model OutboxIz`,
+        );
+        expect(hataGunlugu).not.toHaveBeenCalled();
+      } finally {
+        hataGunlugu.mockRestore();
+        uyariGunlugu.mockRestore();
+      }
+    });
+
+    it.each([
+      ['tekil kısıt', '/sinama/tekil'],
+      ['yabancı anahtar ihlali', '/sinama/yabanci-anahtar'],
+    ])(
+      '%s (%s) 409 döner ve ne uyarı ne hata düzeyinde günlüğe yazılır',
+      async (_dal, yol) => {
+        const hataGunlugu = hataGunluguGozle();
+        const uyariGunlugu = uyariGunluguGozle();
+        try {
+          const cevap = await request(sunucu()).post(yol);
+
+          expect(cevap.status).toBe(409);
+          expect(uyariGunlugu).not.toHaveBeenCalled();
+          expect(hataGunlugu).not.toHaveBeenCalled();
+        } finally {
+          hataGunlugu.mockRestore();
+          uyariGunlugu.mockRestore();
+        }
+      },
+    );
 
     it('işlem süre aşımı 503 yeniden_dene olur', async () => {
       const cevap = await request(sunucu()).get('/sinama/sure-asimi');
