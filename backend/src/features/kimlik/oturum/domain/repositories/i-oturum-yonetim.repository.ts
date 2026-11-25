@@ -4,11 +4,22 @@
 // değildir ve gelmez. Gerçeklemeleri infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { OturumKapatmaNedeni } from '../entities/oturum.entity.js';
+
+// Okunan oturum kaydı: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface OturumGorunumu {
+  readonly id: string;
+  readonly kullaniciId?: string;
+  readonly girisYontemi?: string;
+  readonly baslangicZamani?: Date;
+  readonly mutlakBitisZamani?: Date;
+  readonly sonDondurmeZamani?: Date;
+  readonly ipAdresi?: string;
+  readonly tarayiciBilgisi?: string;
+  readonly kapatilmaZamani?: Date | null;
+  readonly kapatilmaNedeni?: string | null;
+}
 
 export interface OturumListeIstegi {
   // Verilirse yalnız o kişinin oturumları.
@@ -23,9 +34,9 @@ export interface OturumListeIstegi {
 }
 
 export interface IOturumYonetimOkumaRepo {
-  liste(istek: OturumListeIstegi): Promise<Kayit[]>;
+  liste(istek: OturumListeIstegi): Promise<OturumGorunumu[]>;
   // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  tek(id: string): Promise<Kayit>;
+  tek(id: string): Promise<OturumGorunumu>;
 }
 
 export const OTURUM_YONETIM_OKUMA_REPO = new RepoBelirteci<

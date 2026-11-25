@@ -1,4 +1,4 @@
 // Oturumu oku işinin sonucu: isteyenin görebildiği kolonları ve kimliği taşıyan düz kayıt.
-import type { Kayit } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { OturumGorunumu } from '../../../domain/repositories/i-oturum-yonetim.repository.js';
 
-export type OturumOkuSonucu = Kayit;
+export type OturumOkuSonucu = OturumGorunumu;

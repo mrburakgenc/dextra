@@ -22,13 +22,14 @@ import {
 import { oturumDenetimiPrismaRepository } from './infrastructure/repositories/oturum-denetimi.prisma-repository.js';
 import { oturumPrismaRepository } from './infrastructure/repositories/oturum.prisma-repository.js';
 import { oturumYonetimOkumaPrismaRepository } from './infrastructure/repositories/oturum-yonetim-okuma.prisma-repository.js';
-import { KapiOturumYonetimYazmaRepo } from './infrastructure/repositories/oturum-yonetim-yazma.kapi-repository.js';
+import { PrismaOturumYonetimYazmaRepo } from './infrastructure/repositories/oturum-yonetim-yazma.prisma-repository.js';
 import { OturumController } from './presentation/oturum.controller.js';
 
 // Oturum alt özelliği (TS-002 AK-30). Giriş belirteç üreticisini ve adres imzası doğrulayıcısını
 // güvenlik modülünden, parola ile giriş yöntemini parola modülünden alır. Oturumların listelenmesi
-// ve kapatılması (AK-51) kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel
-// YetkiModule verir (AK-42).
+// ve kapatılması (AK-51) kaynağı kendi sorgularıyla okur ve kendi deyimiyle yazar; süzgeci ve yazmanın
+// sırasını yetki kapısının okuma ve yazma yüzü verir (TS-007); kapıları kök modülde bir kez kurulan
+// genel YetkiModule verir (AK-42).
 @Module({
   imports: [
     DatabaseModule,
@@ -48,7 +49,7 @@ import { OturumController } from './presentation/oturum.controller.js';
     OturumKapatHandler,
     {
       provide: OTURUM_YONETIM_YAZMA_REPO,
-      useClass: KapiOturumYonetimYazmaRepo,
+      useClass: PrismaOturumYonetimYazmaRepo,
     },
   ],
   exports: [OturumDenetimiHandler],
