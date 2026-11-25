@@ -1,8 +1,11 @@
 import { Prisma } from '../database/generated/client.js';
+import { ALAN_TIPLERI, type AlanTipi } from './alan-tipleri.js';
 
-// Kaynak türünün adından o türün alan adlarına; bilinmeyen tür için undefined.
+// Kaynak türünün adından o türün alan adlarına ve alanlarının tiplerine (TS-002 AK-44); bilinmeyen
+// tür için undefined.
 export interface KaynakKatalogu {
   alanlar(tur: string): readonly string[] | undefined;
+  alanTipleri(tur: string): Readonly<Record<string, AlanTipi>> | undefined;
 }
 
 // Yazma kapısının kataloğu: alanlara ek olarak yalnız sistemin yazdığı alanları bilir; onlar istek
@@ -23,7 +26,7 @@ const ORTAK_SISTEM_ALANLARI = [
   'silinmeZamani',
 ];
 
-type AlanAdi<M extends Prisma.ModelName> =
+export type AlanAdi<M extends Prisma.ModelName> =
   (typeof Prisma)[`${M}ScalarFieldEnum`][keyof (typeof Prisma)[`${M}ScalarFieldEnum`]];
 
 // Kaynağa özgü sistem alanları; anahtar model adı, değer o modelin alan adlarıdır.
@@ -33,7 +36,7 @@ export type SistemAlanlari = {
 
 // Verilen Prisma modellerinden katalog: kaynak model adıdır ve alanları modelin ilişki olmayan
 // alanlarıdır (KR-008 Seçim 21 ve 33). Listede olmayan model kaynak değildir. Sistem alanları ortak
-// adlar ile verilen kaynağa özgü alanlardır.
+// adlar ile verilen kaynağa özgü alanlardır. Alan tipleri ALAN_TIPLERI tablosundan okunur.
 export function prismaKaynakKatalogu(
   kaynaklar: readonly Prisma.ModelName[],
   sistemAlanlari: SistemAlanlari = {},
@@ -55,8 +58,12 @@ export function prismaKaynakKatalogu(
       ],
     ]),
   );
+  const tipler = new Map<string, Readonly<Record<string, AlanTipi>>>(
+    kaynaklar.map((kaynak) => [kaynak, ALAN_TIPLERI[kaynak]]),
+  );
   return {
     alanlar: (tur) => alanlar.get(tur),
+    alanTipleri: (tur) => tipler.get(tur),
     sistemAlanlari: (tur) => sistem.get(tur) ?? [],
   };
 }
