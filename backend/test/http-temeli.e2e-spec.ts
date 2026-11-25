@@ -126,6 +126,16 @@ class SinamaController {
     });
   }
 
+  @Post('kayit-yok')
+  @HerkeseAcik()
+  async kayitYok(): Promise<void> {
+    // Var olmayan satırı güncelleyen gerçek yazma; istemci "kayıt bulunamadı" hatası verir.
+    await this.prisma.outboxIz.update({
+      where: { id: yeniKimlik() },
+      data: { surum: 2 },
+    });
+  }
+
   @Get('sure-asimi')
   @HerkeseAcik()
   async sureAsimi(): Promise<void> {
@@ -342,6 +352,24 @@ describe('HTTP temeli', () => {
         expect(cevap.text).not.toMatch(
           /kullanici|sirri|_ya\b|foreign|constraint/i,
         );
+        expect(gunluk).not.toHaveBeenCalled();
+      } finally {
+        gunluk.mockRestore();
+      }
+    });
+
+    it('kayıt yok hatası 404 bulunamadi olur; gövde tablo ya da model adı taşımaz, hata günlüğüne yazılmaz (AK-48)', async () => {
+      const gunluk = hataGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/kayit-yok');
+
+        expect(cevap.status).toBe(404);
+        expect(cevap.body).toEqual({
+          kod: 'bulunamadi',
+          ileti: 'Kayıt bulunamadı',
+          ayrinti: null,
+        });
+        expect(cevap.text).not.toMatch(/outbox|_iz\b|OutboxIz|record|P2025/i);
         expect(gunluk).not.toHaveBeenCalled();
       } finally {
         gunluk.mockRestore();

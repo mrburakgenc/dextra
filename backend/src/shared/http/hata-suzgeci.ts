@@ -86,6 +86,11 @@ export class HataSuzgeci implements ExceptionFilter {
           ayrinti: null,
         };
       }
+      // P2025 güncellenecek ya da silinecek kayıt yok (TS-002 AK-48): ileti hangi kaydın ya da
+      // modelin söz konusu olduğunu söylemez.
+      if (hata.code === 'P2025') {
+        return { kod: 'bulunamadi', ileti: 'Kayıt bulunamadı', ayrinti: null };
+      }
       const kod = PRISMA_KODLARI[hata.code];
       if (kod !== undefined) {
         return { kod, ileti: SABIT_ILETILER[kod], ayrinti: null };
