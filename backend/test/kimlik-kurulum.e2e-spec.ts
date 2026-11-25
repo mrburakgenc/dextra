@@ -1,4 +1,5 @@
-// İlk kurulum göçü 202611240000-kimlik-kurulum (GV-027, GV-042; TS-002 AK-2, AK-3). Koşturma:
+// İlk kurulum göçü 202611240000-kimlik-kurulum (GV-027, GV-042; TS-002 AK-2, AK-3) ve yasak izinleri
+// göçü 202611260000-kimlik-yasak-izinleri (GV-145; TS-008 "Aşamalar" 1 (b)). Koşturma:
 //   pnpm -C backend test:e2e test/kimlik-kurulum.e2e-spec.ts --reporter=verbose
 // Göçleri uygulanmış boş geçici veritabanında, uygulamanın KimlikModule'üyle kurulmuş tohum koşucusu
 // çalıştırılır. Önce kuru koşu, sonra gerçek koşu yapılır; satırlar ayrı bir pg bağlantısından okunur.
@@ -6,11 +7,14 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-kurulum.goc.js';
+import { KIMLIK_YASAK_IZINLERI_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-yasak-izinleri.goc.js';
 import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/application/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import type { YetenekSatiri } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
+import { TohumDefteri } from '../src/shared/tohum/application/tohum-defteri.js';
 import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { yetenekleriDerle } from '../src/shared/yetki/application/yetenek-derleyici.js';
@@ -21,8 +25,13 @@ import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 const GOC_ADI = '202611240000-kimlik-kurulum';
 const IS_ADI = `tohum:${GOC_ADI}`;
+const YENI_GOC_ADI = '202611260000-kimlik-yasak-izinleri';
+const YENI_IS_ADI = `tohum:${YENI_GOC_ADI}`;
 
-// TS-002 "Uçlar ve izinler", yönetim listesi: 27 (kaynak, eylem) çifti.
+// TS-008 "Veri modeli": yasak izinleri göçünün yazdığı iki izin.
+const YASAK_IZINLERI = ['Yetenek:yasakla', 'Yetenek:teshis'];
+
+// TS-002 "Uçlar ve izinler", yönetim listesi: 27 (kaynak, eylem) çifti; TS-008'in iki izniyle 29.
 const YONETIM_IZINLERI = [
   'Kullanici:oku',
   'Kullanici:olustur',
@@ -51,6 +60,7 @@ const YONETIM_IZINLERI = [
   'Yetenek:olustur',
   'Yetenek:yenile',
   'Yetenek:sil',
+  ...YASAK_IZINLERI,
 ];
 
 // Notu olan kaynak tabloları ve model adları. Genel sayaç (AK-20) ve koşucunun defteri not bırakmaz.
@@ -72,22 +82,29 @@ let gozlemciPid: number;
 async function satirlar<T extends pg.QueryResultRow>(
   sql: string,
   degerler: unknown[] = [],
+  istemci: pg.Client = gozlemci,
 ): Promise<T[]> {
-  return (await gozlemci.query<T>(sql, degerler)).rows;
+  return (await istemci.query<T>(sql, degerler)).rows;
 }
 
 // Göç defteri dahil, Prisma'nın kendi defteri hariç bütün tabloların satır sayıları.
-async function satirSayilari(): Promise<Record<string, number>> {
+async function satirSayilari(
+  istemci: pg.Client = gozlemci,
+): Promise<Record<string, number>> {
   const tablolar = await satirlar<{ ad: string }>(
     `select table_name as ad from information_schema.tables
       where table_schema = 'public' and table_type = 'BASE TABLE'
         and table_name <> '_prisma_migrations'
       order by table_name`,
+    [],
+    istemci,
   );
   const sayilar: Record<string, number> = {};
   for (const { ad } of tablolar) {
     const [satir] = await satirlar<{ sayi: number }>(
       `select count(*)::int as sayi from "${ad}"`,
+      [],
+      istemci,
     );
     sayilar[ad] = satir?.sayi ?? -1;
   }
@@ -120,23 +137,62 @@ async function sunucudaVarMi(veritabani: string): Promise<boolean> {
   }
 }
 
+// Göçü tohum defterine KimlikModule'ün kendisi bildirir. Kapıları sağlayan ortak modül kök
+// modüldeki gibi kimlik kaynaklarının kataloğuyla kurulur (TS-002 AK-42 eki).
+function modulKur(url: string): Promise<TestingModule> {
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: url }),
+  });
+  return Test.createTestingModule({
+    imports: [
+      KimlikModule,
+      YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
+    ],
+  })
+    .overrideProvider(PRISMA_CLIENT)
+    .useValue(prisma)
+    .compile();
+}
+
+// Kurulumun karşılaştırılabilir dökümü: kimlikler ve zamanlar dışında yazılan her şey.
+async function dokum(istemci: pg.Client): Promise<unknown> {
+  return {
+    sayilar: await satirSayilari(istemci),
+    sayac: await satirlar('select id, sayac from yetki_surumu', [], istemci),
+    gocler: await satirlar(
+      'select ad from tohum_gocu order by ad',
+      [],
+      istemci,
+    ),
+    izinler: await satirlar(
+      "select kaynak || ':' || eylem as cift from izin order by cift",
+      [],
+      istemci,
+    ),
+    yetenekler: await satirlar(
+      `select g.ad as grup, r.kod as rol, i.kaynak || ':' || i.eylem as cift, y.sart,
+              y.butun_kayitlar, y.butun_birimler, y.kolonlar, y.butun_kolonlar, y.sistem_satiri,
+              y.giremez, y.oncelik, y.koken, y.tohum_anahtari, y.silinme_zamani
+         from yetenek y join izin i on i.id = y.izin_id join rol r on r.id = y.rol_id
+         join grup g on g.id = y.grup_id
+        order by y.tohum_anahtari`,
+      [],
+      istemci,
+    ),
+    notlar: await satirlar(
+      `select govde->>'is_adi' as is_adi, govde->>'kaynak' as kaynak,
+              govde->>'eylem' as eylem, count(*)::int as sayi
+         from outbox_iz group by 1, 2, 3 order by 1, 2, 3`,
+      [],
+      istemci,
+    ),
+  };
+}
+
 beforeAll(async () => {
   db = await createTestDatabase([], { migrations: true });
   try {
-    const prisma = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: db.url }),
-    });
-    // Göçü tohum defterine KimlikModule'ün kendisi bildirir. Kapıları sağlayan ortak modül kök
-    // modüldeki gibi kimlik kaynaklarının kataloğuyla kurulur (TS-002 AK-42 eki).
-    moduleRef = await Test.createTestingModule({
-      imports: [
-        KimlikModule,
-        YetkiModule.forRoot(prismaKaynakKatalogu(KIMLIK_KAYNAKLARI)),
-      ],
-    })
-      .overrideProvider(PRISMA_CLIENT)
-      .useValue(prisma)
-      .compile();
+    moduleRef = await modulKur(db.url);
     kosucu = moduleRef.get(TohumKosucusu);
     gozlemci = new pg.Client({ connectionString: db.url });
     await gozlemci.connect();
@@ -161,8 +217,11 @@ afterAll(async () => {
 });
 
 describe('k) kuru koşu', () => {
-  it('k) kuru koşu göçü uygulanacak diye bildirir ve hiçbir tabloda satır bırakmaz', async () => {
-    expect(await kosucu.kuruKos()).toEqual([KIMLIK_KURULUM_GOCU]);
+  it('k) kuru koşu göçleri uygulanacak diye bildirir ve hiçbir tabloda satır bırakmaz', async () => {
+    expect(await kosucu.kuruKos()).toEqual([
+      KIMLIK_KURULUM_GOCU,
+      KIMLIK_YASAK_IZINLERI_GOCU,
+    ]);
 
     const sayilar = await satirSayilari();
     expect(Object.keys(sayilar)).toContain('yetenek');
@@ -180,14 +239,19 @@ describe('kurulum', () => {
     sureMs = performance.now() - baslangic;
   });
 
-  it('l) göç uygulanır ve deftere 202611240000-kimlik-kurulum adıyla yazılır; ölçülen süresi 5 saniyenin altındadır', async ({
+  it('l) göçler sırayla uygulanır ve deftere 202611240000-kimlik-kurulum ve 202611260000-kimlik-yasak-izinleri adlarıyla yazılır; ölçülen süresi 5 saniyenin altındadır', async ({
     annotate,
   }) => {
-    await annotate(`göçün süresi: ${sureMs.toFixed(0)} ms`);
-    expect(uygulanan).toEqual([KIMLIK_KURULUM_GOCU]);
+    await annotate(`göçlerin süresi: ${sureMs.toFixed(0)} ms`);
+    expect(uygulanan).toEqual([
+      KIMLIK_KURULUM_GOCU,
+      KIMLIK_YASAK_IZINLERI_GOCU,
+    ]);
     expect(KIMLIK_KURULUM_GOCU).toBe(GOC_ADI);
-    expect(await satirlar('select ad from tohum_gocu')).toEqual([
+    expect(KIMLIK_YASAK_IZINLERI_GOCU).toBe(YENI_GOC_ADI);
+    expect(await satirlar('select ad from tohum_gocu order by ad')).toEqual([
       { ad: GOC_ADI },
+      { ad: YENI_GOC_ADI },
     ]);
     expect(sureMs).toBeLessThan(5000);
   });
@@ -219,9 +283,39 @@ describe('kurulum', () => {
     ).map((s) => s.cift);
 
     expect(izinler.toSorted()).toEqual(YONETIM_IZINLERI.toSorted());
+    expect(izinler).toHaveLength(29);
   });
 
-  it('e) (Kök, SuperAdmin) için her izne bir yetenek: bütün kayıtlar, birimler, kolonlar, sistem satırı, köken goc, farklı tohum anahtarları', async () => {
+  it('d) canlı yetenek sayısı 31dir: SuperAdmin için 29, Temel için 2', async () => {
+    expect(
+      await satirlar(
+        `select r.kod as rol, count(*)::int as sayi
+           from yetenek y join rol r on r.id = y.rol_id
+          where y.silinme_zamani is null group by r.kod order by r.kod`,
+      ),
+    ).toEqual([
+      { rol: 'superadmin', sayi: 29 },
+      { rol: 'temel', sayi: 2 },
+    ]);
+  });
+
+  it('d) yasakla ve teshis izinleri yalnız (Kök, SuperAdmin) kümesindedir; temel rolün kümesinde yoktur', async () => {
+    expect(
+      await satirlar(
+        `select i.kaynak || ':' || i.eylem as cift, g.ust_grup_id, r.kod as rol
+           from yetenek y join izin i on i.id = y.izin_id join rol r on r.id = y.rol_id
+           join grup g on g.id = y.grup_id
+          where i.kaynak || ':' || i.eylem = any($1)
+          order by cift`,
+        [YASAK_IZINLERI],
+      ),
+    ).toEqual([
+      { cift: 'Yetenek:teshis', ust_grup_id: null, rol: 'superadmin' },
+      { cift: 'Yetenek:yasakla', ust_grup_id: null, rol: 'superadmin' },
+    ]);
+  });
+
+  it('e) (Kök, SuperAdmin) için her izne bir yetenek: bütün kayıtlar, birimler, kolonlar, sistem satırı, izin (giremez hayır), öncelik 0, köken goc, farklı tohum anahtarları', async () => {
     const yetenekler = await satirlar<{
       cift: string;
       sart: unknown;
@@ -230,13 +324,15 @@ describe('kurulum', () => {
       kolonlar: string[] | null;
       butun_kolonlar: boolean;
       sistem_satiri: boolean;
+      giremez: boolean;
+      oncelik: number;
       silinme_zamani: Date | null;
       koken: string;
       tohum_anahtari: string;
     }>(
       `select i.kaynak || ':' || i.eylem as cift, y.sart, y.butun_kayitlar, y.butun_birimler,
-              y.kolonlar, y.butun_kolonlar, y.sistem_satiri, y.silinme_zamani, y.koken,
-              y.tohum_anahtari
+              y.kolonlar, y.butun_kolonlar, y.sistem_satiri, y.giremez, y.oncelik,
+              y.silinme_zamani, y.koken, y.tohum_anahtari
          from yetenek y join izin i on i.id = y.izin_id join rol r on r.id = y.rol_id
          join grup g on g.id = y.grup_id
         where r.kod = 'superadmin' and g.ust_grup_id is null`,
@@ -254,6 +350,8 @@ describe('kurulum', () => {
         kolonlar: null,
         butun_kolonlar: true,
         sistem_satiri: true,
+        giremez: false,
+        oncelik: 0,
         silinme_zamani: null,
         koken: 'goc',
         tohum_anahtari: `kimlik:${y.cift}:superadmin`,
@@ -394,8 +492,21 @@ describe('kurulum', () => {
     expect(await satirSayilari()).toEqual(once);
   });
 
-  it('j) her yazma için işin adı tohum:202611240000-kimlik-kurulum olan ve yazanı sistem aktörü olan bir not vardır', async () => {
+  it('j) her yazma için işin adı yazan göçün adı (tohum:<göç>) olan ve yazanı sistem aktörü olan bir not vardır', async () => {
     const aktor = await sistemAktoru();
+    // Yasak izinleri göçünün yazdığı satırlar: iki izin ve onların iki yeteneği.
+    const yeniGocunSatirlari = new Set(
+      (
+        await satirlar<{ id: string }>(
+          `select i.id from izin i where i.kaynak || ':' || i.eylem = any($1)
+           union all
+           select y.id from yetenek y join izin i on i.id = y.izin_id
+            where i.kaynak || ':' || i.eylem = any($1)`,
+          [YASAK_IZINLERI],
+        )
+      ).map((s) => s.id),
+    );
+    expect(yeniGocunSatirlari.size).toBe(4);
     // Her kaynak satırı bir oluşturma notu; tohum yardımcısı her kullanıcının sayısını artırır.
     const beklenen: string[] = [];
     for (const [tablo, kaynak] of Object.entries(KAYNAK_TABLOLARI)) {
@@ -423,7 +534,79 @@ describe('kurulum', () => {
         .toSorted(),
     ).toEqual(beklenen.toSorted());
     for (const not of notlar) {
-      expect(not).toMatchObject({ is_adi: IS_ADI, kullanici_id: aktor });
+      expect(not).toMatchObject({
+        is_adi: yeniGocunSatirlari.has(String(not['kayit_id']))
+          ? YENI_IS_ADI
+          : IS_ADI,
+        kullanici_id: aktor,
+      });
     }
+  });
+});
+
+// İlk kurulum göçü daha önce uygulanmış veritabanı: yeni göç tek başına uygulanır; sonuç, iki göçün
+// art arda uygulandığı yukarıdaki veritabanıyla (kimlikler ve zamanlar dışında) aynıdır.
+describe('m) ilk kurulumu uygulanmış veritabanında yasak izinleri göçü', () => {
+  let db2: TestDatabase;
+  let moduleRef2: TestingModule;
+  let gozlemci2: pg.Client;
+  let gozlemci2Pid: number;
+
+  beforeAll(async () => {
+    db2 = await createTestDatabase([], { migrations: true });
+    try {
+      moduleRef2 = await modulKur(db2.url);
+      gozlemci2 = new pg.Client({ connectionString: db2.url });
+      await gozlemci2.connect();
+      const [satir] = await satirlar<{ pid: number }>(
+        'select pg_backend_pid() as pid',
+        [],
+        gozlemci2,
+      );
+      gozlemci2Pid = satir?.pid ?? -1;
+    } catch (error) {
+      await db2.drop();
+      throw error;
+    }
+  });
+
+  afterAll(async () => {
+    await moduleRef2.close();
+    const acikKalan = await kalanBaglantiSayisi(gozlemci2, db2.name, [
+      gozlemci2Pid,
+    ]);
+    await gozlemci2.end();
+    await db2.drop();
+    expect(acikKalan).toBe(0);
+    expect(await sunucudaVarMi(db2.name)).toBe(false);
+  });
+
+  it('m) önce yalnız ilk kurulum göçü (27 izin, 29 canlı yetenek), sonra koşucu yalnız yeni göçü uygular; döküm sıfırdan kurulumunkine eşittir; üçüncü koşu satır sayısını değiştirmez', async () => {
+    // Uygulamanın kendi defterindeki ilk kurulum göçü, yalnız onu taşıyan bir deftere alınır.
+    const ilkGoc = new TohumDefteri();
+    for (const [ad, goc] of moduleRef2.get(TohumDefteri).sirayla()) {
+      if (ad === KIMLIK_KURULUM_GOCU) {
+        ilkGoc.bildir(ad, goc);
+      }
+    }
+    expect(
+      await new TohumKosucusu(moduleRef2.get(UnitOfWork), ilkGoc).kos(),
+    ).toEqual([KIMLIK_KURULUM_GOCU]);
+    expect(
+      await satirlar(
+        `select (select count(*) from izin)::int as izin,
+                (select count(*) from yetenek where silinme_zamani is null)::int as yetenek`,
+        [],
+        gozlemci2,
+      ),
+    ).toEqual([{ izin: 27, yetenek: 29 }]);
+
+    const kosucu2 = moduleRef2.get(TohumKosucusu);
+    expect(await kosucu2.kos()).toEqual([KIMLIK_YASAK_IZINLERI_GOCU]);
+    expect(await dokum(gozlemci2)).toEqual(await dokum(gozlemci));
+
+    const once = await satirSayilari(gozlemci2);
+    expect(await kosucu2.kos()).toEqual([]);
+    expect(await satirSayilari(gozlemci2)).toEqual(once);
   });
 });
