@@ -576,7 +576,8 @@ def bekleyen_taslaklar(kok: pathlib.Path, ep: str) -> list:
 def taslak_ozeti(kok: pathlib.Path, ep: str) -> str:
     """`plan yurut --taslakla` sorusunda gösterilen özet: bekleyen yapraklara düşen taslaklar."""
     satirlar = ["  %s %s (%s): %s" % (y["no"], y["baslik"], y["gorev"], "; ".join(
-        "%s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"]) for t in taslaklar))
+        "%s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"]) for t in taslaklar)) + "".join(
+        "\n      %s/AU-%d: %s" % (t["kimlik"], no, metin) for t in taslaklar for no, metin in t["acik_uclar"])
                 for y, taslaklar in bekleyen_taslaklar(kok, ep)]
     return "%s — %s\ntaslak düşen %d yaprak:\n%s" % (ep, oku(kok, ep)["baslik"], len(satirlar),
                                                     "\n".join(satirlar) or "  (yok)")
@@ -644,7 +645,7 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         en_cok = sayilar(secenek("--en-cok"))
         taslakla = "--taslakla" in arg and gorev.taslak_izni(
             kok, serbest[0], [t["kimlik"] for _, ts in bekleyen_taslaklar(kok, serbest[0]) for t in ts],
-            taslak_ozeti(kok, serbest[0]))
+            taslak_ozeti(kok, serbest[0]), h.komut_ozeti(["plan"] + arg))
         s = yurut(kok, serbest[0], en_cok=int(en_cok[0]) if en_cok else None,
                   bildir=lambda satir: print(satir, flush=True), taslakla=taslakla)
         print("%s: %d yaprak alındı%s" % (serbest[0], len(s["alinan"]), " · epic bitti" if s["bitti"] else ""))
