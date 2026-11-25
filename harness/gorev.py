@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import pathlib
+import posixpath
 import re
 import shutil
 import subprocess
@@ -224,6 +225,75 @@ def taslak_uyarisi(kimlik: str, taslaklar: list) -> str:
         kimlik, len(taslaklar), ", ".join(taslaklar))
 
 
+KAYNAK_UZANTILARI = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+UZANTISIZ_ADAYLAR = (".ts", ".tsx", ".js", ".mjs")
+# import … from '…', export … from '…', import '…', import('…'), require('…'): yalnız göreli belirteçler
+ICE_AKTARMA = re.compile(r"""(?:\bfrom|\bimport|\brequire)\s*\(?\s*(['"])(\.\.?(?:/[^'"\n]*)?)\1""")
+
+
+def _izlenen(kok: pathlib.Path, ayar: dict) -> list:
+    """Deponun izlenen dosyaları (`haric` dışında); git deposu değilse aracın dosya listesi."""
+    try:
+        dosyalar = h._git(kok, "ls-files", "-z").split("\0")
+    except h.HarnessHata:
+        return h.dosyalari_listele(kok, ayar)
+    return [f for f in dosyalar if f and not any(h.desen_eslesir(x, f) for x in ayar["haric"])]
+
+
+def _coz(yol: str, dosyalar: set) -> str | None:
+    """Göreli belirtecin gösterdiği dosya: `.js` için `.ts`/`.tsx` de, uzantısız için uzantılar ve index denenir."""
+    if yol.endswith(".js"):
+        adaylar = [yol, yol[:-3] + ".ts", yol[:-3] + ".tsx"]
+    else:
+        adaylar = [yol] + [yol + u for u in UZANTISIZ_ADAYLAR] + [yol + "/index" + u for u in UZANTISIZ_ADAYLAR]
+    return next((a for a in adaylar if a in dosyalar), None)
+
+
+def liste_disi_iceaktaranlar(kok: pathlib.Path, yollar: list, ayar: dict | None = None,
+                             dosyalar: list | None = None) -> list:
+    """Kaynak köklerinde olup `yollar`a düşmeyen, ama `yollar`a düşen bir dosyayı göreli yolla içe aktaran dosyalar.
+
+    Yalnız dosya okur; okunamayan dosya ve çözülemeyen ya da paket adı olan belirteç yok sayılır."""
+    kok = pathlib.Path(kok)
+    ayar = ayar or h.ayar_oku(kok)
+    dosyalar = _izlenen(kok, ayar) if dosyalar is None else dosyalar
+    kume = set(dosyalar)
+    ic = {f for f in dosyalar if any(h.desen_eslesir(y, f) for y in yollar)}
+    kokler = [k.strip("/") + "/" for k in ayar["kaynak_kokleri"]]
+    sonuc = []
+    for f in dosyalar:
+        if f in ic or not f.endswith(KAYNAK_UZANTILARI) or (kokler and not f.startswith(tuple(kokler))):
+            continue
+        try:
+            metin = (kok / f).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        dizin = posixpath.dirname(f)
+        if any(_coz(posixpath.normpath(posixpath.join(dizin, m.group(2))), kume) in ic
+               for m in ICE_AKTARMA.finditer(metin)):
+            sonuc.append(f)
+    return sonuc
+
+
+def kapsam_notu(kok: pathlib.Path, yollar: list, hedef: str | None, olcut: str | None) -> list:
+    """Kart ön denetiminin uyarıları (TS-006 Yapı 11): kapsam genişliği, kart boyu, liste dışı içe aktaranlar."""
+    kok = pathlib.Path(kok)
+    ayar = h.ayar_oku(kok)
+    dosyalar = _izlenen(kok, ayar)
+    uyarilar = []
+    n = sum(1 for f in dosyalar if any(h.desen_eslesir(y, f) for y in yollar))
+    if n > ayar["gorev"]["kapsam_dosya_esigi"]:
+        uyarilar.append("kapsam geniş: %d dosya; bölmeyi düşün" % n)
+    if len(hedef or "") + len(olcut or "") > ayar["gorev"]["kart_karakter_esigi"]:
+        uyarilar.append("kart büyük; tek oturuma sığmayabilir")
+    disari = liste_disi_iceaktaranlar(kok, yollar, ayar, dosyalar)
+    if disari:
+        uyarilar.append("liste dışı içe aktaranlar (%d): %s%s — taşıma ya da ad değişikliği yapacaksan bunlar da "
+                        "değişir; listeye ekle ya da işi böl"
+                        % (len(disari), ", ".join(disari[:20]), ", …" if len(disari) > 20 else ""))
+    return uyarilar
+
+
 def _bolum(metin: str, ad: str) -> str:
     m = re.search(BOLUM % re.escape(ad), metin)
     return m.group(1).strip() if m else ""
@@ -253,11 +323,17 @@ def yeni(kok: pathlib.Path, baslik: str, rol: str, yollar: list, konular: list,
     d = {"kimlik": kimlik, "baslik": baslik, "rol": rol, "yollar": list(yollar),
          "konular": list(konular), "durum": "taslak", "acildi": _simdi(), "plan": plan, "adim": adim, "yer": yer}
     p = h.paket(kok, rol, d["yollar"], d["konular"])
-    (ana / kimlik / "kart.md").write_text(
-        _kart_metni(kimlik, d, hedef or HEDEF_YERTUTUCU, olcut or OLCUT_YERTUTUCU, p["tam"]), encoding="utf-8")
+    notlar = kapsam_notu(kok, d["yollar"], hedef, olcut)
+    kart = _kart_metni(kimlik, d, hedef or HEDEF_YERTUTUCU, olcut or OLCUT_YERTUTUCU, p["tam"])
+    if notlar:
+        kart += ("\n## Kapsam notu\nKart açılırken aracın ön denetimi; engel değildir.\n"
+                 + "".join("- %s\n" % u for u in notlar))
+    (ana / kimlik / "kart.md").write_text(kart, encoding="utf-8")
     _json_yaz(ana / kimlik / "durum.json", d)
     if p["taslaklar"]:
         print(taslak_uyarisi(kimlik, p["taslaklar"]), flush=True)
+    for u in notlar:
+        print("[harness] %s %s" % (kimlik, u), flush=True)
     return ana / kimlik / "kart.md"
 
 
