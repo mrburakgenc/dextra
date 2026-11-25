@@ -4,7 +4,7 @@ tur: denetim
 durum: taslak
 surum: 1
 baslik: Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
-cesit: komut
+cesit: yerlesik
 ---
 Taban dala göre bu dalda alınmış olup hiçbir raporda geçmeyen görevi ve kısa özeti boş bırakılmış raporu yakalar.
 

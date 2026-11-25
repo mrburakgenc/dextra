@@ -9,7 +9,8 @@ kapsam: [backend/src/features/**]
 baglama: kapsam
 bicim: kural
 kesinlik: olagan
-denetim_duzey: gozden-gecirme
+denetim_duzey: mekanik
+denetim_ref: [DN-002]
 bakis: 2026-12-21
 kaynak: kb/_gelen/IRON_RULES_BACKEND.md
 alinti: Her feature kendi klasorunde **4-Layer Clean Architecture VSA + Pragmatic CQRS** disiplini uygular.
