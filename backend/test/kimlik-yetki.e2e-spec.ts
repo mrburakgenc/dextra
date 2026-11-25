@@ -10,12 +10,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Controller, Get, type INestApplication, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
+import { KimlikYetkiVerisi } from '../src/features/kimlik/_shared/application/yetki-verisi.js';
+import { yetkiVerisiRepo } from '../src/features/kimlik/_shared/infrastructure/repositories/yetki-verisi.prisma-repository.js';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-kurulum.goc.js';
 import type { Islem } from '../src/shared/database/domain/islem.js';
+import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
@@ -41,6 +45,7 @@ import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 import { EskiYazmaKapisi } from './yardimci/eski-yuz.js';
+import { yasakKisitiniDusur } from './yardimci/yasak-kisiti.js';
 
 const IP = '203.0.113.21';
 const TARAYICI = 'Mozilla/5.0 yetki deneme';
@@ -164,6 +169,24 @@ function uygulama(): INestApplication<App> {
 
 function yetkiVerisi(): YetkiVerisi {
   return uygulama().get<YetkiVerisi>(YETKI_VERISI);
+}
+
+// Gönderdiği sorguları biriktiren ayrı istemciyle kurulmuş yetki verisi; istemci test bitince kapanır.
+function sayanYetkiVerisi(): { veri: YetkiVerisi; sorgular: string[] } {
+  const sorgular: string[] = [];
+  const istemci = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: databases.asil.url }),
+    log: [{ emit: 'event', level: 'query' }],
+  });
+  istemci.$on('query', (olay) => {
+    sorgular.push(olay.query);
+  });
+  onTestFinished(() => istemci.$disconnect());
+  const uow = { read: () => yetkiVerisiRepo(istemci) };
+  return {
+    veri: new KimlikYetkiVerisi(uow as unknown as UnitOfWork),
+    sorgular,
+  };
 }
 
 async function satirlar<T extends pg.QueryResultRow>(
@@ -485,6 +508,9 @@ describe('a) yetki verisi', () => {
         butunBirimler: false,
         kolonlar: [],
         butunKolonlar: true,
+        giremez: false,
+        oncelik: 0,
+        yasaktanMuaf: false,
       },
       {
         yetenekId: Y_ALI_GRUP,
@@ -503,12 +529,113 @@ describe('a) yetki verisi', () => {
         butunBirimler: false,
         kolonlar: ['id', 'ad'],
         butunKolonlar: false,
+        giremez: false,
+        oncelik: 0,
+        yasaktanMuaf: false,
       },
     ]);
     expect(await yetkiVerisi().surumler(ALI)).toEqual({
       kisiSurumu: surumler.kisi,
       genelSurum: surumler.genel,
     });
+  });
+
+  // TS-008 "Veri modeli" ve "Muafiyetler"; kapanan AU-27; KU-018.
+  // TS-008 Değişmez 1: yasağı olmayan kişinin okuması bu işten önceki sorguları atar (sürümler 2,
+  // üyelikler 1, yetenek ve izni 2, gruplar 1); rol kodları okunmaz.
+  const YASAKSIZ_TABLOLAR = [
+    'kullanici',
+    'yetki_surumu',
+    'uyelik',
+    'yetenek',
+    'izin',
+    'grup',
+  ];
+  const tablo = (sorgu: string): string | undefined =>
+    /FROM "public"\."(\w+)"/.exec(sorgu)?.[1];
+
+  it('yasağı olmayan kişinin yetki verisi önceki sorgularla okunur, rol kodu okunmaz ve hiçbir satırı yasaktan muaf gelmez', async () => {
+    const { veri, sorgular } = sayanYetkiVerisi();
+
+    const yonetici = await veri.kisininSatirlari(superadmin);
+
+    expect(sorgular.map(tablo)).toEqual(YASAKSIZ_TABLOLAR);
+    expect(yonetici.yetenekler.length).toBeGreaterThan(0);
+    expect(yonetici.yetenekler.filter((y) => y.yasaktanMuaf)).toEqual([]);
+  });
+
+  // Yasak satırı veritabanına doğrudan yazılır; yazımı kapatan geçici kısıt test yardımcısıyla düşer.
+  it('satırları arasında yasak olan kişide yasaktan muaf yalnız kök yönetici rolünün kök gruptaki sistem satırıdır; temel rolün sistem satırı, sistem satırı olmayan satır ve kök grubun dışındaki satır muaf değildir; rol kodları tek ek sorguyla okunur', async () => {
+    const yoneticiRol = (
+      await tekSatir<{ id: string }>(
+        "select id from rol where kod = 'superadmin'",
+      )
+    ).id;
+    const sistemDisi = '64000000-0000-4000-8000-00000000000a';
+    const kokDisi = '64000000-0000-4000-8000-00000000000b';
+    const yasak = '64000000-0000-4000-8000-00000000000c';
+    const kokDisiUyelik = '63000000-0000-4000-8000-000000000009';
+    // (Kök, SuperAdmin) kümesinde sistem satırı olmayan satır ve yasak; (A, SuperAdmin) kümesinde
+    // sistem satırı.
+    await yasakKisitiniDusur(databases.asil);
+    await yetenekEkle(sistemDisi, kokGrup, yoneticiRol, ['Izin', 'oku']);
+    await yetenekEkle(yasak, kokGrup, yoneticiRol, ['Rol', 'oku']);
+    await gozlemci.query('update yetenek set giremez = true where id = $1', [
+      yasak,
+    ]);
+    await uyelikEkle(kokDisiUyelik, superadmin, GRUP_A, yoneticiRol);
+    await yetenekEkle(kokDisi, GRUP_A, yoneticiRol, ['Izin', 'oku']);
+    await gozlemci.query(
+      'update yetenek set sistem_satiri = true where id = $1',
+      [kokDisi],
+    );
+    onTestFinished(async () => {
+      await gozlemci.query('delete from yetenek where id = any($1)', [
+        [sistemDisi, kokDisi, yasak],
+      ]);
+      await gozlemci.query('delete from uyelik where id = $1', [kokDisiUyelik]);
+    });
+    const tohumSatirlari = await satirlar<{ id: string }>(
+      `select y.id from yetenek y where y.grup_id = $1 and y.rol_id = $2 and y.sistem_satiri
+          and y.silinme_zamani is null`,
+      [kokGrup, yoneticiRol],
+    );
+    const { veri, sorgular } = sayanYetkiVerisi();
+
+    const yonetici = await veri.kisininSatirlari(superadmin);
+    const temel = await yetkiVerisi().kisininSatirlari(VELI);
+
+    expect(sorgular.map(tablo)).toEqual([...YASAKSIZ_TABLOLAR, 'rol']);
+    const muaflar = yonetici.yetenekler
+      .filter((y) => y.yasaktanMuaf)
+      .map((y) => y.yetenekId);
+    expect(muaflar.toSorted()).toEqual(
+      tohumSatirlari.map((s) => s.id).toSorted(),
+    );
+    expect(muaflar.length).toBeGreaterThan(0);
+    // Veli yalnız (Kök, Temel) üyesidir; o kümenin iki satırı sistem satırıdır ve muaf değildir.
+    // Süperadmin de (Kök, Temel) üyesidir: aynı iki satır onda da muaf değildir.
+    expect(temel.yetenekler).toHaveLength(2);
+    expect(
+      yonetici.yetenekler
+        .filter((y) => !y.yasaktanMuaf)
+        .map((y) => y.yetenekId)
+        .toSorted(),
+    ).toEqual(
+      [
+        sistemDisi,
+        kokDisi,
+        yasak,
+        ...temel.yetenekler.map((y) => y.yetenekId),
+      ].toSorted(),
+    );
+    expect(temel.yetenekler.map((y) => y.yasaktanMuaf)).toEqual([false, false]);
+    for (const y of [...yonetici.yetenekler, ...temel.yetenekler]) {
+      expect({ giremez: y.giremez, oncelik: y.oncelik }).toEqual({
+        giremez: y.yetenekId === yasak,
+        oncelik: 0,
+      });
+    }
   });
 
   it('alt grup listesi üyelik grubunun kendisini ve altındakileri içerir, kardeş grubu içermez', async () => {

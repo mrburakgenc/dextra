@@ -27,14 +27,24 @@ export type YetenekKurali = RawRuleFrom<[string, string], YetkiKosulu> & {
   readonly yetenekId: string;
 };
 
+// Kuralın etkisi, önceliği ve muafiyeti yetenek satırından gelir (TS-008 "Derleme").
+export type DerlenmisKural = YetenekKurali & {
+  readonly giremez: boolean;
+  readonly oncelik: number;
+  readonly yasaktanMuaf: boolean;
+};
+
 export interface DerlenmeyenYetenek {
   readonly yetenekId: string;
   readonly neden: string;
 }
 
+// Yetenek nesnesi ve kurallar yalnız izin kurallarıdır: guard ve iki kapı onları okur, yasak izin
+// sayılmaz (KU-019). Bütün kurallar izinleri ve yasakları etkisi, önceliği ve muafiyetiyle taşır.
 export interface DerlemeSonucu {
   readonly yetenek: YetkiYetenegi;
   readonly kurallar: readonly YetenekKurali[];
+  readonly butunKurallar: readonly DerlenmisKural[];
   readonly derlenmeyenler: readonly DerlenmeyenYetenek[];
   // Yetenek kimliğinden onu kişiye veren üyeliğin kimliğine; erişim kaydı için (KR-010 Seçim 40).
   readonly uyelikler: Readonly<Record<string, string>>;
@@ -51,6 +61,7 @@ export function yetenekleriDerle(
   katalog: KaynakKatalogu,
 ): Omit<DerlemeSonucu, 'uyelikler'> {
   const kurallar: YetenekKurali[] = [];
+  const butunKurallar: DerlenmisKural[] = [];
   const derlenmeyenler: DerlenmeyenYetenek[] = [];
   for (const satir of veri.yetenekler) {
     const sonuc = satiriDerle(satir, veri.altGruplar, isteyenId, katalog);
@@ -60,12 +71,17 @@ export function yetenekleriDerle(
     if ('neden' in sonuc) {
       derlenmeyenler.push({ yetenekId: satir.yetenekId, neden: sonuc.neden });
     } else {
-      kurallar.push(sonuc.kural);
+      const { giremez, oncelik, yasaktanMuaf } = satir;
+      butunKurallar.push({ ...sonuc.kural, giremez, oncelik, yasaktanMuaf });
+      if (!giremez) {
+        kurallar.push(sonuc.kural);
+      }
     }
   }
   return {
     yetenek: createPrismaAbility<[string, string], YetkiKosulu>(kurallar),
     kurallar,
+    butunKurallar,
     derlenmeyenler,
   };
 }

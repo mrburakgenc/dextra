@@ -21,6 +21,7 @@ const TALEP_TIPLERI: Record<string, AlanTipi> = {
 const KATALOG: KaynakKatalogu = {
   alanlar: (tur) => (tur === 'Talep' ? Object.keys(TALEP_TIPLERI) : undefined),
   alanTipleri: (tur) => (tur === 'Talep' ? TALEP_TIPLERI : undefined),
+  bosOlabilirlik: () => undefined,
 };
 
 const KIMLIK = '60000000-0000-4000-8000-000000000001';
@@ -39,6 +40,9 @@ function satir(degisen: Partial<YetenekSatiri>): YetenekSatiri {
     butunBirimler: false,
     kolonlar: [],
     butunKolonlar: true,
+    giremez: false,
+    oncelik: 0,
+    yasaktanMuaf: false,
     ...degisen,
   };
 }
@@ -531,6 +535,75 @@ describe('yetenek derleyici', () => {
         OR: expect.arrayContaining([kosul1, kosul2]) as unknown,
       });
       expect((kosul as { OR: unknown[] }).OR).toHaveLength(2);
+    });
+  });
+
+  // TS-008 "Derleme": kural önceliğini, etkisini ve muafiyetini taşır; yasak izin sayılmaz (KU-019).
+  describe('etki, öncelik ve muafiyet', () => {
+    it('satırın önceliği, etkisi ve muafiyeti bütün kurallardaki kurala geçer; izin kuralları bugünkü biçimde kalır', () => {
+      const sonuc = derle([
+        satir({ yetenekId: 'izin', butunKayitlar: true, oncelik: 20 }),
+        satir({
+          yetenekId: 'muaf',
+          butunKayitlar: true,
+          yasaktanMuaf: true,
+        }),
+        satir({
+          yetenekId: 'yasak',
+          sart: [{ alan: 'durum', islec: 'esit', deger: 'acik' }],
+          kolonlar: ['tutar'],
+          butunKolonlar: false,
+          giremez: true,
+          oncelik: 10,
+        }),
+      ]);
+
+      expect(sonuc.butunKurallar).toEqual([
+        {
+          yetenekId: 'izin',
+          action: 'oku',
+          subject: 'Talep',
+          giremez: false,
+          oncelik: 20,
+          yasaktanMuaf: false,
+        },
+        {
+          yetenekId: 'muaf',
+          action: 'oku',
+          subject: 'Talep',
+          giremez: false,
+          oncelik: 0,
+          yasaktanMuaf: true,
+        },
+        {
+          yetenekId: 'yasak',
+          action: 'oku',
+          subject: 'Talep',
+          fields: ['tutar'],
+          conditions: { AND: [{ durum: { equals: 'acik' } }] },
+          giremez: true,
+          oncelik: 10,
+          yasaktanMuaf: false,
+        },
+      ]);
+      expect(sonuc.kurallar).toEqual([
+        { yetenekId: 'izin', action: 'oku', subject: 'Talep' },
+        { yetenekId: 'muaf', action: 'oku', subject: 'Talep' },
+      ]);
+      expect(sonuc.yetenek.rules).toEqual(sonuc.kurallar);
+    });
+
+    it('yalnız yasağı olan kişide kurallar ve yetenek nesnesi boştur: yasak izin sayılmaz', () => {
+      const sonuc = derle([
+        satir({ yetenekId: 'yasak', butunKayitlar: true, giremez: true }),
+      ]);
+
+      expect(sonuc.butunKurallar.map((k) => k.yetenekId)).toEqual(['yasak']);
+      expect(sonuc.kurallar).toEqual([]);
+      expect(sonuc.yetenek.possibleRulesFor('oku', 'Talep')).toEqual([]);
+      expect(accessibleBy(sonuc.yetenek, 'oku').ofType('Talep')).toEqual({
+        OR: [],
+      });
     });
   });
 

@@ -38,6 +38,12 @@ export interface YetenekSatiri {
   readonly butunBirimler: boolean;
   readonly kolonlar: readonly string[];
   readonly butunKolonlar: boolean;
+  // Etki (doğruysa yasak, değilse izin) ve öncelik (0–100) (TS-008 "Veri modeli").
+  readonly giremez: boolean;
+  readonly oncelik: number;
+  // Yasaklardan etkilenmez: yalnız kök yönetici rolünün sistem satırları (KU-018; kapanan AU-27).
+  // Satırları arasında yasak olmayan kişide hep hayırdır: kapatacağı yasak yoktur.
+  readonly yasaktanMuaf: boolean;
 }
 
 export interface UyelikSatiri {

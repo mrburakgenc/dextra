@@ -78,6 +78,8 @@ export class KimlikYasakIzinleriGocu {
         tohum_anahtari: { yeni: yetenek.tohumAnahtari },
         koken: { yeni: 'goc' },
         olusturma_zamani: { yeni: olusturmaZamani.toISOString() },
+        giremez: { yeni: false },
+        oncelik: { yeni: 0 },
       });
     }
   }
