@@ -1,6 +1,11 @@
 // Yetenek varlığı: yeni yetenek satırının yazılacak hâli ve satırın durum kararları (TS-005
 // "Sorumluluklar"). Varlık veritabanından doldurulmaz; kararlar işleyicinin topladığı olguları alır.
 import { ret, type Sonuc, tamam } from '../../../../../shared/domain/sonuc.js';
+import {
+  korunanYazmaMi,
+  type YasakBicimiReddi,
+  yasakBicimi,
+} from '../../../../../shared/yetki/domain/yasak-bicimi.js';
 import type {
   YetenekIcerigi,
   YetenekIcerigiAlanlari,
@@ -19,10 +24,14 @@ export interface YeniYetenek extends YetenekBaglantisi, YetenekIcerigiAlanlari {
   readonly yerineGectigiId?: string;
 }
 
-// Yazma eylemlerini yalnız (Kök, SuperAdmin) kümesine bağlanabilen kaynaklar (KR-008 Seçim 17;
-// TS-002 değişmez 8). Yazma eylemi okuma dışındaki her eylemdir.
-const KORUNAN_KAYNAKLAR = ['Grup', 'Rol', 'Uyelik', 'Yetenek'];
-const OKUMA_EYLEMI = 'oku';
+// Satırın etkisi (doğruysa yasak) ve önceliği (TS-008 "Veri modeli"). Yazılmamış etki izindir,
+// yazılmamış öncelik 0'dır (TS-008 "Kısıtlar").
+export interface YetenekEtkisi {
+  readonly giremez: boolean;
+  readonly oncelik: number;
+}
+
+export const YAZILMAMIS_ETKI: YetenekEtkisi = { giremez: false, oncelik: 0 };
 
 // Görülebilen izne bağlı olgular.
 export interface IzinOlgulari {
@@ -49,17 +58,21 @@ export type YetenekYazmaReddi =
   | { readonly kod: 'izin_yok' }
   | { readonly kod: 'bilinmeyen_kolon'; readonly kolon: string }
   | { readonly kod: 'derlenemedi'; readonly derlemeHatasi: string }
-  | { readonly kod: 'korunan_kaynak' };
+  | { readonly kod: 'korunan_kaynak' }
+  | { readonly kod: 'yasak_bicimi'; readonly neden: YasakBicimiReddi };
 
 // İçerik değer nesnesinden geldiği için kuraldan geçmemiş bir içerikle satır üretilemez (TS-005
 // Değişmez 3). Sıra sabittir (KR-008 Seçim 5, 7, 11, 17): grup ya da rol canlı değilse, sonra izin
 // görülemiyorsa, sonra kolon listesinde kaynağın alanı olmayan kolon varsa (derleyici bilinmeyen kolonu
-// sessizce attığı için ayrıca bakılır; ilk bilinmeyen kolon döner), sonra satır derlenemiyorsa, en son
-// korunan kaynağın yazma izni (Kök, SuperAdmin) dışındaki kümeye bağlanıyorsa reddedilir.
+// sessizce attığı için ayrıca bakılır; ilk bilinmeyen kolon döner), sonra satır derlenemiyorsa, sonra
+// korunan kaynağın yazma izni (Kök, SuperAdmin) dışındaki kümeye bağlanıyorsa, en son satır etkisi ve
+// önceliğiyle yasağın biçimine uymuyorsa (TS-008 "Yasağın biçimi"; KU-020) reddedilir. Etki ve öncelik
+// yazılacak hâle girmez: onları çağıran satıra ekler.
 export function yetenekOlustur(
   { grupId, rolId, izinId }: YetenekBaglantisi,
   icerik: YetenekIcerigi,
   olgular: YetenekYazmaOlgulari,
+  etki: YetenekEtkisi = YAZILMAMIS_ETKI,
 ): Sonuc<YeniYetenek, YetenekYazmaReddi> {
   if (!olgular.grupCanliMi || !olgular.rolCanliMi) {
     return ret({ kod: 'grup_ya_da_rol_yok' });
@@ -77,12 +90,19 @@ export function yetenekOlustur(
   if (izin.derlemeHatasi !== undefined) {
     return ret({ kod: 'derlenemedi', derlemeHatasi: izin.derlemeHatasi });
   }
-  if (
-    KORUNAN_KAYNAKLAR.includes(izin.kaynak) &&
-    izin.eylem !== OKUMA_EYLEMI &&
-    !olgular.kokSuperAdminKumesiMi
-  ) {
+  if (korunanYazmaMi(izin.kaynak, izin.eylem) && !olgular.kokSuperAdminKumesiMi) {
     return ret({ kod: 'korunan_kaynak' });
+  }
+  const bicim = yasakBicimi({
+    ...icerik,
+    ...etki,
+    kaynak: izin.kaynak,
+    eylem: izin.eylem,
+    sart: icerik.sart ?? [],
+    kolonlar: icerik.kolonlar ?? [],
+  });
+  if (bicim.tur === 'ret') {
+    return ret({ kod: 'yasak_bicimi', neden: bicim.neden });
   }
   const { sart, butunKayitlar, butunBirimler, kolonlar, butunKolonlar } =
     icerik;

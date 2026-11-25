@@ -4,7 +4,10 @@
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
-import type { YeniYetenek } from '../../domain/entities/yetenek.entity.js';
+import type {
+  YeniYetenek,
+  YetenekEtkisi,
+} from '../../domain/entities/yetenek.entity.js';
 import type { IYetenekYazmaRepo } from '../../domain/repositories/i-yetenek.repository.js';
 
 // Yönetim uçlarının yazdığı satırın kökeni (TS-002 "Veri modeli").
@@ -18,11 +21,19 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
   constructor(private readonly kapi: YazmaKapisi) {}
 
   // Boş şart ve boş kolon listesi yazılmaz; kolon NULL kalır (yetenek_kayit_siniri_denetim ve
-  // yetenek_kolon_siniri_denetim kısıtları NULL'a bakar).
+  // yetenek_kolon_siniri_denetim kısıtları NULL'a bakar). Varsayılan değerdeki etki ve öncelik de
+  // yazılmaz, kolon varsayılanı aynı değeri verir: yazma, oluşturma yeteneğinin kolon listesinde iki
+  // kolonu yalnız onlar yazılırken arar (TS-008 Değişmez 1).
   olustur(
     islem: Islem,
     isAdi: string,
-    { sart, kolonlar, ...yetenek }: YeniYetenek,
+    {
+      sart,
+      kolonlar,
+      giremez,
+      oncelik,
+      ...yetenek
+    }: YeniYetenek & YetenekEtkisi,
   ): Promise<string> {
     return this.kapi.deyimleOlustur(
       islem,
@@ -32,6 +43,8 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
         ...yetenek,
         sart: sart ?? undefined,
         kolonlar: kolonlar ?? undefined,
+        giremez: giremez || undefined,
+        oncelik: oncelik || undefined,
         koken: YONETICI_KOKENI,
       },
       (vt, veri) => vt.yetenek.create({ data: veri }),

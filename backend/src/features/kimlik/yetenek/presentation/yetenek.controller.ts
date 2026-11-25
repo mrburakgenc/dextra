@@ -71,9 +71,9 @@ export class YetenekController {
   yenile(
     @Param({ schema: yetenekYenileYoluSemasi }) { id }: YetenekYenileYolu,
     @Body({ schema: yetenekYenileGovdesiSemasi })
-    { icerik }: YetenekYenileGovdesi,
+    { icerik, oncelik }: YetenekYenileGovdesi,
   ): Promise<YetenekYenileSonucu> {
-    return this.yetenekYenile.calistir({ id, icerik });
+    return this.yetenekYenile.calistir({ id, icerik, oncelik });
   }
 
   @Delete(':id')

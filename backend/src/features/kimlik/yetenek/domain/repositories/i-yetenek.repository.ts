@@ -5,7 +5,10 @@
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
-import type { YeniYetenek } from '../entities/yetenek.entity.js';
+import type {
+  YeniYetenek,
+  YetenekEtkisi,
+} from '../entities/yetenek.entity.js';
 
 // Okunan yetenek ve izin kayıtları: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
 export interface YetenekGorunumu {
@@ -67,7 +70,11 @@ export const YETENEK_REPO = new RepoBelirteci<IYetenekOkumaRepo, IYetenekRepo>(
 // satır yerinde düzenlenmez (değişmez 6).
 export interface IYetenekYazmaRepo {
   // Köken 'yonetici' yazılır; yeni kaydın kimliğini döner.
-  olustur(islem: Islem, isAdi: string, yetenek: YeniYetenek): Promise<string>;
+  olustur(
+    islem: Islem,
+    isAdi: string,
+    yetenek: YeniYetenek & YetenekEtkisi,
+  ): Promise<string>;
 
   // Yenilemede eski satırın kapatılması: niyet eylemi 'yenile', silinme zamanı yazılır. Satırı tutan
   // yenile yeteneği yoksa ya da satır zaten silinmişse bulunamadi.

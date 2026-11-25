@@ -8,10 +8,17 @@ export async function yasakKisitiniDusur(database: TestDatabase): Promise<void> 
   const client = new pg.Client({ connectionString: database.url });
   await client.connect();
   try {
-    await client.query(
-      'alter table yetenek drop constraint yetenek_yasak_yazimi_kapali_denetim',
-    );
+    await yasakKisitiniBaglantiylaDusur(client);
   } finally {
     await client.end();
   }
+}
+
+// Aynı iş, açık bir bağlantıyla (ortak kurulum yardımcısının geçici veritabanı bağlantısı).
+export async function yasakKisitiniBaglantiylaDusur(
+  client: pg.Client,
+): Promise<void> {
+  await client.query(
+    'alter table yetenek drop constraint yetenek_yasak_yazimi_kapali_denetim',
+  );
 }
