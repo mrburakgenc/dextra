@@ -103,6 +103,8 @@ Ajan kararı (2026-11-25 gecesi; kullanıcı teyidi bekler); backend tarafı TS-
 - Erişim çerezinin ömrü 14 dakikadır (belirteç 15 dakika yaşar): süresi dolmuş belirteç backend'e gitmez, çerezin yokluğu "yenile" demektir. Yenileme ve cihaz çerezleri 7 gün yaşar.
 - Başarıda yeni erişim ve yenileme çerezleri yazılır ve istek sürer. Backend 401 dönerse üç çerez silinir ve kişi giriş sayfasına gider. Backend'e ulaşılamazsa ya da 5xx dönerse çerezlere dokunulmaz: geçici arıza oturumu düşürmez.
 - Eşzamanlı istekler için ek kilit yoktur: backend aynı eski belirteçle 10 saniye içinde gelen isteklere aynı çifti verir (AK-49 madde 3), bu yüzden aynı anda yenileyen iki sekme aynı çerezi yazar.
+- Yenilenemeyen oturum (GV-095'in gösterdiği boşluk): ara katman backend'e ulaşamadığında çerezlere dokunmaz; o istekte erişim çerezi yoktur ama yenileme ve cihaz çerezi durur. Korumalı düzen bu durumda kişiyi girişe yollamaz, "Şu an ulaşılamıyor" iletisini ve "Yeniden dene" bağlantısını gösterir; girişe yalnız üç çerez de yokken yollar.
+- Ara katman dosyası lint sınırlarında ayrı bir türdür: yalnız ortak kodu içe aktarır, feature ve sayfa içini içe aktarmaz.
 - Bilinen sınır: 7 günlük mutlak bitiş ve 30 dakikalık hareketsizlik sınırı backend'dedir; 30 dakikadan uzun süre hiç istek atmayan kişi bir sonraki istekte girişe gider. Uyarı ekranı tasarlanmadı.
 
 ## Seçenekler
