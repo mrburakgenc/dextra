@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 94 görevin 88 tanesi alındı. Son koşuların ve incelemelerin toplamı: 910 dakika, 358.03 dolar.
+Kayıtlı 97 görevin 90 tanesi alındı. Son koşuların ve incelemelerin toplamı: 947 dakika, 374.01 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -114,8 +114,11 @@ Kayıtlı 94 görevin 88 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-090 | EP-006 11 | Bütün: kimlik ve yetkinin uçtan uca senaryosu (iki ayrı birim; yeniden) | alındı | 7.1 | 4.8 | 5.01 | 1 | 0 engel, 2 öneri | 0 |
 | GV-091 | EP-005 10 | Kimlik kurulumu testindeki elle kurulmuş kataloğa alan tipleri eklenir | alındı | 1.5 | 1.7 | 1.27 | 1 | 0 engel, 0 öneri | 0 |
 | GV-092 | EP-003 29 | Hata süzgeci: kayıt yok veritabanı hatası bulunamadi (404) olur | alındı | 2.0 | 3.6 | 2.28 | 2 | 0 engel, 1 öneri | 0 |
-| GV-093 | EP-007 6 | Yetenek ekranları: liste, yaz, yenile ve sil | bekliyor | — | — | — | 0 | — | 0 |
-| GV-094 | EP-003 30 | Oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım ve kapatıp reddeden dallar | bekliyor | — | — | — | 0 | — | 0 |
+| GV-093 | EP-007 6 | Yetenek ekranları: liste, yaz, yenile ve sil | alındı | 13.0 | 7.8 | 8.72 | 18 | 0 engel, 5 öneri | 0 |
+| GV-094 | EP-003 30 | Oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım ve kapatıp reddeden dallar | alındı | 11.4 | 5.3 | 7.26 | 12 | 0 engel, 4 öneri | 0 |
+| GV-095 | EP-007 7 | Oturumun sessiz yenilenmesi: ara katmanda yenileme ve çerezlerin döndürülmesi | bekliyor | — | — | — | 0 | — | 0 |
+| GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | bekliyor | — | — | — | 0 | — | 0 |
+| GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -273,6 +276,9 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - 'Kayıt yok' eşlemesi sunucu içi bir aramanın boş dönmesini de 404 gösterir ve hata düzeyinde günlüğe yazmaz (GV-092 incelemesi); gerçek bir hata sessiz kalabilir. Öneri: bu dal uyarı düzeyinde günlüğe yazılsın.
 - Yetenek yazarken boş kolon listesi null gider, okurken boş dizi döner (GV-090 gözlemi); biçim tek olmalı.
 - Ön yüzde üyelik bölümü, grup ya da rol listesini okuyamayan kişide tabloyu hiç çizmiyor (GV-088 incelemesi); adlar boş işaretle gösterilip tablo çizilmeli. Satır başına 'Kaldır' düğmelerinin erişilebilir adı aynı.
+- Yetenek yenileme formu, kişinin göremediği içerik kolonunu boş sayıp üzerine yazabiliyordu ve virgül içeren liste değerini bozabiliyordu (GV-093 incelemesi); değiştirilmeden gönderilen form yeteneği daraltabilirdi. GV-096 bunu kapatıyor.
+- TEYİDİNİ BEKLEYEN OKUMALAR (AK-49 eki): yeniden kullanımda süresi geçmiş ama kapatılmamış oturumlar da 'yeniden kullanım' nedeniyle kapanıyor; gövdesi bozuk yenileme isteği 401 değil 400 dönüyor; oturum satırının kilidinin gerçekten alındığı ölçülmedi.
+- İşçiler üç görevde bir dosyayı düzenleme aracıyla değil kabuk betiğiyle yazdı (GV-087, GV-085, GV-094); araç bunu engellemiyor, kural gösteren hook atlanıyor.
 
 ## 9. PR'lar
 
@@ -360,3 +366,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 03:43 — Bütünü iki ayrı birimde, yalnız gerçek uçlardan sınayan uçtan uca senaryo görevi (GV-090) eklendi ve koştu; incelemede. 'Kayıt yok' veritabanı hatasını 404'e çeviren görev (GV-092; karar AK-48) koşuyor. Ön yüzde üyelik ekranı (GV-088) incelemede. Ön yüzdeki yetenek ekranları kartını backend'in bugünkü koduna bakarak yeniden yazdım: eski kartım sözleşmeyi yanlış anlatıyordu (boş içerik null gider, ikisi de boş olabilir, işleçler sabit sekizli, tohum satırı da yenilenemez).
 - 03:49 — GV-090 (kimlik ve yetkinin uçtan uca senaryosu) ilk koşuda alındı: on adım, yalnız gerçek uçlardan; iki ayrı birim hem listede hem tek kayıtta ayrışıyor; yenilenen yetenek yalnız o kümenin kolonlarını daraltıyor; pasife alınan kişinin belirteci 401; değişiklik kayıtları ve erişim kaydı iz veritabanında. Kendi koşumda 10 test geçti. GV-092 ('kayıt yok' hatası 404 olur) alındı: üç test dosyasında 52 test. GV-088 (ön yüzde üyelik ekranı) alındı: kayıt sayfası testi 42.
 - 03:49 — Büyük eksik bulundu: oturum yenileme backend'de hiç yazılmamış; ön yüzde oturum 15 dakikada düşüyor. Tasarımdaki iki açık noktayı kapatıp (AK-49) backend görevini (GV-094) başlattım; ön yüz tasarımı TS-004'e yazıldı ('Oturumun yenilenmesi'). Ön yüzde yetenek ekranları (GV-093) koşuyor.
+- 04:07 — GV-094 (oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım) ilk koşuda alındı: yenileme, giriş, guard ve senaryo testleri 80; belirteç birim testi 23; tip ve lint 0. İşleyiciyi kendim de okudum: ret dalları işlemi tamamlıyor, günlüğe değer yazılmıyor. GV-093 (ön yüzde yetenek ekranları) ilk koşuda alındı: dört test dosyasında 68 test; derlemede üç yeni rota.
+- 04:07 — Ön yüzde sessiz oturum yenileme (GV-095) ve yönetim formlarının sertleştirilmesi (GV-096) koşuyor. Backend'de 'kayıt yok' dalının uyarı günlüğü ve senaryo testindeki aktarım yarışı için GV-097 koşuyor.
