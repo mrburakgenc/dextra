@@ -17,10 +17,10 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { ParolaBaglantisi } from '../src/features/kimlik/_shared/baglanti/parola-baglantisi.js';
 import { KisiKilidi } from '../src/features/kimlik/_shared/kisi-kilidi.js';
-import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/kurulum-baglantisi.handler.js';
-import { ParolaGirisYontemi } from '../src/features/kimlik/parola/application/parola-giris-yontemi.js';
+import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
+import { ParolaGirisYontemi } from '../src/features/kimlik/parola/application/commands/parola-giris/parola-giris.handler.js';
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
-import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici.argon2id.js';
+import { ARGON2ID_AYARLARI } from '../src/features/kimlik/parola/infrastructure/parola-ozetleyici/parola-ozetleyici.argon2id.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
 import {

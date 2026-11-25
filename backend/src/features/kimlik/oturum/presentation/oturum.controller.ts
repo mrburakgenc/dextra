@@ -20,11 +20,11 @@ import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/istemci-ad
 import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
 import type { Kayit } from '../../../../shared/yetki/okuma-kapisi.js';
 import type { YetenekKurali } from '../../../../shared/yetki/yetenek-derleyici.js';
-import { ParolaGirisYontemi } from '../../parola/application/parola-giris-yontemi.js';
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,
-} from '../../parola/application/parola-giris.schema.js';
+} from '../../parola/application/commands/parola-giris/parola-giris.command.js';
+import { ParolaGirisYontemi } from '../../parola/application/commands/parola-giris/parola-giris.handler.js';
 import { CikisHandler } from '../application/cikis.handler.js';
 import type { GirisCevabi } from '../application/giris.command.js';
 import { GirisHandler, girisBasarisiz } from '../application/giris.handler.js';

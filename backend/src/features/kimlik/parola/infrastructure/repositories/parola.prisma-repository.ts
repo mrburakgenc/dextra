@@ -1,8 +1,9 @@
-import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
-import { kimlikSistemAktoru } from '../../_shared/cekirdek/sistem-aktoru.js';
-import type { ParolaRepo } from '../domain/parola.repository.js';
+// IParolaRepo'nun gerçeklemesi: çekirdek yol, Unit of Work'ün istemcisiyle (TS-002 "Çekirdek yollar").
+import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import { kimlikSistemAktoru } from '../../../_shared/cekirdek/sistem-aktoru.js';
+import type { IParolaRepo } from '../../domain/repositories/i-parola.repository.js';
 
-export function parolaPrismaRepository(istemci: RepoIstemcisi): ParolaRepo {
+export function parolaPrismaRepository(istemci: RepoIstemcisi): IParolaRepo {
   return {
     kullaniciAdiylaBul: async (kullaniciAdi) => {
       const satir = await istemci.kullanici.findUnique({

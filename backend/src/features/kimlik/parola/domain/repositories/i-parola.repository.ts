@@ -1,9 +1,10 @@
-// Parola alt özelliğinin repository'si: kullanici, kullanici_sirri ve oturum tablolarına yetki
-// kapısından geçmeden erişir. Bağlantıyla parola belirleme, parola değiştirme ve kurulum komutu
-// çekirdek yollardır (TS-002 "Çekirdek yollar"; KR-010 Seçim 48'in adıyla istisnası).
-import { RepoBelirteci } from '../../../../shared/database/registrar.js';
+// Parola alt özelliğinin repository arayüzleri ve belirteci: kullanici, kullanici_sirri ve oturum
+// tablolarına yetki kapısından geçmeden erişir. Bağlantıyla parola belirleme, parola değiştirme ve
+// kurulum komutu çekirdek yollardır (TS-002 "Çekirdek yollar"; KR-010 Seçim 48'in adıyla istisnası);
+// gerçeklemesi infrastructure/repositories altındadır.
+import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
 
-export interface ParolaOkumaRepo {
+export interface IParolaOkumaRepo {
   // Kullanıcı adı verilen kişinin kimliği; yoksa null.
   kullaniciAdiylaBul(kullaniciAdi: string): Promise<string | null>;
   // Çekirdek yolların notlarında yazan olarak geçen, kimlik feature'ının sistem aktörünün kimliği
@@ -24,7 +25,7 @@ export interface GirisSirri {
   readonly guncellemeZamani: Date;
 }
 
-export interface ParolaRepo extends ParolaOkumaRepo {
+export interface IParolaRepo extends IParolaOkumaRepo {
   // Kişinin sır satırının güncelleme zamanı; satır yoksa null.
   sirZamani(kullaniciId: string): Promise<Date | null>;
   // Kişinin parola özetini yazar (satır yoksa ekler) ve güncelleme zamanını verilen değer yapar.
@@ -37,6 +38,6 @@ export interface ParolaRepo extends ParolaOkumaRepo {
   oturumAcikMi(oturumId: string, kullaniciId: string): Promise<boolean>;
 }
 
-export const PAROLA_REPO = new RepoBelirteci<ParolaOkumaRepo, ParolaRepo>(
-  'ParolaRepo',
+export const PAROLA_REPO = new RepoBelirteci<IParolaOkumaRepo, IParolaRepo>(
+  'IParolaRepo',
 );
