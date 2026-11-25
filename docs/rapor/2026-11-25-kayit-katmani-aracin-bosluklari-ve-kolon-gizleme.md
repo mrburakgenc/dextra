@@ -283,7 +283,7 @@ Araç testleri (kendi ölçümüm, son alımdan sonra dosya dosya): 17 dosya; `t
 | PR | Kapsam | Durum |
 |---|---|---|
 | [#16](https://github.com/mrburakgenc/dextra/pull/16) | Yapının kanona çekilmesi ve rapor zorunluluğu (önceki raporun işi) | Birleşti (2026-11-25 14:31); ana çalışma ağacı çekildi |
-| (açılacak) | Bu raporun işi: kayıt katmanı, kolon gizleme, aracın boşlukları, yasak tasarımının taslakları | Rapor commit edildikten sonra açılır |
+| [#17](https://github.com/mrburakgenc/dextra/pull/17) | Bu raporun işi: kayıt katmanı, kolon gizleme, aracın boşlukları, yasak tasarımının taslakları | Açıldı (2026-11-25); birleştirme commit'iyle ana dala alınır |
 
 Bu dalın işi tek PR'dır. Push kapısı raporu commit edilmiş ister; bu yüzden PR, rapor commit edildikten sonra açıldı ve numarası bu bölüme ikinci bir commit'le yazıldı.
 
