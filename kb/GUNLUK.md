@@ -41,3 +41,4 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] taslak | DN-001 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
 ## [2026-11-25] taslak | TS-006 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
 ## [2026-11-25] taslak | DN-002 Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
+## [2026-11-25] taslak | TS-007 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
