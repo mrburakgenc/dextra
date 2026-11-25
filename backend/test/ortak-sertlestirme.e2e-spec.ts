@@ -186,6 +186,7 @@ describe('b) yalnız kendisi listesi', () => {
     expect(YALNIZ_KENDISI_UCLARI).toEqual([
       'OturumController.cikis',
       'OturumController.yetkilerim',
+      'ParolaController.degistir',
     ]);
     for (const ad of ['cikis', 'yetkilerim']) {
       expect(
