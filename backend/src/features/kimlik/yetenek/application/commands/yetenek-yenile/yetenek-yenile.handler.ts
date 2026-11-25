@@ -6,7 +6,7 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   type YetenekYenilemeReddi,
   yetenekYenilemeKarari,

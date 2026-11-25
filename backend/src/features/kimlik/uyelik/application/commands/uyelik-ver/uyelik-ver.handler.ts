@@ -6,13 +6,13 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { ParolaBaglantisi } from '../../../../_shared/baglanti/parola-baglantisi.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
-import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
-import { KisininSayisi } from '../../../../_shared/kisinin-sayisi.js';
-import { ParolaSirri } from '../../../../_shared/parola-sirri.js';
+import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
+import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
+import { KisininSayisi } from '../../../../_shared/application/kisinin-sayisi.js';
+import { ParolaSirri } from '../../../../_shared/application/parola-sirri.js';
 import {
   sifirlamaBaglantisi,
   type UyelikVermeReddi,

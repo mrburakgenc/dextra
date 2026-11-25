@@ -2,7 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
 import {
   type KullaniciGuncellemeReddi,
   kullaniciGuncellemeKarari,

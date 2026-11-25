@@ -1,9 +1,9 @@
 // Kurulum komutunun işleyicisi (TS-002 AK-15; KR-009 Seçim 9).
 import { Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
-import { ParolaBaglantisi } from '../../../../_shared/baglanti/parola-baglantisi.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
-import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
+import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
+import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
 import { PAROLA_REPO } from '../../../domain/repositories/i-parola.repository.js';
 import { SUPERADMIN_KULLANICI_ADI } from './kurulum-baglantisi.command.js';
 import type { KurulumBaglantisiSonucu } from './kurulum-baglantisi.result.js';

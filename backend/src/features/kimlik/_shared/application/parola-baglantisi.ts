@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { yeniKimlik } from '../../../../shared/database/kimlik.js';
 import type { Islem } from '../../../../shared/database/unit-of-work.js';
 import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../iz.js';
-import { PAROLA_BAGLANTISI_REPO } from './parola-baglantisi.repository.js';
+import { PAROLA_BAGLANTISI_REPO } from '../domain/repositories/i-parola-baglantisi.repository.js';
+import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 
 // Bağlantının ömrü (KR-009 Seçim 9; TS-002 AK-5): 24 saat.
 export const BAGLANTI_OMRU_MS = 24 * 60 * 60 * 1000;

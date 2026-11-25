@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../shared/messaging/outbox/outbox-yazici.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
+import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
 import {
   KULLANICI_CEKIRDEK_REPO,
   type YeniKullanici,
-} from './cekirdek/kullanici.repository.js';
+} from '../domain/repositories/i-kullanici-cekirdek.repository.js';
 import { GenelSayac } from './genel-sayac.js';
 import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 import { KisininSayisi } from './kisinin-sayisi.js';

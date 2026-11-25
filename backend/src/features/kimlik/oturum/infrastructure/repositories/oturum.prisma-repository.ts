@@ -1,7 +1,7 @@
 // IOturumRepo'nun gerçeklemesi: giriş, çıkış ve yenilemenin okuma ve yazmaları, işlemin istemcisiyle
 // ve yetki kapısından geçmeden (çekirdek yollar).
 import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
-import { kimlikSistemAktoru } from '../../../_shared/cekirdek/sistem-aktoru.js';
+import { kimlikSistemAktoru } from '../../../_shared/infrastructure/repositories/sistem-aktoru-cekirdek.prisma-repository.js';
 import { HAREKETSIZLIK_SINIRI_MS } from '../../domain/entities/oturum.entity.js';
 import type { IOturumRepo } from '../../domain/repositories/i-oturum.repository.js';
 

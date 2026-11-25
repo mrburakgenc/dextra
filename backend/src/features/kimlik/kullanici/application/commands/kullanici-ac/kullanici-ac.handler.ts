@@ -2,9 +2,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { istekBaglami } from '../../../../../../shared/http/istek-baglami.js';
-import { ParolaBaglantisi } from '../../../../_shared/baglanti/parola-baglantisi.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
-import { KokUyelik } from '../../../../_shared/kok-uyelik.js';
+import { ParolaBaglantisi } from '../../../../_shared/application/parola-baglantisi.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
+import { KokUyelik } from '../../../../_shared/application/kok-uyelik.js';
 import { kullaniciOlustur } from '../../../domain/entities/kullanici.entity.js';
 import {
   type IKullaniciYazmaRepo,

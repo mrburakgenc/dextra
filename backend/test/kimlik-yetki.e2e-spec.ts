@@ -14,7 +14,7 @@ import pg from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
-import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/tohum/kimlik-kurulum.goc.js';
+import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-kurulum.goc.js';
 import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
 import { Izin } from '../src/shared/guvenlik/isaretler.js';

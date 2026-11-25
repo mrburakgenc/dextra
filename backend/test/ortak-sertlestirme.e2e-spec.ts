@@ -277,29 +277,40 @@ function lintStdin(
 describe('d) lint: çekirdek sınırı (AK-27)', () => {
   // Alt özelliğin kökündeki dosyadan kimlik'in çekirdek repository belirtecini içe aktaran içerik.
   const CEKIRDEK = [
-    "import { KULLANICI_CEKIRDEK_REPO } from '../_shared/cekirdek/kullanici.repository.js';",
+    "import { KULLANICI_CEKIRDEK_REPO } from '../_shared/domain/repositories/i-kullanici-cekirdek.repository.js';",
     'export const belirtec = KULLANICI_CEKIRDEK_REPO;',
     '',
   ].join('\n');
 
   it('yönetim alt özelliklerinin yolundan çekirdek repository içe aktarılamaz', async () => {
+    // Çekirdek sınırı hem arayüzü (domain/repositories) hem gerçeklemeyi (infrastructure/repositories) korur.
+    const GERCEKLEME = [
+      "import { kullaniciCekirdekRepo } from '../_shared/infrastructure/repositories/kullanici-cekirdek.prisma-repository.js';",
+      'export const gercekleme = kullaniciCekirdekRepo;',
+      '',
+    ].join('\n');
     const sonuclar = await Promise.all(
-      ['kullanici', 'grup', 'rol', 'uyelik', 'yetenek'].map((alt) =>
-        lintStdin(`src/features/kimlik/${alt}/${alt}.module.ts`, CEKIRDEK),
+      ['kullanici', 'grup', 'rol', 'uyelik', 'yetenek'].flatMap((alt) =>
+        [CEKIRDEK, GERCEKLEME].map((kod) =>
+          lintStdin(`src/features/kimlik/${alt}/${alt}.module.ts`, kod),
+        ),
       ),
     );
+    expect(sonuclar).toHaveLength(10);
     for (const sonuc of sonuclar) {
       expect(sonuc.cikis).toBe(1);
+      expect(sonuc.cikti).toContain('"cekirdek-repo"');
       expect(sonuc.cikti).toContain(
-        'Dependencies to file of category "cekirdek-repo" are not allowed in file of category "yonetim"',
+        'are not allowed in file of category "yonetim"',
       );
+      expect(sonuc.cikti).toContain('Denied by policy');
     }
   }, 180_000);
 
   it('_shared, oturum ve parola yollarından çekirdek repository içe aktarılabilir', async () => {
     const sonuclar = await Promise.all(
       [
-        'src/features/kimlik/_shared/genel-sayac.ts',
+        'src/features/kimlik/_shared/kimlik-cekirdek.module.ts',
         'src/features/kimlik/oturum/oturum.module.ts',
         'src/features/kimlik/parola/parola.module.ts',
       ].map((dosya) => lintStdin(dosya, CEKIRDEK)),

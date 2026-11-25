@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../shared/messaging/outbox/outbox-yazici.js';
-import { KULLANICI_SIRRI_CEKIRDEK_REPO } from './cekirdek/kullanici-sirri.repository.js';
+import type { Islem } from '../../../../shared/database/unit-of-work.js';
+import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import { KULLANICI_SIRRI_CEKIRDEK_REPO } from '../domain/repositories/i-kullanici-sirri-cekirdek.repository.js';
 import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 
 // Çekirdek parça "parola sırrı" (TS-002 "Yapı"; AK-43): kişinin parola sırrı satırını siler. Kişi

@@ -2,7 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   type YetenekSilmeReddi,
   yetenekSilmeKarari,

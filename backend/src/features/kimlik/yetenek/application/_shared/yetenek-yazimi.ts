@@ -10,7 +10,7 @@ import {
   type KaynakKatalogu,
 } from '../../../../../shared/yetki/kaynak-katalogu.js';
 import { yetenekleriDerle } from '../../../../../shared/yetki/yetenek-derleyici.js';
-import { ButunlukSorusu } from '../../../_shared/butunluk-sorusu.js';
+import { ButunlukSorusu } from '../../../_shared/application/butunluk-sorusu.js';
 import {
   type IzinOlgulari,
   type YeniYetenek,

@@ -6,12 +6,12 @@ import {
   type HataKodu,
   KodluHata,
 } from '../../../../../../shared/http/kodlu-hata.js';
-import { ButunlukSorusu } from '../../../../_shared/butunluk-sorusu.js';
-import { GenelSayac } from '../../../../_shared/genel-sayac.js';
-import type { IzBilgisi } from '../../../../_shared/iz.js';
-import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
-import { KisininSayisi } from '../../../../_shared/kisinin-sayisi.js';
-import { KokUyelik } from '../../../../_shared/kok-uyelik.js';
+import { ButunlukSorusu } from '../../../../_shared/application/butunluk-sorusu.js';
+import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
+import type { IzBilgisi } from '../../../../_shared/application/iz.js';
+import { KisiKilidi } from '../../../../_shared/application/kisi-kilidi.js';
+import { KisininSayisi } from '../../../../_shared/application/kisinin-sayisi.js';
+import { KokUyelik } from '../../../../_shared/application/kok-uyelik.js';
 import {
   type KullaniciPasifeAlmaReddi,
   kullaniciPasifeAlmaKarari,
