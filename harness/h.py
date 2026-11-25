@@ -761,7 +761,8 @@ def _butce_denetle(dz: Dizin) -> list:
 def _normatif(d: dict) -> str:
     alanlar = {"kural": ("kapsam", "kapsam_katman", "kapsam_tur", "olay", "denetim_duzey",
                          "denetim_ref", "kesinlik", "rol", "konu"),
-               "karar": ("agirlik",), "yapi": ("yollar", "katman", "bagimli")}.get(d["tur"], ())
+               "karar": ("agirlik",), "yapi": ("yollar", "katman", "bagimli"),
+               "denetim": ("komut",)}.get(d["tur"], ())   # komut kapıda koşar: değişmesi sürüm ister
     # Açık uçlar da bağlayıcıdır (işçi o noktada durur): kabul edilmiş düğümde eklemek ya da kapatmak sürüm ister
     uclar = acik_uclar(d)
     return json.dumps([d["_ifade"]] + [d.get(a) for a in alanlar] + ([uclar] if uclar else []),
@@ -838,12 +839,14 @@ def _surum_denetle(dz: Dizin) -> list:
 
 
 def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
-                      uretim: bool = True) -> list:
+                      uretim: bool = True, komutlar: bool = True) -> list:
     dz = Dizin(kok)
     s = list(dz.okuma_bulgulari)
     dosyalar = dosyalari_listele(kok, dz.ayar)
     for d in dz.dugumler:
         s += _acik_uc_denetle(d)   # taslakta da: açık uç çoğu zaman taslak düğümdedir
+        if d["tur"] == "denetim" and komut_hatasi(d):   # taslakta da: elle `denetim kos` taslağı da koşturur
+            s.append(B("Z1", "gecersiz-komut", d["kimlik"], komut_hatasi(d)))
         if d["durum"] != "kabul":
             continue
         if d["tur"] == "kural":
@@ -852,9 +855,6 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
             s += _karar_denetle(d, dz, bugun)
         elif d["tur"] == "yapi":
             s += _yapi_denetle(d, dz)
-        elif d["tur"] == "denetim":
-            if "komut" in d and not komutu_var(d):
-                s.append(B("Z1", "gecersiz-komut", d["kimlik"], "komut alanı boş olmayan bir metin olmalı"))
         elif d["tur"] == "tasarim":
             if d.get("agirlik") not in TASARIM_BOLUMLERI:
                 s.append(B("Z18", "agirliksiz", d["kimlik"], "agirlik yok ya da geçersiz"))
@@ -869,7 +869,8 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
         if dz.ayar["rapor"]["zorunlu"]:
             import rapor  # aynı dizinde; yalnız taban dalla karşılaştırmada yüklenir
             s += rapor.dal_bulgulari(kok, dz.ayar)
-        for d in kapi_denetimleri(dz):   # Z20: yalnız push kapısında koşar; bayraksız denetle ve commit kapısı koşturmaz
+        # Z20: yalnız push kapısında koşar; bayraksız denetle, commit kapısı ve ajanın push kancası koşturmaz
+        for d in (kapi_denetimleri(dz) if komutlar else []):
             r = denetim_kos(kok, d, dz.ayar["denetim"]["zaman_asimi_sn"])
             if r["sonuc"] == "sure-asimi":
                 s.append(B("Z20", "denetim-olculemedi", d["kimlik"], "%s sn içinde bitmedi, durduruldu — ölçülemedi%s"
@@ -894,10 +895,40 @@ _DUZEY["Z21"] = 1   # açık uç biçimi her düzeyde kırmızıdır: numara, so
 SON_SATIR = 10   # kalan denetimin çıktısından gösterilen satır sayısı
 
 
+# Denetim komutunun alt sürecine verilir (değeri denetimin kimliği); varken `denetle --dal` ve `denetim kos` denetim
+# komutu koşturmaz: aracı çağıran bir denetim komutu iç içe koşum ve özyineleme doğurmaz. Git'in push kapısı
+# (hook/git/pre-push) aracı çağırmadan önce değişkeni siler: gerçek gönderme değişkene hiç güvenmez.
+ICICE = "HARNESS_DENETIM_KOSUYOR"
+
+
+def komut_metni(d: dict) -> str:
+    """Kabuğa verilecek metin. Baş bloğun ayrıştırıcısı tırnak açmaz: bütünüyle tek ya da çift tırnağa alınmış
+    komutun (`komut: "[ -f harness.json ]"`) dış tırnağı burada açılır; içinde aynı tırnak geçen metne dokunulmaz."""
+    v = d["komut"]
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'" and v[0] not in v[1:-1]:
+        return v[1:-1]
+    return v
+
+
+def komut_hatasi(d: dict) -> str | None:
+    """Denetimin `komut` alanı geçersizse nedeni; alan yoksa ya da geçerliyse None."""
+    if "komut" not in d:
+        return None
+    if isinstance(d["komut"], list):   # `komut: [ -f x ]` baş blokta liste okunur
+        return ("komut köşeli parantezle başladığı için liste okundu — komutu tırnak içine al "
+                "(örnek: komut: \"[ -f harness.json ]\")")
+    if not isinstance(d["komut"], str) or not komut_metni(d).strip():
+        return "komut alanı boş olmayan bir metin olmalı"
+    return None
+
+
 def komutu_var(d: dict) -> bool:
     """Denetim düğümünün koşturulabilir komutu var mı. `komut` alanı yoksa düğüm yerleşik ya da elle sayılır."""
-    v = d.get("komut")
-    return isinstance(v, str) and bool(v.strip("\"' "))
+    return "komut" in d and komut_hatasi(d) is None
+
+
+def _sonlandirildi(no: int, _cerceve) -> None:
+    raise SystemExit(128 + no)
 
 
 def kapi_denetimleri(dz: Dizin) -> list:
@@ -909,21 +940,28 @@ def kapi_denetimleri(dz: Dizin) -> list:
 
 def denetim_kos(kok: pathlib.Path, d: dict, sinir: float) -> dict:
     """Denetimin komutunu deponun kökünde kabukla koşturur. Sınır aşılırsa komutun bütün süreç grubu durdurulur.
-    Dönen: kimlik, sonuc (gecti · kaldi · sure-asimi), kod, sure (sn), sinir, son (çıktının son satırları)."""
+    Dönen: kimlik, sonuc (gecti · kaldi · sure-asimi), kod, sure (sn), sinir, son (çıktının son satırları).
+    Bu süreç kesilirse (klavyeden kesme ya da sonlandırma sinyali) komutun süreç grubu da durdurulur. Bilinen sınır:
+    kendi oturumunu açan (setsid) torun süreç bu gruptan çıkar ve izlenemez."""
     bas = time.monotonic()
-    p = subprocess.Popen(d["komut"], shell=True, cwd=kok, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+    p = subprocess.Popen(komut_metni(d), shell=True, cwd=kok, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
-                         start_new_session=True)
+                         start_new_session=True, env=dict(os.environ, **{ICICE: d["kimlik"]}))
+    eski = signal.signal(signal.SIGTERM, _sonlandirildi)   # öntanımlı sonlandırma temizliksiz çıkar
     try:
         cikti = p.communicate(timeout=sinir)[0]
         sonuc = "gecti" if p.returncode == 0 else "kaldi"
-    except subprocess.TimeoutExpired:
+    except BaseException as e:   # süre aşımı, klavyeden kesme ya da sonlandırma sinyali
         try:
             os.killpg(p.pid, signal.SIGKILL)
         except ProcessLookupError:   # grup sınırla öldürme arasında kendiliğinden bitti
             pass
+        if not isinstance(e, subprocess.TimeoutExpired):
+            raise
         cikti = p.communicate()[0]
         sonuc = "sure-asimi"
+    finally:
+        signal.signal(signal.SIGTERM, eski if eski is not None else signal.SIG_DFL)
     return {"kimlik": d["kimlik"], "sonuc": sonuc, "kod": p.returncode, "sure": time.monotonic() - bas,
             "sinir": sinir, "son": [x for x in cikti.rstrip().split("\n") if x.strip()][-SON_SATIR:]}
 
@@ -932,9 +970,11 @@ def _son_satirlar(r: dict) -> str:
     return (": " + " | ".join(r["son"])) if r["son"] else ""
 
 
-def denetle(kok: pathlib.Path, bugun: datetime.date | None = None, taban: bool = False) -> list:
-    """Zincir kurallarını denetler; bulgu listesi döner (boş liste = temiz)."""
-    return _cekirdek_denetle(pathlib.Path(kok), bugun or datetime.date.today(), taban)
+def denetle(kok: pathlib.Path, bugun: datetime.date | None = None, taban: bool = False,
+            komutlar: bool = True) -> list:
+    """Zincir kurallarını denetler; bulgu listesi döner (boş liste = temiz). `komutlar` yanlışsa taban dalla
+    karşılaştırmada denetim komutları koşmaz (ajanın push kancası)."""
+    return _cekirdek_denetle(pathlib.Path(kok), bugun or datetime.date.today(), taban, komutlar=komutlar)
 
 
 # ── Kanarya: kapının kör olmadığının kanıtı ──────────────────────────────────────────
@@ -1327,7 +1367,11 @@ def _komut_denetle(kok: pathlib.Path, arg: list) -> int:
     if eksik:
         print("ÖLÇÜLEMEDİ: kapı kendi bozuk örneğinde şunları yakalayamadı: %s" % ", ".join(eksik))
         return 2
-    bulgular = denetle(kok, taban="--dal" in arg)
+    icice = "--dal" in arg and os.environ.get(ICICE)
+    if icice:
+        print("denetle: denetim komutları koşturulmadı — %s denetiminin komutunun içinden çağrıldı (iç içe koşum yok)"
+              % icice)
+    bulgular = denetle(kok, taban="--dal" in arg, komutlar=not icice)
     kirmizi = [b for b in bulgular if b["seviye"] == "kirmizi"]
     if bulgular:
         _bulgu_yaz(bulgular)
@@ -1630,12 +1674,20 @@ def _komut_denetim(kok: pathlib.Path, arg: list) -> int:
     for k in kimlikler:
         if dz.kimlik.get(k, {}).get("tur") != "denetim":
             raise HarnessHata("%s bir denetim düğümü değil" % k)
+    icice = os.environ.get(ICICE)
+    if icice:
+        print("denetim kos: denetim komutları koşturulmadı — %s denetiminin komutunun içinden çağrıldı (iç içe "
+              "koşum yok)" % icice)
+        return 0
     # Elle çağrıda taslak denetim de koşar; kimlik verilmezse komutu olan taslak ve kabul edilmiş denetimler koşar.
     secilen = ([dz.kimlik[k] for k in kimlikler] if kimlikler
                else [d for d in dz.dugumler if d["tur"] == "denetim" and d["durum"] in ("taslak", "kabul")])
     sinir = dz.ayar["denetim"]["zaman_asimi_sn"]
-    gecen, kalan, kosmayan = 0, 0, []
+    gecen, kalan, kosmayan, gecersiz = 0, 0, [], []
     for d in secilen:
+        if komut_hatasi(d):
+            gecersiz.append(d)
+            continue
         if not komutu_var(d):
             kosmayan.append(d["kimlik"])
             continue
@@ -1652,9 +1704,12 @@ def _komut_denetim(kok: pathlib.Path, arg: list) -> int:
             print("      | " + satir)
     for k in kosmayan:
         print("  koşturulamaz  %s: komutu yok (yerleşik ya da elle)" % k)
-    print("denetim kos: %d geçti, %d kaldı%s" % (gecen, kalan, ", %d koşturulamaz" % len(kosmayan)
-                                                 if kosmayan else ""))
-    return 1 if kalan else 2 if kimlikler and kosmayan else 0
+    for d in gecersiz:
+        print("  GEÇERSİZ  %s: komutu geçersiz — %s" % (d["kimlik"], komut_hatasi(d)))
+    print("denetim kos: %d geçti, %d kaldı%s%s" % (gecen, kalan, ", %d koşturulamaz" % len(kosmayan)
+                                                   if kosmayan else "", ", %d geçersiz" % len(gecersiz)
+                                                   if gecersiz else ""))
+    return 1 if kalan or gecersiz else 2 if kimlikler and kosmayan else 0
 
 
 def _graf_komutu(ad: str):
