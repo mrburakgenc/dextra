@@ -185,7 +185,7 @@ describe('YeteneklerSayfasi liste', () => {
       tarihSaat(OLUSTURMA),
     ]);
     expect(hucreler(sartli)).toEqual([
-      '44444444…',
+      '…44444444',
       'Yönetici',
       'Kullanici:oku',
       'kullaniciId esit {isteyen} ve durum listede [a, b]',
@@ -352,11 +352,11 @@ describe('YeteneklerSayfasi durumlar', () => {
     await goster();
 
     const [, butun, sartli] = within(screen.getByRole('table')).getAllByRole('row');
-    expect(hucreler(butun).slice(0, 3)).toEqual(['11111111…', '22222222…', '33333333…']);
-    expect(hucreler(sartli).slice(0, 3)).toEqual(['44444444…', '22222222…', '33333333…']);
+    expect(hucreler(butun).slice(0, 3)).toEqual(['…11111111', '…22222222', '…33333333']);
+    expect(hucreler(sartli).slice(0, 3)).toEqual(['…44444444', '…22222222', '…33333333']);
     expect(
       within(butun ?? document.body)
-        .getByRole('link', { name: '33333333…' })
+        .getByRole('link', { name: '…33333333' })
         .getAttribute('href'),
     ).toBe(`/yetenekler/${BUTUN}`);
     const suzgec = screen.getByRole('form', { name: 'Süzgeç' });
@@ -385,7 +385,7 @@ describe('YeteneklerSayfasi durumlar', () => {
     await goster();
 
     const [, satir] = within(screen.getByRole('table')).getAllByRole('row');
-    expect(hucreler(satir).slice(0, 3)).toEqual(['Merkez', 'Yönetici', '33333333…']);
+    expect(hucreler(satir).slice(0, 3)).toEqual(['Merkez', 'Yönetici', '…33333333']);
     expect(screen.getByLabelText('Grup')).toBeDefined();
     expect(screen.getByLabelText('Rol')).toBeDefined();
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
@@ -410,7 +410,7 @@ describe('YeteneklerSayfasi durumlar', () => {
     await goster();
 
     const [, satir] = within(screen.getByRole('table')).getAllByRole('row');
-    expect(hucreler(satir).slice(0, 3)).toEqual(['11111111…', '22222222…', '33333333…']);
+    expect(hucreler(satir).slice(0, 3)).toEqual(['…11111111', '…22222222', '…33333333']);
   });
 
   it('grup listesine ulaşılamayınca seçili grup süzgeci formda korunur', async () => {

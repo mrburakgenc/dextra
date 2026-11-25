@@ -205,7 +205,7 @@ describe('GrupSayfasi kayıt', () => {
     expect(screen.getByRole('alert').textContent).toBe('Grup listesi alınamadı');
     expect(kayitSatirlari()).toEqual([
       ['Ad', 'Muhasebe'],
-      ['Üst grup', '11111111…'],
+      ['Üst grup', '…11111111'],
       ['Oluşturma zamanı', tarihSaat(OLUSTURMA)],
     ]);
     expect(screen.queryByLabelText('Yeni ad')).not.toBeNull();
@@ -243,10 +243,10 @@ describe('GrupSayfasi kayıt', () => {
     );
   });
 
-  it('üst grup listede yoksa kimliğin ilk sekiz karakteri ve … görünür', async () => {
+  it('üst grup listede yoksa … ve kimliğin son sekiz karakteri görünür', async () => {
     await goster({ ...GRUP, ustGrupId: '44444444-4444-4444-8444-444444444444' });
 
-    expect(kayitSatirlari()[1]).toEqual(['Üst grup', '44444444…']);
+    expect(kayitSatirlari()[1]).toEqual(['Üst grup', '…44444444']);
   });
 
   it('ustGrupId kolonu kayıtta gelmediyse boş işaret görünür', async () => {
