@@ -89,6 +89,14 @@ Ajan kararı (2026-11-25 gecesi); backend uçları TS-002 AK-39'daki ortak sözl
 - `<Can>` güvenli tarafta kalır: ekranın değerlendiremediği bir koşul (yorumlayıcının tanımadığı biçim) hata fırlatmaz, "hayır" sayılır.
 - Bir kez gösterilen kod (yeni kullanıcının ya da üretilen bağlantının parola belirleme kodu) işin cevabında ekranda bir kez gösterilir; adrese, çereze ya da tarayıcı deposuna yazılmaz; sayfa yenilenince kaybolur.
 
+## Oturumun yenilenmesi
+Ajan kararı (2026-11-25 gecesi; kullanıcı teyidi bekler); backend tarafı TS-002 AK-49'dadır.
+- Yenilemeyi ara katman yapar: isteği sayfadan önce karşılayan dosya, erişim çerezi yokken yenileme ve cihaz çerezi varsa backend'in yenileme ucunu çağırır. Sunucu bileşeni çerez yazamadığı için yenileme sayfanın çiziminde yapılamaz; ara katman çerezi hem süren isteğe hem cevaba yazabilen tek yerdir.
+- Erişim çerezinin ömrü 14 dakikadır (belirteç 15 dakika yaşar): süresi dolmuş belirteç backend'e gitmez, çerezin yokluğu "yenile" demektir. Yenileme ve cihaz çerezleri 7 gün yaşar.
+- Başarıda yeni erişim ve yenileme çerezleri yazılır ve istek sürer. Backend 401 dönerse üç çerez silinir ve kişi giriş sayfasına gider. Backend'e ulaşılamazsa ya da 5xx dönerse çerezlere dokunulmaz: geçici arıza oturumu düşürmez.
+- Eşzamanlı istekler için ek kilit yoktur: backend aynı eski belirteçle 10 saniye içinde gelen isteklere aynı çifti verir (AK-49 madde 3), bu yüzden aynı anda yenileyen iki sekme aynı çerezi yazar.
+- Bilinen sınır: 7 günlük mutlak bitiş ve 30 dakikalık hareketsizlik sınırı backend'dedir; 30 dakikadan uzun süre hiç istek atmayan kişi bir sonraki istekte girişe gider. Uyarı ekranı tasarlanmadı.
+
 ## Seçenekler
 ### Veri çekme
 - A — Sunucu bileşeni ve Server Action (seçildi): tarayıcıdan backend'e giden yol yoktur; ek kitaplık gerekmez. Bedel: etkileşimli listelerde her değişiklik sunucuya gider.
