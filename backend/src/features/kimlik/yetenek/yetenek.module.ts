@@ -1,25 +1,26 @@
+// Yetenek alt özelliğinin modülü (TS-002 AK-30): beş işin işleyicilerini, satır kurma yardımcısını,
+// denetleyiciyi ve iki repository gerçeklemesini bağlar.
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
 import { Registrar } from '../../../shared/database/registrar.js';
 import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
-import { YetenekListeleHandler } from './application/yetenek-listele.handler.js';
-import { YetenekOkuHandler } from './application/yetenek-oku.handler.js';
-import { YetenekOlusturHandler } from './application/yetenek-olustur.handler.js';
-import { YetenekSilHandler } from './application/yetenek-sil.handler.js';
-import { YetenekYenileHandler } from './application/yetenek-yenile.handler.js';
+import { YetenekYazimi } from './application/_shared/yetenek-yazimi.js';
+import { YetenekOlusturHandler } from './application/commands/yetenek-olustur/yetenek-olustur.handler.js';
+import { YetenekSilHandler } from './application/commands/yetenek-sil/yetenek-sil.handler.js';
+import { YetenekYenileHandler } from './application/commands/yetenek-yenile/yetenek-yenile.handler.js';
+import { YetenekListeleHandler } from './application/queries/yetenek-listele/yetenek-listele.handler.js';
+import { YetenekOkuHandler } from './application/queries/yetenek-oku/yetenek-oku.handler.js';
 import {
   YETENEK_REPO,
-  YetenekYazmaRepo,
-} from './domain/yetenek.repository.js';
-import {
-  YetenekKapiYazmaRepo,
-  yetenekPrismaRepository,
-} from './infrastructure/yetenek.prisma-repository.js';
+  YETENEK_YAZMA_REPO,
+} from './domain/repositories/i-yetenek.repository.js';
+import { yetenekOkumaPrismaRepository } from './infrastructure/repositories/yetenek-okuma.prisma-repository.js';
+import { KapiYetenekYazmaRepo } from './infrastructure/repositories/yetenek-yazma.kapi-repository.js';
 import { YetenekController } from './presentation/yetenek.controller.js';
 
-// Yetenek alt özelliği (TS-002 AK-30). Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez
-// kurulan genel YetkiModule verir (TS-002 AK-42).
+// Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
+// AK-42). Genel sayaç ve bütünlük sorusu çekirdek modülden gelir.
 @Module({
   imports: [DatabaseModule, KimlikCekirdekModule],
   controllers: [YetenekController],
@@ -29,11 +30,12 @@ import { YetenekController } from './presentation/yetenek.controller.js';
     YetenekOlusturHandler,
     YetenekSilHandler,
     YetenekYenileHandler,
-    { provide: YetenekYazmaRepo, useClass: YetenekKapiYazmaRepo },
+    YetenekYazimi,
+    { provide: YETENEK_YAZMA_REPO, useClass: KapiYetenekYazmaRepo },
   ],
 })
 export class YetenekModule {
   constructor(registrar: Registrar, kapi: OkumaKapisi) {
-    registrar.register(YETENEK_REPO, yetenekPrismaRepository(kapi));
+    registrar.register(YETENEK_REPO, yetenekOkumaPrismaRepository(kapi));
   }
 }
