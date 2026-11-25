@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 103 görevin 98 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1021 dakika, 403.03 dolar.
+Kayıtlı 104 görevin 99 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1030 dakika, 407.35 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -124,7 +124,8 @@ Kayıtlı 103 görevin 98 tanesi alındı. Son koşuların ve incelemelerin topl
 | GV-100 | EP-003 31 | Parola değiştirme: eski parolayla doğrulama, kilit altında yeniden bakış, bütün oturumları | alındı | 6.2 | 6.9 | 4.77 | 10 | 0 engel, 1 öneri | 0 |
 | GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | alındı | 3.4 | 7.3 | 4.54 | 10 | 0 engel, 1 öneri | 1 |
 | GV-102 | EP-003 32 | Okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar | alındı | 2.7 | 4.1 | 2.61 | 2 | 0 engel, 0 öneri | 0 |
-| GV-103 | EP-007 11 | Parolamı değiştir ve oturumlar ekranları | bekliyor | — | — | — | 0 | — | 0 |
+| GV-103 | EP-007 11 | Parolamı değiştir ve oturumlar ekranları | alındı | 2.8 | 6.9 | 4.32 | 17 | 0 engel, 3 öneri | 0 |
+| GV-104 | EP-007 12 | Kısaltılmış kimlik son sekiz karakteri gösterir | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -209,6 +210,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-099 | işçi tur sınırına takıldı, bitiş kaydı yok (kart fazla büyük; benim hatam) | sonuç kaydı | kaldığı yerden yeniden koştu |
 | GV-101 | işçi soruyla durdu: okuma kapısında kartın dışında bir hata buldu | bitiş kaydı | karar AK-52; düzeltme ayrı görev (GV-102); cevaplandı |
 | GV-099 | inceleme kaldı: düzen iletiyi gösterirken sayfa backend'e belirteçsiz istek atıyor | inceleme kaydı | karar TS-004'e yazıldı; bulgularla yeniden koştu |
+| GV-103 | inceleme kaldı: kendi oturumunu kapatınca çerezler silinmiyor | inceleme kaydı | bulguyla yeniden koştu |
 
 ## 6. Hatalarım
 
@@ -237,6 +239,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - GV-095'in kartına lint ayar dosyasını yazmadım; yeni ara katman dosyası lint'in sınır listesinde yoktu ve işçi durup sordu. Ana dalda lint yedi dakika iki hatayla kırmızı kaldı (GV-098 düzeltti).
 - GV-097'nin kartında iki isteğim çelişiyordu (bekleme üst sınırı 10 saniye ve 'test başına süre sabiti olmasın'; varsayılan test süresi 5 saniye). İnceleme yakaladı; üst sınır 4 saniye oldu.
 - GV-099'un kartına beş ayrı işi sığdırdım (ad listesi, tek hata eşlemesi, düğme adları, yenilenemeyen oturum, silinmiş kayıt sayfası); işçi 38 dosyaya dokunup tur sınırında kesildi. İki kart olmalıydı.
+- 'Adı bilinmeyen kimlik ilk sekiz karakterle gösterilir' kararını, kimliklerin zaman sıralı olduğunu (baş tarafın zaman olduğunu) düşünmeden verdim; tarayıcıda iki oturumun kısaltması aynı çıkınca fark ettim.
 
 ## 7. Araçta (harness) değişenler
 
@@ -304,6 +307,9 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Senaryo testi iki kişiye kaynak başına tek kural veriyordu; okuma kapısındaki hatayı bu yüzden yakalamadı. Senaryoya 'aynı kaynakta iki kurallı kişi' adımı eklenmeli (kapı testine GV-102 ekliyor).
 - Oturum listesinin 'geçmiş' görünümü derin sayfada parça başına çok satırı belleğe alıyor ve erişim kaydındaki kayıt sayısı cevaptakinden büyük çıkıyor (GV-101 incelemesi); kapalı oturumlar birikince yavaşlar. Kapıya 'veya' koşulu desteği gelince tek sorguya iner.
 - Grup kayıt sayfasında, üst grup listede olup adı okunamıyorsa '—' görünüyor; kural kısaltılmış kimlik diyor (GV-099 son incelemesi; küçük tutarsızlık).
+- Kişi kendi oturumunu kapatınca giriş ekranı açılıyor ama adres çubuğunda /oturum-bitti yazıyor (çerezler siliniyor; görünüş kusuru).
+- Oturum tablosundaki 'Kullanıcı' bağlantısı, kullanıcıları okuyamayan kişiye de çiziliyor (GV-103 incelemesi); tıklayınca 'yetkin yok' sayfası açılır.
+- Tarayıcı aracı ana çalışma ağacında .playwright-mcp klasörüne geçici dosyalar yazdı (git'e girmiyor; .git/info/exclude ile dışarıda); silinebilir.
 
 ## 9. PR'lar
 
@@ -406,3 +412,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 05:20 — Okuma kapısı ortak yer olduğu için düzeltmeden (GV-102) etkilenen öbür kimlik testlerini de dosya dosya koşturdum (kendi ölçümüm, 05:20): rol, grup ve üyelik okuma ve yazma testleri 6 dosyada 82; yetenek ve kullanıcı testleri 6 dosyada 142; yazma kapısı, erişim kaydı, yetki, yazma işareti, çekirdek ve kurulum testleri 6 dosyada 92. On sekiz dosyanın hepsi geçti.
 - 05:20 — GV-099 üçüncü koşuda tasarım sorusuyla durdu (erişim çerezi yokken sayfanın backend'e gitmesi); karar verildi ve cevaplandı: yenilenebilir çift varsa istek atılmaz ve 'ulaşılamıyor' döner, yoksa backend çağrılmadan oturum bitti yoluna gidilir.
 - 05:30 — GV-099 (ön yüzde son sertleştirme: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi, düğme adları, yenilenemeyen oturum, silinmiş kayıt sayfası) dört koşuda alındı: on iki test dosyasında 297 test; tip ve lint 0. Son görev GV-103 (parolamı değiştir ve oturumlar ekranları) koşuyor.
+- 06:03 — GV-103 (parolamı değiştir ve oturumlar ekranları) iki koşuda alındı: altı test dosyasında 160 test; tip ve lint 0. İlk inceleme yerinde bir açık buldu: kişi kendi oturumunu kapatınca tarayıcıdaki çerezler silinmiyordu (çatı, iş içinden yapılan yönlendirmeyi sunucuda kendisi izliyor; sahte yönlendirmeli testler bunu göremiyordu).
+- 06:03 — GERÇEK TARAYICIDA SON DENEME (06:00-06:03; bütün işlerin birleştiği derleme; geçici veritabanları): (1) Başlıkta Kullanıcılar, Roller, Gruplar, İzinler, Yetenekler, Oturumlar, Parolamı değiştir ve Çıkış var. (2) Silinen grubun sayfası 'Silinmiş' işaretini ve zamanını gösteriyor, iş düğmesi yok. (3) Aynı kullanıcı adıyla ikinci kişi açılınca backend'in çakışma iletisi görünüyor ve yazılanlar formda kalıyor. (4) Yönetici ikinci bir tarayıcıdan da girince oturum listesinde iki satır var, biri 'Bu oturum'; öbürü kapatılınca o tarayıcının sonraki isteği girişe düşüyor ve çerezleri siliniyor; geçmiş görünümünde 'Kapatıldı: Sahibi kapattı' yazıyor. (5) Yalnız temel üyeliği olan kişinin başlığında yalnız Oturumlar, Parolamı değiştir ve Çıkış var; oturum listesinde yalnız kendi oturumu görünüyor. (6) Parola değiştirme: yanlış eski parolada 'Eski parola yanlış' ve boş alanlar; doğrusunda giriş sayfası 'Parolan değişti; yeniden gir' notuyla açılıyor, çerezler silinmiş; eski parola girmiyor, yenisi giriyor. (7) Kişi kendi oturumunu listeden kapatınca üç çerez de siliniyor. (8) Yönetici, kullanıcının kayıt sayfasındaki 'Oturumları' bağlantısıyla o kişinin geçmiş oturumlarını nedenleriyle görüyor ('Sahibi kapattı', 'Parola değişti'); okuma kapısı düzeltmesi tarayıcıda da doğrulandı. Görüntü: docs/rapor/gorsel/2026-11-25-oturumlar.png. Ortam kapatıldı: iki geçici veritabanı silindi, 3001 ve 3100 boş.
+- 06:03 — Denemede küçük bir kusur görüldü ve düzeltmesi başladı (GV-104): kısaltılmış kimlik ilk sekiz karakterdi; kimlikler zaman sıralı olduğu için aynı dakikada açılan iki oturumun kısaltması aynı çıkıyordu. Karar düzeltildi: son sekiz karakter.
