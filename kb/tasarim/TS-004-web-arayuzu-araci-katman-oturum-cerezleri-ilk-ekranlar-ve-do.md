@@ -109,6 +109,13 @@ Ajan kararı (2026-11-25 gecesi; kullanıcı teyidi bekler); backend tarafı TS-
 - Ara katman dosyası lint sınırlarında ayrı bir türdür: yalnız ortak kodu içe aktarır, feature ve sayfa içini içe aktarmaz.
 - Bilinen sınır: 7 günlük mutlak bitiş ve 30 dakikalık hareketsizlik sınırı backend'dedir; 30 dakikadan uzun süre hiç istek atmayan kişi bir sonraki istekte girişe gider. Uyarı ekranı tasarlanmadı.
 
+## Parola değiştirme ve oturumlar ekranları
+Ajan kararı (2026-11-25 gecesi); backend sözleşmesi TS-002 AK-50 ve AK-51'dedir.
+- `/parola`: "Parolamı değiştir" formu (eski parola, yeni parola, yeni parola tekrar). Menüdeki bağlantı oturumu olan herkese görünür; bu iş yetenek aramaz ("yalnız kendisi"). Başarıda backend kişinin bütün oturumlarını kapatır: ekran üç çerezi siler ve kişiyi giriş sayfasına "Parolan değişti; yeniden gir" notuyla yollar. Parola alanları hata durumunda da boş açılır.
+- `/oturumlar`: oturum listesi. Varsayılan görünüm açık oturumlardır; "Geçmiş oturumlar" görünümü kapananları ve süresi dolanları gösterir. Kolonlar: başlangıç, son etkinlik, adres, tarayıcı bilgisi, durum. İsteği yapan oturum "Bu oturum" diye işaretlenir. Açık oturumun satırında "Kapat" vardır (iki adımlı); kişi o anki oturumunu kapatırsa oturum bitti yoluna gider.
+- Yönetici, kullanıcının kayıt sayfasındaki "Oturumları" bağlantısıyla o kişinin oturumlarına gider (`/oturumlar?kullaniciId=…`); bağlantı ve menü `<Can>` ile sorulur (Oturum:oku).
+- Kapatılma nedeni ekranda Türkçe etiketle gösterilir; ekranın tanımadığı neden kodu olduğu gibi yazılır.
+
 ## Seçenekler
 ### Veri çekme
 - A — Sunucu bileşeni ve Server Action (seçildi): tarayıcıdan backend'e giden yol yoktur; ek kitaplık gerekmez. Bedel: etkileşimli listelerde her değişiklik sunucuya gider.
