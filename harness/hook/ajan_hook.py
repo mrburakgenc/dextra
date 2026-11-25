@@ -49,7 +49,7 @@ KOMUT_AYIRICI = ";&|()\n`"
 GIT_DEGERLI_SECENEK = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix")
 GH_DEGERLI_SECENEK = ("-R", "--repo")
 KABUK = ("sh", "bash", "zsh", "dash")   # -c seçeneğinin değeri komuttur
-YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path")
+YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path", re.I)   # git'in ayar anahtarları harfe duyarsız
 # Hook yolunu yalnız okuyan tek biçim serbesttir; anahtarın geçtiği başka her komut (atama, silme, -c, alıntı)
 # reddedilir. Dar tutulur: kapıyı gevşeten istisna, kapının kendisinden geniş olmamalı.
 HOOK_YOLU_OKUMA = re.compile(r"\bgit(?:\s+-C\s+\S+)?\s+config(?:\s+--(?:local|global|system|worktree))?\s+--get(?:-all)?"
@@ -339,7 +339,8 @@ def _kirmizilar(kok: pathlib.Path) -> list:
         raise h.HarnessHata("kapı kendi bozuk örneğinde şunları yakalayamadı: %s" % ", ".join(eksik))
     git_var = subprocess.run(["git", "rev-parse", "--verify", "--quiet", h.ayar_oku(kok)["taban_dal"]],
                              cwd=kok, capture_output=True).returncode == 0
-    return [b for b in h.denetle(kok, taban=git_var) if b["seviye"] == "kirmizi"]
+    # Denetim komutları burada koşmaz (kancanın süre sınırı 30 sn); onları git'in push kapısı (`denetle --dal`) koşturur
+    return [b for b in h.denetle(kok, taban=git_var, komutlar=False) if b["seviye"] == "kirmizi"]
 
 
 def _bulgu_metni(bulgular: list, sinir: int = 12) -> str:

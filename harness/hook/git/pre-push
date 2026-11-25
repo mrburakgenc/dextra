@@ -3,4 +3,5 @@
 # Bu kapı komutu kimin, nasıl yazdığından bağımsız çalışır; son söz buradadır.
 KOK=$(git rev-parse --show-toplevel) || exit 1
 cd "$KOK" || exit 1
+unset HARNESS_DENETIM_KOSUYOR   # iç içe koşum işaretine güvenilmez: gerçek gönderme denetim komutlarını hep koşturur
 PYTHONDONTWRITEBYTECODE=1 exec python3 harness/h.py denetle --dal
