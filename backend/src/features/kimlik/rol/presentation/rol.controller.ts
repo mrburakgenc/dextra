@@ -12,7 +12,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Izin } from '../../../../shared/guvenlik/isaretler.js';
+import { Izin } from '../../../../shared/guvenlik/application/isaretler.js';
 import {
   type RolAdiniDegistirGovdesi,
   rolAdiniDegistirGovdesiSemasi,

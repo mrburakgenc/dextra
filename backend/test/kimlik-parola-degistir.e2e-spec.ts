@@ -12,8 +12,8 @@ import request from 'supertest';
 import type { MockInstance } from 'vitest';
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
 import { ParolaController } from '../src/features/kimlik/parola/presentation/parola.controller.js';
-import { isaretleriOku } from '../src/shared/guvenlik/isaretler.js';
-import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/yalniz-kendisi-listesi.js';
+import { isaretleriOku } from '../src/shared/guvenlik/application/isaretler.js';
+import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/domain/yalniz-kendisi-listesi.js';
 import {
   imzaliAdresBasliklari,
   type KimlikOrtami,

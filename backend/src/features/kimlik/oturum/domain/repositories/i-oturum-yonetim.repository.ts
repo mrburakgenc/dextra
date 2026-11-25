@@ -7,7 +7,7 @@ import type { Islem } from '../../../../../shared/database/unit-of-work.js';
 import type {
   Kayit,
   Siralama,
-} from '../../../../../shared/yetki/okuma-kapisi.js';
+} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { OturumKapatmaNedeni } from '../entities/oturum.entity.js';
 
 export interface OturumListeIstegi {

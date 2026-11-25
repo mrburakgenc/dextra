@@ -5,7 +5,7 @@ import type { Islem } from '../../../../../shared/database/unit-of-work.js';
 import type {
   Kayit,
   Siralama,
-} from '../../../../../shared/yetki/okuma-kapisi.js';
+} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniRol } from '../entities/rol.entity.js';
 import type { RolAdi } from '../value-objects/rol-adi.js';
 

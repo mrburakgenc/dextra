@@ -3,7 +3,7 @@ import { DatabaseModule } from '../../../shared/database/database.module.js';
 import { Registrar } from '../../../shared/database/registrar.js';
 import { GuvenlikModule } from '../../../shared/guvenlik/guvenlik.module.js';
 import { MessagingModule } from '../../../shared/messaging/messaging.module.js';
-import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
+import { OkumaKapisi } from '../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { ParolaModule } from '../parola/parola.module.js';
 import { CikisHandler } from './application/commands/cikis/cikis.handler.js';

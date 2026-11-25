@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { yeniKimlik } from '../../../../../../shared/database/kimlik.js';
 import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../../../../../../shared/guvenlik/belirtec.js';
+import { BelirtecServisi } from '../../../../../../shared/guvenlik/application/belirtec.js';
 import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
 import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
 import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/application/iz.js';

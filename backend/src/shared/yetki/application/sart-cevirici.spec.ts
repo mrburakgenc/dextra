@@ -1,5 +1,5 @@
-import type { Islec } from '../kimlik/yetki-verisi.contract.js';
-import type { AlanTipi } from './alan-tipleri.js';
+import type { Islec } from '../../kimlik/domain/i-yetki-verisi.contract.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
 import {
   type CozulmusSartOgesi,
   kosuluCevir,

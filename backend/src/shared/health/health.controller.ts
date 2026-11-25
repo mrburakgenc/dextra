@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { HerkeseAcik } from '../guvenlik/isaretler.js';
+import { HerkeseAcik } from '../guvenlik/application/isaretler.js';
 
 export interface HealthStatus {
   readonly status: 'ok';

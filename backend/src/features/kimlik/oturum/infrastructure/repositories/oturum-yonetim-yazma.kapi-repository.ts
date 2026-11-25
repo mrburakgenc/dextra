@@ -2,7 +2,7 @@
 // AK-19, AK-51).
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/unit-of-work.js';
-import { YazmaKapisi } from '../../../../../shared/yetki/yazma-kapisi.js';
+import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
 import type {
   IOturumYonetimYazmaRepo,
   OturumKapatmasi,

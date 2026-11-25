@@ -2,7 +2,7 @@
 // tipi (KR-014; TS-002 AK-39). Azalan sıra için alanın başına "-" yazılır; pasif süzgeci "true" ya da
 // "false" alır.
 import { z } from 'zod';
-import type { Siralama } from '../../../../../../shared/yetki/okuma-kapisi.js';
+import type { Siralama } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
 
 // Listenin sıralanabildiği alanlar (TS-002 AK-39: kaynağın şemasında sabit liste).
 const SIRALANABILIR = ['gorunenAd', 'kullaniciAdi', 'olusturmaZamani'] as const;

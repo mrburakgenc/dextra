@@ -5,15 +5,15 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { istekOturumunuYaz } from '../http/istek-baglami.js';
-import { KodluHata } from '../http/kodlu-hata.js';
+import { istekOturumunuYaz } from '../../http/istek-baglami.js';
+import { KodluHata } from '../../http/kodlu-hata.js';
 import {
   OTURUM_DENETIMI,
   type OturumDenetimi,
-} from '../kimlik/oturum-denetimi.contract.js';
-import { BelirtecServisi } from './belirtec.js';
-import { isaretleriOku } from './isaretler.js';
-import { IstemciAdresiDogrulayici } from './istemci-adresi-imzasi.js';
+} from '../../kimlik/domain/i-oturum-denetimi.contract.js';
+import { BelirtecServisi } from '../application/belirtec.js';
+import { isaretleriOku } from '../application/isaretler.js';
+import { IstemciAdresiDogrulayici } from '../application/istemci-adresi-imzasi.js';
 
 // Yetkilendirme şeması büyük-küçük harf duyarsızdır (RFC 7235); belirteç boşluk taşımaz.
 const BEARER = /^Bearer (\S+)$/i;

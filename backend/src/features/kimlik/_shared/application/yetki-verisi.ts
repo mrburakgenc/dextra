@@ -9,8 +9,8 @@ import type {
   YetenekSatiri,
   YetkiSurumleri,
   YetkiVerisi,
-} from '../../../../shared/kimlik/yetki-verisi.contract.js';
-import type { SistemAlanlari } from '../../../../shared/yetki/kaynak-katalogu.js';
+} from '../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
+import type { SistemAlanlari } from '../../../../shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import {
   type GrupDugumu,
   type SaklananYetenek,

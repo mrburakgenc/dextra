@@ -10,10 +10,10 @@ import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/application/ye
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
-import type { YetenekSatiri } from '../src/shared/kimlik/yetki-verisi.contract.js';
+import type { YetenekSatiri } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
-import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
-import { yetenekleriDerle } from '../src/shared/yetki/yetenek-derleyici.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
+import { yetenekleriDerle } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { YetkiModule } from '../src/shared/yetki/yetki.module.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';

@@ -14,10 +14,10 @@ import {
   HerkeseAcik,
   Izin,
   YalnizKendisi,
-} from '../../../../shared/guvenlik/isaretler.js';
-import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../../../../shared/guvenlik/application/isaretler.js';
+import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
-import type { YetenekKurali } from '../../../../shared/yetki/yetenek-derleyici.js';
+import type { YetenekKurali } from '../../../../shared/yetki/application/yetenek-derleyici.js';
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,

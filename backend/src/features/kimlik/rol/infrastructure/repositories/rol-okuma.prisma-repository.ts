@@ -1,7 +1,7 @@
 // IRolOkumaRepo'nun gerçeklemesi: rol ve izin kayıtlarını işlemin istemcisiyle, yetki kapısının
 // okuma yüzünden okur.
 import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
-import type { OkumaKapisi } from '../../../../../shared/yetki/okuma-kapisi.js';
+import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import type { IRolOkumaRepo } from '../../domain/repositories/i-rol.repository.js';
 
 export function rolOkumaPrismaRepository(

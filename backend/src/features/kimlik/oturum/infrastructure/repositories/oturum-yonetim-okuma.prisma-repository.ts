@@ -4,12 +4,12 @@ import type {
   RepoFabrikasi,
   RepoIstemcisi,
 } from '../../../../../shared/database/registrar.js';
+import type { KosulOgesi } from '../../../../../shared/yetki/application/sart-cevirici.js';
 import type {
   Kayit,
-  OkumaKapisi,
   Siralama,
-} from '../../../../../shared/yetki/okuma-kapisi.js';
-import type { KosulOgesi } from '../../../../../shared/yetki/sart-cevirici.js';
+} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import { HAREKETSIZLIK_SINIRI_MS } from '../../domain/entities/oturum.entity.js';
 import type { IOturumYonetimOkumaRepo } from '../../domain/repositories/i-oturum-yonetim.repository.js';
 

@@ -1,7 +1,7 @@
 // Yetenek içeriği değer nesnesi: satırın kayıt ve kolon sınırının alan kuralı depoda yalnız burada
 // yazılır (TS-005 Değişmez 2).
 import { ret, type Sonuc, tamam } from '../../../../../shared/domain/sonuc.js';
-import type { SartOgesi } from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 import type { IcerikListesi } from './icerik-listesi.js';
 
 // Sınır açık yazılır: işaret ya da içerik. Liste boş olamaz (içerik yoksa null); ikisi de yoksa satır

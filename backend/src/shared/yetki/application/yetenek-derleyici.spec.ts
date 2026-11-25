@@ -2,9 +2,9 @@ import { accessibleBy } from '@casl/prisma/runtime';
 import type {
   SartOgesi,
   YetenekSatiri,
-} from '../kimlik/yetki-verisi.contract.js';
-import type { AlanTipi } from './alan-tipleri.js';
-import type { KaynakKatalogu } from './kaynak-katalogu.js';
+} from '../../kimlik/domain/i-yetki-verisi.contract.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
+import type { KaynakKatalogu } from '../domain/kaynak-katalogu.js';
 import { yetenekleriDerle } from './yetenek-derleyici.js';
 
 const TALEP_TIPLERI: Record<string, AlanTipi> = {

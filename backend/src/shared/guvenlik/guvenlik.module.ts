@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
-import { BelirtecServisi } from './belirtec.js';
-import { IsaretDenetimi } from './isaret-denetimi.js';
-import { IstemciAdresiDogrulayici } from './istemci-adresi-imzasi.js';
+import { BelirtecServisi } from './application/belirtec.js';
+import { IstemciAdresiDogrulayici } from './application/istemci-adresi-imzasi.js';
 import {
   YALNIZ_KENDISI_LISTESI,
   YALNIZ_KENDISI_UCLARI,
-} from './yalniz-kendisi-listesi.js';
+} from './domain/yalniz-kendisi-listesi.js';
+import { IsaretDenetimi } from './infrastructure/isaret-denetimi.js';
 
 // Kimlik guard'ının ortak parçaları (TS-002 AK-6, AK-8, AK-12). Belirteç anahtarları ve aracı katman
 // sırrı ortamdan, uygulama kurulurken okunur: eksik anahtar, eksik ya da 32 karakterden kısa sır

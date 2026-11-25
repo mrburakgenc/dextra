@@ -18,17 +18,17 @@ import { OturumController } from '../src/features/kimlik/oturum/presentation/otu
 import {
   ACIK_ANAHTAR_DEGISKENI,
   OZEL_ANAHTAR_DEGISKENI,
-} from '../src/shared/guvenlik/belirtec.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
 import {
   HerkeseAcik,
   Izin,
   isaretleriOku,
   YalnizKendisi,
-} from '../src/shared/guvenlik/isaretler.js';
-import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/yalniz-kendisi-listesi.js';
+} from '../src/shared/guvenlik/application/isaretler.js';
+import { YALNIZ_KENDISI_UCLARI } from '../src/shared/guvenlik/domain/yalniz-kendisi-listesi.js';
 import { HttpTemeliModule } from '../src/shared/http/http-temeli.module.js';
-import { YetkiBellegi } from '../src/shared/yetki/yetki-bellegi.js';
-import { YetkiGuard } from '../src/shared/yetki/yetki.guard.js';
+import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
+import { YetkiGuard } from '../src/shared/yetki/infrastructure/yetki.guard.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

@@ -9,8 +9,8 @@ import type {
   SabitDeger,
   SartDegeri,
   YetenekSatiri,
-} from '../kimlik/yetki-verisi.contract.js';
-import type { KaynakKatalogu } from './kaynak-katalogu.js';
+} from '../../kimlik/domain/i-yetki-verisi.contract.js';
+import type { KaynakKatalogu } from '../domain/kaynak-katalogu.js';
 import {
   type CozulmusSartOgesi,
   sartiCevir,

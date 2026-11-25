@@ -18,7 +18,7 @@ import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

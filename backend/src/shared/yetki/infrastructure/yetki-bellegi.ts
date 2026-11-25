@@ -3,9 +3,15 @@ import {
   YETKI_VERISI,
   type YetkiSurumleri,
   type YetkiVerisi,
-} from '../kimlik/yetki-verisi.contract.js';
-import { KAYNAK_KATALOGU, type KaynakKatalogu } from './kaynak-katalogu.js';
-import { type DerlemeSonucu, yetenekleriDerle } from './yetenek-derleyici.js';
+} from '../../kimlik/domain/i-yetki-verisi.contract.js';
+import {
+  type DerlemeSonucu,
+  yetenekleriDerle,
+} from '../application/yetenek-derleyici.js';
+import {
+  KAYNAK_KATALOGU,
+  type KaynakKatalogu,
+} from '../domain/kaynak-katalogu.js';
 
 // Bellekte en çok bu kadar kişinin derlenmiş yetkisi durur; dolunca en eski kullanılan atılır.
 export const YETKI_BELLEGI_SINIRI = 10_000;

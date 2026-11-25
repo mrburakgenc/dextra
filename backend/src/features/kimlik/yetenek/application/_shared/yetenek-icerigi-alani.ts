@@ -6,7 +6,7 @@ import type {
   Islec,
   SartOgesi,
   YerTutucu,
-} from '../../../../../shared/kimlik/yetki-verisi.contract.js';
+} from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
 import {
   ICERIK_LISTESI_EN_AZ,
   type IcerikListesiReddi,

@@ -11,7 +11,7 @@ import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';
 

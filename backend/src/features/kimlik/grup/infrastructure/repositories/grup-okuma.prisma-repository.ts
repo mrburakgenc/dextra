@@ -4,7 +4,7 @@ import type {
   RepoFabrikasi,
   RepoIstemcisi,
 } from '../../../../../shared/database/registrar.js';
-import type { OkumaKapisi } from '../../../../../shared/yetki/okuma-kapisi.js';
+import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import type { IGrupOkumaRepo } from '../../domain/repositories/i-grup.repository.js';
 
 const KAYNAK = 'Grup';

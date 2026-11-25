@@ -38,16 +38,16 @@ import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/applicat
 import type { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../src/shared/guvenlik/belirtec.js';
-import { Izin } from '../src/shared/guvenlik/isaretler.js';
+import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
+import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
-} from '../src/shared/guvenlik/istemci-adresi-imzasi.js';
+} from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
-import type { YetenekKurali } from '../src/shared/yetki/yetenek-derleyici.js';
+import type { YetenekKurali } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';

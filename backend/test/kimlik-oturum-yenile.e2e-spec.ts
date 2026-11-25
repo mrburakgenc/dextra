@@ -17,7 +17,7 @@ import {
 import {
   BelirtecServisi,
   YENILEME_BELIRTECI_SURESI_SN,
-} from '../src/shared/guvenlik/belirtec.js';
+} from '../src/shared/guvenlik/application/belirtec.js';
 import {
   imzaliAdresBasliklari,
   type KimlikOrtami,

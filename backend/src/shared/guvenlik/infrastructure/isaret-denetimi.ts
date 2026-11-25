@@ -1,8 +1,8 @@
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import { METHOD_METADATA } from '@nestjs/common/constants.js';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
-import { isaretleriOku } from './isaretler.js';
-import { YALNIZ_KENDISI_LISTESI } from './yalniz-kendisi-listesi.js';
+import { isaretleriOku } from '../application/isaretler.js';
+import { YALNIZ_KENDISI_LISTESI } from '../domain/yalniz-kendisi-listesi.js';
 
 // Açılış denetimi (TS-002 AK-12; KU-011): uygulamanın her ucu üç işaretten tam birini taşır.
 // İşaretsiz ya da birden çok işaretli uç bulunursa uygulama açılmaz; hata ucun sınıfını ve

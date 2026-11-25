@@ -1,7 +1,7 @@
 // Yetenekleri listele sorgusu: GET kimlik/yetenek sorgu dizgesinin şeması ve ondan türeyen sorgu tipi
 // (TS-002 AK-39; KR-014).
 import { z } from 'zod';
-import type { Siralama } from '../../../../../../shared/yetki/okuma-kapisi.js';
+import type { Siralama } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
 
 // Listenin sıralanabildiği alanlar (TS-002 AK-39: kaynağın şemasında sabit liste).
 const SIRALANABILIR = ['olusturmaZamani'] as const;

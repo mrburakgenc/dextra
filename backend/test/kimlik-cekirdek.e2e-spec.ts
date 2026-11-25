@@ -16,7 +16,7 @@ import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
-import { prismaKaynakKatalogu } from '../src/shared/yetki/kaynak-katalogu.js';
+import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { YetkiModule } from '../src/shared/yetki/yetki.module.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
