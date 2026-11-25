@@ -25,6 +25,7 @@ import posixpath
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -236,6 +237,106 @@ def taslak_uyarisi(kimlik: str, taslaklar: list) -> str:
         kimlik, len(taslaklar), ", ".join(taslaklar))
 
 
+DAYANAK_TURLERI = ("karar", "kural", "tasarim")
+
+
+def dayanak_dogrula(kok: pathlib.Path, kimlikler: list) -> list:
+    """Dayanak kimlikleri var olan karar, kural ya da tasarım düğümü mü; değilse hiçbir şey yazılmadan durdurur."""
+    dz = h.Dizin(pathlib.Path(kok))
+    yanlis = [k for k in kimlikler if dz.kimlik.get(k, {}).get("tur") not in DAYANAK_TURLERI]
+    if yanlis:
+        raise h.HarnessHata("dayanak olarak verilen %s var olan bir karar, kural ya da tasarım düğümü değil; "
+                            "hiçbir şey yazılmadı" % ", ".join(yanlis))
+    return list(dict.fromkeys(kimlikler))
+
+
+def is_taslaklari(kok: pathlib.Path, d: dict, p: dict | None = None) -> list:
+    """İşe düşen taslaklar (TS-006 Yapı 18): yollara ve konulara düşen taslak kurallar ile onların taslak kararları
+    (paketin seçimi) ve görevin dayanaklarından durumu kabul olmayanlar (taslak, ezildi, emekli). `p`, görevin
+    hazır paketidir."""
+    dz = h.Dizin(pathlib.Path(kok))
+    p = p or h.paket(kok, d["rol"], d["yollar"], d["konular"])
+    kimlikler = dict.fromkeys(p["taslaklar"] + [k for k in d.get("dayanak") or []
+                                                 if dz.kimlik.get(k, {}).get("durum") != "kabul"])
+    return [{"kimlik": k, "baslik": dz.kimlik[k]["baslik"], "durum": dz.kimlik[k]["durum"]} for k in kimlikler]
+
+
+def taslak_engeli(kimlik: str, taslaklar: list, izin_komutu: str) -> str:
+    """Taslaklı iş koşturulmayınca verilen ileti: taslaklar ve iki çıkış (kabul ya da o koşuya özel izin)."""
+    kabul_edilir = h.kabul_sirasi([t["kimlik"] for t in taslaklar if t["durum"] == "taslak"])
+    return ("%s koşturulmadı: işe düşen %d taslak kabul edilmedi; kabul edilmemiş karara dayanan iş koşmaz:\n%s\n"
+            "İki çıkış: kullanıcı taslakları kabul eder (%s) ya da kullanıcı bu koşuya özel izin verir (%s)"
+            % (kimlik, len(taslaklar), "\n".join("  %s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"])
+                                                for t in taslaklar),
+               "; ".join(filter(None, [
+                   kabul_edilir and "python3 harness/h.py kabul " + " ".join(kabul_edilir),
+                   len(kabul_edilir) < len(taslaklar) and "ezilmiş ya da emekli dayanak kabulle açılmaz"])),
+               izin_komutu))
+
+
+# Terminal dışında `--taslakla`, kancanın kullanıcıya sorduğunu gösteren işaretle çalışır (kapalı tarafa düşer).
+# İşareti kanca soruyu gösterirken bırakır, komut bir kez kullanır; işaret yoksa ve komut kullanıcının kendi
+# uçbiriminde değilse koşturulmaz: kancanın tanımadığı bir komut biçimi izinsiz koşmaz.
+TASLAK_IZNI_SURESI_SN = 300
+
+
+def _izin_isareti(kok: pathlib.Path, hedef: str) -> pathlib.Path:
+    return h.ortak_kok(pathlib.Path(kok)) / ".harness" / "onay" / ("taslakla-%s.json" % hedef)
+
+
+def taslak_izni_yaz(kok: pathlib.Path, hedef: str, taslaklar: list, simdi: float | None = None) -> None:
+    """Kanca `--taslakla` sorusunu gösterirken bırakır: bu görev ya da epic için tek kullanımlık izin işareti."""
+    yol = _izin_isareti(kok, hedef)
+    yol.parent.mkdir(parents=True, exist_ok=True)
+    yol.write_text(json.dumps({"zaman": simdi or time.time(), "taslaklar": taslaklar}), encoding="utf-8")
+
+
+def taslak_izni(kok: pathlib.Path, hedef: str, taslaklar: list, soru: str) -> bool:
+    """`--taslakla` ile çağrılan komutun iznini doğrular. İşaret her çağrıda tüketilir. İşe taslak düşmüyorsa izin
+    gerekmez (False); işaret tazeyse True; değilse kullanıcının kendi uçbiriminde `soru` gösterilip sorulur;
+    uçbirim de değilse koşturulmaz."""
+    yol = _izin_isareti(kok, hedef)
+    try:
+        isaret = json.loads(yol.read_text(encoding="utf-8"))
+        yol.unlink()
+        taze = 0 <= time.time() - float(isaret["zaman"]) <= TASLAK_IZNI_SURESI_SN
+    except (OSError, ValueError, KeyError, TypeError):
+        taze = False
+    if not taslaklar or taze:
+        return bool(taslaklar)
+    if sys.stdin.isatty() and sys.stdout.isatty():   # kullanıcının kendi terminali: soruyu komut sorar
+        print(soru)
+        if input("Taslaklara rağmen koşturulsun mu? Onay için 'evet' yaz: ").strip().lower() == "evet":
+            return True
+        raise h.HarnessHata("%s koşturulmadı: kullanıcı taslaklara rağmen koşturmaya izin vermedi" % hedef)
+    raise h.HarnessHata("%s koşturulmadı: izin sorusu sorulmadan --taslakla kullanılamaz. Claude Code'da bu komutu "
+                        "kanca kullanıcıya sorar ve işareti o bırakır (komut `python3 harness/h.py ...` biçiminde "
+                        "yazılmalı); başka yerde komutu kullanıcı kendi terminalinde çalıştırır." % hedef)
+
+
+def taslak_ozeti(kok: pathlib.Path, kimlik: str) -> str:
+    """`--taslakla` sorusunda gösterilen özet: görevin başlığı ve işe düşen taslaklar."""
+    kok = pathlib.Path(kok)
+    d = _durum_oku(kok, kimlik, _kayit(kok, kimlik))
+    taslaklar = is_taslaklari(kok, d)
+    return "%s — %s\nişe düşen %d taslak:\n%s" % (kimlik, d["baslik"], len(taslaklar), "\n".join(
+        "  %s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"]) for t in taslaklar) or "  (yok)")
+
+
+def _dayanak_yaz(kart: str, dayanak: list) -> str:
+    """Kartın baş kısmındaki 'Dayanak' satırını yazar: varsa yeniler, yoksa 'Yer' satırının ya da [gorev] satırının
+    ardına ekler."""
+    bas = kart.index("\n## Hedef")
+    ust, satir = kart[:bas], "Dayanak: " + ", ".join(dayanak)
+    if re.search(r"(?m)^Dayanak: .*$", ust):
+        ust = re.sub(r"(?m)^Dayanak: .*$", lambda _: satir, ust, count=1)
+    elif re.search(r"(?m)^Yer: .*$", ust):
+        ust = re.sub(r"(?m)^(Yer: .*)$", lambda m: m.group(1) + "\n" + satir, ust, count=1)
+    else:
+        ust = re.sub(r"(?m)^(\[gorev\] .*)$", lambda m: m.group(1) + "\n\n" + satir, ust, count=1)
+    return ust + kart[bas:]
+
+
 KAYNAK_UZANTILARI = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 UZANTISIZ_ADAYLAR = (".ts", ".tsx", ".js", ".mjs")
 # import … from '…', export … from '…', import '…', import('…'), require('…'): yalnız göreli belirteçler
@@ -312,14 +413,17 @@ def _bolum(metin: str, ad: str) -> str:
 
 def yeni(kok: pathlib.Path, baslik: str, rol: str, yollar: list, konular: list,
          hedef: str | None = None, olcut: str | None = None,
-         plan: str | None = None, adim: str | None = None, yer: str | None = None) -> pathlib.Path:
+         plan: str | None = None, adim: str | None = None, yer: str | None = None,
+         dayanak: list | None = None) -> pathlib.Path:
     """Görev kartı açar. Hedef ve kabul ölçütü verilmezse orchestrator sonradan yazar.
 
     `plan` ve `adim`, görev bir epic'in yaprağıysa epic kimliği ve yaprak numarasıdır ("2" ya da "1.3");
-    `yer`, kartta gösterilen space › epic › task › subtask yoludur."""
+    `yer`, kartta gösterilen space › epic › task › subtask yoludur. `dayanak`, işin açıkça dayandığı karar, kural ya da
+    tasarım kimlikleridir; biri taslaksa görev koşmaz (TS-006 Yapı 18)."""
     kok = pathlib.Path(kok)
     if rol not in h.ayar_oku(kok)["roller"]:
         raise h.HarnessHata("rol '%s' harness.json roller listesinde yok" % rol)
+    dayanak = dayanak_dogrula(kok, dayanak or [])
     ana = _kayit(kok)
     ana.mkdir(parents=True, exist_ok=True)
     n = max([int(p.name[3:]) for p in ana.glob("GV-*") if p.name[3:].isdigit()], default=0)
@@ -333,9 +437,13 @@ def yeni(kok: pathlib.Path, baslik: str, rol: str, yollar: list, konular: list,
             continue
     d = {"kimlik": kimlik, "baslik": baslik, "rol": rol, "yollar": list(yollar),
          "konular": list(konular), "durum": "taslak", "acildi": _simdi(), "plan": plan, "adim": adim, "yer": yer}
+    if dayanak:
+        d["dayanak"] = dayanak
     p = h.paket(kok, rol, d["yollar"], d["konular"])
     notlar = kapsam_notu(kok, d["yollar"], hedef, olcut)
     kart = _kart_metni(kimlik, d, hedef or HEDEF_YERTUTUCU, olcut or OLCUT_YERTUTUCU, p["tam"])
+    if dayanak:
+        kart = _dayanak_yaz(kart, dayanak)
     if notlar:
         kart += ("\n## Kapsam notu\nKart açılırken aracın ön denetimi; engel değildir.\n"
                  + "".join("- %s\n" % u for u in notlar))
@@ -845,9 +953,11 @@ DEVAM_NOTU = ("\n\n## Önceki oturum sınırda kesildi\nBu görevin önceki otur
               "baştan yazma, kaldığın yerden sürdür ve bitiş kaydını yaz.\n")
 
 
-def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None) -> dict:
+def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None, taslakla: bool = False) -> dict:
     """Görevi kendi çalışma ağacında koşturur, sonra kapsamı, bitiş kaydını ve zinciri ölçer.
 
+    İşe düşen taslak varsa (is_taslaklari) hiçbir şey yazmadan ve ağaç açmadan durur; `taslakla`, kullanıcının bu
+    çağrıya özel iznidir (kanca sorar) ve görevin kaydına yazılır (TS-006 Yapı 18).
     `notu`, ana oturumun işçiye notudur: kayda eklenir, bu ve sonraki koşularda işçinin istemine girer.
     İşçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik varsa oturum, ayardaki
     `kendiliginden_devam` kadar aynı çağrıda kendiliğinden sürdürülür; her oturum geçmişe ayrı satır yazar."""
@@ -857,6 +967,10 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None) -> 
     d = _durum_oku(kok, kimlik, kayit)
     if d.get("alindi") or d["durum"] == "atildi":
         raise h.HarnessHata("%s kapanmış (%s); yeniden koşturulamaz" % (kimlik, asama(d, {}, True)[1]))
+    p = h.paket(kok, d["rol"], d["yollar"], d["konular"])
+    taslaklar = is_taslaklari(kok, d, p)
+    if taslaklar and not taslakla:
+        raise h.HarnessHata(taslak_engeli(kimlik, taslaklar, "python3 harness/h.py gorev kos %s --taslakla" % kimlik))
     onceki = _json_oku(kayit / "bitis.json")    # aşağıda silinir; soru ya da sorun varsa işçiye geri verilir
     onceki_sorunlar = _json_oku(kayit / "rapor.json").get("sorunlar") or []
     if cevap:
@@ -891,9 +1005,11 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None) -> 
         if r.returncode != 0:
             raise h.HarnessHata("%s koşturulamadı: hazırlık komutu %d koduyla çıktı: %s"
                                 % (kimlik, r.returncode, (r.stderr or r.stdout)[-400:]))
-    p = h.paket(kok, d["rol"], d["yollar"], d["konular"])
-    if p["taslaklar"]:
-        print(taslak_uyarisi(kimlik, p["taslaklar"]), flush=True)
+    if taslaklar:   # kullanıcının bu çağrıya özel izni: zamanı ve taslakları kayda geçer
+        d.setdefault("taslak_izinleri", []).append({"zaman": _simdi(), "taslaklar": [t["kimlik"] for t in taslaklar]})
+        _json_yaz(kayit / "durum.json", d)
+        print("[harness] %s kullanıcının izniyle %d taslağa rağmen koşuyor: %s"
+              % (kimlik, len(taslaklar), ", ".join(t["kimlik"] for t in taslaklar)), flush=True)
     eski = h.PAKET.search(kart)
     if eski:
         taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak bloğu da yenilenir
@@ -1328,6 +1444,18 @@ def genislet(kok: pathlib.Path, kimlik: str, desenler: list) -> dict:
     return {"gorev": kimlik, "eklenen": yeniler, "yollar": d["yollar"]}
 
 
+def dayanak(kok: pathlib.Path, kimlik: str, kimlikler: list) -> dict:
+    """Alınmamış görevin dayanaklarına düğüm ekler: kayıtta ve kartın 'Dayanak' satırında (TS-006 Yapı 18)."""
+    kok = pathlib.Path(kok)
+    kimlikler = dayanak_dogrula(kok, kimlikler)
+    kayit, d = _acik_gorev(kok, kimlik, "dayanak eklenemez")
+    d["dayanak"] = list(dict.fromkeys((d.get("dayanak") or []) + kimlikler))
+    kart = (kayit / "kart.md").read_text(encoding="utf-8")
+    (kayit / "kart.md").write_text(_dayanak_yaz(kart, d["dayanak"]), encoding="utf-8")
+    _json_yaz(kayit / "durum.json", d)
+    return {"gorev": kimlik, "dayanak": d["dayanak"]}
+
+
 # ── Komut satırı ─────────────────────────────────────────────────────────────────────
 
 def _rapor_yaz(rapor: dict) -> None:
@@ -1382,17 +1510,24 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                           if not a.startswith("--") and not arg[i - 1].startswith("--"))
         if not baslik:
             raise h.HarnessHata('kullanım: h.py gorev yeni "<başlık>" [--rol R] [--yol Y]... [--konu K]... '
-                                '[--hedef "..."] [--olcut "..."]')
+                                '[--hedef "..."] [--olcut "..."] [--dayanak KİMLİK]...')
         kart = yeni(kok, baslik, (h._secenek(arg, "--rol") or ["uygulayici"])[0],
                     h._secenek(arg, "--yol"), h._secenek(arg, "--konu"),
-                    hedef=(h._secenek(arg, "--hedef") or [None])[0], olcut=(h._secenek(arg, "--olcut") or [None])[0])
+                    hedef=(h._secenek(arg, "--hedef") or [None])[0], olcut=(h._secenek(arg, "--olcut") or [None])[0],
+                    dayanak=h._secenek(arg, "--dayanak"))
         print("kart açıldı: %s\nsıradaki: python3 harness/h.py gorev kos %s" % (kart, kart.parent.name))
         return 0
     if arg[:1] == ["kos"] and len(arg) > 1:
+        taslakla = "--taslakla" in arg and taslak_izni(
+            kok, arg[1], is_taslaklari(kok, _durum_oku(kok, arg[1], _kayit(kok, arg[1]))), taslak_ozeti(kok, arg[1]))
         rapor = kos(kok, arg[1], cevap=(h._secenek(arg, "--cevap") or [None])[0],
-                    notu=(h._secenek(arg, "--not") or [None])[0])
+                    notu=(h._secenek(arg, "--not") or [None])[0], taslakla=taslakla)
         _rapor_yaz(rapor)
         return 0 if not rapor["sorunlar"] else 1
+    if arg[:1] == ["dayanak"] and len(arg) > 2:
+        s = dayanak(kok, arg[1], arg[2:])
+        print("%s dayanak: %s" % (s["gorev"], ", ".join(s["dayanak"])))
+        return 0
     if arg[:1] == ["tazele"] and len(arg) > 1:
         s = tazele(kok, arg[1])
         print("%s tazelendi: ağaç `%s` dalının ucunda (%s); işçinin %d dosyalık değişikliği duruyor"
@@ -1434,5 +1569,6 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                 d["rol"], d["baslik"],
                 (" · %s %s" % (d["plan"], d["adim"])) if d.get("plan") else ""))
         return 0
-    raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] [--not "..."] | incele GV-NNN | '
-                        'al GV-NNN | at GV-NNN [--yerine GV-YENİ] | yerine GV-ESKİ GV-YENİ | tazele GV-NNN |genislet GV-NNN --yol <desen> [--yol ...] | durum>')
+    raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] [--not "..."] [--taslakla] | '
+                        'incele GV-NNN | al GV-NNN | at GV-NNN [--yerine GV-YENİ] | yerine GV-ESKİ GV-YENİ | '
+                        'tazele GV-NNN |genislet GV-NNN --yol <desen> [--yol ...] | dayanak GV-NNN <KİMLİK>... | durum>')

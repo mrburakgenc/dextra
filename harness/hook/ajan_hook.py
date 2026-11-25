@@ -70,6 +70,7 @@ SORU_GOSTERMEYEN_MODLAR = ("bypassPermissions", "dontAsk")
 GOREV_ISLEM = re.compile(r"h\.py[\"']?\s+gorev\s+(kos|incele|al|at|tazele|genislet)\s+(GV-\d+)")
 GENISLET_YOLU = re.compile(r"--yol[ \t]+(\"[^\"]*\"|'[^']*'|[^\s;&|]+)")
 PLAN_YURUT = re.compile(r"h\.py[\"']?\s+plan\s+yurut\s+(EP-\d+)")
+TASLAKLA = re.compile(r"(?<![\w-])--taslakla(?![\w-])")   # tırnaklı bayrak da: fazladan sormak zararsızdır
 GOREV_SORUSU = {"kos": "Bu görev ayrı bir oturumda, kendi çalışma ağacında koşturulacak",
                 "incele": "Bu görev, işi yapmayan ikinci bir oturuma inceletilecek",
                 "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek",
@@ -504,6 +505,46 @@ def _kabul_sorusu(girdi: dict, ortam: dict, metin: str) -> dict:
                   + "\n".join(satirlar))
 
 
+def _taslak_izni_sorusu(girdi: dict, kok: pathlib.Path, yurutme, m) -> dict:
+    """`--taslakla`: taslaklara rağmen koşturma izni, onay ayarından bağımsız her zaman kullanıcıya sorulur
+    (TS-006 Yapı 18). Soru gösterilmeyen izin modunda reddedilir: izin sorulmadan verilmiş sayılmaz."""
+    mod = girdi.get("permission_mode")
+    if mod in SORU_GOSTERMEYEN_MODLAR:
+        return _red("--taslakla kullanıcının iznini ister, ama bu izin modunda (%s) soru gösterilmez. İzin modu "
+                    "değiştirilir ya da komutu kullanıcı kendi terminalinde çalıştırır." % mod)
+    if yurutme:
+        hedef, ozet = yurutme.group(1), plan.taslak_ozeti(kok, yurutme.group(1)) + "\n\n" + plan.yurutme_ozeti(
+            kok, yurutme.group(1))
+        taslaklar = [t["kimlik"] for _, ts in plan.bekleyen_taslaklar(kok, hedef) for t in ts]
+    else:
+        hedef, ozet = m.group(2), gorev.taslak_ozeti(kok, m.group(2)) + "\n\n" + gorev.ozet(kok, m.group(2), "kos")
+        taslaklar = [t["kimlik"] for t in gorev.is_taslaklari(
+            kok, gorev._durum_oku(kok, hedef, gorev._kayit(kok, hedef)))]
+    gorev.taslak_izni_yaz(kok, hedef, taslaklar)   # araç izni bu işaretle doğrular; işaretsiz --taslakla koşmaz
+    return _karar("PreToolUse", "ask", "[harness] Kabul edilmemiş taslaklara rağmen koşturma izni (yalnız bu çağrı "
+                  "için; izin görevin kaydına yazılır):\n" + ozet)
+
+
+def _taslak_reddi(kok: pathlib.Path, yurutme, m) -> str | None:
+    """Bayraksız taslaklı koşturmada aracın vereceği reddi kanca verir; kullanıcıya boşa koşturma sorusu gitmez.
+    Yürütmede ilk hazır yaprağa bakılır: araç orada, hiçbir yaprağı almadan durur."""
+    if yurutme:
+        hazirlar = plan.hazir(kok, yurutme.group(1))
+        if not hazirlar:
+            return None
+        kimlik, izin_komutu = hazirlar[0]["gorev"], "python3 harness/h.py plan yurut %s --taslakla" % yurutme.group(1)
+    else:
+        kimlik, izin_komutu = m.group(2), "python3 harness/h.py gorev kos %s --taslakla" % m.group(2)
+    try:
+        d = gorev._durum_oku(kok, kimlik, gorev._kayit(kok, kimlik))
+    except h.HarnessHata:   # bilinmeyen görev: hatayı komutun kendisi verir
+        return None
+    if d.get("alindi") or d["durum"] == "atildi":
+        return None
+    taslaklar = gorev.is_taslaklari(kok, d)
+    return gorev.taslak_engeli(kimlik, taslaklar, izin_komutu) if taslaklar else None
+
+
 def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
     metin = _heredoc_at(str((girdi.get("tool_input") or {}).get("command", "")))
     if YASAK_BAYRAK.search(HOOK_YOLU_OKUMA.sub(" ", metin)):
@@ -524,6 +565,12 @@ def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
             return _red("Görev oturumu başka bir görev işlemi başlatamaz; gerekiyorsa kendi kaydında bildir.")
         if kok is None:
             return None
+        if yurutme or m.group(1) == "kos":
+            if TASLAKLA.search(metin[(yurutme or m).end():]):   # kesilmemiş kalan: eksik sormak, fazladan sormaktan kötü
+                return _taslak_izni_sorusu(girdi, kok, yurutme, m)
+            reddi = _taslak_reddi(kok, yurutme, m)
+            if reddi:
+                return _red(reddi)
         # Ne kadar sorulacağını kullanıcı seçer: "baslangic" (varsayılan), "her-adim", "yok". Atma her zaman sorulur.
         onay = h.ayar_oku(kok)["gorev"].get("onay", "baslangic")
         if yurutme:

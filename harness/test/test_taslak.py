@@ -126,11 +126,14 @@ class Uyari(Ortam):
         self.assertNotIn("taslak", cikti)
 
     def test_d_gorev_kos_taslak_kimlikleriyle_uyarir_yokken_uyarmaz(self):
+        # GV-140 (TS-006 Yapı 18): koşturmadaki uyarı engele döndü; taslaklı iş yalnız izinle (--taslakla) koşar,
+        # izni kancanın soruyu sorarken bıraktığı işaret gösterir
         kok = gorev_deposu(TASLAKLAR)
         kimlik, _ = kart_ac(kok)
-        kod, cikti = sessiz(gorev.komut, kok, ["kos", kimlik])
+        gorev.taslak_izni_yaz(kok, kimlik, ["KU-002", "KR-002"])
+        kod, cikti = sessiz(gorev.komut, kok, ["kos", kimlik, "--taslakla"])
         self.assertEqual(kod, 0, cikti)
-        self.assertIn("KU-002, KR-002 — " + UYARI, cikti)
+        self.assertIn("2 taslağa rağmen koşuyor: KU-002, KR-002", cikti)
         kok = gorev_deposu()
         kimlik, _ = kart_ac(kok)
         kod, cikti = sessiz(gorev.komut, kok, ["kos", kimlik])
@@ -152,7 +155,7 @@ class Kart(Ortam):
         kart = (h.ortak_kok(kok) / ".harness/gorev" / kimlik / "kart.md").read_text(encoding="utf-8")
         self.assertEqual(kart.count("[[KB-TASLAK]]"), 1)
         self.assertIn("- KU-002@1 ", kart)
-        rapor, _ = sessiz(gorev.kos, kok, kimlik)
+        rapor, _ = sessiz(gorev.kos, kok, kimlik, taslakla=True)   # GV-140: taslaklı iş yalnız izinle koşar
         self.assertEqual((rapor["durum"], rapor["sorunlar"]), ("tamam", []))
         kart = (h.ortak_kok(kok) / ".harness/gorev" / kimlik / "kart.md").read_text(encoding="utf-8")
         self.assertEqual(kart.count("[[KB-TASLAK]]"), 1)   # koşum paketi yenilerken bloğu çoğaltmaz

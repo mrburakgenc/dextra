@@ -48,7 +48,7 @@ Açıldı: {tarih}
 EPIC_SABLONU = """# {kimlik} — {baslik}
 
 Space: {anahtar}
-Açıldı: {tarih}
+{dayanak}Açıldı: {tarih}
 
 ## Hedef
 {hedef}
@@ -173,6 +173,12 @@ def _coz(metin: str) -> tuple:
     return baslik, tasklar
 
 
+def _epic_dayanak(metin: str) -> list:
+    """Epic dosyasının baş kısmındaki 'Dayanak' satırının kimlikleri."""
+    m = re.search(r"(?m)^Dayanak: (.*)$", metin.split("\n## ", 1)[0])
+    return [k.strip() for k in m.group(1).split(",") if k.strip()] if m else []
+
+
 def _atildi(y: dict) -> bool:
     """Yaprak atılmış mı (yerine geçeni alınmış olsa da: atılan yaprak alınmış sayılmaz)."""
     return y["durum"].startswith("atıldı")
@@ -208,8 +214,10 @@ def _turet(kok: pathlib.Path, tasklar: list) -> dict:
 def oku(kok: pathlib.Path, ep: str) -> dict:
     """Epic'i okur: task ağacı, her düğümün türetilmiş işareti ve durumu."""
     anahtar = _epic_space(kok, ep)
-    baslik, tasklar = _coz(_epic_yolu(kok, ep).read_text(encoding="utf-8"))
-    return dict({"kimlik": ep, "baslik": baslik, "space": anahtar, "tasklar": tasklar}, **_turet(kok, tasklar))
+    metin = _epic_yolu(kok, ep).read_text(encoding="utf-8")
+    baslik, tasklar = _coz(metin)
+    return dict({"kimlik": ep, "baslik": baslik, "space": anahtar, "tasklar": tasklar,
+                 "dayanak": _epic_dayanak(metin)}, **_turet(kok, tasklar))
 
 
 def _space_oku(kok: pathlib.Path, anahtar: str) -> dict:
@@ -277,9 +285,12 @@ def space(kok: pathlib.Path, ad: str, amac: str | None = None, yollar: list | No
     return yol
 
 
-def epic(kok: pathlib.Path, anahtar: str, baslik: str, hedef: str | None = None) -> pathlib.Path:
-    """Space'in altında bir epic açar; kimliği depo çapında sıralıdır."""
+def epic(kok: pathlib.Path, anahtar: str, baslik: str, hedef: str | None = None,
+         dayanak: list | None = None) -> pathlib.Path:
+    """Space'in altında bir epic açar; kimliği depo çapında sıralıdır. `dayanak`, epic'in dayandığı karar, kural ya da
+    tasarım kimlikleridir; görevlerine geçer (TS-006 Yapı 18)."""
     dizin = _space_dizini(kok, anahtar)
+    dayanak = gorev.dayanak_dogrula(kok, dayanak or [])
     sira = _dizin(kok) / "_epic"
     sira.mkdir(parents=True, exist_ok=True)
     n = max([int(p.name[3:]) for p in sira.glob("EP-*") if p.name[3:].isdigit()], default=0)
@@ -294,12 +305,13 @@ def epic(kok: pathlib.Path, anahtar: str, baslik: str, hedef: str | None = None)
             continue
     yol = dizin / (ep + ".md")
     yol.write_text(EPIC_SABLONU.format(kimlik=ep, baslik=_temiz(baslik), anahtar=anahtar, hedef=hedef or YERTUTUCU,
+                                       dayanak=("Dayanak: %s\n" % ", ".join(dayanak)) if dayanak else "",
                                        tarih=datetime.date.today().isoformat()), encoding="utf-8")
     _space_guncelle(kok, anahtar)
     return yol
 
 
-def _yaprak_ac(kok, ep_bilgi, no, baslik, yer, rol, yollar, konular, hedef, olcut) -> str:
+def _yaprak_ac(kok, ep_bilgi, no, baslik, yer, rol, yollar, konular, hedef, olcut, dayanak) -> str:
     sp = _space_oku(kok, ep_bilgi["space"])
     yollar = list(yollar or sp["yollar"])
     if not yollar:
@@ -307,19 +319,23 @@ def _yaprak_ac(kok, ep_bilgi, no, baslik, yer, rol, yollar, konular, hedef, olcu
                             % (ep_bilgi["kimlik"], no))
     tam_yer = "%s (space) › %s %s (epic) › %s" % (sp["ad"], ep_bilgi["kimlik"], ep_bilgi["baslik"], yer)
     return gorev.yeni(kok, baslik, rol or "uygulayici", yollar, list(konular or []), hedef=hedef, olcut=olcut,
-                      plan=ep_bilgi["kimlik"], adim=no, yer=tam_yer).parent.name
+                      plan=ep_bilgi["kimlik"], adim=no, yer=tam_yer,
+                      dayanak=ep_bilgi["dayanak"] + list(dayanak or [])).parent.name   # epic'in dayanağı geçer
 
 
 def task(kok: pathlib.Path, ep: str, baslik: str, rol: str | None = None, yollar: list | None = None,
          konular: list | None = None, once: list | None = None,
-         hedef: str | None = None, olcut: str | None = None) -> tuple:
+         hedef: str | None = None, olcut: str | None = None, dayanak: list | None = None) -> tuple:
     """Epic'e task ekler: (task no, görev kimliği ya da None).
 
     Hedef ve ölçüt verilirse task yapraktır ve görev kartı açılır; verilmezse subtask'lara
-    bölünecek bir kapsayıcıdır."""
+    bölünecek bir kapsayıcıdır. `dayanak` yalnız yaprağa verilir: kapsayıcının görev kaydı yoktur."""
     if bool(hedef) != bool(olcut):
         raise h.HarnessHata("task doğrudan koşturulacaksa hedef ve ölçüt birlikte verilir; "
                             "subtask'lara bölünecekse ikisi de verilmez")
+    if dayanak and not hedef:
+        raise h.HarnessHata("kapsayıcı task'ın görev kaydı yok; dayanağı subtask'lara (--dayanak) ya da epic'e "
+                            "(plan dayanak %s ...) ver. Hiçbir şey yazılmadı" % ep)
     yol = _epic_yolu(kok, ep)
     bilgi = oku(kok, ep)
     baslik = _temiz(baslik)
@@ -329,7 +345,7 @@ def task(kok: pathlib.Path, ep: str, baslik: str, rol: str | None = None, yollar
         raise h.HarnessHata("%s içinde task %s yok; önkoşul olarak verilemez" % (ep, ", ".join(olmayan)))
     no = str(max([int(t["no"]) for t in bilgi["tasklar"]], default=0) + 1)
     kimlik = _yaprak_ac(kok, bilgi, no, baslik, "%s. %s (task)" % (no, baslik), rol, yollar, konular,
-                        hedef, olcut) if hedef else None
+                        hedef, olcut, dayanak) if hedef else None
     satirlar = yol.read_text(encoding="utf-8").split("\n")
     satirlar.insert(_bolum_sonu(satirlar, "Tasklar"), _task_satiri(
         {"isaret": False, "no": no, "baslik": baslik, "gorev": kimlik, "once": once,
@@ -341,19 +357,26 @@ def task(kok: pathlib.Path, ep: str, baslik: str, rol: str | None = None, yollar
 
 def subtask(kok: pathlib.Path, ep: str, task_no, baslik: str, rol: str | None = None,
             yollar: list | None = None, konular: list | None = None, once: list | None = None,
-            hedef: str | None = None, olcut: str | None = None) -> tuple:
+            hedef: str | None = None, olcut: str | None = None, dayanak: list | None = None) -> tuple:
     """Task'ın altına subtask ekler ve görev kartını açar: (subtask no, görev kimliği)."""
     if not hedef or not olcut:
         raise h.HarnessHata("subtask koşturulan birimdir; hedef ve ölçüt zorunludur")
+    dayanak = gorev.dayanak_dogrula(kok, dayanak or [])
     task_no = str(int(task_no))
     bilgi = oku(kok, ep)
     t = next((x for x in bilgi["tasklar"] if x["no"] == task_no), None)
     if t is None:
         raise h.HarnessHata("%s içinde task %s yok" % (ep, task_no))
     if t["gorev"]:   # yaprak task bölünüyor: hiç koşmadıysa kendi görevi kapanır
-        if gorev._json_oku(gorev._kayit(kok, t["gorev"]) / "durum.json").get("durum") != "taslak":
+        eski = gorev._json_oku(gorev._kayit(kok, t["gorev"]) / "durum.json")
+        if eski.get("durum") != "taslak":
             raise h.HarnessHata("%s task %s koşturulmuş (%s); subtask'lara bölünemez. Yeni bir task aç."
                                 % (ep, task_no, t["gorev"]))
+        kalan = [k for k in eski.get("dayanak") or [] if k not in bilgi["dayanak"] + dayanak]
+        if kalan:   # task'ın kendi dayanağı bölünmede sessizce düşmesin
+            raise h.HarnessHata("%s task %s (%s) kendi dayanağını taşıyor (%s); bölününce kaybolur. Subtask'a "
+                                "--dayanak ile ver ya da epic'e ekle (plan dayanak %s ...). Hiçbir şey yazılmadı"
+                                % (ep, task_no, t["gorev"], ", ".join(kalan), ep))
         gorev.at(kok, t["gorev"])
     baslik = _temiz(baslik)
     once = ["%s.%s" % (task_no, str(o).split(".")[-1]) for o in once or []]
@@ -362,7 +385,7 @@ def subtask(kok: pathlib.Path, ep: str, task_no, baslik: str, rol: str | None = 
         raise h.HarnessHata("%s içinde %s yok; önkoşul olarak verilemez" % (ep, ", ".join(olmayan)))
     no = "%s.%d" % (task_no, max([int(a["no"].split(".")[1]) for a in t["subtasklar"]], default=0) + 1)
     kimlik = _yaprak_ac(kok, bilgi, no, baslik, "%s. %s (task) › %s %s (subtask)" % (task_no, t["baslik"], no, baslik),
-                        rol, yollar, konular, hedef, olcut)
+                        rol, yollar, konular, hedef, olcut, dayanak)
     yol = _epic_yolu(kok, ep)
     satirlar = yol.read_text(encoding="utf-8").split("\n")
     yer = next(i for i, s in enumerate(satirlar) if (TASK.match(s) or [None] * 3)[2] == task_no)
@@ -406,6 +429,33 @@ def guncelle(kok: pathlib.Path, ep: str) -> None:
     _space_guncelle(kok, _epic_space(kok, ep))
 
 
+def dayanak(kok: pathlib.Path, ep: str, kimlikler: list) -> dict:
+    """Epic'in dayanaklarına düğüm ekler ve alınmamış, atılmamış yapraklarının kayıtlarına geçirir (TS-006 Yapı 18).
+    Yapraklardan biri şu an koşuyorsa hiçbir şey yazmadan durur (oturum bitince kendi okuduğu kaydı yazar)."""
+    kimlikler = gorev.dayanak_dogrula(kok, kimlikler)
+    e = oku(kok, ep)
+    acik = []
+    for g in [y["gorev"] for t in e["tasklar"] for y in ([t] if t["gorev"] else t["subtasklar"])]:
+        kayit = gorev._kayit(kok, g)
+        d = gorev._json_oku(kayit / "durum.json")
+        if not d or d.get("alindi") or d["durum"] == "atildi":
+            continue
+        isaret = gorev.kosu_isareti(kayit)
+        if isaret:
+            raise h.HarnessHata("%s şu an %s; oturum bitmeden %s dayanağı değiştirilemez. Hiçbir şey yazılmadı"
+                                % (g, gorev.kosu_metni(isaret), ep))
+        acik.append(g)
+    tum = list(dict.fromkeys(e["dayanak"] + kimlikler))
+    yol = _epic_yolu(kok, ep)
+    metin, satir = yol.read_text(encoding="utf-8"), "Dayanak: " + ", ".join(tum)
+    metin = (re.sub(r"(?m)^Dayanak: .*$", lambda _: satir, metin, count=1) if e["dayanak"]
+             else re.sub(r"(?m)^(Space: .*)$", lambda m: m.group(1) + "\n" + satir, metin, count=1))
+    _yaz(yol, metin)
+    for g in acik:
+        gorev.dayanak(kok, g, kimlikler)
+    return {"epic": ep, "dayanak": tum, "gorevler": acik}
+
+
 # ── Yürütme ──────────────────────────────────────────────────────────────────────────
 
 def _kesisir(a: list, b: list) -> bool:
@@ -415,12 +465,18 @@ def _kesisir(a: list, b: list) -> bool:
     return not a or not b or any(x.startswith(y) or y.startswith(x) for x in sabit[0] for y in sabit[1])
 
 
-def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir) -> tuple | None:
-    """Bir yaprağı koşturur ve inceletir: temizse None, değilse (aşama, neden). Yan yana çağrılabilir."""
+def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir, taslakla: bool = False) -> tuple | None:
+    """Bir yaprağı koşturur ve inceletir: temizse None, değilse (aşama, neden). Yan yana çağrılabilir.
+    İşe düşen taslak varsa ve `taslakla` verilmediyse koşturmaz (TS-006 Yapı 18)."""
     kimlik = y["gorev"]
+    if not taslakla:
+        taslaklar = gorev.is_taslaklari(kok, gorev._durum_oku(kok, kimlik, gorev._kayit(kok, kimlik)))
+        if taslaklar:
+            return "taslak", gorev.taslak_engeli(kimlik, taslaklar,
+                                                 "python3 harness/h.py plan yurut %s --taslakla" % ep)
     bildir("%s %s (%s) — %s: işçi koşuyor" % (ep, y["no"], kimlik, y["baslik"]))
     try:
-        rapor = gorev.kos(kok, kimlik)
+        rapor = gorev.kos(kok, kimlik, taslakla=taslakla)
     except h.HarnessHata as e:
         return "kosum", str(e)
     # kapı dışı yazım engel değildir: inceleme kartı o dosyaları ve kurallarını ayrıca verir (TS-006 Yapı 12)
@@ -444,11 +500,12 @@ def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir) -> t
     return None
 
 
-def yurut(kok: pathlib.Path, ep: str, en_cok: int | None = None, bildir=None) -> dict:
+def yurut(kok: pathlib.Path, ep: str, en_cok: int | None = None, bildir=None, taslakla: bool = False) -> dict:
     """Epic'in hazır yapraklarını yürütür: koştur → incelet → al. İlk sorunda durur.
 
     Kullanıcı bu komutu bir kez onaylar; yapraklar için ayrıca sorulmaz. Sorunlu, uyarılı ya da incelemede
-    kalan iş alınmaz: yürütme orada durur ve nedeni döner; karar kullanıcınındır.
+    kalan iş alınmaz: yürütme orada durur ve nedeni döner; karar kullanıcınındır. İşe taslak düşen yaprakta da
+    durur; `taslakla`, kullanıcının bu yürütmeye özel iznidir (kanca her zaman sorar).
     `gorev.paralel` 1'den büyükse dosya desenleri kesişmeyen hazır yapraklar yan yana koşar ve incelenir;
     alma her zaman sırayladır (birleştirme aynı dala yapılır). Aynı turda temiz çıkan yaprak alınır, sorunlu
     olan durdurur."""
@@ -467,7 +524,7 @@ def yurut(kok: pathlib.Path, ep: str, en_cok: int | None = None, bildir=None) ->
             if len(tur) < sinir and not any(_kesisir(yollar, o["yollar"]) for o in tur):
                 tur.append(dict(y, yollar=yollar))
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(tur)) as havuz:
-            nedenler = list(havuz.map(lambda y: _kos_incele(kok, ep, y, zorunlu, bildir), tur))
+            nedenler = list(havuz.map(lambda y: _kos_incele(kok, ep, y, zorunlu, bildir, taslakla), tur))
         for y, neden in zip(tur, nedenler):
             if neden is None:
                 try:
@@ -505,6 +562,26 @@ def yurutme_ozeti(kok: pathlib.Path, ep: str) -> str:
                g["izin_modu"], kum, h.dal_adi(pathlib.Path(kok)) or "?"))
 
 
+def bekleyen_taslaklar(kok: pathlib.Path, ep: str) -> list:
+    """Bekleyen yapraklardan işine taslak düşenler: [(yaprak, taslaklar)]."""
+    sonuc = []
+    for y in [y for t in oku(kok, ep)["tasklar"] for y in ([t] if t["gorev"] else t["subtasklar"])
+              if y["durum"] == "bekliyor"]:
+        taslaklar = gorev.is_taslaklari(kok, gorev._durum_oku(kok, y["gorev"], gorev._kayit(kok, y["gorev"])))
+        if taslaklar:
+            sonuc.append((y, taslaklar))
+    return sonuc
+
+
+def taslak_ozeti(kok: pathlib.Path, ep: str) -> str:
+    """`plan yurut --taslakla` sorusunda gösterilen özet: bekleyen yapraklara düşen taslaklar."""
+    satirlar = ["  %s %s (%s): %s" % (y["no"], y["baslik"], y["gorev"], "; ".join(
+        "%s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"]) for t in taslaklar))
+                for y, taslaklar in bekleyen_taslaklar(kok, ep)]
+    return "%s — %s\ntaslak düşen %d yaprak:\n%s" % (ep, oku(kok, ep)["baslik"], len(satirlar),
+                                                    "\n".join(satirlar) or "  (yok)")
+
+
 # ── Özetler ──────────────────────────────────────────────────────────────────────────
 
 def ozet_satiri(kok: pathlib.Path, ep: str) -> str:
@@ -537,13 +614,15 @@ def komut(kok: pathlib.Path, arg: list) -> int:
               % (yol, yol.parent.name, yol.parent.name))
         return 0
     if arg[:1] == ["epic"] and len(serbest) >= 2:
-        yol = epic(kok, serbest[0], " ".join(serbest[1:]), hedef=secenek("--hedef"))
+        yol = epic(kok, serbest[0], " ".join(serbest[1:]), hedef=secenek("--hedef"),
+                   dayanak=h._secenek(arg, "--dayanak"))
         print("epic açıldı: %s\nsıradaki: python3 harness/h.py plan task %s \"<başlık>\" ..." % (yol, yol.stem))
         return 0
     if arg[:1] == ["task"] and len(serbest) >= 2:
         no, kimlik = task(kok, serbest[0], " ".join(serbest[1:]), rol=secenek("--rol"),
                           yollar=h._secenek(arg, "--yol"), konular=h._secenek(arg, "--konu"),
-                          once=sayilar(secenek("--once")), hedef=secenek("--hedef"), olcut=secenek("--olcut"))
+                          once=sayilar(secenek("--once")), hedef=secenek("--hedef"), olcut=secenek("--olcut"),
+                          dayanak=h._secenek(arg, "--dayanak"))
         print("%s task %s eklendi: %s" % (serbest[0], no, ("görev %s\nsıradaki: python3 harness/h.py gorev kos %s"
               % (kimlik, kimlik)) if kimlik else "kapsayıcı; subtask ekle: python3 harness/h.py plan subtask %s %s "
               "\"<başlık>\" --hedef \"...\" --olcut \"...\"" % (serbest[0], no)))
@@ -551,19 +630,30 @@ def komut(kok: pathlib.Path, arg: list) -> int:
     if arg[:1] == ["subtask"] and len(serbest) >= 3:
         no, kimlik = subtask(kok, serbest[0], serbest[1], " ".join(serbest[2:]), rol=secenek("--rol"),
                              yollar=h._secenek(arg, "--yol"), konular=h._secenek(arg, "--konu"),
-                             once=sayilar(secenek("--once")), hedef=secenek("--hedef"), olcut=secenek("--olcut"))
+                             once=sayilar(secenek("--once")), hedef=secenek("--hedef"), olcut=secenek("--olcut"),
+                             dayanak=h._secenek(arg, "--dayanak"))
         print("%s subtask %s eklendi: görev %s\nsıradaki: python3 harness/h.py gorev kos %s"
               % (serbest[0], no, kimlik, kimlik))
         return 0
+    if arg[:1] == ["dayanak"] and len(serbest) >= 2:
+        s = dayanak(kok, serbest[0], serbest[1:])
+        print("%s dayanak: %s · görevlerine geçti: %s" % (s["epic"], ", ".join(s["dayanak"]),
+                                                          ", ".join(s["gorevler"]) or "açık görev yok"))
+        return 0
     if arg[:1] == ["yurut"] and serbest:
         en_cok = sayilar(secenek("--en-cok"))
+        taslakla = "--taslakla" in arg and gorev.taslak_izni(
+            kok, serbest[0], [t["kimlik"] for _, ts in bekleyen_taslaklar(kok, serbest[0]) for t in ts],
+            taslak_ozeti(kok, serbest[0]))
         s = yurut(kok, serbest[0], en_cok=int(en_cok[0]) if en_cok else None,
-                  bildir=lambda satir: print(satir, flush=True))
+                  bildir=lambda satir: print(satir, flush=True), taslakla=taslakla)
         print("%s: %d yaprak alındı%s" % (serbest[0], len(s["alinan"]), " · epic bitti" if s["bitti"] else ""))
         if s["duran"]:
             d = s["duran"]
             print("DURDU: %s %s (%s) — %s aşamasında: %s" % (serbest[0], d["no"], d["gorev"], d["asama"], d["neden"]))
-            print("  rapor: python3 harness/h.py gorev durum · karar senin: yeniden koştur ya da `gorev at %s`" % d["gorev"])
+            if d["asama"] != "taslak":   # taslakta iletinin kendisi iki çıkışı söyler
+                print("  rapor: python3 harness/h.py gorev durum · karar senin: yeniden koştur ya da `gorev at %s`"
+                      % d["gorev"])
         elif s["kalan"]:
             print("kalan hazır yapraklar: %s" % ", ".join(s["kalan"]))
         _agac_yaz(kok, serbest[0])
@@ -588,4 +678,5 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         'kullanım: h.py plan <space "<ad>" [--amac "..."] [--yol Y]... | epic <space> "<başlık>" [--hedef "..."] | '
         'task EP-NNN "<başlık>" [--once 1,2] [--hedef "..." --olcut "..."] [--rol R] [--yol Y]... | '
         'subtask EP-NNN <task-no> "<başlık>" --hedef "..." --olcut "..." [--once 1,2] | '
-        'yurut EP-NNN [--en-cok N] | durum [<space> | EP-NNN]>')
+        'dayanak EP-NNN <KİMLİK>... | yurut EP-NNN [--en-cok N] [--taslakla] | durum [<space> | EP-NNN]> '
+        '(epic, task ve subtask --dayanak KİMLİK alır)')
