@@ -1,10 +1,12 @@
+import Link from 'next/link';
 import { KAYIT_BULUNAMADI } from '../../../../features/kimlik/is-hatasi';
 import { KullaniciIsleri } from '../../../../features/kimlik/kullanici-isleri';
 import { kullaniciyiGetir } from '../../../../features/kimlik/kullanici-kaydi';
 import { KullaniciKaydiGorunumu } from '../../../../features/kimlik/kullanici-kaydi-gorunumu';
 import { uyelikleriGetir } from '../../../../features/kimlik/uyelik/uyelik-listesi';
 import { Uyelikler } from '../../../../features/kimlik/uyelik/uyelikler';
-import { listeHatasi } from '../../../../shared/liste/liste-parcalari';
+import { BAGLANTI, listeHatasi } from '../../../../shared/liste/liste-parcalari';
+import { sorguMetni } from '../../../../shared/liste/sorgu';
 import { Can } from '../../../../shared/yetki/yetki-saglayici';
 
 // Kullanıcının kaydı ve işleri (TS-004 "Yönetim ekranları"). 404 bulunamadı iletisi olur; 401
@@ -35,6 +37,16 @@ export default async function KullaniciSayfasi({
       <h1 className="text-3xl font-bold">{kayit.gorunenAd ?? 'Kullanıcı'}</h1>
       <KullaniciKaydiGorunumu kayit={kayit} />
       <KullaniciIsleri kayit={kayit} />
+      <Can I="oku" a="Oturum">
+        <p>
+          <Link
+            href={`/oturumlar${sorguMetni({ kullaniciId: kayit.id })}`}
+            className={BAGLANTI}
+          >
+            Oturumları
+          </Link>
+        </p>
+      </Can>
       <Can I="oku" a="Uyelik">
         <section aria-labelledby="uyelikler-baslik" className="flex flex-col gap-4">
           <h2 id="uyelikler-baslik" className="text-2xl font-bold">

@@ -227,6 +227,54 @@ describe('PanelDuzeni', () => {
   });
 });
 
+describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {
+  function kurallarla(kurallar: object[]) {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(jsonCevap({ kurallar }, 200));
+  }
+
+  it('Oturum:oku kuralı varken menüde Oturumlar bağlantısı görünür', async () => {
+    kurallarla([{ action: 'oku', subject: 'Oturum', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    const menu = screen.getByRole('navigation', { name: 'Ana menü' });
+    expect(within(menu).getByRole('link', { name: 'Oturumlar' }).getAttribute('href')).toBe(
+      '/oturumlar',
+    );
+    expect(within(menu).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('Oturum:oku kuralı yokken (kapat olsa da) Oturumlar bağlantısı görünmez', async () => {
+    kurallarla([{ action: 'kapat', subject: 'Oturum', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.queryByRole('link', { name: 'Oturumlar' })).toBeNull();
+  });
+
+  it('kuralı olmayan oturumlu kişi de Parolamı değiştir bağlantısını görür', async () => {
+    kurallarla([]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(
+      screen.getByRole('link', { name: 'Parolamı değiştir' }).getAttribute('href'),
+    ).toBe('/parola');
+  });
+
+  it('yetkilerim alınamayınca da Parolamı değiştir bağlantısı görünür', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap({ kod: 'yetki_yok', ileti: 'Yetki yok', ayrinti: null }, 403),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('link', { name: 'Parolamı değiştir' })).toBeDefined();
+  });
+});
+
 // Yenilenemeyen oturum (GV-099): ara katman backend'e ulaşamayınca çerezlere dokunmaz; erişim
 // çerezi yoktur, yenileme ve cihaz çerezi durur.
 function cerezler(...adlar: string[]) {
