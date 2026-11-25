@@ -1,7 +1,7 @@
 ---
 kimlik: KR-007
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetkilendirme ABAC'tır ve repository'de çözülür
 agirlik: tek-yonlu
@@ -56,8 +56,9 @@ A (belgedeki yapı; kullanıcı 2026-11-21'de kanonun tamamını uygun buldu).
 - Ortak parça (bu depodaki adlar; 2026-11-25'te ölçüldü): `shared/guvenlik` altında uç işaretleri ve kimlik guard'ı; `shared/yetki` altında yetki guard'ı, yetenek derleyici, şart çevirici, kaynak kataloğu, okuma ve yazma kapısı. Kanondaki adlar: `shared/authorization`, PoliciesGuard, AbilityFactory, FieldFilterHelper, ResourceRegistry.
 
 ## Doğrulama
-Belgede yok; denetim kimliği ve ölçüm tarihi henüz yok. Belge gelecekteki bir lint kuralını anar (satır 308).
-Öneri (ajan): Birim: uç (endpoint) ve handler.
+- Denetim: DN-002 (yapı denetimi) çekirdek olmayan feature repository'lerinde her okuma deyiminin yetki süzgecini taşıdığını ve birleştirme çağrısıyla kapandığını sınar. Uç işaretleri uygulama açılırken sınanır (`backend/src/shared/guvenlik/infrastructure/isaret-denetimi.ts`); bu ikincisi henüz bir denetim düğümüne bağlanmadı.
+- Ölçüm (2026-11-25): yapı denetimi geçti (rol yeni biçimde; grup, kullanıcı, üyelik, yetenek ve oturumun yönetim repository'leri taşınmayı bekliyor); işaretsiz uç 0 (uygulama açılıyor); işleyicilerde derlenmiş yetkiye ya da yetki kapısına başvuran satır 0 (arama).
+- Birim: uç ve işleyici. Kanon belgesi doğrulama yazmaz; gelecekteki bir lint kuralını anar (satır 308).
 
 ## Varsayımlar
 - Klasör yolları KR-005 ve KR-006 taslaklarına dayanır (`backend/src/features`, `backend/src/shared/authorization`); varsayım, 2026-12-21'e kadar yürüyen iskelette kesinleşecek.

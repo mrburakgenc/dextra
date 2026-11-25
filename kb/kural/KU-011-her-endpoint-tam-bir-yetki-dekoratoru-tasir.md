@@ -1,7 +1,7 @@
 ---
 kimlik: KU-011
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Her endpoint tam bir yetki dekoratörü taşır
 dayanak: [KR-007@1]

@@ -1,7 +1,7 @@
 ---
 kimlik: KU-013
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: requesterId istek gövdesinden okunmaz
 dayanak: [KR-007@1]

@@ -1,7 +1,7 @@
 ---
 kimlik: DN-002
 tur: denetim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
 cesit: komut

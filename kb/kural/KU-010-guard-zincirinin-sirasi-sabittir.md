@@ -1,7 +1,7 @@
 ---
 kimlik: KU-010
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Guard zincirinin sırası sabittir
 dayanak: [KR-007@1]

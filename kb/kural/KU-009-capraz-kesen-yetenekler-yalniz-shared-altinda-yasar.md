@@ -1,7 +1,7 @@
 ---
 kimlik: KU-009
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Çapraz kesen yetenekler yalnız shared altında yaşar
 dayanak: [KR-005@1]

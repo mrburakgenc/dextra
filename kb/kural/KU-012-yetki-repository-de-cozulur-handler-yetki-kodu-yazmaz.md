@@ -1,7 +1,7 @@
 ---
 kimlik: KU-012
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetki repository'de çözülür; handler yetki kodu yazmaz
 dayanak: [KR-007@1]

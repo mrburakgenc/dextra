@@ -1,7 +1,7 @@
 ---
 kimlik: KU-008
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Her feature kendi içinde Clean Architecture'dır; bağımlılık içe doğru akar
 dayanak: [KR-005@1]

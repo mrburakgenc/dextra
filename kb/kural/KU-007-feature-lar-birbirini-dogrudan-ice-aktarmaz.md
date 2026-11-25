@@ -1,7 +1,7 @@
 ---
 kimlik: KU-007
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Feature'lar birbirini doğrudan içe aktarmaz
 dayanak: [KR-005@1]

@@ -1,7 +1,7 @@
 ---
 kimlik: KR-005
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Backend modular monolith ve dikey dilim mimarisidir; bounded context = feature
 agirlik: tek-yonlu

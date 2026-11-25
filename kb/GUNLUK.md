@@ -48,3 +48,13 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] kabul | KU-016@1 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
 ## [2026-11-25] kabul | TS-006@1 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
 ## [2026-11-25] kabul | TS-007@1 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
+## [2026-11-25] kabul | KR-005@1 Backend modular monolith ve dikey dilim mimarisidir; bounded context = feature
+## [2026-11-25] kabul | KR-007@1 Yetkilendirme ABAC'tır ve repository'de çözülür
+## [2026-11-25] kabul | DN-002@1 Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
+## [2026-11-25] kabul | KU-007@1 Feature'lar birbirini doğrudan içe aktarmaz
+## [2026-11-25] kabul | KU-008@1 Her feature kendi içinde Clean Architecture'dır; bağımlılık içe doğru akar
+## [2026-11-25] kabul | KU-009@1 Çapraz kesen yetenekler yalnız shared altında yaşar
+## [2026-11-25] kabul | KU-010@1 Guard zincirinin sırası sabittir
+## [2026-11-25] kabul | KU-011@1 Her endpoint tam bir yetki dekoratörü taşır
+## [2026-11-25] kabul | KU-012@1 Yetki repository'de çözülür; handler yetki kodu yazmaz
+## [2026-11-25] kabul | KU-013@1 requesterId istek gövdesinden okunmaz
