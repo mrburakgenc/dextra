@@ -34,27 +34,51 @@ const sartOgesi = z.strictObject({
   ]),
 }) satisfies z.ZodType<SartOgesi>;
 
-// POST kimlik/yetenek gövdesi (KR-014; KR-008 Seçim 5 ve 11). Kayıt ve kolon sınırı açık yazılır:
-// işaret ya da içerik; ikisi birlikte yazılamaz, boş liste yazılamaz (içerik yoksa null). İkisi de
-// yoksa satır saklanır ama kayıt ya da kolon vermez (TS-002 değişmez 7).
-export const yetenekYazSemasi = z
-  .strictObject({
+// Yetenek satırının içeriği (KR-014; KR-008 Seçim 5 ve 11). Kayıt ve kolon sınırı açık yazılır: işaret
+// ya da içerik; ikisi birlikte yazılamaz, boş liste yazılamaz (içerik yoksa null). İkisi de yoksa satır
+// saklanır ama kayıt ya da kolon vermez (TS-002 değişmez 7). Yaz ve yenile gövdeleri bunu paylaşır.
+const icerikAlanlari = {
+  sart: z.array(sartOgesi).min(1).nullable(),
+  butunKayitlar: z.boolean(),
+  butunBirimler: z.boolean(),
+  kolonlar: z.array(z.string()).min(1).nullable(),
+  butunKolonlar: z.boolean(),
+};
+
+function sinirlariDenetle<
+  T extends z.ZodType<{
+    sart: unknown;
+    butunKayitlar: boolean;
+    kolonlar: unknown;
+    butunKolonlar: boolean;
+  }>,
+>(sema: T): T {
+  return sema
+    .refine((g) => !(g.butunKayitlar && g.sart !== null), {
+      message: 'bütün kayıtlar işareti şartla birlikte yazılamaz',
+      path: ['sart'],
+    })
+    .refine((g) => !(g.butunKolonlar && g.kolonlar !== null), {
+      message: 'bütün kolonlar işareti kolon listesiyle birlikte yazılamaz',
+      path: ['kolonlar'],
+    });
+}
+
+// POST kimlik/yetenek gövdesi.
+export const yetenekYazSemasi = sinirlariDenetle(
+  z.strictObject({
     grupId: z.uuid(),
     rolId: z.uuid(),
     izinId: z.uuid(),
-    sart: z.array(sartOgesi).min(1).nullable(),
-    butunKayitlar: z.boolean(),
-    butunBirimler: z.boolean(),
-    kolonlar: z.array(z.string()).min(1).nullable(),
-    butunKolonlar: z.boolean(),
-  })
-  .refine((g) => !(g.butunKayitlar && g.sart !== null), {
-    message: 'bütün kayıtlar işareti şartla birlikte yazılamaz',
-    path: ['sart'],
-  })
-  .refine((g) => !(g.butunKolonlar && g.kolonlar !== null), {
-    message: 'bütün kolonlar işareti kolon listesiyle birlikte yazılamaz',
-    path: ['kolonlar'],
-  });
+    ...icerikAlanlari,
+  }),
+);
 
 export type YetenekYazGovdesi = z.infer<typeof yetenekYazSemasi>;
+
+// POST kimlik/yetenek/:id/yenile gövdesi: yalnız içerik; grup, rol ve izin eski satırdan alınır.
+export const yetenekYenileSemasi = sinirlariDenetle(
+  z.strictObject(icerikAlanlari),
+);
+
+export type YetenekYenileGovdesi = z.infer<typeof yetenekYenileSemasi>;

@@ -17,18 +17,22 @@ import type { YetenekListesi } from '../application/yetenek-listele.query.js';
 import { YetenekOkuHandler } from '../application/yetenek-oku.handler.js';
 import { YetenekOlusturHandler } from '../application/yetenek-olustur.handler.js';
 import { YetenekSilHandler } from '../application/yetenek-sil.handler.js';
+import { YetenekYenileHandler } from '../application/yetenek-yenile.handler.js';
 import {
   type YetenekListeleParametreleri,
   yetenekListeleSemasi,
 } from './yetenek-listele.schema.js';
 import {
   type YetenekYazGovdesi,
+  type YetenekYenileGovdesi,
   yetenekYazSemasi,
+  yetenekYenileSemasi,
 } from './yetenek-yaz.schema.js';
 
-// Yetenek yönetiminin uçları (TS-002 AK-39): okuma (Yetenek:oku), yaz (Yetenek:olustur) ve sil
-// (Yetenek:sil). Liste yalnız silinmemiş yetenekleri verir; kayıt şartı ve kolon listesini saklandığı
-// biçimde taşır. Güncelleme ucu yoktur: satır yerinde düzenlenmez (TS-002 değişmez 6).
+// Yetenek yönetiminin uçları (TS-002 AK-39): okuma (Yetenek:oku), yaz (Yetenek:olustur), yenile
+// (Yetenek:yenile; yeni satırı yazmak ayrıca Yetenek:olustur ister) ve sil (Yetenek:sil). Liste yalnız
+// silinmemiş yetenekleri verir; kayıt şartı ve kolon listesini saklandığı biçimde taşır. Güncelleme ucu
+// yoktur: satır yerinde düzenlenmez, yenile eskisini silip yerine yenisini yazar (TS-002 değişmez 6).
 @Controller('kimlik/yetenek')
 export class YetenekController {
   constructor(
@@ -36,6 +40,7 @@ export class YetenekController {
     private readonly okuHandler: YetenekOkuHandler,
     private readonly olusturHandler: YetenekOlusturHandler,
     private readonly silHandler: YetenekSilHandler,
+    private readonly yenileHandler: YetenekYenileHandler,
   ) {}
 
   @Post()
@@ -44,6 +49,16 @@ export class YetenekController {
     @Body({ schema: yetenekYazSemasi }) govde: YetenekYazGovdesi,
   ): Promise<{ id: string }> {
     return { id: await this.olusturHandler.calistir(govde) };
+  }
+
+  // Yeni satırın kimliğini döner.
+  @Post(':id/yenile')
+  @Izin('Yetenek', 'yenile')
+  async yenile(
+    @Param('id', { schema: z.uuid() }) id: string,
+    @Body({ schema: yetenekYenileSemasi }) govde: YetenekYenileGovdesi,
+  ): Promise<{ id: string }> {
+    return { id: await this.yenileHandler.calistir(id, govde) };
   }
 
   // Gövdesiz 204 döner.

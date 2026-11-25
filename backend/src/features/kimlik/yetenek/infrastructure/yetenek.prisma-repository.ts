@@ -18,6 +18,8 @@ const KAYNAK = 'Yetenek';
 // Yönetim uçlarının yazdığı satırın kökeni (TS-002 "Veri modeli").
 const YONETICI_KOKENI = 'yonetici';
 
+const YENILEME_EYLEMI = 'yenile';
+
 @Injectable()
 export class YetenekKapiYazmaRepo extends YetenekYazmaRepo {
   constructor(private readonly kapi: YazmaKapisi) {
@@ -36,6 +38,12 @@ export class YetenekKapiYazmaRepo extends YetenekYazmaRepo {
       sart: sart ?? undefined,
       kolonlar: kolonlar ?? undefined,
       koken: YONETICI_KOKENI,
+    });
+  }
+
+  kapat(islem: Islem, isAdi: string, id: string): Promise<void> {
+    return this.kapi.niyet(islem, isAdi, KAYNAK, YENILEME_EYLEMI, id, {
+      silinmeZamani: new Date(),
     });
   }
 

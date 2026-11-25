@@ -43,6 +43,8 @@ export interface YeniYetenek {
   readonly butunBirimler: boolean;
   readonly kolonlar: readonly string[] | null;
   readonly butunKolonlar: boolean;
+  // Yalnız yenilemede: yeni satırın yerine geçtiği eski satır (TS-002 "Durum geçişleri").
+  readonly yerineGectigiId?: string;
 }
 
 // Yetenek yönetiminin yazma repository'si: Yetenek kaynağına yalnız yetki kapısından, run'ın işlem
@@ -54,6 +56,10 @@ export abstract class YetenekYazmaRepo {
     isAdi: string,
     yetenek: YeniYetenek,
   ): Promise<string>;
+
+  // Yenilemede eski satırın kapatılması: niyet eylemi 'yenile', silinme zamanı yazılır. Satırı tutan
+  // yenile yeteneği yoksa ya da satır zaten silinmişse bulunamadi.
+  abstract kapat(islem: Islem, isAdi: string, id: string): Promise<void>;
 
   // Yumuşak silme; satırı tutan silme yeteneği yoksa ya da satır zaten silinmişse bulunamadi.
   abstract sil(islem: Islem, isAdi: string, id: string): Promise<void>;
