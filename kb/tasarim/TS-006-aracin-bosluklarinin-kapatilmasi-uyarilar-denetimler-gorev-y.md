@@ -62,6 +62,7 @@ Davranışlar, eklenecekleri sırayla:
 - **DN-002'nin komutu `pnpm` kullanmaz** (2026-11-25): `node backend/node_modules/vitest/vitest.mjs run --root backend <dosya>`. Gerekçe: push kapısı, `pnpm`'in yolda olmadığı kabuklarda da (bu oturumun kabuğu böyle; ölçüldü) koşabilmeli. Bedel: komut vitest'in paket içindeki dosya adına bağlıdır.
 - **KU-008 taslağının denetim düzeyi "mekanik" yapıldı ve DN-002'ye bağlandı** (2026-11-25): kural da denetim de taslak olduğu için kapıda koşmaz; kullanıcı ikisini kabul edince koşar. KU-008'in kapsamı (`backend/src/features/**`) değişmedi; denetim ortak kodu da sınar.
 - **DN-001 "yerleşik" olarak işaretlendi**: aracın kendi denetimidir (`denetle --dal` içinde koşar), komut taşımaz.
+- **`gorev genislet` ve `gorev tazele` onay ayarına uyar** (2026-11-25; GV-124 incelemesi çelişkiyi gösterdi): 7. davranış ve "Kısıtlar" bu komutların kullanıcıya sorulacağını söylüyordu; yazılan davranış koşturma ve alma ile aynıdır, yani `harness.json` içindeki `gorev.onay` ayarına bakar. Bu depoda ayar "yok" olduğu için (kullanıcı onay sorularını kapattı) sorulmaz; ayar açıkken sorulur. Gerekçe: kapsam genişletme, koşturma ve almadan daha ağır bir karar değildir ve tek ayar tek davranış verir. Bedel: ayarı kapalı depoda ajan kartın dosya listesini sormadan genişletebilir; kartta tarihli "Kapsam değişikliği" satırı iz bırakır.
 
 ## Seçenekler
 ### 1. Taslak kural: uyarı mı, engel mi
