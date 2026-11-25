@@ -702,6 +702,81 @@ describe('f) şartı bozuk yetenek', () => {
   });
 });
 
+// Şart değerinin kolon tipine uyumu (GV-085; TS-002 AK-44). Okuma kapısı kümenin bütün okuma
+// kurallarını tek sorguda birleştirir; tipi uymayan şart derlenseydi kişinin bütün okuması veritabanı
+// hatasıyla düşerdi.
+describe('h) tipi kolonuna uymayan şart', () => {
+  const HAKAN = '60000000-0000-4000-8000-000000000008';
+  const GRUP_H = '61000000-0000-4000-8000-000000000011';
+  const U_HAKAN = '63000000-0000-4000-8000-000000000009';
+  const Y_HAKAN_SAGLAM = '64000000-0000-4000-8000-00000000000a';
+  const Y_HAKAN_MANTIKSAL = '64000000-0000-4000-8000-00000000000b';
+  const Y_HAKAN_KIMLIK = '64000000-0000-4000-8000-00000000000c';
+  const Y_HAKAN_SAYI = '64000000-0000-4000-8000-00000000000d';
+  const Y_HAKAN_ZAMAN = '64000000-0000-4000-8000-00000000000e';
+  const OT_HAKAN = '65000000-0000-4000-8000-000000000008';
+
+  it('yanlış tipli şartı taşıyan okuma yeteneği derlenmez ve günlüğe yazılır; aynı kümedeki kişi 500 almaz, öbür yeteneğiyle okur', async () => {
+    await grupEkle(GRUP_H, kokGrup);
+    await kisiEkle(HAKAN, 'hakan');
+    await oturumAc(OT_HAKAN, HAKAN);
+    await uyelikEkle(U_HAKAN, HAKAN, GRUP_H, ROL_1);
+    // Sağlam yetenek: kişinin kendi kaydı; zaman şartı saat dilimli yazımın veritabanında da
+    // geçtiğini gösterir.
+    await yetenekEkle(Y_HAKAN_SAGLAM, GRUP_H, ROL_1, ['Kullanici', 'oku'], {
+      sart: [
+        { alan: 'id', islec: 'esit', deger: { yerTutucu: 'isteyen' } },
+        {
+          alan: 'olusturmaZamani',
+          islec: 'buyuk',
+          deger: '2000-01-01T00:00:00+03:00',
+        },
+      ],
+    });
+    await yetenekEkle(Y_HAKAN_MANTIKSAL, GRUP_H, ROL_1, ['Kullanici', 'oku'], {
+      sart: [{ alan: 'sistemAktoru', islec: 'esit', deger: 'evet' }],
+    });
+    await yetenekEkle(Y_HAKAN_KIMLIK, GRUP_H, ROL_1, ['Kullanici', 'oku'], {
+      sart: [{ alan: 'id', islec: 'esit', deger: 'kimlik-degil' }],
+    });
+    // Sayı kolonları integer'dır; zaman UTC'de 0 yılına düşer.
+    await yetenekEkle(Y_HAKAN_SAYI, GRUP_H, ROL_1, ['Kullanici', 'oku'], {
+      sart: [{ alan: 'yetkiSurumu', islec: 'buyuk', deger: 3000000000 }],
+    });
+    await yetenekEkle(Y_HAKAN_ZAMAN, GRUP_H, ROL_1, ['Kullanici', 'oku'], {
+      sart: [
+        {
+          alan: 'olusturmaZamani',
+          islec: 'buyuk',
+          deger: '0001-01-01T00:00:00+03:00',
+        },
+      ],
+    });
+    const uyarilar = vi.spyOn(Logger.prototype, 'warn');
+
+    const cevap = await getir('/kimlik/kullanici', {
+      kullaniciId: HAKAN,
+      oturumId: OT_HAKAN,
+    });
+
+    expect(cevap.status).toBe(200);
+    expect(
+      (cevap.body as { kayitlar: { id: string }[] }).kayitlar.map((k) => k.id),
+    ).toEqual([HAKAN]);
+    expect(uyarilar.mock.calls.map(([ileti]) => String(ileti))).toEqual(
+      expect.arrayContaining([
+        `Yetenek derlenmedi: yetenek=${Y_HAKAN_MANTIKSAL} neden=değer alanın tipine uymuyor: sistemAktoru`,
+        `Yetenek derlenmedi: yetenek=${Y_HAKAN_KIMLIK} neden=değer alanın tipine uymuyor: id`,
+        `Yetenek derlenmedi: yetenek=${Y_HAKAN_SAYI} neden=değer alanın tipine uymuyor: yetkiSurumu`,
+        `Yetenek derlenmedi: yetenek=${Y_HAKAN_ZAMAN} neden=değer alanın tipine uymuyor: olusturmaZamani`,
+      ]),
+    );
+    expect(
+      (await kurallari(HAKAN, OT_HAKAN)).map((k) => k.yetenekId),
+    ).toEqual([Y_HAKAN_SAGLAM]);
+  });
+});
+
 // Yazma kapısı uygulamanın kataloğuyla (GV-060; TS-002 "Veri modeli", çürütme 17; KR-008 Seçim 34):
 // yazan SuperAdmin'dir; her kaynak ve eylem için koşulsuz ve «bütün kolonlar» kuralı taşır.
 describe('g) uygulamanın kataloğunda sistem alanları', () => {

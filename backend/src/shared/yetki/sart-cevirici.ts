@@ -1,4 +1,10 @@
-import type { Islec, SabitDeger } from '../kimlik/yetki-verisi.contract.js';
+import { z } from 'zod';
+import type {
+  Islec,
+  SabitDeger,
+  SartOgesi,
+} from '../kimlik/yetki-verisi.contract.js';
+import type { AlanTipi } from './alan-tipleri.js';
 
 // Yer tutucuları çözülmüş şart öğesi.
 export interface CozulmusSartOgesi {
@@ -20,6 +26,13 @@ export type PrismaKosulu = Record<string, unknown>;
 export type CeviriSonucu =
   { readonly kosul: PrismaKosulu } | { readonly neden: string };
 
+// Tip sınamasının bulgusu: "uyumsuz", değeri alanın tipine uymayan öğedir; çağıranın koşulunda o değer
+// istekten gelir ve okuma kapısı onu doğrulama hatasına çevirir. "neden", kodun yazdığı biçimin
+// (işleç, alan, yer tutucu) hatasıdır.
+export type TipBulgusu = { readonly neden: string } | { readonly uyumsuz: string };
+
+export type KosulCevirisi = CeviriSonucu | { readonly uyumsuz: string };
+
 const PRISMA_ISLECI: Record<Islec, string> = {
   esit: 'equals',
   esit_degil: 'not',
@@ -32,6 +45,93 @@ const PRISMA_ISLECI: Record<Islec, string> = {
 };
 
 const LISTE_ISLECLERI: readonly Islec[] = ['listede', 'listede_degil'];
+
+// İşlecin yazılabildiği alan tipleri (TS-002 AK-44). Mantıksal alanda yalnız eşitlik vardır (Prisma'nın
+// BoolFilter'ı in, notIn, lt, gt taşımaz); büyüklük yalnız sayı ve zamanda anlamlıdır; "obur" hiçbir
+// işlece girmez.
+const ESITLIK_TIPLERI: readonly AlanTipi[] = [
+  'metin',
+  'sayi',
+  'mantiksal',
+  'kimlik',
+  'zaman',
+];
+const LISTE_TIPLERI: readonly AlanTipi[] = ['metin', 'sayi', 'kimlik', 'zaman'];
+const BUYUKLUK_TIPLERI: readonly AlanTipi[] = ['sayi', 'zaman'];
+const ISLEC_TIPLERI: Record<Islec, readonly AlanTipi[]> = {
+  esit: ESITLIK_TIPLERI,
+  esit_degil: ESITLIK_TIPLERI,
+  listede: LISTE_TIPLERI,
+  listede_degil: LISTE_TIPLERI,
+  kucuk: BUYUKLUK_TIPLERI,
+  kucuk_esit: BUYUKLUK_TIPLERI,
+  buyuk: BUYUKLUK_TIPLERI,
+  buyuk_esit: BUYUKLUK_TIPLERI,
+};
+
+// Kimlik tireli on altılık yazımdır (PostgreSQL uuid'nin kabul ettiklerinin alt kümesi). Zaman, saat
+// dilimi taşıyan ISO 8601 tarih-saattir (RFC 3339'un alt kümesi); takvimde olmayan gün ve saat düşer,
+// UTC'ye çevrilince 1-9999 yılları dışına düşen de (PostgreSQL 0 yılını kabul etmez). Sayı, şemadaki
+// bütün sayı kolonları Int (PostgreSQL integer) olduğu için o aralıktaki tam sayıdır.
+const KIMLIK_YAZIMI = z.guid();
+const ZAMAN_YAZIMI = z.iso
+  .datetime({ offset: true })
+  .refine((yazim) => {
+    const yil = new Date(yazim).getUTCFullYear();
+    return yil >= 1 && yil <= 9999;
+  });
+const SAYI = z.int32();
+
+function degerTipeUyar(
+  deger: SabitDeger,
+  tip: Exclude<AlanTipi, 'obur'>,
+): boolean {
+  switch (tip) {
+    case 'metin':
+      return typeof deger === 'string';
+    case 'sayi':
+      return SAYI.safeParse(deger).success;
+    case 'mantiksal':
+      return typeof deger === 'boolean';
+    case 'kimlik':
+      return KIMLIK_YAZIMI.safeParse(deger).success;
+    case 'zaman':
+      return ZAMAN_YAZIMI.safeParse(deger).success;
+  }
+}
+
+// Şart öğesinin işlecini ve değerini alanın tipine karşı sınar (TS-002 AK-44); uyan öğe için
+// undefined. Listeli işleç liste, tekil işleç tekil değer ister; listeli işleçte her öğe sınanır.
+// Çağıranın koşulunda değer istekten gelir, bu yüzden biçim uyumsuzluğu da "uyumsuz"dur. Yer tutucuların üçü de kimliğe çözülür ve yalnız kimlik
+// alanında yazılır. Bilinmeyen alan ve işleç burada sınanmaz; onları sartiCevir bildirir.
+export function tipiSina(
+  oge: SartOgesi,
+  tipler: Readonly<Record<string, AlanTipi>>,
+): TipBulgusu | undefined {
+  const tip = Object.hasOwn(tipler, oge.alan) ? tipler[oge.alan] : undefined;
+  if (tip === undefined || !Object.hasOwn(ISLEC_TIPLERI, oge.islec)) {
+    return undefined;
+  }
+  if (tip === 'obur') {
+    return { neden: `şartta kullanılamayan alan: ${oge.alan}` };
+  }
+  if (!ISLEC_TIPLERI[oge.islec].includes(tip)) {
+    return { neden: `işleç alanın tipine uymuyor: ${oge.alan}` };
+  }
+  const deger = oge.deger;
+  if (typeof deger === 'object' && 'yerTutucu' in deger) {
+    return tip === 'kimlik'
+      ? undefined
+      : { neden: `yer tutucu alanın tipine uymuyor: ${oge.alan}` };
+  }
+  if (LISTE_ISLECLERI.includes(oge.islec) !== Array.isArray(deger)) {
+    return { uyumsuz: `değerin biçimi işlece uymuyor: ${oge.alan}` };
+  }
+  const ogeler: readonly SabitDeger[] = Array.isArray(deger) ? deger : [deger];
+  return ogeler.every((d) => degerTipeUyar(d, tip))
+    ? undefined
+    : { uyumsuz: `değer alanın tipine uymuyor: ${oge.alan}` };
+}
 
 // Şartı Prisma sorgu koşuluna çevirir; öğeler "ve" ile bağlanır.
 // Yalnız kaydın kendi kolonuna bakan şart çevrilir; bilinmeyen alan ya da saklanan şartın dilinde
@@ -57,11 +157,12 @@ export function sartiCevir(
 }
 
 // Çağıranın koşulunu çevirir: değersiz işleçli öğe boş ya da dolu sınamasıdır (Prisma "equals: null"u
-// IS NULL, "not: null"u IS NOT NULL yapar), öbür öğeler sartiCevir ile çevrilir.
+// IS NULL, "not: null"u IS NOT NULL yapar), öbür öğeler tipiSina'dan geçip sartiCevir ile çevrilir.
 export function kosuluCevir(
   kosul: readonly KosulOgesi[],
-  alanlar: readonly string[],
-): CeviriSonucu {
+  tipler: Readonly<Record<string, AlanTipi>>,
+): KosulCevirisi {
+  const alanlar = Object.keys(tipler);
   const kosullar: PrismaKosulu[] = [];
   const degerli: CozulmusSartOgesi[] = [];
   for (const oge of kosul) {
@@ -75,8 +176,13 @@ export function kosuluCevir(
           [oge.alan]: oge.islec === 'bos' ? { equals: null } : { not: null },
         });
         break;
-      default:
+      default: {
+        const bulgu = tipiSina(oge, tipler);
+        if (bulgu !== undefined) {
+          return bulgu;
+        }
         degerli.push(oge);
+      }
     }
   }
   const ceviri = sartiCevir(degerli, alanlar);

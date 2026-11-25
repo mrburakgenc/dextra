@@ -1,14 +1,29 @@
 import { accessibleBy } from '@casl/prisma/runtime';
-import type { YetenekSatiri } from '../kimlik/yetki-verisi.contract.js';
+import type {
+  SartOgesi,
+  YetenekSatiri,
+} from '../kimlik/yetki-verisi.contract.js';
+import type { AlanTipi } from './alan-tipleri.js';
 import type { KaynakKatalogu } from './kaynak-katalogu.js';
 import { yetenekleriDerle } from './yetenek-derleyici.js';
 
-const KATALOG: KaynakKatalogu = {
-  alanlar: (tur) =>
-    tur === 'Talep'
-      ? ['id', 'durum', 'tutar', 'sahibiId', 'grupId']
-      : undefined,
+const TALEP_TIPLERI: Record<string, AlanTipi> = {
+  id: 'kimlik',
+  durum: 'metin',
+  tutar: 'sayi',
+  sahibiId: 'kimlik',
+  grupId: 'kimlik',
+  acil: 'mantiksal',
+  sonTarih: 'zaman',
+  ekler: 'obur',
 };
+
+const KATALOG: KaynakKatalogu = {
+  alanlar: (tur) => (tur === 'Talep' ? Object.keys(TALEP_TIPLERI) : undefined),
+  alanTipleri: (tur) => (tur === 'Talep' ? TALEP_TIPLERI : undefined),
+};
+
+const KIMLIK = '60000000-0000-4000-8000-000000000001';
 
 const ISTEYEN = 'kisi-1';
 
@@ -197,6 +212,171 @@ describe('yetenek derleyici', () => {
       expect(sonuc.derlenmeyenler).toEqual([
         { yetenekId: 'y1', neden: 'bilinmeyen kaynak: Yok' },
       ]);
+    });
+  });
+
+  // TS-002 AK-44: her girdide bozuk satırın yanında sağlam bir satır vardır; bozuk satır derlenmez ve
+  // nedeniyle bildirilir, sağlam satır derlenir.
+  describe('şart değerinin ve işlecin kolon tipine uyumu', () => {
+    function bozukVeSaglam(bozuk: SartOgesi) {
+      return derle([
+        satir({ yetenekId: 'bozuk', sart: [bozuk] }),
+        satir({
+          yetenekId: 'saglam',
+          sart: [{ alan: 'durum', islec: 'esit', deger: 'acik' }],
+        }),
+      ]);
+    }
+
+    it.each<[AlanTipi, SartOgesi]>([
+      ['metin', { alan: 'durum', islec: 'esit', deger: 'acik' }],
+      ['sayi', { alan: 'tutar', islec: 'buyuk', deger: 100 }],
+      ['mantiksal', { alan: 'acil', islec: 'esit', deger: true }],
+      ['kimlik', { alan: 'sahibiId', islec: 'esit', deger: KIMLIK }],
+      [
+        'zaman',
+        { alan: 'sonTarih', islec: 'kucuk', deger: '2026-11-25T10:00:00+03:00' },
+      ],
+    ])('%s alanında uyan değer derlenir', (_tip, oge) => {
+      const sonuc = derle([satir({ sart: [oge] })]);
+
+      expect(sonuc.derlenmeyenler).toEqual([]);
+      expect(sonuc.kurallar).toHaveLength(1);
+    });
+
+    it.each<[string, SartOgesi]>([
+      ['metin alanında sayı', { alan: 'durum', islec: 'esit', deger: 5 }],
+      ['sayı alanında metin', { alan: 'tutar', islec: 'esit', deger: '100' }],
+      ['sayı alanında ondalık', { alan: 'tutar', islec: 'esit', deger: 1.5 }],
+      [
+        'sayı alanında integer aralığının dışı',
+        { alan: 'tutar', islec: 'buyuk', deger: 1e300 },
+      ],
+      [
+        'mantıksal alanında metin',
+        { alan: 'acil', islec: 'esit', deger: 'evet' },
+      ],
+      [
+        'kimlik alanında kimlik biçiminde olmayan metin',
+        { alan: 'sahibiId', islec: 'esit', deger: 'kisi-1' },
+      ],
+      ['kimlik alanında sayı', { alan: 'sahibiId', islec: 'esit', deger: 7 }],
+      [
+        'zaman alanında takvimde olmayan gün',
+        { alan: 'sonTarih', islec: 'esit', deger: '2026-02-30T00:00:00Z' },
+      ],
+      [
+        'zaman alanında saat dilimi olmayan yazım',
+        { alan: 'sonTarih', islec: 'buyuk', deger: '2026-11-25T10:00:00' },
+      ],
+      [
+        'zaman alanında yalnız tarih',
+        { alan: 'sonTarih', islec: 'buyuk', deger: '2026-11-25' },
+      ],
+      [
+        'zaman alanında 0000 yılı',
+        { alan: 'sonTarih', islec: 'buyuk', deger: '0000-06-01T00:00:00Z' },
+      ],
+    ])('%s derlenmez ve bildirilir', (_ad, oge) => {
+      const sonuc = bozukVeSaglam(oge);
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        {
+          yetenekId: 'bozuk',
+          neden: `değer alanın tipine uymuyor: ${oge.alan}`,
+        },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
+    });
+
+    it('listeli işleçte her öğe sınanır: uymayan tek öğe satırı derlenmez kılar', () => {
+      const sonuc = bozukVeSaglam({
+        alan: 'sahibiId',
+        islec: 'listede',
+        deger: [KIMLIK, 'kisi-1'],
+      });
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        { yetenekId: 'bozuk', neden: 'değer alanın tipine uymuyor: sahibiId' },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
+    });
+
+    it('listeli işleçte öğelerin hepsi uyarsa satır derlenir', () => {
+      const sonuc = derle([
+        satir({
+          sart: [
+            { alan: 'tutar', islec: 'listede_degil', deger: [1, 2] },
+            { alan: 'sahibiId', islec: 'listede', deger: [KIMLIK] },
+          ],
+        }),
+      ]);
+
+      expect(sonuc.derlenmeyenler).toEqual([]);
+      expect(sonuc.kurallar[0]?.conditions).toEqual({
+        AND: [{ tutar: { notIn: [1, 2] } }, { sahibiId: { in: [KIMLIK] } }],
+      });
+    });
+
+    it('boş liste derlenmez ve bildirilir', () => {
+      const sonuc = bozukVeSaglam({
+        alan: 'durum',
+        islec: 'listede',
+        deger: [],
+      });
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        { yetenekId: 'bozuk', neden: 'boş liste: durum' },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
+    });
+
+    it("'öbür' tipindeki alan şartta kullanılamaz", () => {
+      const sonuc = bozukVeSaglam({ alan: 'ekler', islec: 'esit', deger: 'x' });
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        { yetenekId: 'bozuk', neden: 'şartta kullanılamayan alan: ekler' },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
+    });
+
+    it.each<[string, SartOgesi]>([
+      ['metin alanında büyük', { alan: 'durum', islec: 'buyuk', deger: 'a' }],
+      [
+        'kimlik alanında küçük',
+        { alan: 'sahibiId', islec: 'kucuk', deger: KIMLIK },
+      ],
+      [
+        'mantıksal alanında listede',
+        { alan: 'acil', islec: 'listede', deger: [true] },
+      ],
+      [
+        'mantıksal alanında büyük ya da eşit',
+        { alan: 'acil', islec: 'buyuk_esit', deger: true },
+      ],
+    ])('tipe uymayan işleç (%s) derlenmez ve bildirilir', (_ad, oge) => {
+      const sonuc = bozukVeSaglam(oge);
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        {
+          yetenekId: 'bozuk',
+          neden: `işleç alanın tipine uymuyor: ${oge.alan}`,
+        },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
+    });
+
+    it('yer tutucu yalnız kimlik alanında yazılır', () => {
+      const sonuc = bozukVeSaglam({
+        alan: 'durum',
+        islec: 'esit',
+        deger: { yerTutucu: 'isteyen' },
+      });
+
+      expect(sonuc.derlenmeyenler).toEqual([
+        { yetenekId: 'bozuk', neden: 'yer tutucu alanın tipine uymuyor: durum' },
+      ]);
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['saglam']);
     });
   });
 

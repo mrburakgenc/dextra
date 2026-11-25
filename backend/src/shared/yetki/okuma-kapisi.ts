@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { RepoIstemcisi } from '../database/registrar.js';
 import { type IstekBaglami, istekBaglami } from '../http/istek-baglami.js';
 import { KodluHata } from '../http/kodlu-hata.js';
+import type { AlanTipi } from './alan-tipleri.js';
 import { KAYNAK_KATALOGU, type KaynakKatalogu } from './kaynak-katalogu.js';
 import {
   type KosulOgesi,
@@ -104,8 +105,15 @@ export class OkumaKapisi {
     kaynak: string,
     istek: ListeIstegi = {},
   ): Promise<Kayit[]> {
-    const { alanlar, vekil } = this.kaynak(istemci, kaynak);
-    const ceviri = kosuluCevir(istek.kosul ?? [], alanlar);
+    const { alanlar, tipler, vekil } = this.kaynak(istemci, kaynak);
+    const ceviri = kosuluCevir(istek.kosul ?? [], tipler);
+    // Tipi uymayan değer istekten gelir (uç şemasından kaçmıştır); veritabanına gitmeden doğrulama
+    // hatası olur (TS-002 AK-44). Öbür çeviri hataları kodundur.
+    if ('uyumsuz' in ceviri) {
+      throw new KodluHata('dogrulama_hatasi', 'İstek doğrulanamadı', [
+        { alan: 'kosul', neden: ceviri.uyumsuz },
+      ]);
+    }
     if ('neden' in ceviri) {
       throw new Error(`Okuma koşulu çevrilemedi: ${ceviri.neden}`);
     }
@@ -153,16 +161,21 @@ export class OkumaKapisi {
   private kaynak(
     istemci: RepoIstemcisi,
     kaynak: string,
-  ): { alanlar: readonly string[]; vekil: OkumaVekili } {
+  ): {
+    alanlar: readonly string[];
+    tipler: Readonly<Record<string, AlanTipi>>;
+    vekil: OkumaVekili;
+  } {
     const alanlar = this.katalog.alanlar(kaynak);
+    const tipler = this.katalog.alanTipleri(kaynak);
     // Prisma istemcisinde modelin vekili, model adının ilk harfi küçük hâlidir.
     const vekil = (istemci as unknown as Partial<Record<string, OkumaVekili>>)[
       kaynak.charAt(0).toLowerCase() + kaynak.slice(1)
     ];
-    if (alanlar === undefined || vekil === undefined) {
+    if (alanlar === undefined || tipler === undefined || vekil === undefined) {
       throw new Error(`Kaynak kataloğunda olmayan kaynak: ${kaynak}`);
     }
-    return { alanlar, vekil };
+    return { alanlar, tipler, vekil };
   }
 
   private async oku(

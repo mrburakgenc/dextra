@@ -11,7 +11,11 @@ import type {
   YetenekSatiri,
 } from '../kimlik/yetki-verisi.contract.js';
 import type { KaynakKatalogu } from './kaynak-katalogu.js';
-import { type CozulmusSartOgesi, sartiCevir } from './sart-cevirici.js';
+import {
+  type CozulmusSartOgesi,
+  sartiCevir,
+  tipiSina,
+} from './sart-cevirici.js';
 
 // Üretilmiş Prisma istemcisi olmadan: her tür adı, koşulu düz nesne olan bir modeldir.
 export type YetkiKosulu = PrismaQueryFactory<PrismaTypeMap<string>>;
@@ -73,7 +77,8 @@ function satiriDerle(
   katalog: KaynakKatalogu,
 ): SatirSonucu {
   const alanlar = katalog.alanlar(satir.kaynak);
-  if (alanlar === undefined) {
+  const tipler = katalog.alanTipleri(satir.kaynak);
+  if (alanlar === undefined || tipler === undefined) {
     return { neden: `bilinmeyen kaynak: ${satir.kaynak}` };
   }
   if (satir.butunKayitlar && satir.sart.length > 0) {
@@ -100,8 +105,17 @@ function satiriDerle(
     return kolonYok ? null : { kural };
   }
 
+  // Tip, yer tutucu çözülmeden sınanır: yer tutucu anlamıyla (kimlik) sınanır, çözüldüğü değerle değil
+  // (TS-002 AK-44). Boş liste şart değeri olamaz (KR-008 Seçim 11).
   const cozulmus: CozulmusSartOgesi[] = [];
   for (const oge of satir.sart) {
+    const bulgu = tipiSina(oge, tipler);
+    if (bulgu !== undefined) {
+      return { neden: 'neden' in bulgu ? bulgu.neden : bulgu.uyumsuz };
+    }
+    if (Array.isArray(oge.deger) && oge.deger.length === 0) {
+      return { neden: `boş liste: ${oge.alan}` };
+    }
     const deger = yerTutucuyuCoz(
       oge.deger,
       satir.grupId,
