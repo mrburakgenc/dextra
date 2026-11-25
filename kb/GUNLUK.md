@@ -39,3 +39,4 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] taslak | KR-015 Alınan her iş raporla kapanır; raporu olmayan iş gönderilemez
 ## [2026-11-25] taslak | KU-016 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
 ## [2026-11-25] taslak | DN-001 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
+## [2026-11-25] taslak | TS-006 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
