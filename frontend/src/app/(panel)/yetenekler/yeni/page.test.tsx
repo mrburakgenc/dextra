@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { redirect } from 'next/navigation';
 import { Component, type ReactNode } from 'react';
@@ -149,6 +149,18 @@ function sartHatasi(): string | null {
   return kimlik === null ? null : (document.getElementById(kimlik)?.textContent ?? null);
 }
 
+// Şart satırının hatası satırın içindedir: hatalı girdi geçersiz işaretlidir ve satırdaki iletiye
+// bağlıdır.
+function satirHatasi(sira: number, etiket: string | RegExp): string | null {
+  const satir = screen.getByRole('group', { name: `${String(sira)}. şart` });
+  const girdi = within(satir).getByLabelText(etiket);
+  if (girdi.getAttribute('aria-invalid') !== 'true') {
+    return null;
+  }
+  const ileti = document.getElementById(girdi.getAttribute('aria-describedby') ?? '');
+  return ileti !== null && satir.contains(ileti) ? ileti.textContent : null;
+}
+
 beforeEach(() => {
   vi.stubEnv('BACKEND_ADRESI', 'http://backend.sinama:3001');
   vi.stubEnv('ARACI_KATMAN_SIRRI', 'sinama-sirri-0123456789abcdefghijklmnop');
@@ -284,6 +296,22 @@ describe('YeniYetenekSayfasi doğrulama', () => {
     expect(istekler()).toEqual([]);
   });
 
+  it.each(['ad,', 'ad,,kod'])(
+    'boş kolon adı (%s) backend çağrılmadan Türkçe iletiyle hata verir',
+    async (yazim) => {
+      await goster();
+
+      await sec();
+      await userEvent.type(screen.getByLabelText('Kolonlar (virgülle ayrılmış)'), yazim);
+      await gonder();
+
+      await vi.waitFor(() => {
+        expect(alanHatasi('Kolonlar (virgülle ayrılmış)')).toBe('Kolon adı boş olamaz');
+      });
+      expect(istekler()).toEqual([]);
+    },
+  );
+
   it.each([
     ['tek değerde', 'esit', 'on sekiz'],
     ['listeli işleçte', 'listede', '1, iki'],
@@ -295,8 +323,34 @@ describe('YeniYetenekSayfasi doğrulama', () => {
     await gonder();
 
     await vi.waitFor(() => {
-      expect(sartHatasi()).toBe('1. şart: Değer sayıya çevrilemiyor');
+      expect(satirHatasi(1, DEGER)).toBe('1. şart: Değer sayıya çevrilemiyor');
     });
+    expect(satirHatasi(1, 'Alan')).toBeNull();
+    expect(sartHatasi()).toBeNull();
+    expect(istekler()).toEqual([]);
+  });
+
+  it('hatadan sonra üstteki satır çıkarılınca hata kendi satırında kalır, öbür satıra kaymaz', async () => {
+    await goster();
+
+    await sec();
+    await sartEkle('a', 'esit', 'sayi', '1');
+    await sartEkle('b', 'esit', 'sayi', 'on');
+    await sartEkle('c', 'esit', 'sayi', '3');
+    await gonder();
+    await vi.waitFor(() => {
+      expect(satirHatasi(2, DEGER)).toBe('2. şart: Değer sayıya çevrilemiyor');
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: '1. şartı çıkar' }));
+
+    expect(within(screen.getByRole('group', { name: '1. şart' })).getByLabelText('Alan')).toHaveProperty(
+      'value',
+      'b',
+    );
+    expect(satirHatasi(1, DEGER)).toBe('2. şart: Değer sayıya çevrilemiyor');
+    expect(satirHatasi(2, DEGER)).toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
     expect(istekler()).toEqual([]);
   });
 
@@ -308,8 +362,9 @@ describe('YeniYetenekSayfasi doğrulama', () => {
     await gonder();
 
     await vi.waitFor(() => {
-      expect(sartHatasi()).toBe('1. şart: Değer true ya da false olmalı');
+      expect(satirHatasi(1, DEGER)).toBe('1. şart: Değer true ya da false olmalı');
     });
+    expect(sartHatasi()).toBeNull();
     expect(istekler()).toEqual([]);
   });
 
@@ -321,8 +376,10 @@ describe('YeniYetenekSayfasi doğrulama', () => {
     await gonder();
 
     await vi.waitFor(() => {
-      expect(sartHatasi()).toBe('1. şart: Alan boş olamaz');
+      expect(satirHatasi(1, 'Alan')).toBe('1. şart: Alan boş olamaz');
     });
+    expect(satirHatasi(1, DEGER)).toBeNull();
+    expect(sartHatasi()).toBeNull();
     expect(istekler()).toEqual([]);
   });
 
@@ -395,6 +452,116 @@ describe('YeniYetenekSayfasi hatalar', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe('Bu iş için yetkin yok');
     expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe('YeniYetenekSayfasi yazılanın korunması', () => {
+  function secilen(etiket: string): string {
+    const secim = screen.getByLabelText(etiket);
+    if (!(secim instanceof HTMLSelectElement)) {
+      throw new Error('seçim değil');
+    }
+    return secim.value;
+  }
+
+  function deger(etiket: string | RegExp): string {
+    const girdi = screen.getByLabelText(etiket);
+    if (!(girdi instanceof HTMLInputElement || girdi instanceof HTMLSelectElement)) {
+      throw new Error('girdi değil');
+    }
+    return girdi.value;
+  }
+
+  it('409 dönünce grup, rol ve izin seçimi, şart satırı, kutular ve kolonlar formda kalır', async () => {
+    await goster(OLUSTURUR, hataCevabi('cakisma', 'İzin katalogda yok', 409));
+
+    await sec();
+    await sartEkle('durum', 'listede', 'metin', 'a, b');
+    await userEvent.click(screen.getByLabelText('Bütün birimler'));
+    await userEvent.type(screen.getByLabelText('Kolonlar (virgülle ayrılmış)'), 'ad, kod');
+    await gonder();
+
+    expect((await screen.findByRole('alert')).textContent).toBe('İzin katalogda yok');
+    expect(secilen('Grup')).toBe(GRUP);
+    expect(secilen('Rol')).toBe(ROL);
+    expect(secilen('İzin')).toBe(IZIN);
+    expect(deger('Alan')).toBe('durum');
+    expect(deger('İşleç')).toBe('listede');
+    expect(deger('Değer türü')).toBe('metin');
+    expect(deger(DEGER)).toBe('a, b');
+    const kutu = screen.getByLabelText('Bütün birimler');
+    expect(kutu instanceof HTMLInputElement && kutu.checked).toBe(true);
+    expect(deger('Kolonlar (virgülle ayrılmış)')).toBe('ad, kod');
+  });
+
+  it('alan hatasında da seçimler ve yazılanlar formda kalır', async () => {
+    await goster();
+
+    await sec();
+    await sartEkle('yas', 'esit', 'sayi', 'on sekiz');
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(satirHatasi(1, DEGER)).toBe('1. şart: Değer sayıya çevrilemiyor');
+    });
+    expect(secilen('Grup')).toBe(GRUP);
+    expect(secilen('Rol')).toBe(ROL);
+    expect(secilen('İzin')).toBe(IZIN);
+    expect(deger('Alan')).toBe('yas');
+    expect(deger(DEGER)).toBe('on sekiz');
+    expect(istekler()).toEqual([]);
+  });
+
+  it('gönderim sürerken düğme kapalıdır', async () => {
+    let cevapla: (cevap: Response) => void = () => undefined;
+    await goster(OLUSTURUR);
+    sahteFetch.mockImplementationOnce(
+      () =>
+        new Promise<Response>((coz) => {
+          cevapla = coz;
+        }),
+    );
+
+    await sec();
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Yeteneği yaz' }).hasAttribute('disabled')).toBe(
+        true,
+      );
+    });
+    cevapla(hataCevabi('cakisma', 'İzin katalogda yok', 409));
+    expect((await screen.findByRole('alert')).textContent).toBe('İzin katalogda yok');
+    expect(screen.getByRole('button', { name: 'Yeteneği yaz' }).hasAttribute('disabled')).toBe(
+      false,
+    );
+  });
+
+  it('hatadan sonra değiştirilen seçimle ikinci gönderim başarılı olur ve yeni seçim gider', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(
+      OLUSTURUR,
+      hataCevabi('cakisma', 'İzin katalogda yok', 409),
+      jsonCevap({ id: YENI_ID }, 201),
+    );
+
+    await sec();
+    await gonder();
+    expect((await screen.findByRole('alert')).textContent).toBe('İzin katalogda yok');
+    await userEvent.selectOptions(screen.getByLabelText('Grup'), 'Seç');
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Grup')).toBe('Grup seçilmeli');
+    });
+    expect(secilen('Grup')).toBe('');
+    expect(secilen('Rol')).toBe(ROL);
+    await userEvent.selectOptions(screen.getByLabelText('Grup'), 'Merkez');
+    await gonder();
+
+    expect(await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`)).toBeDefined();
+    expect(istekler()).toHaveLength(2);
+    expect(istekler()[1]?.govde).toMatchObject({ grupId: GRUP, rolId: ROL, izinId: IZIN });
   });
 });
 

@@ -4,7 +4,7 @@ import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { backendIstegi } from '../../../shared/backend/istek';
-import { BOS_FORM_DURUMU, type FormDurumu } from '../form-durumu';
+import { BOS_FORM_DURUMU, type FormDurumu, gonderilenDegerler } from '../form-durumu';
 import { isHatasi, KAYIT_BULUNAMADI } from '../is-hatasi';
 import { AdSemasi, KayitKimligi, semaAlanHatalari } from '../semalar';
 
@@ -15,9 +15,10 @@ import { AdSemasi, KayitKimligi, semaAlanHatalari } from '../semalar';
 const IdCevabi = z.object({ id: KayitKimligi });
 
 export async function rolOlustur(_onceki: FormDurumu, form: FormData): Promise<FormDurumu> {
+  const degerler = gonderilenDegerler(form, ['ad']);
   const girdi = AdSemasi.safeParse({ ad: form.get('ad') });
   if (!girdi.success) {
-    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error) };
+    return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error), degerler };
   }
   const sonuc = await backendIstegi({
     yol: '/kimlik/rol',
@@ -26,7 +27,7 @@ export async function rolOlustur(_onceki: FormDurumu, form: FormData): Promise<F
     oturumlu: true,
   });
   if (!sonuc.basarili) {
-    return isHatasi(sonuc.hata);
+    return { ...(await isHatasi(sonuc.hata)), degerler };
   }
   const { id } = IdCevabi.parse(sonuc.govde);
   redirect(`/roller/${id}`);

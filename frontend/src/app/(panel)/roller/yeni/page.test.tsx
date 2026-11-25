@@ -185,3 +185,34 @@ describe('YeniRolSayfasi yetki', () => {
     expect(screen.getByRole('alert').textContent).toBe('Bu iş için yetkin yok');
   });
 });
+
+describe('YeniRolSayfasi yazılanın korunması', () => {
+  function ad(): string {
+    const girdi = screen.getByLabelText('Ad');
+    return girdi instanceof HTMLInputElement ? girdi.value : '';
+  }
+
+  it('409 dönünce yazılan ad formda kalır', async () => {
+    sahteFetch.mockResolvedValue(
+      jsonCevap({ kod: 'cakisma', ileti: 'Bu adla bir rol var', ayrinti: null }, 409),
+    );
+    goster();
+
+    await gonder('  Muhasebe ');
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Bu adla bir rol var');
+    expect(ad()).toBe('  Muhasebe ');
+  });
+
+  it('alan hatasında yazılan ad formda kalır', async () => {
+    goster();
+
+    await gonder('a'.repeat(101));
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Ad')).toBe('Ad en çok 100 karakter olabilir');
+    });
+    expect(ad()).toBe('a'.repeat(101));
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
+});

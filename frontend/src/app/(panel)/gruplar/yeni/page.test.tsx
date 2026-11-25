@@ -269,6 +269,37 @@ describe('YeniGrupSayfasi hatalar', () => {
   });
 });
 
+describe('YeniGrupSayfasi yazılanın korunması', () => {
+  function ad(): string {
+    const girdi = screen.getByLabelText('Ad');
+    return girdi instanceof HTMLInputElement ? girdi.value : '';
+  }
+
+  it('409 dönünce yazılan ad ve seçilen üst grup formda kalır', async () => {
+    await goster({ ustGrupId: KOK });
+    sahteFetch.mockResolvedValueOnce(hataCevabi('cakisma', 'Üst grup silinmiş', 409));
+
+    await gonder('Satış', 'Muhasebe');
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Üst grup silinmiş');
+    expect(ad()).toBe('Satış');
+    expect(seciliUstGrup()).toBe(ALT);
+  });
+
+  it('alan hatasında seçilen üst grup ve yazılan ad formda kalır', async () => {
+    await goster();
+
+    await gonder('a'.repeat(101), 'Muhasebe');
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Ad')).toBe('Ad en çok 100 karakter olabilir');
+    });
+    expect(ad()).toBe('a'.repeat(101));
+    expect(seciliUstGrup()).toBe(ALT);
+    expect(sahteFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('YeniGrupSayfasi yetki', () => {
   it('Grup olustur kuralı olmayan kişi formu görmez', async () => {
     await goster({}, [{ action: 'oku', subject: 'Grup' }]);

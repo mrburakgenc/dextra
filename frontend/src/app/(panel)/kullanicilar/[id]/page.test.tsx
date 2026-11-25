@@ -696,6 +696,65 @@ describe('KullaniciSayfasi üyelik ver', () => {
   });
 });
 
+describe('KullaniciSayfasi üyelik ver yazılanın korunması', () => {
+  function secilen(etiket: string): string {
+    const secim = screen.getByLabelText(etiket);
+    return secim instanceof HTMLSelectElement ? secim.value : '';
+  }
+
+  it('409 dönünce seçilen grup ve rol formda kalır', async () => {
+    listeler([], GRUPLAR, ROLLER);
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+    sahteFetch.mockResolvedValueOnce(
+      hataCevabi('cakisma', 'Grup ya da rol yok ya da silinmiş', 409),
+    );
+
+    await uyelikVer('Satış', 'Üye');
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Grup ya da rol yok ya da silinmiş',
+    );
+    expect(secilen('Grup')).toBe(SATIS);
+    expect(secilen('Rol')).toBe(UYE);
+  });
+
+  it('alan hatasında seçilen grup formda kalır', async () => {
+    listeler([], GRUPLAR, ROLLER);
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    await userEvent.selectOptions(screen.getByLabelText('Grup'), 'Satış');
+    await userEvent.click(screen.getByRole('button', { name: 'Üyelik ver' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Rol seçilmeli');
+    expect(secilen('Grup')).toBe(SATIS);
+    expect(secilen('Rol')).toBe('');
+    expect(sahteFetch).toHaveBeenCalledTimes(SAYFA_ISTEKLERI);
+  });
+
+  it('hatadan sonraki başarıda seçimler bugünkü gibi boşalır', async () => {
+    listeler([], GRUPLAR, ROLLER);
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+    sahteFetch
+      .mockResolvedValueOnce(hataCevabi('cakisma', 'Grup ya da rol yok ya da silinmiş', 409))
+      .mockResolvedValueOnce(jsonCevap({ id: YENI_UYELIK }, 201));
+
+    await uyelikVer('Satış', 'Üye');
+    await screen.findByRole('alert');
+    await userEvent.click(screen.getByRole('button', { name: 'Üyelik ver' }));
+
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(istekler()[SAYFA_ISTEKLERI + 1]?.govde).toEqual({
+      kullaniciId: ID,
+      grupId: SATIS,
+      rolId: UYE,
+    });
+    expect(secilen('Grup')).toBe('');
+    expect(secilen('Rol')).toBe('');
+  });
+});
+
 describe('KullaniciSayfasi üyelik kaldır', () => {
   it('ilk düğme onay satırını açar ve backend henüz çağrılmamıştır; onaydan sonra doğru kimlikle DELETE gider', async () => {
     listeler(UYELIKLER, GRUPLAR, ROLLER);

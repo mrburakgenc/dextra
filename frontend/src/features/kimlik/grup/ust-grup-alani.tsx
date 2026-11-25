@@ -2,7 +2,8 @@ import type { UstGrupSecenekleri } from './grup-listesi';
 
 // Üst grup seçimi (TS-004 "Yönetim ekranları" ve form kuralları): etiketi seçime bağlıdır, hatası
 // seçimin yanında ve ekran okuyucuya duyurulur. Seçenekler grup listesinin ilk 100 kaydıdır;
-// daha fazlası varsa seçimin altında not gösterilir.
+// daha fazlası varsa seçimin altında not gösterilir. Çatı seçimin varsayılanını sonradan
+// güncellemediği için seçim varsayılan değişince yeniden kurulur.
 export function UstGrupAlani({
   etiket,
   secenekler,
@@ -21,6 +22,7 @@ export function UstGrupAlani({
         {etiket}
       </label>
       <select
+        key={varsayilan ?? ''}
         id="ustGrupId"
         name="ustGrupId"
         defaultValue={varsayilan ?? ''}

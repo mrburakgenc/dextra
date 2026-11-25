@@ -21,7 +21,7 @@ export type YetenekListesiSorgusu = z.infer<typeof YetenekListesiSorgusu>;
 
 const SabitDeger = z.union([z.string(), z.number(), z.boolean()]);
 
-const SartOgesi = z.object({
+export const SartOgesi = z.object({
   alan: z.string(),
   islec: z.enum(ISLECLER),
   deger: z.union([

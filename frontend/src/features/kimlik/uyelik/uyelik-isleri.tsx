@@ -67,18 +67,22 @@ export function UyelikKaldir({ kayit }: Readonly<{ kayit: UyelikKaydi }>) {
 
 // Etiketi seçime bağlı, hatası seçimin yanında ve ekran okuyucuya duyurulan seçim (TS-004 form
 // kuralları). Seçenekler listenin ilk 100 kaydıdır; daha fazlası varsa altında not gösterilir.
+// varsayilan: hata dönen formda gönderilen seçim. Çatı seçimin varsayılanını sonradan güncellemediği
+// için seçim varsayılan değişince yeniden kurulur; form sıfırlanınca bu seçime döner.
 export function SecimAlani({
   ad,
   etiket,
   secenekler,
   fazlasiNotu,
   hata,
+  varsayilan,
 }: Readonly<{
   ad: string;
   etiket: string;
   secenekler: Secenekler;
   fazlasiNotu: string;
   hata: string | undefined;
+  varsayilan: string | undefined;
 }>) {
   const hataKimligi = `${ad}-hata`;
   return (
@@ -87,9 +91,10 @@ export function SecimAlani({
         {etiket}
       </label>
       <select
+        key={varsayilan ?? ''}
         id={ad}
         name={ad}
-        defaultValue=""
+        defaultValue={varsayilan ?? ''}
         aria-invalid={hata !== undefined}
         aria-describedby={hata === undefined ? undefined : hataKimligi}
         className="rounded border border-gray-500 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
@@ -137,6 +142,7 @@ export function UyelikVerFormu({
         secenekler={gruplar}
         fazlasiNotu="İlk 100 grup gösteriliyor"
         hata={durum.alanHatalari['grupId']}
+        varsayilan={durum.degerler?.['grupId']}
       />
       <SecimAlani
         ad="rolId"
@@ -144,6 +150,7 @@ export function UyelikVerFormu({
         secenekler={roller}
         fazlasiNotu="İlk 100 rol gösteriliyor"
         hata={durum.alanHatalari['rolId']}
+        varsayilan={durum.degerler?.['rolId']}
       />
       <GonderDugmesi>Üyelik ver</GonderDugmesi>
     </form>

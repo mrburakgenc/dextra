@@ -8,6 +8,7 @@ import {
   BOS_FORM_DURUMU,
   BOS_KULLANICI_IS_DURUMU,
   type FormDurumu,
+  gonderilenDegerler,
   type KullaniciIsDurumu,
 } from '../form-durumu';
 import { isHatasi, KAYIT_BULUNAMADI } from '../is-hatasi';
@@ -37,6 +38,7 @@ export async function uyelikVer(
   if (!KullaniciKimligi.safeParse(form.get('kullaniciId')).success) {
     return { ...BOS_KULLANICI_IS_DURUMU, genelHata: KAYIT_BULUNAMADI };
   }
+  const degerler = gonderilenDegerler(form, ['grupId', 'rolId']);
   const girdi = UyelikVerSemasi.safeParse({
     kullaniciId: form.get('kullaniciId'),
     grupId: form.get('grupId'),
@@ -46,6 +48,7 @@ export async function uyelikVer(
     return {
       ...BOS_KULLANICI_IS_DURUMU,
       alanHatalari: semaAlanHatalari(girdi.error),
+      degerler,
     };
   }
 
@@ -56,7 +59,7 @@ export async function uyelikVer(
     oturumlu: true,
   });
   if (!sonuc.basarili) {
-    return { ...(await isHatasi(sonuc.hata)), parolaAdresi: null };
+    return { ...(await isHatasi(sonuc.hata)), parolaAdresi: null, degerler };
   }
   const { parolaBaglantisiKodu } = VerCevabi.parse(sonuc.govde);
   refresh();

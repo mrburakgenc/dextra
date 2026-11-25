@@ -25,11 +25,12 @@ export function GrupOlusturFormu({
         tur="text"
         otomatikTamamlama="off"
         hata={durum.alanHatalari['ad']}
+        varsayilan={durum.degerler?.['ad']}
       />
       <UstGrupAlani
         etiket="Üst grup"
         secenekler={secenekler}
-        varsayilan={ustGrupId}
+        varsayilan={durum.degerler?.['ustGrupId'] ?? ustGrupId}
         hata={durum.alanHatalari['ustGrupId']}
       />
       <GonderDugmesi>Grubu oluştur</GonderDugmesi>

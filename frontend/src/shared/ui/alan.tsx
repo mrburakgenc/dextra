@@ -1,17 +1,20 @@
 // Etiketi girdiye bağlı, hatası girdinin yanında ve ekran okuyucuya duyurulan form alanı
-// (kanon A11Y-02, A11Y-07; TS-004 form kuralları).
+// (kanon A11Y-02, A11Y-07; TS-004 form kuralları). varsayilan: hata dönen formda gönderilen değer;
+// çatı formu sıfırlayınca girdi bu değere döner.
 export function Alan({
   ad,
   etiket,
   tur,
   otomatikTamamlama,
   hata,
+  varsayilan,
 }: Readonly<{
   ad: string;
   etiket: string;
   tur: 'text' | 'password';
   otomatikTamamlama: string;
   hata: string | undefined;
+  varsayilan?: string | undefined;
 }>) {
   const hataKimligi = `${ad}-hata`;
   return (
@@ -24,6 +27,7 @@ export function Alan({
         name={ad}
         type={tur}
         autoComplete={otomatikTamamlama}
+        defaultValue={varsayilan}
         aria-invalid={hata !== undefined}
         aria-describedby={hata === undefined ? undefined : hataKimligi}
         className="rounded border border-gray-500 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
