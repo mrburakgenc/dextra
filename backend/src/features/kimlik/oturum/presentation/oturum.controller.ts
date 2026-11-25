@@ -23,6 +23,12 @@ import {
 import { CikisHandler } from '../application/cikis.handler.js';
 import type { GirisCevabi } from '../application/giris.command.js';
 import { GirisHandler, girisBasarisiz } from '../application/giris.handler.js';
+import type { YenileCevabi } from '../application/yenile.command.js';
+import {
+  YenileHandler,
+  yenilemeBasarisiz,
+} from '../application/yenile.handler.js';
+import { type YenileGovdesi, yenileSemasi } from './yenile.schema.js';
 
 // Oturum uçları (TS-002 "Uçlar ve izinler"; AK-7). Giriş oturumsuzdur (herkese açık); deneme sınırı
 // sonraki görevlerde gelir ve uç ondan önce yayına çıkmaz. Belirteçler cevap gövdesinde verilir.
@@ -31,6 +37,7 @@ export class OturumController {
   constructor(
     private readonly girisHandler: GirisHandler,
     private readonly cikisHandler: CikisHandler,
+    private readonly yenileHandler: YenileHandler,
     private readonly parolaYontemi: ParolaGirisYontemi,
     private readonly adresler: IstemciAdresiDogrulayici,
   ) {}
@@ -51,6 +58,27 @@ export class OturumController {
     return this.girisHandler.calistir({
       yontem: this.parolaYontemi,
       girdi: govde,
+      ipAdresi: adres.istemci.adres,
+      tarayiciBilgisi: adres.istemci.tarayici,
+    });
+  }
+
+  // Oturum yenileme (TS-002 AK-49). Herkese açıktır: erişim belirtecinin süresi dolmuş olabilir.
+  // Adres imzası girişteki gibi burada doğrulanır; imzasız istek hiçbir satıra dokunmadan, öbür
+  // başarısızlıklarla aynı cevabı alır.
+  @Post('yenile')
+  @HerkeseAcik()
+  @HttpCode(HttpStatus.OK)
+  yenile(
+    @Body({ schema: yenileSemasi }) govde: YenileGovdesi,
+    @Headers() basliklar: IncomingHttpHeaders,
+  ): Promise<YenileCevabi> {
+    const adres = this.adresler.dogrula(basliklar);
+    if (!adres.gecerli) {
+      throw yenilemeBasarisiz();
+    }
+    return this.yenileHandler.calistir({
+      ...govde,
       ipAdresi: adres.istemci.adres,
       tarayiciBilgisi: adres.istemci.tarayici,
     });
