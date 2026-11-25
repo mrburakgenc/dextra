@@ -86,6 +86,18 @@ Yetenek yazma ve yenileme uçlarının gövdesi isteğe bağlı `oncelik` alır 
 - AU-4: Öncelik karşılaştırması bütün üyelikler arasında mı yapılır (bir birimdeki yüksek öncelikli yetenek, başka birimdeki rolün yeteneğini aynı kayıtta ezer), yoksa yalnız aynı birimin yetenekleri arasında mı? KR-008 "Rol karışması" güvencesiyle birlikte düşünülmelidir.
 - AU-5: Ekranın kayıt ve kolon düzeyi soruları önceliği nasıl öğrenir: ters kurallarla derlenmiş CASL kuralları mı (öneri), yoksa ekran bu soruları kazanan düzeyi bilmeden mi sorar (ekran fazladan düğme gösterebilir, kararı yine backend verir)?
 - AU-6: Öncelik değiştirmek için yenileme yeterli mi (yeni satır, eskisi pasif), yoksa yalnız önceliği değiştiren ayrı bir eylem mi istenir?
+- AU-7: Derlenemeyen ya da şartı çözülemeyen yüksek öncelikli dar yetenek ne yapar: düşer mi (o zaman geniş yetenek yeniden geçerli olur ve erişim GENİŞLER), yoksa o izinde kişiyi kapatır mı? Bugünkü ilke "eksik ya da yanlış tanım erişimi açmaz, kapatır"dır (KR-008); öncelik bu ilkeyi tersine çevirebilir (çürütme 3). Aynı soru üyelik ya da yetenek silmek için de geçerlidir: dar satırı silmek erişimi genişletir.
+- AU-8: Üst düzeyin şartı bir kayıtta boş değer yüzünden "bilinmiyor" çıkarsa üst düzey o kaydı tutmuyor mu sayılır (öneri: evet; kayıt alt düzeye düşer)? Bunun için katalogda kolonun boş olabilirliği gerekir (çürütme 1).
+- AU-9: Güncellemede yeni hâlin kazanan düzeyine bakılır mı? Bakılmazsa kişi, doğrudan yazamayacağı içeriği bir kaydı kısıtlı birime taşıyarak yazabilir (çürütme 8).
+- AU-10: Öncelik izin başınadır: okumayı kısıtlayan yüksek öncelikli satır yazmayı, silmeyi ve niyet eylemlerini kısıtlamaz; onlar için ayrı satır gerekir, silme ve niyet eylemlerinde kolon sınırı olmadığı için öncelikle hiç kısıtlanamazlar (çürütme 7). Kullanıcı bunu teyit ediyor mu, yoksa bir iznin önceliği aynı kaynağın öbür izinlerini de mi etkilesin?
+- AU-11: Süzme ya da sıralamada kazanan düzey o kolonu görmüyorsa kayıt o okumada gelmez; varsayılan sıralaması olan liste (örnek: oturumlar, başlangıç zamanına göre) boşalabilir. Bu, Değişmez 1 ile çelişir (çürütme 6): hangisi geçerli?
+- AU-12: Yenilemede öncelik verilmezse 0 mı yazılır, eski satırın önceliği mi korunur? 0 yazılırsa dar yetenek sessizce geniş olanla birleşir (çürütme 10).
+- AU-13: Kişisiz işlerin sistem aktörü öncelikten etkilenir mi?
+- AU-14: Erişim kaydına sayfa için ne yazılır: ek sorguyla gerçekten kazanan yetenekler mi, okumaya katılan bütün yetenekler mi (çürütme 11)?
+- AU-15: Aşamalar arası tutarsızlık olmasın diye, yazma motoru bitene dek sıfırdan farklı öncelik reddedilsin mi (çürütme 14)?
+- AU-16: Bir kişide aynı izin için düzey sayısına üst sınır konur mu (sorgu büyüklüğü düzey sayısıyla karesel büyüyebilir; ölçülmedi; çürütme 12)?
+- AU-17: Yönetici "bu kişi bu kayıtta neden şunu göremiyor" sorusunu nereden cevaplar (öncelik yüzünden gelen ret iz bırakmaz)?
+- AU-18: Bu tasarım yetenek kararını değiştirir (KR-008 Seçim 3, 9 ve 30; KR-010 derleme eşlemesi). Seçim 9 önceliği "kapatma özelliğiyle birlikte" eklenmeye kullanıcı teyidiyle bağlamıştı: bağ bilerek mi çözülüyor ve değişikliği hangi karar taslağı taşıyacak?
 
 ## Aşamalar
 1. Veri ve taşıma: kolon, göç, katalog, derleyici, yönetim uçlarının gövdesi; motor önceliği taşır ama henüz kullanmaz (davranış değişmez).
@@ -101,4 +113,19 @@ Sıra bağlayıcıdır; açık uçlar kapanmadan ilgili aşama başlamaz (AU-1 v
 - Ekran: kısıtlanan kişide kayıt düzeyi soruların backend'le aynı cevabı vermesi (AU-5'e göre).
 
 ## Çürütme
-Bağımsız çürütme turu bu kayıt yazıldıktan sonra koşturulur; bulguları ve cevapları buraya yazılır. O zamana kadar: bağımsız inceleme yapılmadı.
+Bağımsız çürütme turu 2026-11-25'te koştu (ayrı bir oturum; dosya değiştirmedi; CASL davranışını kurulu sürümlerle ölçtü, Prisma ve veritabanı davranışını belgeden okudu, ölçmedi). İnceleyicinin hükmü: "bu hâliyle imzalamam". Kullanıcının dört kararını değiştirmeyi önermedi; kararların kayda geçmemiş bedellerini saydı.
+
+Engel sayılan bulgular:
+1. Okumadaki "üst düzey tutmuyor" koşulu boş değerde satır kaybeder: şartı boş bir kolona bakan üst düzey, kayıt için "bilinmiyor" çıkar; kayıt ne üst dala ne alt dala girer ve listeden sessizce kaybolur (örnek: üst grubu boş olan kök grup). Cevap: AU-8.
+2. Koşulsuz ("bütün kayıtlar") yetenek düzeyli koşulda eski hatayı (TS-002 AK-52) iki yöne de açar: üstteyken alt düzey canlı kalıp fazla kolon gösterebilir, alttayken satır kaybedebilir. Cevap: koşulsuz yeteneğin üç durumu (üstte, altta, üstte ama okumaya katılmıyor) "Yapı"ya kural ve test olarak yazılacak; henüz yazılmadı.
+3. Derlenemeyen dar ve yüksek öncelikli yetenek düşünce geniş yetenek yeniden geçerli olur: bugünkü "yanlış tanım erişimi kapatır" güvencesi tersine döner. Cevap: AU-7.
+4. Yazmada kazanan düzeyi bulmakla satırı kilitlemek arasında yarış vardır; araya giren bir işlem üst düzeyin kısıtını atlatır. Cevap: düzey, satır kilitlendikten sonra kilit altında belirlenmelidir; "Yapı"ya yazılacak.
+5. Ekran için önerilen ters kurallar, şartın baktığı kolon kayıtta yokken "evet" der (ölçüldü): kısıtlı kişi yazamayacağı formu görür; veri sızmaz, backend reddeder. Öncelikli kayıt yalnız kazanan düzeyin kolonlarını taşıdığı için bu olağan durumdur. Cevap: AU-5.
+
+Önemli bulgular: Değişmez 1 ile okumaya katılma kuralı çelişir (AU-11); öncelik izin başına olduğu için okumayı kısıtlamak yazmayı kısıtlamaz (AU-10); güncellemede yeni hâlin düzeyi tanımsız (AU-9); sistem satırları çalışma anında yenilenemediği için öncelikleri yalnız göçle değişir (AU-1, AU-6); yenilemede varsayılan 0 kısıtı sessizce kaldırır (AU-12); erişim kaydı tanımı sayfa için hesaplanamıyor (AU-14); sorgu büyüklüğü (AU-16); aşamalar arası tutarsız ara durum (AU-15); tek yönlü kaydın istediği dört bölüm (senaryolar, kapasite, hata modları, performans) eksik.
+
+Düşünülmemiş hata kipleri: kendini kilitleme (SuperAdmin herkesin taşıdığı temel üyeliği de taşır; ona düşen "yetenekleri oku, yalnız kimlik, yüksek öncelik" satırı yetenek ekranını kör eder; ikinci bir hatayla tek çıkış göçtür; AU-1); kısıt niyetiyle yazılıp önceliği unutulan satır sessizce genişletmeye döner; öncelik bütün birimler için tek ölçektir ve araya düzey sokmak üstteki satırların yenilenmesini ister; öncelik yüzünden gelen ret iz bırakmaz (AU-17).
+
+En güçlü karşı görüş: seçilen anlam adı konmamış bir "giremez" kuralıdır; onun bedelini öder (veritabanında olumsuzlama, ekranda ters kural), kazancını almaz (bir eylemi yasaklamak, izin vermeden kısıtlamak). Kanondaki öncelik, girebilir ve giremez kurallarını sıralamak içindir ve ekrandaki kitaplığın doğal davranışı da odur; yalnız izin veren kurallar arasında sıranın kitaplıkta hiçbir etkisi yoktur. Ayrıca "satır eklemek yalnız erişim açar" özelliği gider; yetenek kararının kapalı düşme güvenceleri buna dayanıyordu. Bu karşı görüş "Seçenekler 1"de tek satırla elenmişti; kullanıcıya açıkça sunulacak.
+
+Doğrulanamayanlar: Prisma'nın olumsuzlama ile boş değer ve boş koşul davranışı bu depoda ölçülmedi; kilit beklerken koşulun yeniden değerlendirilmesi çıkarımdır; sorgu büyüklüğü aritmetiktir, ölçüm yoktur.
