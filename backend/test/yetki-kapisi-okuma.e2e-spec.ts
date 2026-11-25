@@ -25,13 +25,11 @@ import type {
 } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
-import {
-  OkumaKapisi,
-  okumaBirikimi,
-} from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
+import { okumaBirikimi } from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
+import { EskiOkumaKapisi } from './yardimci/eski-yuz.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 const BACKEND = fileURLToPath(new URL('..', import.meta.url));
@@ -82,7 +80,7 @@ let gozlemci: pg.Client;
 let gozlemciPid: number;
 let prisma: PrismaClient<'query'>;
 const sorgular: string[] = [];
-const kapi = new OkumaKapisi(KATALOG);
+const kapi = new EskiOkumaKapisi(KATALOG);
 
 function yetenek(degisen: Partial<YetenekSatiri>): YetenekSatiri {
   return {

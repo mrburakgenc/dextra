@@ -8,7 +8,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   bekleyenler,
+  featureKokunuDenetle,
   ortakKoduDenetle,
+  testIceAktarmasiniDenetle,
   type YapiKurali,
   yapiyiDenetle,
 } from './yapi-denetimi.js';
@@ -210,8 +212,8 @@ describe('yapı denetimi: örnekler', () => {
     [
       'repository gerçeklemesi infrastructure kökünde',
       'd',
-      { ekle: ['alt/infrastructure/alt-yazma.kapi-repository.ts'] },
-      'alt/infrastructure/alt-yazma.kapi-repository.ts',
+      { ekle: ['alt/infrastructure/alt-yazma.bellek-repository.ts'] },
+      'alt/infrastructure/alt-yazma.bellek-repository.ts',
     ],
     [
       'repository gerçeklemesi başka klasörde',
@@ -420,16 +422,142 @@ describe('yapı denetimi: repository ve yetki yüzü', () => {
     ]);
   });
 
-  it('eski yüzü çağıran alt özellik adıyla bekleyendir; Prisma çağrısı olmayan dosyası kural j ile yakalanmaz', () => {
+  it('eski yüzü çağıran alt özellik adıyla bekleyendir; Prisma çağrısı olmayan dosyası kural j ile, eski yüz çağrısı kural m ile yakalanır', () => {
     const features = kur(DOGRU, {
       [OKUMA]:
         "import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';\n" +
         "return kapi.liste(istemci, 'Alt', { sayfa });",
     });
     expect(yapiyiDenetle(features)).toEqual([
-      { ad: 'ornek/alt', ihlaller: [] },
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'j',
+            yol: `ornek/${OKUMA}`,
+            neden: expect.any(String) as string,
+          },
+          {
+            kural: 'm',
+            yol: `ornek/${OKUMA}`,
+            neden: 'eski yüzü çağırır; alt özellik bekleyendir',
+          },
+        ],
+      },
     ]);
     expect(bekleyenler(features)).toEqual(['ornek/alt']);
+  });
+
+  // TS-007 "Adlar, denetim ve geçiş": geçiş bitti; bekleyen alt özellik, .kapi-repository.ts adı ve
+  // feature'ın test kodunu ya da eski yüzün adını içe aktarması ihlaldir.
+  it.each<[string, YapiKurali, string, string]>([
+    [
+      'işleyicisi eski yüzü çağıran (bekleyen) alt özellik',
+      'm',
+      'alt/application/queries/alt-oku/alt-oku.handler.ts',
+      "import { OkumaKapisi } from '../../../../../../shared/yetki/infrastructure/okuma-kapisi.js';\n" +
+        "return this.kapi.tek(istemci, 'Alt', id);",
+    ],
+    [
+      '.kapi-repository.ts adlı yazma repository',
+      'n',
+      'alt/infrastructure/repositories/alt-yazma.kapi-repository.ts',
+      '',
+    ],
+    [
+      'test yardımcısını içe aktaran feature dosyası',
+      'o',
+      'alt/infrastructure/repositories/alt-yazma.prisma-repository.ts',
+      "import { yardimci } from '../../../../../../test/yardimci/baska.js';\n" +
+        "return this.kapi.deyimleSil(islem, isAdi, 'Alt', id, (vt, where) => vt.alt.deleteMany({ where }));",
+    ],
+    [
+      'eski yüzün adını içe aktaran feature dosyası',
+      'o',
+      'alt/application/_shared/liste.ts',
+      "import type {\n  ListeIstegi,\n} from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';",
+    ],
+  ])('%s kural %s ile yakalanır', (_ad, kural, dosya, metin) => {
+    const features = kur([...DOGRU, dosya], { [dosya]: metin });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          { kural, yol: `ornek/${dosya}`, neden: expect.any(String) as string },
+        ],
+      },
+    ]);
+  });
+
+  it('tip bağımsız değişkenli kapatan çağrı (kayitlar<Tip>(…)) tanınır: okuma kapanır, yeniden okuma muaftır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const satirlar = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar<Gorunum<AltSatiri>>(satirlar, (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
+  });
+
+  it('tip bağımsız değişkenli kapatan çağrının ilk bağımsız değişkenindeki süzgeçsiz okuma kural k ile yakalanır; yalnız yeniden okuma muaftır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'return yetki.kayitlar<AltSatiri>(await istemci.alt.findMany({ where: { id } }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'k',
+            yol: `ornek/${OKUMA}`,
+            neden: 'okuma deyimi yetki süzgecini taşımıyor: findMany (satır 2)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('sonraki okuma kapatan çağrının ilk bağımsız değişkenine satır içi yazılınca önceki süzgeçli okuma kapanmış sayılmaz; kural l ile yakalanır', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const a = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      {
+        ad: 'ornek/alt',
+        ihlaller: [
+          {
+            kural: 'l',
+            yol: `ornek/${OKUMA}`,
+            neden:
+              'süzgeçli okuma okumayı kapatan çağrıyla kapanmıyor: findMany (satır 2)',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('önceki okuma kendi kapatan çağrısıyla, sonraki satır içi okuma kendi çağrısıyla kapanınca kural l geçer', () => {
+    const features = kur(DOGRU, {
+      [OKUMA]: [
+        "const yetki = kapi.yetki('Alt', { bakilan: [] });",
+        'const a = await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar });',
+        'const ka = await yetki.kayitlar(a, (where, select) => istemci.alt.findMany({ where, select }));',
+        'return yetki.kayitlar(await istemci.alt.findMany({ where: yetki.satirlar, select: yetki.kolonlar }), (where, select) => istemci.alt.findMany({ where, select }));',
+      ].join('\n'),
+    });
+    expect(yapiyiDenetle(features)).toEqual([
+      { ad: 'ornek/alt', ihlaller: [] },
+    ]);
   });
 });
 
@@ -648,10 +776,108 @@ describe('yapı denetimi: ortak kod örnekleri', () => {
       },
       'features/ornek/_shared/infrastructure/repositories/cekirdek.prisma-repository.ts',
     ],
+    [
+      'feature içi ortak klasörde .kapi-repository.ts adı',
+      'n',
+      {
+        'features/ornek/_shared/infrastructure/repositories/cekirdek-yazma.kapi-repository.ts':
+          '',
+      },
+      'features/ornek/_shared/infrastructure/repositories/cekirdek-yazma.kapi-repository.ts',
+    ],
+    [
+      'feature içi ortak klasör test yardımcısını içe aktarır',
+      'o',
+      {
+        'features/ornek/_shared/application/parca.ts':
+          "import { yardimci } from '../../../../../test/yardimci/baska.js';",
+      },
+      'features/ornek/_shared/application/parca.ts',
+    ],
   ])('%s kural %s ile yakalanır', (_ad, kural, ekle, yol) => {
     const raporlar = ortakKoduDenetle(kurSrc({ ...DOGRU_ORTAK, ...ekle }));
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([
       { kural, yol, neden: expect.any(String) as string },
+    ]);
+  });
+});
+
+// Feature'ın kökünde doğrudan duran dosyalar n ve o'dan geçer; src'nin hiçbir dosyası test klasöründen
+// içe aktarmaz (p). Test klasörü içe aktarılan yolun çözüldüğü yerle tanınır, adla değil.
+describe('yapı denetimi: feature kökü ve test klasörü', () => {
+  // Dört düzey yukarıdaki test klasörü. Örnek metinlerde açık yazılmaz: denetim metin düzeyindedir ve bu
+  // dosya da src'de dört düzey derindedir; açık yazılsa gerçek depoda bu dosya kural p'ye takılırdı.
+  const TEST_KLASORU = '../../../../test';
+
+  it("kurallara uyan feature kökü ve src'nin içinde kalan içe aktarmalar ihlalsizdir", () => {
+    const src = kurSrc({
+      ...DOGRU_ORTAK,
+      'features/ornek/ornek.module.ts':
+        "import { AltModule } from './alt/alt.module.js';\nimport { T } from '../../shared/test/t.js';",
+      'main.ts': "import { AppModule } from './app.module.js';",
+      'shared/konu/infrastructure/x.spec.ts':
+        "import type { Tip } from '../domain/tip.js';",
+    });
+    expect(featureKokunuDenetle(join(src, 'features'))).toEqual([]);
+    expect(testIceAktarmasiniDenetle(src)).toEqual([]);
+  });
+
+  it.each<[string, YapiKurali, Record<string, string>, string]>([
+    [
+      'feature kökünde .kapi-repository.ts adı',
+      'n',
+      { 'features/ornek/ornek-yazma.kapi-repository.ts': '' },
+      'ornek/ornek-yazma.kapi-repository.ts',
+    ],
+    [
+      'feature kökündeki modül test yardımcısını içe aktarır',
+      'o',
+      {
+        'features/ornek/ornek.module.ts':
+          "import { yardimci } from '../../../test/yardimci/baska.js';",
+      },
+      'ornek/ornek.module.ts',
+    ],
+    [
+      'feature kökündeki modül eski yüzün adını içe aktarır',
+      'o',
+      {
+        'features/ornek/ornek.module.ts':
+          "import type { ListeIstegi } from '../../shared/yetki/infrastructure/okuma-kapisi.js';",
+      },
+      'ornek/ornek.module.ts',
+    ],
+  ])('%s kural %s ile yakalanır', (_ad, kural, ekle, yol) => {
+    const src = kurSrc({ ...DOGRU_ORTAK, ...ekle });
+    expect(featureKokunuDenetle(join(src, 'features'))).toEqual([
+      { kural, yol, neden: expect.any(String) as string },
+    ]);
+  });
+
+  it.each<[string, Record<string, string>, string]>([
+    [
+      'ortak kodun spec dosyası test yardımcısını içe aktarır',
+      {
+        'shared/konu/infrastructure/x.spec.ts': `import { EskiOkumaKapisi } from '${TEST_KLASORU}/yardimci/eski-yuz.js';`,
+      },
+      'shared/konu/infrastructure/x.spec.ts',
+    ],
+    [
+      'src kökündeki dosya test klasörünü dinamik içe aktarır',
+      { 'main.ts': "const y = await import('../test/yardimci/x.js');" },
+      'main.ts',
+    ],
+    [
+      'alt özellik dosyası test klasöründen dışa aktarır',
+      {
+        'features/ornek/alt/yardimci.ts': `export { y } from '${TEST_KLASORU}/yardimci/x.js';`,
+      },
+      'features/ornek/alt/yardimci.ts',
+    ],
+  ])('%s kural p ile yakalanır', (_ad, ekle, yol) => {
+    const src = kurSrc({ ...DOGRU_ORTAK, ...ekle });
+    expect(testIceAktarmasiniDenetle(src)).toEqual([
+      { kural: 'p', yol, neden: expect.any(String) as string },
     ]);
   });
 });
@@ -677,17 +903,16 @@ describe('yapı denetimi: gerçek depo', () => {
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([]);
   });
 
-  // Bekleyenlerin sayısı sınanmaz: her taşıma görevi listeyi bu dosyaya dokunmadan kısaltır; boş olması
-  // eski yüzün kaldırıldığı adımda sınanır (TS-007 "Aşamalar" 7).
-  it('eski yüzü çağıran alt özellikler bekleyen diye adlarıyla yazılır; taşınan rol aralarında yoktur', () => {
+  // Geçiş bitti (TS-007 "Aşamalar" 7): eski yüzü çağıran alt özellik kalmaz; sıfır değilse test kırmızıdır.
+  it('eski yüzü çağıran (bekleyen) alt özellik yoktur; varsa adlarıyla yazılır', () => {
     const features = fileURLToPath(
       new URL('../../../features', import.meta.url),
     );
     const bekleyen = bekleyenler(features);
     process.stdout.write(
-      `bekleyen alt özellik (${String(bekleyen.length)}): ${bekleyen.join(', ')}\n`,
+      `bekleyen: ${String(bekleyen.length)}${bekleyen.length > 0 ? ` (${bekleyen.join(', ')})` : ''}\n`,
     );
-    expect(bekleyen).not.toContain('kimlik/rol');
+    expect(bekleyen).toEqual([]);
   });
 
   it('ortak kodun bütün konuları ve feature içi ortak klasör sınanır ve ihlal yoktur', () => {
@@ -711,5 +936,17 @@ describe('yapı denetimi: gerçek depo', () => {
       'features/kimlik/_shared',
     ]);
     expect(raporlar.flatMap((r) => r.ihlaller)).toEqual([]);
+  });
+
+  it("feature'ların kökündeki dosyalarda ihlal yoktur", () => {
+    const features = fileURLToPath(
+      new URL('../../../features', import.meta.url),
+    );
+    expect(featureKokunuDenetle(features)).toEqual([]);
+  });
+
+  it('kaynak kodunun hiçbir dosyası test klasöründen içe aktarmaz', () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(testIceAktarmasiniDenetle(src)).toEqual([]);
   });
 });

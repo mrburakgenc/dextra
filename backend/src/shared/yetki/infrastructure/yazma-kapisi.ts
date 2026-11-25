@@ -25,11 +25,10 @@ import {
   KAYNAK_KATALOGU,
   type YazmaKatalogu,
 } from '../domain/kaynak-katalogu.js';
-import {
-  type GuncellemeVerisi,
-  modelAdi,
-  type OlusturmaVerisi,
-  type SatirSuzgeci,
+import type {
+  GuncellemeVerisi,
+  OlusturmaVerisi,
+  SatirSuzgeci,
 } from './model-tipleri.js';
 
 // Yazılacak alanlar ve değerleri; anahtarlar modelin alan adlarıdır. Tanımsız değer yazılmaz.
@@ -95,12 +94,15 @@ type JsonDegeri = Extract<
   { eylem: 'olusturma' }
 >['degisen'][string]['yeni'];
 
-// Yetki kapısının yazma yüzü (TS-002 AK-19; KR-010 Seçim 26, 37, 40 ve "Derleme eşlemesi"; KR-008
-// Seçim 10, 34, 42). Feature repository'si kataloğa bildirilmiş bir kaynağa yalnız buradan yazar.
-// Yazma yalnız run içinde, işin işlem nesnesiyle yapılır; yetki parametre değildir, istek
-// bağlamındaki oturumdan ve derlenmiş yetkiden alınır. Kapı reddi hata olarak atar ve run'dan çıkan
-// hata bütün işi geri alır (ya hep ya hiç; KR-010 Seçim 26): reddi yakalayıp aynı işlemde süren
-// çağıran bu güvenceyi bozar.
+// Yetki kapısının yazma yüzü (TS-007 "Yapı"; KR-010 Seçim 26, 37, 40 ve "Derleme eşlemesi"; KR-008
+// Seçim 10, 34, 42). Feature repository'si kataloğa bildirilmiş bir kaynağa yazan Prisma deyimini
+// kendisi yazar ve deyimleOlustur, deyimleGuncelle, deyimleNiyet ya da deyimleSil'e verir; sırayı ve
+// güvenceyi motor yürütür: adayları dener, satırı yeteneğin şartıyla kilitler, eski hâli okur, değişen
+// alanları ve kolon sınırını denetler, deyimi kendi verdiği koşul ve veriyle koşturur, iki hâl
+// kuralını ve değişiklik kaydı notunu kapatır. Yazma yalnız run içinde, işin işlem nesnesiyle
+// yapılır; yetki parametre değildir, istek bağlamındaki oturumdan ve derlenmiş yetkiden alınır. Kapı
+// reddi hata olarak atar ve run'dan çıkan hata bütün işi geri alır (ya hep ya hiç; KR-010 Seçim 26):
+// reddi yakalayıp aynı işlemde süren çağıran bu güvenceyi bozar.
 //
 // Güncelleme, silme ve niyet eylemi şartlı yazmadır: o eylem için kural veren yetenekler sırayla
 // denenir; her deneme satırı yalnız o yeteneğin koşuluyla kilitler (anahtar dışı güncelleme kilidi:
@@ -124,12 +126,6 @@ type JsonDegeri = Extract<
 // ve yeni değeri, oluşturmada yeni hâl, silmede eski hâl. Not anahtarları kolon adlarıdır (alan adının
 // küçük harf ve alt çizgili hâli; KR-011 Seçim 7). Hiçbir alan değişmezse yazma deyimi gitmez, not
 // boş değişiklikle yine yazılır.
-//
-// İki yüzü vardır (TS-007 "Yapı"). Yeni yüz deyimleOlustur, deyimleGuncelle, deyimleNiyet ve
-// deyimleSil'dir: kaynağa yazan deyimi repository'nin işlevi, motorun verdiği koşul ve veriyle
-// koşturur; adayları, kilidi, eski hâli, değişen alanları, iki hâl kuralını ve notu motor yürütür.
-// Kaynak adıyla çalışan olustur, guncelle, niyet ve sil eski yüzdür: deyimi addan bulunan vekille
-// kurar ve yeni yüzü çağırır.
 @Injectable()
 export class YazmaKapisi {
   constructor(
@@ -138,70 +134,6 @@ export class YazmaKapisi {
     registrar: Registrar,
   ) {
     registrar.register(ISLEM_ISTEMCISI, (istemci) => istemci);
-  }
-
-  olustur(
-    islem: Islem,
-    isAdi: string,
-    kaynak: string,
-    veri: YazmaVerisi,
-  ): Promise<string> {
-    return this.deyimleOlustur(
-      islem,
-      isAdi,
-      modelAdi(kaynak),
-      veri,
-      (vt, data) => modelVekili(vt, kaynak).create({ data }),
-    );
-  }
-
-  guncelle(
-    islem: Islem,
-    isAdi: string,
-    kaynak: string,
-    id: string,
-    veri: YazmaVerisi,
-  ): Promise<void> {
-    return this.deyimleGuncelle(
-      islem,
-      isAdi,
-      modelAdi(kaynak),
-      id,
-      veri,
-      (vt, where, data) => modelVekili(vt, kaynak).updateMany({ where, data }),
-    );
-  }
-
-  niyet(
-    islem: Islem,
-    isAdi: string,
-    kaynak: string,
-    eylem: string,
-    id: string,
-    veri: YazmaVerisi,
-  ): Promise<void> {
-    return this.deyimleNiyet(
-      islem,
-      isAdi,
-      modelAdi(kaynak),
-      eylem,
-      id,
-      veri,
-      (vt, where, data) => modelVekili(vt, kaynak).updateMany({ where, data }),
-    );
-  }
-
-  sil(islem: Islem, isAdi: string, kaynak: string, id: string): Promise<void> {
-    return this.deyimleSil(
-      islem,
-      isAdi,
-      modelAdi(kaynak),
-      id,
-      (vt, where, data) =>
-        SILINME_ALANI in data
-          ? modelVekili(vt, kaynak).updateMany({ where, data })
-          : modelVekili(vt, kaynak).deleteMany({ where }),
-    );
   }
 
   // Yeni kaydın kimliğini döner; kimliği ortak üretici üretir.
@@ -442,7 +374,7 @@ export class YazmaKapisi {
 }
 
 // Prisma istemcisinde modelin vekili, model adının ilk harfi küçük hâlidir. Motor kilidi, eski hâli ve
-// görünürlüğü bununla sorar; eski yüz yazma deyimini bununla kurar.
+// görünürlüğü bununla sorar (TS-007 Seçenek 3); kaynağa yazan deyim repository'nindir.
 function modelVekili(vt: RepoIstemcisi, kaynak: string): YazmaVekili {
   const vekil = (vt as unknown as Partial<Record<string, YazmaVekili>>)[
     kaynak.charAt(0).toLowerCase() + kaynak.slice(1)
