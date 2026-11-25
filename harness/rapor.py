@@ -3,7 +3,8 @@
 
 Rapor elle yazılan bölümlerle aracın ürettiği görev tablosundan oluşur (KR-015, KU-016). Tablo iki işaret satırı
 arasındadır ve görev kayıtlarından (ana çalışma ağacında .harness/gorev/) üretilir; elle yazılmaz.
-Push kapısı (`h.py denetle --dal`) bu dalda alınmış olup hiçbir raporda geçmeyen görevi kırmızı bildirir (Z19).
+Push kapısı (`h.py denetle --dal`) bu dalda alınmış olup commit edilmiş hiçbir raporda geçmeyen görevi kırmızı
+bildirir (Z19).
 
 Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 """
@@ -41,6 +42,19 @@ def _raporlar(kok: pathlib.Path, ayar: dict) -> dict:
     """Rapor dizinindeki her raporun metni (yol → metin)."""
     dizin = pathlib.Path(kok) / ayar["rapor"]["dizin"]
     return {p: p.read_text(encoding="utf-8") for p in sorted(dizin.rglob("*.md"))} if dizin.is_dir() else {}
+
+
+def _commitli_raporlar(kok: pathlib.Path, ayar: dict) -> dict:
+    """Dalın ucundaki commit'te (HEAD) duran raporlar (yol → metin): push kapısı yalnız bunlara bakar."""
+    kok = pathlib.Path(kok)
+    yollar = h._git(kok, "ls-tree", "-r", "--name-only", "HEAD", "--", ayar["rapor"]["dizin"]).split("\n")
+    return {kok / y: h._git(kok, "show", "HEAD:./" + y) for y in yollar if y.endswith(".md")}
+
+
+def commitsiz_raporlar(kok: pathlib.Path, ayar: dict) -> list:
+    """Çalışma ağacında olup dalın ucundaki commit'te olmayan ya da ondan farklı raporlar (köke göre yol)."""
+    commitli = _commitli_raporlar(kok, ayar)
+    return [p.relative_to(kok).as_posix() for p, t in _raporlar(kok, ayar).items() if commitli.get(p) != t]
 
 
 def _geciyor_mu(kimlik: str, metin: str) -> bool:
@@ -205,7 +219,8 @@ def yeni(kok: pathlib.Path, konu: str, tarih: str | None = None) -> pathlib.Path
 
 def dal_bulgulari(kok: pathlib.Path, ayar: dict) -> list:
     """Z19: taban dala göre bu dalda alınmış (`GV-NNN:` başlıklı commit) olup hiçbir raporda geçmeyen görev ve bu
-    görevleri taşıyan raporda boş bırakılmış zorunlu bölüm. Eski raporlar (bu dalın görevini taşımayan) sınanmaz."""
+    görevleri taşıyan raporda boş bırakılmış zorunlu bölüm. Eski raporlar (bu dalın görevini taşımayan) sınanmaz.
+    Raporlar dalın ucundaki commit'ten okunur: commit edilmemiş rapor kapıyı geçirmez."""
     kok = pathlib.Path(kok)
     try:
         taban = h._git(kok, "merge-base", "HEAD", ayar["taban_dal"]).strip()
@@ -214,10 +229,11 @@ def dal_bulgulari(kok: pathlib.Path, ayar: dict) -> list:
     basliklar = h._git(kok, "log", "--format=%s", "%s..HEAD" % taban).split("\n")
     kimlikler = sorted({m.group(1) for s in basliklar for m in [ALMA_BASLIGI.match(s)] if m},
                        key=lambda k: int(k[3:]))
-    raporlar = _raporlar(kok, ayar)
-    s = [h.B("Z19", "raporsuz-gorev", k, "bu dalda alındı ama %s altındaki hiçbir raporda geçmiyor — raporu aç: "
-             "python3 harness/h.py rapor yeni \"<konu>\" (var olan raporun tablosunu yenilemek için: rapor uret "
-             "<dosya>)" % ayar["rapor"]["dizin"])
+    raporlar = _commitli_raporlar(kok, ayar)
+    s = [h.B("Z19", "raporsuz-gorev", k, "bu dalda alındı ama %s altında commit edilmiş hiçbir raporda geçmiyor — "
+             "raporu aç: python3 harness/h.py rapor yeni \"<konu>\" (var olan raporun tablosunu yenilemek için: "
+             "rapor uret <dosya>) ve commit et; raporu commit eden ve gönderen komutları ayrı ayrı çalıştır (tek "
+             "satırda kanca raporu henüz göremez)" % ayar["rapor"]["dizin"])
          for k in kimlikler if not any(_geciyor_mu(k, t) for t in raporlar.values())]
     for yol, metin in raporlar.items():
         if not any(_geciyor_mu(k, metin) for k in kimlikler):
@@ -251,6 +267,9 @@ def komut(kok: pathlib.Path, arg: list) -> int:
             return 0
         for b in bulgular:
             print("  %s %s — %s" % (b["ad"], b["yer"], b["mesaj"]))
+        for yol in commitsiz_raporlar(kok, h.ayar_oku(kok)):
+            print("  commit-edilmemis-rapor %s — çalışma ağacındaki hâli commit edilmemiş; push kapısı dalın "
+                  "ucundaki commit'e bakar: commit et" % yol)
         print("rapor durum: %d raporsuz görev, %d boş bölüm" % (
             sum(b["ad"] == "raporsuz-gorev" for b in bulgular), sum(b["ad"] == "bos-rapor-bolumu" for b in bulgular))
               if bulgular else "rapor durum: bu dalda raporsuz görev ve boş bölümlü rapor yok")

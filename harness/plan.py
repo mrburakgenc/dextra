@@ -423,7 +423,12 @@ def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir) -> t
         rapor = gorev.kos(kok, kimlik)
     except h.HarnessHata as e:
         return "kosum", str(e)
-    adlar = sorted({s["ad"] for s in rapor["sorunlar"]} | {u["ad"] for u in rapor.get("uyarilar") or []})
+    # kapı dışı yazım engel değildir: inceleme kartı o dosyaları ve kurallarını ayrıca verir (TS-006 Yapı 12)
+    adlar = sorted({s["ad"] for s in rapor["sorunlar"]} | {u["ad"] for u in rapor.get("uyarilar") or []
+                                                           if u["ad"] != "kapi-disi-yazim"})
+    for u in rapor.get("uyarilar") or []:
+        if u["ad"] == "kapi-disi-yazim":
+            bildir("%s %s (%s): UYARI kapı dışı yazım: %s" % (ep, y["no"], kimlik, ", ".join(u["dosyalar"])))
     if rapor["durum"] != "tamam" or adlar:
         return "kosum", ", ".join(adlar) or "işçi işi bitirmedi (%s)" % rapor["durum"]
     if zorunlu:

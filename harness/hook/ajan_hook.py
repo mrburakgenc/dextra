@@ -5,7 +5,7 @@
 
   oturum-basi        SessionStart      durum özeti; sıkıştırma sonrası "gösterildi" kaydını sıfırlar
   istem              UserPromptSubmit  plan modunda tasarımcı paketini bir kez ekler
-  duzenleme-oncesi   PreToolUse Edit|Write   korunan yollar, kabul yasağı, okundu kapısı
+  duzenleme-oncesi   PreToolUse Edit|Write   korunan yollar, kabul yasağı, okundu kapısı; işçide geçen yolun kaydı
   duzenleme-sonrasi  PostToolUse Edit|Write  bilgi tabanı düğümü değiştiyse bulguları söyler
   komut-oncesi       PreToolUse Bash   yasak bayraklar, kabul, görev koşturma onayı, push kapısı
   ajan-dogarken      SubagentStart     rolün kesin paketini alt ajanın bağlamına ekler
@@ -23,7 +23,9 @@ import hashlib
 import json
 import os
 import pathlib
+import posixpath
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -42,7 +44,11 @@ OGRETICI = ("Öğretici mod açık: her tasarım seçiminde tekniğin adını, n
             "kaybettirdiğini ve alternatifini söyle. Tek yönlü kararların ilk taslağını kullanıcı "
             "yazar; sen eksik bölümü ve zayıf gerekçeyi göstererek çürütmeye çalışırsın.")
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
-PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b|\bgh\s+pr\s+(?:create|merge)\b")
+PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b|\bgh\s+pr\s+(?:create|merge)\b")   # çözümlenemeyen komut için
+KOMUT_AYIRICI = ";&|()\n`"
+GIT_DEGERLI_SECENEK = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix")
+GH_DEGERLI_SECENEK = ("-R", "--repo")
+KABUK = ("sh", "bash", "zsh", "dash")   # -c seçeneğinin değeri komuttur
 YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path")
 # Hook yolunu yalnız okuyan tek biçim serbesttir; anahtarın geçtiği başka her komut (atama, silme, -c, alıntı)
 # reddedilir. Dar tutulur: kapıyı gevşeten istisna, kapının kendisinden geniş olmamalı.
@@ -159,6 +165,87 @@ def _heredoc_at(metin: str) -> str:
         cikti.append(satir)
         bekleyen = [m.group(2) for m in HEREDOC.finditer(satir)]
     return "\n".join(cikti)
+
+
+def _yerine_koymalar(metin: str) -> list:
+    """Tek tırnak dışındaki (tırnaksız ya da çift tırnaklı) komut yerine koyma gövdeleri: $( … ) ve ters tırnak.
+    Kapanmamış gövde metnin sonuna dek sürer."""
+    govdeler, i, tirnak = [], 0, None
+    while i < len(metin):
+        c = metin[i]
+        if tirnak == "'":
+            tirnak = None if c == "'" else tirnak
+        elif c == "\\":
+            i += 1
+        elif c == '"':
+            tirnak = None if tirnak else '"'
+        elif c == "'" and not tirnak:
+            tirnak = "'"
+        elif c == "`":
+            son = metin.find("`", i + 1)
+            son = len(metin) if son < 0 else son
+            govdeler.append(metin[i + 1:son])
+            i = son
+        elif metin.startswith("$(", i):
+            son, derinlik = i + 2, 1
+            while son < len(metin):
+                derinlik += {"(": 1, ")": -1}.get(metin[son], 0)
+                if not derinlik:
+                    break
+                son += 1
+            govdeler.append(metin[i + 2:son])
+            i = son
+        i += 1
+    return govdeler
+
+
+def _alt_komutlar(sozcukler: list, degerli: tuple) -> list:
+    """Seçenekler (değer alanlar değeriyle birlikte) atlanınca kalan sözcükler; ilki alt komuttur."""
+    kalan, i = [], 0
+    while i < len(sozcukler):
+        if sozcukler[i].startswith("-"):
+            i += 2 if sozcukler[i] in degerli else 1
+        else:
+            kalan.append(sozcukler[i])
+            i += 1
+    return kalan
+
+
+def push_mu(metin: str) -> bool:
+    """Komut gerçekten gönderiyor mu. Komut ayırıcılarla (; & | ve satır sonu, alt kabuk ayraçları, ters tırnak)
+    parçalara, parçalar boşluğa göre kabuk sözcüklerine bölünür; tırnak içi metin tek sözcüktür, komut sayılmaz.
+    Komutun konumuna bakılmaz: parçanın herhangi bir sözcüğünün dosya adı git ise ve ondan sonra git'in seçenekleri
+    atlanınca gelen alt komut push ise, ya da dosya adı gh olan sözcükten sonra (seçenekler atlanarak) `pr create|merge`
+    geliyorsa push'tur; böylece her sarmalayıcı (time, nice, xargs, sudo, if … then) kendiliğinden kapsanır.
+    Kabukta çalışan iç metin aynı tanıyıcıya yeniden verilir: tek tırnak dışındaki $( … ) ve ters tırnak gövdeleri,
+    sh/bash/zsh/dash için -c değeri ve eval'in bağımsız değişkenleri. Çözümlenemeyen komutta (kapanmamış tırnak,
+    yorumdaki kesme işareti) sözcük desenine düşülür: kapı ölçemediğini geçirmez."""
+    if any(push_mu(g) for g in _yerine_koymalar(metin)):
+        return True
+    lex = shlex.shlex(metin, posix=True, punctuation_chars=KOMUT_AYIRICI)
+    lex.whitespace = " \t\r"   # satır sonu ayırıcıdır
+    lex.whitespace_split = True   # sözcük yalnız boşlukta ve ayırıcıda biter ($REPO, a@b:c tek sözcük kalır)
+    lex.commenters = ""        # shlex sözcük ortasındaki '#' işaretini de yorum sayar; kabuk saymaz
+    try:
+        sozcukler = list(lex)
+    except ValueError:
+        return bool(PUSH.search(metin))
+    parca = []
+    for s in sozcukler + [";"]:
+        if not (s and all(c in KOMUT_AYIRICI for c in s)):
+            parca.append(s)
+            continue
+        for i, sozcuk in enumerate(parca):
+            ad, sonra = posixpath.basename(sozcuk), parca[i + 1:]
+            if (ad == "git" and _alt_komutlar(sonra, GIT_DEGERLI_SECENEK)[:1] == ["push"]
+                    or ad == "gh" and _alt_komutlar(sonra, GH_DEGERLI_SECENEK)[:2] in (["pr", "create"],
+                                                                                        ["pr", "merge"])
+                    or ad == "eval" and push_mu(" ".join(sonra))
+                    or ad in KABUK and any(re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", secenek) and push_mu(deger)
+                                           for secenek, deger in zip(sonra, sonra[1:]))):
+                return True
+        parca = []
+    return False
 
 
 def _kirmizilar(kok: pathlib.Path) -> list:
@@ -354,6 +441,20 @@ def duzenleme_oncesi(girdi: dict, ortam: dict) -> dict | None:
     return _red("\n".join(satirlar))
 
 
+def duzenleme_kapisi(girdi: dict, ortam: dict) -> dict | None:
+    """Düzenleme kapısı. İşçi oturumunda kapının geçirdiği yol görevin kaydına yazılır; koşu sonunda bu kayıtta
+    olmayan değişen dosya 'kapı dışı yazım' sayılır (gorev.kapi_disi)."""
+    karar = duzenleme_oncesi(girdi, ortam)
+    arac, isci = girdi.get("tool_input") or {}, ortam.get("HARNESS_GOREV")
+    dosya = arac.get("file_path") or arac.get("notebook_path")
+    if karar is None and isci and dosya:
+        hedef = (pathlib.Path(girdi.get("cwd") or ".") / dosya).resolve()   # mutlak yol birleştirmede korunur
+        kok = _kok(str(hedef.parent))
+        if kok is not None and hedef.is_relative_to(kok.resolve()):
+            gorev.kapidan_gecti(kok, isci, hedef.relative_to(kok.resolve()).as_posix())
+    return karar
+
+
 def duzenleme_sonrasi(girdi: dict, ortam: dict) -> dict | None:
     dosya = (girdi.get("tool_input") or {}).get("file_path")
     kok = _kok(str(pathlib.Path(dosya).parent)) if dosya else None
@@ -438,7 +539,7 @@ def komut_oncesi(girdi: dict, ortam: dict) -> dict | None:
                  if islem == "genislet" else None)
         return _karar("PreToolUse", "ask", "[harness] %s:\n%s"
                       % (GOREV_SORUSU[islem], gorev.ozet(kok, m.group(2), islem, ekler)))
-    if kok is not None and PUSH.search(metin):
+    if kok is not None and push_mu(metin):
         kirmizi = _kirmizilar(kok)
         if kirmizi:
             return _red("Zincir kırmızı; push ve PR durduruldu:\n" + _bulgu_metni(kirmizi))
@@ -565,7 +666,7 @@ def durus(girdi: dict, ortam: dict) -> dict | None:
             "kullanıcıya söyle:\n" + _bulgu_metni(kirmizi)}
 
 
-OLAYLAR = {"oturum-basi": oturum_basi, "istem": istem, "duzenleme-oncesi": duzenleme_oncesi,
+OLAYLAR = {"oturum-basi": oturum_basi, "istem": istem, "duzenleme-oncesi": duzenleme_kapisi,
            "duzenleme-sonrasi": duzenleme_sonrasi, "komut-oncesi": komut_oncesi,
            "ajan-dogarken": ajan_dogarken, "ajan-baslatma": ajan_baslatma,
            "workflow-baslatma": workflow_baslatma, "durus": durus}
@@ -592,7 +693,7 @@ def guvenli_isle(olay: str, girdi: dict, ortam: dict) -> dict | None:
                                                 olay, type(hata).__name__, hata))
         except OSError:
             pass
-        if olay == "komut-oncesi" and (PUSH.search(metin) or GOREV_ISLEM.search(metin) or PLAN_YURUT.search(metin)):
+        if olay == "komut-oncesi" and (push_mu(metin) or GOREV_ISLEM.search(metin) or PLAN_YURUT.search(metin)):
             return _red("Kapı ölçülemedi (%s: %s); doğrulanamayan push ve görev koşturma durdurulur."
                         % (type(hata).__name__, hata))
         return None

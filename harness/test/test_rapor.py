@@ -216,6 +216,8 @@ class Z19RaporsuzGorev(unittest.TestCase):
         for ad in doldur:
             metin = bolum_doldur(metin, ad, DOLU[ad])
         yol.write_text(metin, encoding="utf-8")
+        git(kok, "add", "-A")   # GV-127 (TS-006 Yapı 12): kapı raporu dalın ucundaki commit'te arar
+        git(kok, "commit", "-q", "-m", "Rapor")
         return yol
 
     def test_raporsuz_gorev_kirmizidir_ve_push_kapisi_1_doner(self):
@@ -250,6 +252,8 @@ class Z19RaporsuzGorev(unittest.TestCase):
         kok = dal_depo("GV-007: Ödeme")
         self._rapor(kok)
         (kok / "docs/rapor/2026-11-01-eski.md").write_text("# Eski\n\nGV-003 anlatıldı.\n", encoding="utf-8")
+        git(kok, "add", "-A")   # GV-127: kapı raporu commit'te arar; eski rapor da commit'te durmalı
+        git(kok, "commit", "-q", "-m", "Eski rapor")
         self.assertEqual(z19(kok), [])
 
     def test_tam_sozcuk_gv_0071_gv_007_yi_tasimaz(self):
@@ -257,6 +261,8 @@ class Z19RaporsuzGorev(unittest.TestCase):
         (kok / "docs/rapor").mkdir(parents=True)
         (kok / "docs/rapor/2026-11-25-x.md").write_text("# X\n\n## 1. Kısa özet\nGV-0071 yapıldı.\n",
                                                         encoding="utf-8")
+        git(kok, "add", "-A")   # GV-127: kapı raporu commit'te arar; GV-0071'i taşıyan rapor commit'te durmalı
+        git(kok, "commit", "-q", "-m", "Rapor")
         self.assertEqual(z19(kok), [("raporsuz-gorev", "GV-007", "kirmizi")])
 
     def test_bayraksiz_denetle_ve_commit_kapisi_z19_calistirmaz(self):
