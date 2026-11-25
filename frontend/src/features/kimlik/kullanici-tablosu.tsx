@@ -4,17 +4,21 @@ import type { Liste } from '../../shared/liste/liste-istegi';
 import {
   BAGLANTI,
   BOS,
+  kimliginAdi,
   ListeTablosu,
   Sayfalama,
   SiralamaBasligi,
 } from '../../shared/liste/liste-parcalari';
 import { sorguMetni } from '../../shared/liste/sorgu';
+import { Kolon } from '../../shared/yetki/yetki-saglayici';
 import type { KullaniciKaydi, KullaniciListesiSorgusu } from './kullanici-listesi';
 
 // Kullanıcı listesinin tablosu, süzgeci ve sayfalaması (TS-004 "Yönetim ekranları"). Bütün
-// gezinti adres sorgusuyla yapılır; sıralama ve süzgeç değişince ilk sayfaya dönülür.
+// gezinti adres sorgusuyla yapılır; sıralama ve süzgeç değişince ilk sayfaya dönülür. Kişinin
+// tür düzeyinde okuyamadığı kolon çizilmez; görünen ad kayıt bağlantısıdır ve hep çizilir.
 
 const ADRES = '/kullanicilar';
+const KAYNAK = 'Kullanici';
 
 const SUZGECLER = [
   { etiket: 'Yalnız etkinler', pasif: 'false' },
@@ -64,44 +68,52 @@ export function KullaniciTablosu({
               sirala={sirala}
               suzgec={{ pasif }}
             />
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="kullaniciAdi"
-              etiket="Kullanıcı adı"
-              sirala={sirala}
-              suzgec={{ pasif }}
-            />
-            <th scope="col" className="px-3 py-2 text-left">
-              Durum
-            </th>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="olusturmaZamani"
-              etiket="Oluşturma zamanı"
-              sirala={sirala}
-              suzgec={{ pasif }}
-            />
+            <Kolon a={KAYNAK} alanlar={['kullaniciAdi']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="kullaniciAdi"
+                etiket="Kullanıcı adı"
+                sirala={sirala}
+                suzgec={{ pasif }}
+              />
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['pasifZamani']}>
+              <th scope="col" className="px-3 py-2 text-left">
+                Durum
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="olusturmaZamani"
+                etiket="Oluşturma zamanı"
+                sirala={sirala}
+                suzgec={{ pasif }}
+              />
+            </Kolon>
           </>
         }
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
             <td className="px-3 py-2">
-              {kayit.gorunenAd === undefined ? (
-                BOS
-              ) : (
-                <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
-                  {kayit.gorunenAd}
-                </Link>
-              )}
+              <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
+                {kayit.gorunenAd ?? kimliginAdi(null, kayit.id)}
+              </Link>
             </td>
-            <td className="px-3 py-2">{kayit.kullaniciAdi ?? BOS}</td>
-            <td className="px-3 py-2">{durum(kayit.pasifZamani)}</td>
-            <td className="px-3 py-2">
-              {kayit.olusturmaZamani === undefined
-                ? BOS
-                : tarihSaat(kayit.olusturmaZamani)}
-            </td>
+            <Kolon a={KAYNAK} alanlar={['kullaniciAdi']}>
+              <td className="px-3 py-2">{kayit.kullaniciAdi ?? BOS}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['pasifZamani']}>
+              <td className="px-3 py-2">{durum(kayit.pasifZamani)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <td className="px-3 py-2">
+                {kayit.olusturmaZamani === undefined
+                  ? BOS
+                  : tarihSaat(kayit.olusturmaZamani)}
+              </td>
+            </Kolon>
           </tr>
         ))}
       </ListeTablosu>

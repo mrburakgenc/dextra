@@ -9,6 +9,7 @@ import {
   Sayfalama,
   SiralamaBasligi,
 } from '../../../shared/liste/liste-parcalari';
+import { Kolon } from '../../../shared/yetki/yetki-saglayici';
 import { AlinamayanListeler } from '../alinamayan-listeler';
 import type { Secenekler } from '../uyelik/uyelik-listesi';
 import { adHaritasi, kayitSiniri, kolonSiniri, yetenekTuru } from './yetenek-bicimi';
@@ -19,12 +20,14 @@ import type {
 } from './yetenek-listesi';
 
 // Yetenek listesinin süzgeci, tablosu ve sayfalaması (TS-004 "Yönetim ekranları"). Grup, rol ve
-// izin adları seçeneklerden eşlenir; adı bulunamayan kimlik kısaltılarak, gelmeyen kolon boş
-// işaretle görünür. İzin yazısı kayıt sayfasına bağlantıdır. Süzgeç adresin sorgusuna yazılan bir
+// izin adları seçeneklerden eşlenir; adı bulunamayan kimlik kısaltılarak görünür. Kişinin tür
+// düzeyinde okuyamadığı kolon çizilmez; çizilen kolonda alanı gelmeyen kaydın hücresi boş işarettir.
+// İzin yazısı kayıt sayfasına bağlantıdır ve hep çizilir. Süzgeç adresin sorgusuna yazılan bir
 // GET formudur; gönderilince ilk sayfaya dönülür, sıralama korunur. Listesi alınamayan süzgecin
 // yerinde ileti çıkar; seçili değeri korunur.
 
 const ADRES = '/yetenekler';
+const KAYNAK = 'Yetenek';
 const HUCRE = 'px-3 py-2 text-left';
 const GIRDI =
   'rounded border border-gray-500 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
@@ -97,49 +100,73 @@ export function YetenekTablosu({
         liste={liste}
         basliklar={
           <>
-            <th scope="col" className={HUCRE}>
-              Grup
-            </th>
-            <th scope="col" className={HUCRE}>
-              Rol
-            </th>
+            <Kolon a={KAYNAK} alanlar={['grupId']}>
+              <th scope="col" className={HUCRE}>
+                Grup
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['rolId']}>
+              <th scope="col" className={HUCRE}>
+                Rol
+              </th>
+            </Kolon>
             <th scope="col" className={HUCRE}>
               İzin
             </th>
-            <th scope="col" className={HUCRE}>
-              Kayıt sınırı
-            </th>
-            <th scope="col" className={HUCRE}>
-              Kolon sınırı
-            </th>
-            <th scope="col" className={HUCRE}>
-              Tür
-            </th>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="olusturmaZamani"
-              etiket="Oluşturma zamanı"
-              sirala={sirala}
-              suzgec={{ grupId, rolId }}
-            />
+            <Kolon a={KAYNAK} alanlar={['butunKayitlar', 'sart']}>
+              <th scope="col" className={HUCRE}>
+                Kayıt sınırı
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['butunKolonlar', 'kolonlar']}>
+              <th scope="col" className={HUCRE}>
+                Kolon sınırı
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['sistemSatiri', 'tohumAnahtari']}>
+              <th scope="col" className={HUCRE}>
+                Tür
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="olusturmaZamani"
+                etiket="Oluşturma zamanı"
+                sirala={sirala}
+                suzgec={{ grupId, rolId }}
+              />
+            </Kolon>
           </>
         }
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
-            <td className="px-3 py-2">{kimliginAdi(grupAdi, kayit.grupId)}</td>
-            <td className="px-3 py-2">{kimliginAdi(rolAdi, kayit.rolId)}</td>
+            <Kolon a={KAYNAK} alanlar={['grupId']}>
+              <td className="px-3 py-2">{kimliginAdi(grupAdi, kayit.grupId)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['rolId']}>
+              <td className="px-3 py-2">{kimliginAdi(rolAdi, kayit.rolId)}</td>
+            </Kolon>
             <td className="px-3 py-2">
               <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
                 {kimliginAdi(izinAdi, kayit.izinId)}
               </Link>
             </td>
-            <td className="px-3 py-2">{kayitSiniri(kayit.butunKayitlar, kayit.sart)}</td>
-            <td className="px-3 py-2">{kolonSiniri(kayit.butunKolonlar, kayit.kolonlar)}</td>
-            <td className="px-3 py-2">{yetenekTuru(kayit.sistemSatiri, kayit.tohumAnahtari)}</td>
-            <td className="px-3 py-2">
-              {kayit.olusturmaZamani === undefined ? BOS : tarihSaat(kayit.olusturmaZamani)}
-            </td>
+            <Kolon a={KAYNAK} alanlar={['butunKayitlar', 'sart']}>
+              <td className="px-3 py-2">{kayitSiniri(kayit.butunKayitlar, kayit.sart)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['butunKolonlar', 'kolonlar']}>
+              <td className="px-3 py-2">{kolonSiniri(kayit.butunKolonlar, kayit.kolonlar)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['sistemSatiri', 'tohumAnahtari']}>
+              <td className="px-3 py-2">{yetenekTuru(kayit.sistemSatiri, kayit.tohumAnahtari)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['olusturmaZamani']}>
+              <td className="px-3 py-2">
+                {kayit.olusturmaZamani === undefined ? BOS : tarihSaat(kayit.olusturmaZamani)}
+              </td>
+            </Kolon>
           </tr>
         ))}
       </ListeTablosu>

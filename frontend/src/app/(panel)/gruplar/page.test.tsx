@@ -55,10 +55,14 @@ function listeCevabi(
   );
 }
 
-// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+// Grupları bütün kolonlarıyla okuyabilen kişi.
+const OKU: YetkiKurali[] = [{ action: 'oku', subject: 'Grup' }];
+
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişi grupları
+// okuyabilir (liste kolonları tür düzeyindeki okuma kuralına göre çizilir).
 async function goster(
   sorgu: Record<string, string | string[]> = {},
-  kurallar: YetkiKurali[] = [],
+  kurallar: YetkiKurali[] = OKU,
 ) {
   render(
     <YetkiSaglayici kurallar={kurallar}>
@@ -147,8 +151,10 @@ describe('GruplarSayfasi liste', () => {
 
     await goster();
 
+    // Ad gelmeyince bağlantı kalır, yazısı kısaltılmış kimliktir.
     const [, satir] = screen.getAllByRole('row');
-    expect(hucreler(satir)).toEqual(['—', '—', '—', 'Alt gruplar']);
+    expect(hucreler(satir)).toEqual([`…${KOK.slice(-8)}`, '—', '—', 'Alt gruplar']);
+    expect(baglanti(`…${KOK.slice(-8)}`)).toBe(`/gruplar/${KOK}`);
   });
 
   it('grup adı kayıt sayfasına bağlantıdır', async () => {
@@ -308,5 +314,68 @@ describe('GruplarSayfasi durumlar', () => {
       GruplarSayfasi({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
+  });
+});
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function basliklar(): (string | null)[] {
+  return screen.getAllByRole('columnheader').map((h) => h.textContent);
+}
+
+// Her kayıt satırının hücre sayısı.
+function hucreSayilari(): number[] {
+  return screen
+    .getAllByRole('row')
+    .slice(1)
+    .map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+describe('GruplarSayfasi kolonların yetkisi', () => {
+  it('oluşturma zamanını okuma kuralı olmayan kişide kolonun başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', fields: ['ad', 'ustGrupId'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Üst grup', 'Alt gruplar']);
+    expect(screen.queryByRole('link', { name: 'Oluşturma zamanı' })).toBeNull();
+    expect(screen.queryByText(tarihSaat(OLUSTURMA))).toBeNull();
+    expect(hucreSayilari()).toEqual([3, 3, 3]);
+  });
+
+  it('oluşturma zamanını bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi boş işarettir', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({
+        kayitlar: [{ id: KOK, ad: 'Merkez' }, UC_KAYIT[1]],
+      }),
+    );
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', fields: ['ad', 'olusturmaZamani'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Oluşturma zamanı', 'Alt gruplar']);
+    expect(baglanti('Oluşturma zamanı')).toBe('/gruplar?sirala=olusturmaZamani');
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(hucreler(ilk)).toEqual(['Merkez', '—', 'Alt gruplar']);
+    expect(hucreler(ikinci)).toEqual(['Muhasebe', tarihSaat(OLUSTURMA), 'Alt gruplar']);
+    expect(hucreSayilari()).toEqual([3, 3]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', conditions: { silinmeZamani: null } }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Üst grup', 'Oluşturma zamanı', 'Alt gruplar']);
+    expect(hucreSayilari()).toEqual([4, 4, 4]);
+  });
+
+  it('gelmiş ama boş üst grup boş işaretle çizilir; kolon kalkmaz', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [UC_KAYIT[0]] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', fields: ['ad', 'ustGrupId'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Üst grup', 'Alt gruplar']);
+    const [, satir] = screen.getAllByRole('row');
+    expect(hucreler(satir)).toEqual(['Merkez', '—', 'Alt gruplar']);
   });
 });

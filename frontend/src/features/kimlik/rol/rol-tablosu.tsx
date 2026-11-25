@@ -3,16 +3,19 @@ import type { Liste } from '../../../shared/liste/liste-istegi';
 import {
   BAGLANTI,
   BOS,
+  kimliginAdi,
   ListeTablosu,
   Sayfalama,
   SiralamaBasligi,
 } from '../../../shared/liste/liste-parcalari';
+import { Kolon } from '../../../shared/yetki/yetki-saglayici';
 import type { RolKaydi, RolListesiSorgusu } from './rol-listesi';
 
 // Rol listesinin tablosu ve sayfalaması (TS-004 "Yönetim ekranları"). Rolün adı kayıt sayfasına
-// bağlantıdır.
+// bağlantıdır ve hep çizilir; kişinin tür düzeyinde okuyamadığı kolon çizilmez.
 
 const ADRES = '/roller';
+const KAYNAK = 'Rol';
 
 // Kodu dolu rol sistem rolüdür.
 function kodHucresi(kod: RolKaydi['kod']) {
@@ -46,28 +49,28 @@ export function RolTablosu({
               sirala={sirala}
               suzgec={{}}
             />
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="kod"
-              etiket="Kod"
-              sirala={sirala}
-              suzgec={{}}
-            />
+            <Kolon a={KAYNAK} alanlar={['kod']}>
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="kod"
+                etiket="Kod"
+                sirala={sirala}
+                suzgec={{}}
+              />
+            </Kolon>
           </>
         }
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
             <td className="px-3 py-2">
-              {kayit.ad === undefined ? (
-                BOS
-              ) : (
-                <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
-                  {kayit.ad}
-                </Link>
-              )}
+              <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
+                {kayit.ad ?? kimliginAdi(null, kayit.id)}
+              </Link>
             </td>
-            <td className="px-3 py-2">{kodHucresi(kayit.kod)}</td>
+            <Kolon a={KAYNAK} alanlar={['kod']}>
+              <td className="px-3 py-2">{kodHucresi(kayit.kod)}</td>
+            </Kolon>
           </tr>
         ))}
       </ListeTablosu>

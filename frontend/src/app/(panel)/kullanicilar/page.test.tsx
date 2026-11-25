@@ -58,10 +58,14 @@ function listeCevabi(
   );
 }
 
-// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+// Kullanıcıları bütün kolonlarıyla okuyabilen kişi.
+const OKU: YetkiKurali[] = [{ action: 'oku', subject: 'Kullanici' }];
+
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişi kullanıcıları
+// okuyabilir (liste kolonları tür düzeyindeki okuma kuralına göre çizilir).
 async function goster(
   sorgu: Record<string, string | string[]> = {},
-  kurallar: YetkiKurali[] = [],
+  kurallar: YetkiKurali[] = OKU,
 ) {
   render(
     <YetkiSaglayici kurallar={kurallar}>
@@ -346,5 +350,104 @@ describe('KullanicilarSayfasi hatalar', () => {
       KullanicilarSayfasi({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
+  });
+});
+
+// Kolonun çizilip çizilmeyeceğini ekran tür düzeyindeki okuma kuralına sorar (TS-004 "Yönetim
+// ekranları").
+function basliklar(): (string | null)[] {
+  return screen.getAllByRole('columnheader').map((h) => h.textContent);
+}
+
+// Her kayıt satırının hücre sayısı.
+function hucreSayilari(): number[] {
+  return screen
+    .getAllByRole('row')
+    .slice(1)
+    .map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+describe('KullanicilarSayfasi kolonların yetkisi', () => {
+  it('oluşturma zamanını okuma kuralı olmayan kişide kolonun başlığı, sıralama bağlantısı ve hücreleri yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [
+      {
+        action: 'oku',
+        subject: 'Kullanici',
+        fields: ['gorunenAd', 'kullaniciAdi', 'pasifZamani'],
+      },
+    ]);
+
+    expect(basliklar()).toEqual(['Görünen ad', 'Kullanıcı adı', 'Durum']);
+    expect(screen.queryByRole('link', { name: 'Oluşturma zamanı' })).toBeNull();
+    expect(screen.queryByText(tarihSaat(OLUSTURMA_1))).toBeNull();
+    expect(screen.queryByText(tarihSaat(OLUSTURMA_2))).toBeNull();
+    expect(hucreSayilari()).toEqual([3, 3]);
+  });
+
+  it('kullanıcı adını bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi boş işarettir', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [
+      { action: 'oku', subject: 'Kullanici', fields: ['gorunenAd', 'kullaniciAdi'] },
+    ]);
+
+    expect(basliklar()).toEqual(['Görünen ad', 'Kullanıcı adı']);
+    expect(baglanti('Kullanıcı adı')).toBe('/kullanicilar?sirala=kullaniciAdi');
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(within(ilk ?? document.body).getAllByRole('cell').map((h) => h.textContent)).toEqual(
+      ['Ada Yılmaz', 'ada'],
+    );
+    expect(
+      within(ikinci ?? document.body).getAllByRole('cell').map((h) => h.textContent),
+    ).toEqual(['Can Demir', '—']);
+    expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [
+      { action: 'oku', subject: 'Kullanici', conditions: { yetkiSurumu: 0 } },
+    ]);
+
+    expect(basliklar()).toEqual([
+      'Görünen ad',
+      'Kullanıcı adı',
+      'Durum',
+      'Oluşturma zamanı',
+    ]);
+    expect(hucreSayilari()).toEqual([4, 4]);
+  });
+
+  it('gelmiş ama boş alan boş işaretle çizilir; kolon kalkmaz', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({
+        kayitlar: [
+          { id: 'k4', gorunenAd: 'Boş', kullaniciAdi: null, olusturmaZamani: OLUSTURMA_1 },
+        ],
+      }),
+    );
+
+    await goster({}, [
+      { action: 'oku', subject: 'Kullanici', fields: ['gorunenAd', 'kullaniciAdi'] },
+    ]);
+
+    expect(basliklar()).toEqual(['Görünen ad', 'Kullanıcı adı']);
+    const [, satir] = screen.getAllByRole('row');
+    expect(
+      within(satir ?? document.body).getAllByRole('cell').map((h) => h.textContent),
+    ).toEqual(['Boş', '—']);
+  });
+
+  it('görünen ad gelmeyen kayıt kısaltılmış kimlikle kayıt sayfasına bağlantıdır', async () => {
+    const id = '0b8f6a1e-3c2d-4e5f-8a9b-1c2d3e4f5a6b';
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [{ id }] }));
+
+    await goster();
+
+    expect(baglanti(`…${id.slice(-8)}`)).toBe(`/kullanicilar/${id}`);
+    expect(hucreSayilari()).toEqual([4]);
   });
 });
