@@ -1,7 +1,7 @@
 ---
 kimlik: TS-008
 tur: tasarim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır
 agirlik: tek-yonlu

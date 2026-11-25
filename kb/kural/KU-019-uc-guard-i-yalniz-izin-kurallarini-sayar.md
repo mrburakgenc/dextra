@@ -1,7 +1,7 @@
 ---
 kimlik: KU-019
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Uç guard'ı yalnız izin kurallarını sayar
 dayanak: [KR-016@1]
@@ -10,7 +10,7 @@ baglama: kapsam
 bicim: kural
 kesinlik: olagan
 denetim_duzey: gozden-gecirme
-bakis: 2026-11-25
+bakis: 2026-12-26
 ---
 Uç guard'ı yalnız izin kurallarını sayar: yasak kuralları guard'ın baktığı kümeye girmez. Bir eylem ve kaynak için yalnız yasağı olan (hiç izin kuralı olmayan) kişi o uca giremez.
 
