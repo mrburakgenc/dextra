@@ -23,6 +23,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tempfile
 import threading
 
 import h
@@ -312,8 +313,8 @@ def asama(d: dict, rapor: dict, inceleme_zorunlu: bool, kosu: dict | None = None
     return False, "koştu · inceleme bekliyor" if inceleme_zorunlu else "koştu · alınmayı bekliyor"
 
 
-def ozet(kok: pathlib.Path, kimlik: str, islem: str = "kos") -> str:
-    """Kullanıcıya onay sorulurken gösterilen kısa özet."""
+def ozet(kok: pathlib.Path, kimlik: str, islem: str = "kos", ekler: list | None = None) -> str:
+    """Kullanıcıya onay sorulurken gösterilen kısa özet. `ekler`, genişletmede eklenecek yol desenleridir."""
     kok = pathlib.Path(kok)
     d = _durum_oku(kok, kimlik, _kayit(kok, kimlik))
     g = h.ayar_oku(kok)["gorev"]
@@ -330,10 +331,19 @@ def ozet(kok: pathlib.Path, kimlik: str, islem: str = "kos") -> str:
     if islem == "at":
         return ("%s\nGörevin ağacı ve dalı SİLİNECEK: %d dosyalık değişiklik geri getirilemez\n%s"
                 % (bas, len(degisen), "\n".join("  " + f for f in degisen[:20])))
+    if islem == "tazele":
+        return ("%s\nGörevin ağacı `%s` dalının ucuna getirilecek; işçinin değişiklikleri korunur, incelenmişse "
+                "yeniden incelenir. Çakışma olursa hiçbir şey değişmez." % (bas, h.dal_adi(kok) or "?"))
+    if islem == "genislet":
+        return ("%s\nşimdiki dosyalar: %s\neklenecek: %s"
+                % (bas, ", ".join(d["yollar"]) or "(yol verilmedi)", ", ".join(ekler or []) or "?"))
     tavan = (" · harcama tavanı %s USD" % g["butce_usd"]) if g.get("butce_usd") else " · harcama tavanı yok"
     kum = ("kum havuzu açık (komutlar yalnız kendi ağacına ve geçici klasöre yazar)" if g.get("kum_havuzu", True)
            else "KUM HAVUZU KAPALI (komutlar diskin her yerine yazabilir)")
     yalitim = "yalnız proje ayarları" if g.get("yalitim", "proje") == "proje" else "kişisel ayarların ve MCP sunucuların da yüklenir"
+    if g["kendiliginden_devam"]:
+        tavan += (" · sınırda kesilirse en çok %s kez kendiliğinden sürdürülür (tur, süre ve harcama sınırları "
+                  "her oturuma ayrı uygulanır)" % g["kendiliginden_devam"])
     return ("%s\nrol: %s · dosyalar: %s\nmodel: %s · en çok %s tur · %s sn sonra durdurulur%s\n"
             "izin modu: %s · %s · %s\n"
             "kendi çalışma ağacında koşar: %s (dal gorev/%s, taban %s)\nkart: .harness/gorev/%s/kart.md"
@@ -717,8 +727,26 @@ def _cevaplar(kayit: pathlib.Path) -> str:
             + "\n".join("- Soru: %s\n  Cevap: %s" % (c["soru"], c["cevap"]) for c in cevaplar) + "\n")
 
 
-def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
-    """Görevi kendi çalışma ağacında koşturur, sonra kapsamı, bitiş kaydını ve zinciri ölçer."""
+def _notlar(kayit: pathlib.Path) -> str:
+    """Ana oturumun `gorev kos --not` ile bıraktığı notlar; o koşuda ve sonrakilerde işçiye verilir. Yoksa boş metin."""
+    notlar = _json_oku(kayit / "notlar.json").get("notlar") or []
+    if not notlar:
+        return ""
+    return ("\n\n## Ana oturumun notları\nGörevi veren oturum şu notları bıraktı; işi bunlarla birlikte sürdür.\n"
+            + "\n".join("- (%s) %s" % (n["zaman"], n["not"]) for n in notlar) + "\n")
+
+
+DEVAM_NOTU = ("\n\n## Önceki oturum sınırda kesildi\nBu görevin önceki oturumu %s kesildi ve bitiş kaydını yazmadı; "
+              "yaptığı iş çalışma ağacında duruyor. Önce ağacın durumunu ölç (değişen dosyalar, farkları, testler); "
+              "baştan yazma, kaldığın yerden sürdür ve bitiş kaydını yaz.\n")
+
+
+def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None) -> dict:
+    """Görevi kendi çalışma ağacında koşturur, sonra kapsamı, bitiş kaydını ve zinciri ölçer.
+
+    `notu`, ana oturumun işçiye notudur: kayda eklenir, bu ve sonraki koşularda işçinin istemine girer.
+    İşçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik varsa oturum, ayardaki
+    `kendiliginden_devam` kadar aynı çağrıda kendiliğinden sürdürülür; her oturum geçmişe ayrı satır yazar."""
     kok = pathlib.Path(kok)
     g = h.ayar_oku(kok)["gorev"]
     kayit = _kayit(kok, kimlik)
@@ -732,13 +760,16 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
             raise h.HarnessHata("%s soru sormadı; --cevap yalnız soru sormuş göreve verilir" % kimlik)
         eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
         _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [{"soru": onceki["soru"], "cevap": cevap}]})
+    if notu:
+        eski_notlar = _json_oku(kayit / "notlar.json").get("notlar") or []
+        _json_yaz(kayit / "notlar.json", {"notlar": eski_notlar + [{"zaman": _simdi(), "not": notu}]})
     onceki_kayit = ""
     if onceki_sorunlar:             # araç sorun ölçtüyse işçi neyi gidereceğini bilir; iş baştan yapılmaz
         onceki_kayit += ("\n\n## Önceki koşuda aracın ölçtüğü sorunlar\nBu görev daha önce koştu ve araç şu sorunları "
                          "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
                          "ve bitiş kaydını yeniden yaz:\n"
                          + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
-    if onceki and (cevap or onceki_sorunlar or _onceki_bulgular(kayit)):
+    if onceki and (cevap or notu or onceki_sorunlar or _onceki_bulgular(kayit)):
         onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
                          "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
                          "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
@@ -776,9 +807,25 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
 
     basla = datetime.datetime.now()
     komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
-    with _kosuyor(kayit, "isci"):
-        cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + onceki_kayit,
-                                                   agac, kimlik, d["rol"], g["model"])
+    istem = kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + _notlar(kayit) + onceki_kayit
+    devam, ek = g["kendiliginden_devam"], ""
+    while True:
+        kosu_basla = datetime.datetime.now()
+        with _kosuyor(kayit, "isci"):
+            cikti, sorunlar, zaman_asimi = _oturum_kos(g, istem + ek, agac, kimlik, d["rol"], g["model"])
+        kosu_sure = round((datetime.datetime.now() - kosu_basla).total_seconds(), 1)
+        if (yerel / "bitis.json").is_file():   # öz değerlendirme ağaçta kalmaz: inceleyici onu görmemeli
+            shutil.move(str(yerel / "bitis.json"), str(kayit / "bitis.json"))
+        tur_siniri = _cikti_oku(cikti).get("subtype") == "error_max_turns"
+        if (devam <= 0 or not (zaman_asimi or tur_siniri) or (kayit / "bitis.json").is_file()
+                or not _degisen(agac, d["taban"])):
+            break
+        devam -= 1
+        _gecmise_ekle(kayit, _gecmis_satiri("isci", kosu_basla, kosu_sure, cikti,
+                                            "zaman-asimi" if zaman_asimi else "tur-siniri", agac))
+        sinir = "süre sınırında" if zaman_asimi else "tur sınırında"
+        ek = DEVAM_NOTU % sinir
+        print("[harness] %s: işçi %s kesildi; kaldığı yerden kendiliğinden sürdürülüyor" % (kimlik, sinir), flush=True)
     (kayit / "sonuc.json").write_text(cikti or "", encoding="utf-8")
     uyarilar = []
     for komsu, once in komsular.items():   # işçi kendi ağacından çıkıp orchestrator'ın ya da ana ağacın dosyasına yazdı mı
@@ -788,8 +835,6 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
             uyarilar.append({"ad": "agac-disi", "mesaj": "koşum sırasında görevin ağacı dışında %s içinde şu dosyalar "
                              "değişti: %s — işçi kendi ağacının dışına yazmış olabilir (ya da başka bir oturum aynı "
                              "anda orada çalıştı)" % (komsu, ", ".join(fark[:10]))})
-    if (yerel / "bitis.json").is_file():   # öz değerlendirme ağaçta kalmaz: inceleyici onu görmemeli
-        shutil.move(str(yerel / "bitis.json"), str(kayit / "bitis.json"))
 
     degisen = _degisen(agac, d["taban"])
     for f in degisen:
@@ -813,7 +858,9 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
              "kullanim": _kullanim(cikti), "sure_sn": round((datetime.datetime.now() - basla).total_seconds(), 1),
              "bitis": bitis}
     _json_yaz(kayit / "rapor.json", rapor)
-    _gecmise_ekle(kayit, _gecmis_satiri("isci", basla, rapor["sure_sn"], cikti, durum, agac))
+    # son oturumun satırı; tek oturumlu çağrıda süre raporunkiyle aynıdır (ölçüm de içindedir)
+    _gecmise_ekle(kayit, _gecmis_satiri("isci", kosu_basla, round(rapor["sure_sn"] - (kosu_basla - basla)
+                                                                  .total_seconds(), 1), cikti, durum, agac))
     d.update({"durum": durum, "kosuldu": basla.isoformat(timespec="seconds"), "inceleme": None,
               "kosum_imza": _imza(agac, d["taban"]), "sozlesme": _sozlesme(kart), "incelenen_imza": None})
     _json_yaz(kayit / "durum.json", d)
@@ -949,6 +996,94 @@ def at(kok: pathlib.Path, kimlik: str) -> dict:
     return {"gorev": kimlik, "durum": "atildi"}
 
 
+def _acik_gorev(kok: pathlib.Path, kimlik: str, islem: str) -> tuple:
+    """Alınmamış, atılmamış ve şu an koşmayan görevin (kayıt, durum) çifti; değilse durdurur."""
+    kayit = _kayit(kok, kimlik)
+    d = _durum_oku(kok, kimlik, kayit)
+    if d.get("alindi") or d["durum"] == "atildi":
+        raise h.HarnessHata("%s kapanmış (%s); %s" % (kimlik, asama(d, {}, True)[1], islem))
+    isaret = kosu_isareti(kayit)
+    if isaret:   # oturum bitince kendi okuduğu durumu yazar; araya giren değişiklik kaybolur
+        raise h.HarnessHata("%s şu an %s; oturum bitmeden %s" % (kimlik, kosu_metni(isaret), islem))
+    return kayit, d
+
+
+def tazele(kok: pathlib.Path, kimlik: str) -> dict:
+    """Görevin ağacını oturum dalının ucuna getirir.
+
+    Ağaçta değişiklik yoksa ağaç uca alınır. Varsa işçinin değişiklikleri (commit'li, commit'siz ve yeni dosyalar)
+    oturum dalıyla birleştirilir; birleştirme commit atmadan, git'in ağaç düzeyinde yapılır (depo kancaları koşmaz).
+    Sonunda görev dalı uçtadır ve işçinin işi yine commit edilmemiş değişiklik olarak durur. Çakışma olursa hiçbir
+    şey değişmez ve çakışan dosyalar bildirilir. Kayıtlı taban ve koşum imzası yenilenir; incelenmiş iş yeniden
+    inceleme ister."""
+    kok = pathlib.Path(kok)
+    kayit, d = _acik_gorev(kok, kimlik, "tazelenemez")
+    agac = _agac(kok, kimlik)
+    if not agac.is_dir():
+        raise h.HarnessHata("%s tazelenemez: ağacı yok; koşturulunca oturum dalının ucundan açılır" % kimlik)
+    if d.get("hedef_dal") and h.dal_adi(kok) != d["hedef_dal"]:   # başka dalın commit'leri göreve karışmasın
+        raise h.HarnessHata("%s tazelenemez: görev `%s` dalından açıldı, bu oturum `%s` dalında"
+                            % (kimlik, d["hedef_dal"], h.dal_adi(kok) or "?"))
+    uc =h._git(kok, "rev-parse", "HEAD").strip()
+    eski_imza = _imza(agac, d["taban"])
+    degisen = _degisen(agac, d["taban"])
+    if not degisen:
+        h._git(agac, "reset", "-q", "--hard", uc)
+    else:
+        with tempfile.TemporaryDirectory(prefix="harness-tazele-") as gecici:
+            ortam = dict(os.environ, GIT_INDEX_FILE=str(pathlib.Path(gecici) / "index"))
+            for arg in (["read-tree", "HEAD"], ["add", "-A"]):
+                subprocess.run(["git", *arg], cwd=agac, env=ortam, check=True, capture_output=True)
+            agac_ozeti = subprocess.run(["git", "write-tree"], cwd=agac, env=ortam, check=True,
+                                        capture_output=True, text=True).stdout.strip()
+        isci = h._git(agac, "commit-tree", agac_ozeti, "-p", "HEAD", "-m", "%s: işçinin işi" % kimlik).strip()
+        r = subprocess.run(["git", "-c", "core.quotePath=false", "merge-tree", "--write-tree", "--name-only",
+                            "--no-messages", uc, isci], cwd=agac, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        satirlar = r.stdout.strip().split("\n")
+        if r.returncode == 1:
+            raise h.HarnessHata("%s tazelenemedi: oturum dalıyla çakışıyor; ağaç ve dal değişmedi. Çakışan dosyalar: %s"
+                                % (kimlik, ", ".join(sorted(set(s for s in satirlar[1:] if s)))))
+        if r.returncode != 0:
+            raise h.HarnessHata("%s tazelenemedi: git merge-tree %d koduyla çıktı: %s"
+                                % (kimlik, r.returncode, (r.stderr or r.stdout).strip()[-300:]))
+        h._git(agac, "read-tree", "--reset", "-u", satirlar[0])   # ağaç birleşik içeriğe gelir
+        h._git(agac, "reset", "-q", uc)                            # dal uca; iş commit'siz değişiklik olarak kalır
+    if d.get("kosum_imza") == eski_imza:   # tazeleme işi değiştirmiş sayılmaz; önceden değişmişse öyle kalır
+        d["kosum_imza"] = _imza(agac, uc)
+    d.update({"taban": uc, "tazelendi": _simdi()})
+    if d.get("inceleme"):
+        d.update({"inceleme": None, "incelenen_imza": None})
+    _json_yaz(kayit / "durum.json", d)
+    _plani_guncelle(kok, d)
+    degisen = _degisen(agac, uc)
+    rapor = _json_oku(kayit / "rapor.json")
+    if rapor:   # alma sorusu, alma çıktısı ve rapor tablosu dosya listesini buradan okur
+        rapor.update({"degisen": degisen, "taban": uc[:8]})
+        _json_yaz(kayit / "rapor.json", rapor)
+    return {"gorev": kimlik, "taban": uc[:8], "dal": h.dal_adi(kok), "degisen": degisen}
+
+
+def genislet(kok: pathlib.Path, kimlik: str, desenler: list) -> dict:
+    """Görevin yol listesine desen ekler: kayıtta, kartın 'Dosyalar' bölümünde ve kartın sonundaki tarihli satırda."""
+    kok = pathlib.Path(kok)
+    kayit, d = _acik_gorev(kok, kimlik, "genişletilemez")
+    yeniler = [y for y in dict.fromkeys(desenler) if y not in d["yollar"]]
+    if not yeniler:
+        raise h.HarnessHata("%s genişletilmedi: verilen yollar zaten listede (%s)" % (kimlik, ", ".join(desenler)))
+    d["yollar"] += yeniler
+    kart = (kayit / "kart.md").read_text(encoding="utf-8")
+    kart = re.sub(r"(?m)^\[gorev\] .*$", lambda _: "[gorev] " + _baslik_satiri(d["rol"], d["yollar"], d["konular"]),
+                  kart, count=1)
+    m = re.search(BOLUM % "Dosyalar", kart)
+    kart = kart[:m.start(1)] + _dosya_listesi(d["yollar"]) + "\n\n" + kart[m.end(1):]
+    kart = kart.rstrip("\n") + "\n\nKapsam değişikliği (%s, `%s` dalındaki oturum, `gorev genislet`): %s eklendi.\n" % (
+        _simdi(), h.dal_adi(kok) or "?", ", ".join("`%s`" % y for y in yeniler))
+    (kayit / "kart.md").write_text(kart, encoding="utf-8")
+    _json_yaz(kayit / "durum.json", d)
+    return {"gorev": kimlik, "eklenen": yeniler, "yollar": d["yollar"]}
+
+
 # ── Komut satırı ─────────────────────────────────────────────────────────────────────
 
 def _rapor_yaz(rapor: dict) -> None:
@@ -1010,9 +1145,19 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         print("kart açıldı: %s\nsıradaki: python3 harness/h.py gorev kos %s" % (kart, kart.parent.name))
         return 0
     if arg[:1] == ["kos"] and len(arg) > 1:
-        rapor = kos(kok, arg[1], cevap=(h._secenek(arg, "--cevap") or [None])[0])
+        rapor = kos(kok, arg[1], cevap=(h._secenek(arg, "--cevap") or [None])[0],
+                    notu=(h._secenek(arg, "--not") or [None])[0])
         _rapor_yaz(rapor)
         return 0 if not rapor["sorunlar"] else 1
+    if arg[:1] == ["tazele"] and len(arg) > 1:
+        s = tazele(kok, arg[1])
+        print("%s tazelendi: ağaç `%s` dalının ucunda (%s); işçinin %d dosyalık değişikliği duruyor"
+              % (s["gorev"], s["dal"], s["taban"], len(s["degisen"])))
+        return 0
+    if arg[:1] == ["genislet"] and len(arg) > 1 and h._secenek(arg, "--yol"):
+        s = genislet(kok, arg[1], h._secenek(arg, "--yol"))
+        print("%s genişletildi: %s eklendi; dosyalar: %s" % (s["gorev"], ", ".join(s["eklenen"]), ", ".join(s["yollar"])))
+        return 0
     if arg[:1] == ["incele"] and len(arg) > 1:
         rapor = incele(kok, arg[1])
         _inceleme_yaz(rapor)
@@ -1036,5 +1181,5 @@ def komut(kok: pathlib.Path, arg: list) -> int:
                 d["rol"], d["baslik"],
                 (" · %s %s" % (d["plan"], d["adim"])) if d.get("plan") else ""))
         return 0
-    raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] | incele GV-NNN | al GV-NNN | '
-                        'at GV-NNN | durum>')
+    raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] [--not "..."] | incele GV-NNN | '
+                        'al GV-NNN | at GV-NNN | tazele GV-NNN | genislet GV-NNN --yol <desen> [--yol ...] | durum>')
