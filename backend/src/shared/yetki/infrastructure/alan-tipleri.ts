@@ -181,6 +181,8 @@ export const ALAN_TIPLERI = {
     yerineGectigiId: 'kimlik',
     koken: 'metin',
     olusturmaZamani: 'zaman',
+    giremez: 'mantiksal',
+    oncelik: 'sayi',
   },
   YetkiSurumu: {
     id: 'sayi',

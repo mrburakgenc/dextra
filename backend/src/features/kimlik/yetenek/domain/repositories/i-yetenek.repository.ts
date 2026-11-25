@@ -24,6 +24,8 @@ export interface YetenekGorunumu {
   readonly yerineGectigiId?: string | null;
   readonly koken?: string;
   readonly olusturmaZamani?: Date;
+  readonly giremez?: boolean;
+  readonly oncelik?: number;
 }
 
 export interface IzinGorunumu {
