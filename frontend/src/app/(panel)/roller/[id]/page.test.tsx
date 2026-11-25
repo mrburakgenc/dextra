@@ -4,6 +4,7 @@ import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { Component, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { tarihSaat } from '../../../../shared/bicim/bicim';
 import type { YetkiKurali } from '../../../../shared/yetki/yetki';
 import { YetkiSaglayici } from '../../../../shared/yetki/yetki-saglayici';
 import RolSayfasi from './page';
@@ -296,5 +297,38 @@ describe('RolSayfasi yetki', () => {
 
     expect(dugme('Sil')).toBeNull();
     expect(screen.queryByLabelText('Yeni ad')).not.toBeNull();
+  });
+});
+
+// Silinmiş kayıt sayfası (GV-099).
+describe('RolSayfasi silinmiş kayıt', () => {
+  const SILINME = '2026-04-02T12:00:00.000Z';
+
+  it('silinmeZamani doluysa Silinmiş işareti ve zamanı görünür; hiçbir iş formu ve düğmesi yoktur', async () => {
+    await goster({ ...ROL, silinmeZamani: SILINME });
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Muhasebe');
+    expect(screen.getByText('Silinmiş').parentElement?.textContent).toBe(
+      `Silinmiş ${tarihSaat(SILINME)}`,
+    );
+    expect(screen.queryAllByRole('form')).toHaveLength(0);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByLabelText('Yeni ad')).toBeNull();
+  });
+
+  it('silinmeZamani boşsa işaret yoktur ve işler bugünkü gibidir', async () => {
+    await goster({ ...ROL, silinmeZamani: null });
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(screen.queryByRole('form', { name: 'Adını değiştir' })).not.toBeNull();
+    expect(dugme('Sil')).not.toBeNull();
+  });
+
+  it('silinmeZamani kolonu gelmediyse işaret yoktur ve işler bugünkü gibidir', async () => {
+    await goster(ROL);
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(screen.queryByRole('form', { name: 'Adını değiştir' })).not.toBeNull();
+    expect(dugme('Sil')).not.toBeNull();
   });
 });

@@ -4,22 +4,25 @@ import type { Liste } from '../../../shared/liste/liste-istegi';
 import {
   BAGLANTI,
   BOS,
+  kimliginAdi,
   ListeTablosu,
   Sayfalama,
   SiralamaBasligi,
 } from '../../../shared/liste/liste-parcalari';
+import { AlinamayanListeler } from '../alinamayan-listeler';
 import type { Secenekler } from '../uyelik/uyelik-listesi';
 import { adHaritasi, kayitSiniri, kolonSiniri, yetenekTuru } from './yetenek-bicimi';
 import type {
+  YetenekAdListeleri,
   YetenekKaydi,
   YetenekListesiSorgusu,
-  YetenekSecenekleri,
 } from './yetenek-listesi';
 
 // Yetenek listesinin süzgeci, tablosu ve sayfalaması (TS-004 "Yönetim ekranları"). Grup, rol ve
-// izin adları seçeneklerden eşlenir; adı bulunamayan kimlik ve gelmeyen kolon boş işaretle görünür.
-// İzin yazısı kayıt sayfasına bağlantıdır. Süzgeç adresin sorgusuna yazılan bir GET formudur;
-// gönderilince ilk sayfaya dönülür, sıralama korunur.
+// izin adları seçeneklerden eşlenir; adı bulunamayan kimlik kısaltılarak, gelmeyen kolon boş
+// işaretle görünür. İzin yazısı kayıt sayfasına bağlantıdır. Süzgeç adresin sorgusuna yazılan bir
+// GET formudur; gönderilince ilk sayfaya dönülür, sıralama korunur. Listesi alınamayan süzgecin
+// yerinde ileti çıkar; seçili değeri korunur.
 
 const ADRES = '/yetenekler';
 const HUCRE = 'px-3 py-2 text-left';
@@ -31,7 +34,20 @@ function Suzgec({
   etiket,
   secenekler,
   secili,
-}: Readonly<{ ad: string; etiket: string; secenekler: Secenekler; secili: string | undefined }>) {
+}: Readonly<{
+  ad: string;
+  etiket: string;
+  secenekler: Secenekler | null;
+  secili: string | undefined;
+}>) {
+  if (secenekler === null) {
+    return (
+      <>
+        {secili !== undefined && <input type="hidden" name={ad} value={secili} />}
+        <AlinamayanListeler listeler={{ [etiket]: null }} />
+      </>
+    );
+  }
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={`suzgec-${ad}`} className="font-medium">
@@ -56,7 +72,7 @@ export function YetenekTablosu({
 }: Readonly<{
   liste: Liste<YetenekKaydi>;
   sorgu: YetenekListesiSorgusu;
-  secenekler: YetenekSecenekleri;
+  secenekler: YetenekAdListeleri;
 }>) {
   const { sirala, grupId, rolId } = sorgu;
   const grupAdi = adHaritasi(secenekler.gruplar);
@@ -111,11 +127,11 @@ export function YetenekTablosu({
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
-            <td className="px-3 py-2">{grupAdi.get(kayit.grupId) ?? BOS}</td>
-            <td className="px-3 py-2">{rolAdi.get(kayit.rolId) ?? BOS}</td>
+            <td className="px-3 py-2">{kimliginAdi(grupAdi, kayit.grupId)}</td>
+            <td className="px-3 py-2">{kimliginAdi(rolAdi, kayit.rolId)}</td>
             <td className="px-3 py-2">
               <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
-                {izinAdi.get(kayit.izinId) ?? BOS}
+                {kimliginAdi(izinAdi, kayit.izinId)}
               </Link>
             </td>
             <td className="px-3 py-2">{kayitSiniri(kayit.butunKayitlar, kayit.sart)}</td>

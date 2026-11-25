@@ -540,8 +540,14 @@ async function uyelikVer(grup: string, rol: string) {
   await userEvent.click(screen.getByRole('button', { name: 'Üyelik ver' }));
 }
 
+// Satır başına yinelenen düğmelerin erişilebilir adı üyeliği adlandırır; görünen yazı kısa kalır.
+// İlk satırın üyeliği ve her satırın Kaldır düğmesi.
+const ILK_UYELIK = 'Merkez grubundaki Üye üyeliğini';
+const ILK_UYELIGI_ONAYLA = 'Evet, kaldır: Merkez grubundaki Üye üyeliği';
+const KALDIR = /üyeliğini kaldır$/;
+
 describe('KullaniciSayfasi üyelikler', () => {
-  it('backend\'e kullaniciId süzgeciyle istek gider; grup ve rol adları listelerden eşlenir, bulunamayan boş işaretle görünür', async () => {
+  it('backend\'e kullaniciId süzgeciyle istek gider; grup ve rol adları listelerden eşlenir, bulunamayan kısaltılmış kimlikle görünür', async () => {
     listeler(UYELIKLER, GRUPLAR, ROLLER);
 
     await goster(ETKIN_KAYIT, TUM_KURALLAR);
@@ -557,7 +563,25 @@ describe('KullaniciSayfasi üyelikler', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Üyelikler');
     const [ilk, adsiz] = uyelikSatirlari();
     expect(hucreler(ilk)).toEqual(['Merkez', 'Üye', tarihSaat(VERILME)]);
-    expect(hucreler(adsiz)).toEqual(['—', '—', '—']);
+    // Adı listede bulunmayan kimlik ilk sekiz karakteriyle; gelmeyen kolon boş işaretle.
+    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+  });
+
+  it('listede olup ad kolonu gelmeyen grup ve rol de kısaltılmış kimlikle görünür', async () => {
+    listeler(
+      UYELIKLER.slice(0, 1),
+      [{ id: KOK_GRUP, ustGrupId: null }],
+      [{ id: UYE, kod: null }],
+    );
+
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    const [ilk] = uyelikSatirlari();
+    expect(hucreler(ilk)).toEqual([
+      `${KOK_GRUP.slice(0, 8)}…`,
+      `${UYE.slice(0, 8)}…`,
+      tarihSaat(VERILME),
+    ]);
   });
 
   it('üyelik yoksa Kayıt yok gösterilir', async () => {
@@ -762,14 +786,14 @@ describe('KullaniciSayfasi üyelik kaldır', () => {
 
     const [ilk] = uyelikSatirlari();
     await userEvent.click(
-      within(ilk ?? document.body).getByRole('button', { name: 'Kaldır' }),
+      within(ilk ?? document.body).getByRole('button', { name: `${ILK_UYELIK} kaldır` }),
     );
 
     expect(screen.getByText('Üyelik kaldırılsın mı?')).toBeDefined();
     expect(sahteFetch).toHaveBeenCalledTimes(SAYFA_ISTEKLERI);
 
     sahteFetch.mockResolvedValueOnce(bosCevap());
-    await userEvent.click(screen.getByRole('button', { name: 'Evet, kaldır' }));
+    await userEvent.click(screen.getByRole('button', { name: ILK_UYELIGI_ONAYLA }));
 
     await vi.waitFor(() => {
       expect(refresh).toHaveBeenCalledTimes(1);
@@ -787,9 +811,11 @@ describe('KullaniciSayfasi üyelik kaldır', () => {
 
     const [ilk] = uyelikSatirlari();
     await userEvent.click(
-      within(ilk ?? document.body).getByRole('button', { name: 'Kaldır' }),
+      within(ilk ?? document.body).getByRole('button', { name: `${ILK_UYELIK} kaldır` }),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Vazgeç' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${ILK_UYELIK} kaldırmaktan vazgeç` }),
+    );
 
     expect(screen.queryByText('Üyelik kaldırılsın mı?')).toBeNull();
     expect(sahteFetch).toHaveBeenCalledTimes(SAYFA_ISTEKLERI);
@@ -804,9 +830,9 @@ describe('KullaniciSayfasi üyelik kaldır', () => {
 
     const [ilk] = uyelikSatirlari();
     await userEvent.click(
-      within(ilk ?? document.body).getByRole('button', { name: 'Kaldır' }),
+      within(ilk ?? document.body).getByRole('button', { name: `${ILK_UYELIK} kaldır` }),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Evet, kaldır' }));
+    await userEvent.click(screen.getByRole('button', { name: ILK_UYELIGI_ONAYLA }));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Kök üyelik kaldırılamaz',
@@ -821,9 +847,9 @@ describe('KullaniciSayfasi üyelik kaldır', () => {
 
     const [ilk] = uyelikSatirlari();
     await userEvent.click(
-      within(ilk ?? document.body).getByRole('button', { name: 'Kaldır' }),
+      within(ilk ?? document.body).getByRole('button', { name: `${ILK_UYELIK} kaldır` }),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Evet, kaldır' }));
+    await userEvent.click(screen.getByRole('button', { name: ILK_UYELIGI_ONAYLA }));
 
     expect((await screen.findByRole('alert')).textContent).toBe('Bu iş için yetkin yok');
     expect(refresh).not.toHaveBeenCalled();
@@ -836,7 +862,7 @@ describe('KullaniciSayfasi üyelik yetki', () => {
     await goster(ETKIN_KAYIT, TUM_KURALLAR);
 
     expect(screen.getByRole('heading', { name: 'Üyelikler' })).toBeDefined();
-    expect(screen.getAllByRole('button', { name: 'Kaldır' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: KALDIR })).toHaveLength(2);
     expect(uyelikFormu()).not.toBeNull();
   });
 
@@ -849,7 +875,7 @@ describe('KullaniciSayfasi üyelik yetki', () => {
 
     expect(screen.queryByRole('heading', { name: 'Üyelikler' })).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
-    expect(dugme('Kaldır')).toBeNull();
+    expect(screen.queryAllByRole('button', { name: KALDIR })).toHaveLength(0);
     expect(uyelikFormu()).toBeNull();
   });
 
@@ -859,7 +885,7 @@ describe('KullaniciSayfasi üyelik yetki', () => {
 
     expect(uyelikFormu()).toBeNull();
     expect(screen.queryByLabelText('Grup')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Kaldır' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: KALDIR })).toHaveLength(2);
   });
 
   it('sil kuralı olmayan kişi Kaldır düğmesini görmez', async () => {
@@ -869,7 +895,7 @@ describe('KullaniciSayfasi üyelik yetki', () => {
       ...uyelikKurallari('oku', 'olustur'),
     ]);
 
-    expect(dugme('Kaldır')).toBeNull();
+    expect(screen.queryAllByRole('button', { name: KALDIR })).toHaveLength(0);
     expect(uyelikFormu()).not.toBeNull();
   });
 
@@ -883,10 +909,185 @@ describe('KullaniciSayfasi üyelik yetki', () => {
 
     const [ilk, adsiz] = uyelikSatirlari();
     expect(
-      within(ilk ?? document.body).queryByRole('button', { name: 'Kaldır' }),
+      within(ilk ?? document.body).queryByRole('button', { name: KALDIR }),
     ).not.toBeNull();
     expect(
-      within(adsiz ?? document.body).queryByRole('button', { name: 'Kaldır' }),
+      within(adsiz ?? document.body).queryByRole('button', { name: KALDIR }),
     ).toBeNull();
+  });
+});
+
+// Ad listesi alınamayınca bölüm ayakta kalır (GV-099).
+function ulasilamadi(): Response {
+  return new Response('Bad Gateway', { status: 502 });
+}
+
+describe('KullaniciSayfasi üyelikler ad listesi alınamayınca', () => {
+  it('rol listesi 403 dönünce tablo çizilir, rol kısaltılmış kimlikle görünür, Kaldır çalışır; form yerine ileti çıkar', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, {
+      rol: () => hataCevabi('yetki_yok', 'Yetki yok', 403),
+    });
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    const [ilk, adsiz] = uyelikSatirlari();
+    expect(hucreler(ilk)).toEqual(['Merkez', '44444444…', tarihSaat(VERILME)]);
+    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+    expect(uyelikFormu()).toBeNull();
+    expect(screen.queryByLabelText('Rol')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe('Rol listesi alınamadı');
+
+    await userEvent.click(
+      within(ilk ?? document.body).getByRole('button', {
+        name: 'Merkez grubundaki 44444444… üyeliğini kaldır',
+      }),
+    );
+    sahteFetch.mockResolvedValueOnce(bosCevap());
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Evet, kaldır: Merkez grubundaki 44444444… üyeliği' }),
+    );
+
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(istekler()[SAYFA_ISTEKLERI]).toEqual({
+      yol: `/kimlik/uyelik/${UYELIK}`,
+      yontem: 'DELETE',
+      govde: null,
+    });
+  });
+
+  it('grup listesine ulaşılamayınca tablo çizilir, grup kısaltılmış kimlikle görünür, Kaldır çalışır; form yerine ileti çıkar', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, { grup: ulasilamadi });
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    const [ilk, adsiz] = uyelikSatirlari();
+    expect(hucreler(ilk)).toEqual(['11111111…', 'Üye', tarihSaat(VERILME)]);
+    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+    expect(uyelikFormu()).toBeNull();
+    expect(screen.queryByLabelText('Grup')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe('Grup listesi alınamadı');
+
+    await userEvent.click(
+      within(ilk ?? document.body).getByRole('button', {
+        name: '11111111… grubundaki Üye üyeliğini kaldır',
+      }),
+    );
+    sahteFetch.mockResolvedValueOnce(bosCevap());
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Evet, kaldır: 11111111… grubundaki Üye üyeliği' }),
+    );
+
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(istekler()[SAYFA_ISTEKLERI]).toEqual({
+      yol: `/kimlik/uyelik/${UYELIK}`,
+      yontem: 'DELETE',
+      govde: null,
+    });
+  });
+
+  it('iki liste de alınamayınca iki ileti görünür', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, {
+      grup: () => hataCevabi('yetki_yok', 'Yetki yok', 403),
+      rol: ulasilamadi,
+    });
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    expect(uyelikSatirlari()).toHaveLength(2);
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'Grup listesi alınamadı',
+      'Rol listesi alınamadı',
+    ]);
+  });
+
+  it('olustur kuralı olmayan kişi liste iletisini de görmez', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, {
+      rol: () => hataCevabi('yetki_yok', 'Yetki yok', 403),
+    });
+    await goster(ETKIN_KAYIT, [...kurallar(...ISLER), ...uyelikKurallari('oku', 'sil')]);
+
+    expect(screen.queryByText('Rol listesi alınamadı')).toBeNull();
+    expect(screen.getAllByRole('button', { name: KALDIR })).toHaveLength(2);
+  });
+
+  it('grup listesi 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, {
+      grup: () => hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401),
+    });
+    sahteFetch.mockResolvedValueOnce(jsonCevap(ETKIN_KAYIT, 200));
+
+    await expect(
+      KullaniciSayfasi({ params: Promise.resolve({ id: ID }) }),
+    ).rejects.toThrow('yonlendirildi:/oturum-bitti');
+  });
+
+  it('üyelik listesi 403, rol listesi 401 dönünce yine /oturum-bitti yoluna yönlendirir', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER, {
+      uyelik: () => hataCevabi('yetki_yok', 'Yetki yok', 403),
+      rol: () => hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401),
+    });
+    sahteFetch.mockResolvedValueOnce(jsonCevap(ETKIN_KAYIT, 200));
+
+    await expect(
+      KullaniciSayfasi({ params: Promise.resolve({ id: ID }) }),
+    ).rejects.toThrow('yonlendirildi:/oturum-bitti');
+  });
+});
+
+// Satır başına yinelenen düğmelerin erişilebilir adı (GV-099).
+describe('KullaniciSayfasi üyelik düğme adları', () => {
+  const IKINCI_UYELIK = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const IKI_ADLI_UYELIK = [
+    UYELIKLER[0] ?? {},
+    { id: IKINCI_UYELIK, kullaniciId: ID, grupId: SATIS, rolId: SUPER_ADMIN, olusturmaZamani: VERILME },
+  ];
+
+  it('iki satırın Kaldır düğmesinin adı farklıdır ve grup ile rol adını taşır; görünen yazı Kaldır kalır', async () => {
+    listeler(IKI_ADLI_UYELIK, GRUPLAR, ROLLER);
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    const dugmeler = screen.getAllByRole('button', { name: KALDIR });
+    expect(dugmeler.map((d) => d.getAttribute('aria-label'))).toEqual([
+      'Merkez grubundaki Üye üyeliğini kaldır',
+      'Satış grubundaki Süper yönetici üyeliğini kaldır',
+    ]);
+    expect(dugmeler.map((d) => d.textContent)).toEqual(['Kaldır', 'Kaldır']);
+  });
+
+  it('onay satırındaki düğmeler de satırın üyeliğini adlandırır; görünen yazılar değişmez', async () => {
+    listeler(IKI_ADLI_UYELIK, GRUPLAR, ROLLER);
+    await goster(ETKIN_KAYIT, TUM_KURALLAR);
+
+    for (const dugme of screen.getAllByRole('button', { name: KALDIR })) {
+      await userEvent.click(dugme);
+    }
+
+    const evet = screen.getAllByRole('button', { name: /^Evet, / });
+    expect(evet.map((d) => d.getAttribute('aria-label'))).toEqual([
+      'Evet, kaldır: Merkez grubundaki Üye üyeliği',
+      'Evet, kaldır: Satış grubundaki Süper yönetici üyeliği',
+    ]);
+    expect(evet.map((d) => d.textContent)).toEqual(['Evet, kaldır', 'Evet, kaldır']);
+    const vazgec = screen.getAllByRole('button', { name: /kaldırmaktan vazgeç$/ });
+    expect(vazgec.map((d) => d.getAttribute('aria-label'))).toEqual([
+      'Merkez grubundaki Üye üyeliğini kaldırmaktan vazgeç',
+      'Satış grubundaki Süper yönetici üyeliğini kaldırmaktan vazgeç',
+    ]);
+    expect(vazgec.map((d) => d.textContent)).toEqual(['Vazgeç', 'Vazgeç']);
+
+    // İkinci satırın onayı ikinci üyeliği kaldırır.
+    sahteFetch.mockResolvedValueOnce(bosCevap());
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Evet, kaldır: Satış grubundaki Süper yönetici üyeliği' }),
+    );
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(istekler()[SAYFA_ISTEKLERI]).toEqual({
+      yol: `/kimlik/uyelik/${IKINCI_UYELIK}`,
+      yontem: 'DELETE',
+      govde: null,
+    });
   });
 });

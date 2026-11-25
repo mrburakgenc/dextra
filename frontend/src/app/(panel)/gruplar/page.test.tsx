@@ -110,7 +110,7 @@ afterEach(() => {
 });
 
 describe('GruplarSayfasi liste', () => {
-  it('üst grup adı aynı sayfadaki kayıttan gösterilir; kök grupta ve sayfada olmayan üst grupta boş işaret', async () => {
+  it('üst grup adı aynı sayfadaki kayıttan gösterilir; kök grupta boş işaret, sayfada olmayan üst grupta kısaltılmış kimlik', async () => {
     sahteFetch.mockResolvedValue(listeCevabi());
 
     await goster();
@@ -136,7 +136,7 @@ describe('GruplarSayfasi liste', () => {
     ]);
     expect(hucreler(baska)).toEqual([
       'Satış',
-      '—',
+      '44444444…',
       tarihSaat(OLUSTURMA),
       'Alt gruplar',
     ]);

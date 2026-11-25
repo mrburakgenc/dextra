@@ -198,12 +198,96 @@ describe('GrupSayfasi kayıt', () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
   });
 
-  it('grup listesi alınamazsa taşı gösterilmez, liste hatası görünür; öbür işler kalır', async () => {
+  it('grup listesi 403 dönünce taşı yerine liste iletisi görünür, üst grup kısaltılır; öbür işler kalır', async () => {
     await goster(GRUP, kurallar(...ISLER), hataCevabi('yetki_yok', 'Yetki yok', 403));
 
     expect(screen.queryByRole('form', { name: 'Taşı' })).toBeNull();
-    expect(screen.getByRole('alert').textContent).toBe('Bu sayfayı görme yetkin yok');
+    expect(screen.getByRole('alert').textContent).toBe('Grup listesi alınamadı');
+    expect(kayitSatirlari()).toEqual([
+      ['Ad', 'Muhasebe'],
+      ['Üst grup', '11111111…'],
+      ['Oluşturma zamanı', tarihSaat(OLUSTURMA)],
+    ]);
     expect(screen.queryByLabelText('Yeni ad')).not.toBeNull();
+    expect(dugme('Sil')).not.toBeNull();
+  });
+
+  it('grup listesine ulaşılamayınca da taşı yerine liste iletisi görünür; silme çalışır', async () => {
+    // React, hata sınırının yakaladığı yönlendirmeyi günlüğe yazar.
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(GRUP, kurallar(...ISLER), new Response('Bad Gateway', { status: 502 }));
+
+    expect(screen.queryByRole('form', { name: 'Taşı' })).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe('Grup listesi alınamadı');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sil' }));
+    sahteFetch.mockResolvedValueOnce(bosCevap());
+    await userEvent.click(screen.getByRole('button', { name: 'Evet, sil' }));
+
+    expect(await screen.findByText('yonlendirildi:/gruplar')).toBeDefined();
+    expect(istekler()[2]).toEqual({ yol: YOL, yontem: 'DELETE', govde: null });
+  });
+
+  it('taşı kuralı olmayan kişi liste iletisini de görmez', async () => {
+    await goster(GRUP, isHaric('tasi'), hataCevabi('yetki_yok', 'Yetki yok', 403));
+
+    expect(screen.queryByText('Grup listesi alınamadı')).toBeNull();
+  });
+
+  it('grup listesi 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
+    sahteFetch.mockResolvedValueOnce(jsonCevap(GRUP, 200));
+    sahteFetch.mockResolvedValueOnce(hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401));
+
+    await expect(GrupSayfasi({ params: Promise.resolve({ id: ID }) })).rejects.toThrow(
+      'yonlendirildi:/oturum-bitti',
+    );
+  });
+
+  it('üst grup listede yoksa kimliğin ilk sekiz karakteri ve … görünür', async () => {
+    await goster({ ...GRUP, ustGrupId: '44444444-4444-4444-8444-444444444444' });
+
+    expect(kayitSatirlari()[1]).toEqual(['Üst grup', '44444444…']);
+  });
+
+  it('ustGrupId kolonu kayıtta gelmediyse boş işaret görünür', async () => {
+    await goster({ id: ID, ad: 'Muhasebe', olusturmaZamani: OLUSTURMA });
+
+    expect(kayitSatirlari()[1]).toEqual(['Üst grup', '—']);
+  });
+});
+
+// Silinmiş kayıt sayfası (GV-099).
+describe('GrupSayfasi silinmiş kayıt', () => {
+  const SILINME = '2026-04-02T12:00:00.000Z';
+
+  it('silinmeZamani doluysa Silinmiş işareti ve zamanı görünür; hiçbir iş formu ve düğmesi yoktur', async () => {
+    await goster({ ...GRUP, silinmeZamani: SILINME });
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Muhasebe');
+    expect(screen.getByText('Silinmiş').parentElement?.textContent).toBe(
+      `Silinmiş ${tarihSaat(SILINME)}`,
+    );
+    expect(screen.queryAllByRole('form')).toHaveLength(0);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByLabelText('Yeni ad')).toBeNull();
+    expect(screen.queryByLabelText('Yeni üst grup')).toBeNull();
+  });
+
+  it('silinmeZamani boşsa işaret yoktur ve işler bugünkü gibidir', async () => {
+    await goster({ ...GRUP, silinmeZamani: null });
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(screen.getByRole('form', { name: 'Adını değiştir' })).toBeDefined();
+    expect(screen.getByRole('form', { name: 'Taşı' })).toBeDefined();
+    expect(dugme('Sil')).not.toBeNull();
+  });
+
+  it('silinmeZamani kolonu gelmediyse işaret yoktur ve işler bugünkü gibidir', async () => {
+    await goster(GRUP);
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(screen.getByRole('form', { name: 'Adını değiştir' })).toBeDefined();
+    expect(screen.getByRole('form', { name: 'Taşı' })).toBeDefined();
     expect(dugme('Sil')).not.toBeNull();
   });
 });

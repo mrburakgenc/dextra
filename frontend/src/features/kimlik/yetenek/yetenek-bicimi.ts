@@ -5,9 +5,18 @@ import type { SartOgesi } from './yetenek-sarti';
 // Yeteneğin liste ve kayıt sayfasındaki yazımı (TS-004 "Yönetim ekranları"). Kayıtta gelmeyen kolon
 // undefined'dır; sonucu bilinemeyen hücre boş işarettir.
 
-// Kimlikten ada; anahtar tipi gelmeyen kimliği de kabul eder, onun için ad bulunmaz.
-export function adHaritasi(secenekler: Secenekler): Map<string | undefined, string> {
-  return new Map(secenekler.kayitlar.map((secenek) => [secenek.id, secenek.etiket]));
+// Kimlikten ada; liste alınamadıysa null (ad bilinmez). Ad kolonu gelmeyen kayıt (seçimde boş
+// işaretli) haritaya girmez: adı bilinmez, kimliginAdi onu kısaltır (TS-004 "Yönetim formlarının
+// sertleştirilmesi").
+export function adHaritasi(secenekler: Secenekler | null): ReadonlyMap<string, string> | null {
+  if (secenekler === null) {
+    return null;
+  }
+  return new Map(
+    secenekler.kayitlar
+      .filter((secenek) => secenek.etiket !== BOS)
+      .map((secenek) => [secenek.id, secenek.etiket]),
+  );
 }
 
 // Kısa yazım: 'alan islec deger'; yer tutucu süslü ayraçla, dizi köşeli ayraçla ve virgülle yazılır;

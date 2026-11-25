@@ -1,3 +1,4 @@
+import { YETKI_YOK } from '../../../../features/kimlik/is-hatasi';
 import { KullaniciAcFormu } from '../../../../features/kimlik/kullanici-ac-formu';
 import { Can } from '../../../../shared/yetki/yetki-saglayici';
 
@@ -10,7 +11,7 @@ export default function YeniKullaniciSayfasi() {
         <KullaniciAcFormu />
       </Can>
       <Can not I="olustur" a="Kullanici">
-        <p role="alert">Bu iş için yetkin yok</p>
+        <p role="alert">{YETKI_YOK}</p>
       </Can>
     </main>
   );

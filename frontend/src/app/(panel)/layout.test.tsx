@@ -15,6 +15,8 @@ vi.mock('next/navigation', () => ({
   redirect: vi.fn((yol: string) => {
     throw new Error(`yonlendirildi:${yol}`);
   }),
+  usePathname: () => '/kullanicilar',
+  useSearchParams: () => new URLSearchParams('sayfa=2'),
 }));
 vi.mock('../../features/kimlik/eylemler', () => ({ cikisYap: vi.fn() }));
 
@@ -223,4 +225,49 @@ describe('PanelDuzeni', () => {
     expect(depo.delete).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
+});
+
+// Yenilenemeyen oturum (GV-099): ara katman backend'e ulaşamayınca çerezlere dokunmaz; erişim
+// çerezi yoktur, yenileme ve cihaz çerezi durur.
+function cerezler(...adlar: string[]) {
+  depo.get.mockImplementation((ad: string) =>
+    adlar.includes(ad) ? { name: ad, value: 'deger' } : undefined,
+  );
+}
+
+describe('PanelDuzeni yenilenemeyen oturum', () => {
+  it('erişim çerezi yok, yenileme ve cihaz çerezi varken yönlendirmez; backend çağrılmadan ileti ve aynı sayfaya Yeniden dene bağlantısı görünür', async () => {
+    cerezler('dextra_yenileme', 'dextra_cihaz');
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(redirect).not.toHaveBeenCalled();
+    expect(sahteFetch).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe('Şu an ulaşılamıyor');
+    const baglanti = screen.getByRole('link', { name: 'Yeniden dene' });
+    // O anki sayfanın adresi, sorgusuyla.
+    expect(baglanti.getAttribute('href')).toBe('/kullanicilar?sayfa=2');
+    // Menü ve sayfa içeriği çizilmez; çerezlere dokunulmaz.
+    expect(screen.queryByRole('navigation', { name: 'Ana menü' })).toBeNull();
+    expect(screen.queryByText('içerik')).toBeNull();
+    expect(depo.delete).not.toHaveBeenCalled();
+    expect(depo.set).not.toHaveBeenCalled();
+  });
+
+  it('üç çerez de yokken /giris yönlendirmesi sürer', async () => {
+    cerezler();
+
+    await expect(PanelDuzeni({ children: icerik })).rejects.toThrow('yonlendirildi:/giris');
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([['dextra_yenileme'], ['dextra_cihaz']])(
+    'erişim çerezi yokken yalnız %s varsa oturum yenilenemeyeceği için /giris adresine yönlendirir',
+    async (ad) => {
+      cerezler(ad);
+
+      await expect(PanelDuzeni({ children: icerik })).rejects.toThrow('yonlendirildi:/giris');
+      expect(sahteFetch).not.toHaveBeenCalled();
+    },
+  );
 });

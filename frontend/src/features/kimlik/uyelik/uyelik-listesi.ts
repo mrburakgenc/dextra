@@ -1,7 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import type { BackendHatasi } from '../../../shared/backend/hata';
-import { type Liste, listeyiGetir } from '../../../shared/liste/liste-istegi';
+import { type Liste, listeyiGetir, yardimciListe } from '../../../shared/liste/liste-istegi';
 import { BOS } from '../../../shared/liste/liste-parcalari';
 
 // Kullanıcının üyelikleri (TS-004 "Yönetim ekranları"): backend'in GET kimlik/uyelik sözleşmesi ön
@@ -28,37 +28,35 @@ export interface Secenekler {
   readonly dahaFazlasiVar: boolean;
 }
 
+// Grup ya da rol listesi alınamadıysa (yetki yok ya da ulaşılamadı) yeri null'dır (TS-004 "Yönetim
+// formlarının sertleştirilmesi").
 export interface Uyelikler {
   readonly liste: Liste<UyelikKaydi>;
-  readonly gruplar: Secenekler;
-  readonly roller: Secenekler;
+  readonly gruplar: Secenekler | null;
+  readonly roller: Secenekler | null;
 }
 
 type Sonuc<K extends string, V> =
   | ({ readonly basarili: true } & Readonly<Record<K, V>>)
   | { readonly basarili: false; readonly hata: BackendHatasi };
 
-// Adı gelmeyen kayıt boş işaretle görünür.
-async function secenekler(
-  yol: '/kimlik/grup' | '/kimlik/rol',
-): Promise<Sonuc<'secenekler', Secenekler>> {
-  const sonuc = await listeyiGetir(yol, ILK_100, AdliKayit);
-  if (!sonuc.basarili) {
-    return sonuc;
+// Adı gelmeyen kayıt boş işaretle görünür; liste alınamazsa null döner, 401 oturum bitti yoluna
+// gider.
+async function secenekler(yol: '/kimlik/grup' | '/kimlik/rol'): Promise<Secenekler | null> {
+  const liste = yardimciListe(await listeyiGetir(yol, ILK_100, AdliKayit));
+  if (liste === null) {
+    return null;
   }
   return {
-    basarili: true,
-    secenekler: {
-      kayitlar: sonuc.liste.kayitlar.map((kayit) => ({
-        id: kayit.id,
-        etiket: kayit.ad ?? BOS,
-      })),
-      dahaFazlasiVar: sonuc.liste.sonrakiVar,
-    },
+    kayitlar: liste.kayitlar.map((kayit) => ({
+      id: kayit.id,
+      etiket: kayit.ad ?? BOS,
+    })),
+    dahaFazlasiVar: liste.sonrakiVar,
   };
 }
 
-// Üç liste birlikte istenir; biri alınamazsa ilk hatası döner.
+// Üç liste birlikte istenir; üyelik listesi alınamazsa hatası döner.
 export async function uyelikleriGetir(
   kullaniciId: string,
 ): Promise<Sonuc<'uyelikler', Uyelikler>> {
@@ -70,18 +68,8 @@ export async function uyelikleriGetir(
   if (!uyelikler.basarili) {
     return uyelikler;
   }
-  if (!gruplar.basarili) {
-    return gruplar;
-  }
-  if (!roller.basarili) {
-    return roller;
-  }
   return {
     basarili: true,
-    uyelikler: {
-      liste: uyelikler.liste,
-      gruplar: gruplar.secenekler,
-      roller: roller.secenekler,
-    },
+    uyelikler: { liste: uyelikler.liste, gruplar, roller },
   };
 }

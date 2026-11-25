@@ -659,3 +659,107 @@ describe('YetenekSayfasi yetki', () => {
     expect(yenileFormu()).not.toBeNull();
   });
 });
+
+// Ad listesi alınamayınca kayıt sayfası ayakta kalır (GV-099). Verilen ad listesi bu cevabı alır;
+// öbür istekler backend()'in kurduğu gibi cevaplanır.
+function adListesiCevabi(yol: string, cevap: () => Response) {
+  const onceki = sahteFetch.getMockImplementation();
+  sahteFetch.mockImplementation((adres, init) => {
+    if (adres instanceof URL && adres.pathname === yol) {
+      return Promise.resolve(cevap());
+    }
+    return onceki === undefined
+      ? Promise.reject(new Error('backend kurulmadı'))
+      : onceki(adres, init);
+  });
+}
+
+describe('YetenekSayfasi ad listesi alınamayınca', () => {
+  it('izin listesi 403 dönünce kayıt çizilir, izin kısaltılmış kimlikle görünür; silme çalışır', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    backend(jsonCevap(YETENEK, 200), bosCevap());
+    adListesiCevabi('/kimlik/izin', () => hataCevabi('yetki_yok', 'Yetki yok', 403));
+    render(await sayfa(kurallar(...ISLER)));
+
+    expect(kayitSatirlari().slice(0, 3)).toEqual([
+      ['Grup', 'Merkez'],
+      ['Rol', 'Yönetici'],
+      ['İzin', '33333333…'],
+    ]);
+    expect(yenileFormu()).not.toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sil' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Evet, sil' }));
+
+    expect(await screen.findByText('yonlendirildi:/yetenekler')).toBeDefined();
+    expect(istekler()).toEqual([
+      { yol: YOL, yontem: 'GET', govde: null },
+      { yol: YOL, yontem: 'DELETE', govde: null },
+    ]);
+  });
+
+  it('grup ve rol listesine ulaşılamayınca grup ve rol kısaltılmış kimlikle görünür', async () => {
+    backend(jsonCevap(YETENEK, 200));
+    adListesiCevabi('/kimlik/grup', () => new Response('Bad Gateway', { status: 502 }));
+    adListesiCevabi('/kimlik/rol', () => new Response('Bad Gateway', { status: 502 }));
+    render(await sayfa(kurallar(...ISLER)));
+
+    expect(kayitSatirlari().slice(0, 3)).toEqual([
+      ['Grup', '11111111…'],
+      ['Rol', '22222222…'],
+      ['İzin', 'Kullanici:oku'],
+    ]);
+    expect(dugme('Sil')).not.toBeNull();
+  });
+
+  it('kayıt 403 dönünce bugünkü yetki iletisi görünür', async () => {
+    backend(hataCevabi('yetki_yok', 'Yetki yok', 403));
+    render(await sayfa(kurallar(...ISLER)));
+
+    expect(screen.getByRole('alert').textContent).toBe('Bu sayfayı görme yetkin yok');
+    expect(screen.queryAllByRole('term')).toHaveLength(0);
+  });
+
+  it('ad listesi 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
+    backend(jsonCevap(YETENEK, 200));
+    adListesiCevabi('/kimlik/rol', () => hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401));
+
+    await expect(YetenekSayfasi({ params: Promise.resolve({ id: ID }) })).rejects.toThrow(
+      'yonlendirildi:/oturum-bitti',
+    );
+  });
+});
+
+// Silinmiş kayıt sayfası (GV-099).
+describe('YetenekSayfasi silinmiş kayıt', () => {
+  const SILINME = '2026-04-02T12:00:00.000Z';
+
+  it('silinmeZamani doluysa Silinmiş işareti ve zamanı görünür; hiçbir iş formu ve düğmesi yoktur', async () => {
+    await goster({ ...YETENEK, silinmeZamani: SILINME });
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Yetenek');
+    expect(screen.getByText('Silinmiş').parentElement?.textContent).toBe(
+      `Silinmiş ${tarihSaat(SILINME)}`,
+    );
+    expect(screen.queryAllByRole('form')).toHaveLength(0);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('silinmeZamani boşsa işaret yoktur ve işler bugünkü gibidir', async () => {
+    await goster(YETENEK);
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(yenileFormu()).not.toBeNull();
+    expect(dugme('Sil')).not.toBeNull();
+  });
+
+  it('silinmeZamani kolonu gelmediyse işaret yoktur ve işler bugünkü gibidir', async () => {
+    const kolonsuz: Record<string, unknown> = { ...YETENEK };
+    delete kolonsuz['silinmeZamani'];
+    await goster(kolonsuz);
+
+    expect(screen.queryByText('Silinmiş')).toBeNull();
+    expect(yenileFormu()).not.toBeNull();
+    expect(dugme('Sil')).not.toBeNull();
+  });
+});

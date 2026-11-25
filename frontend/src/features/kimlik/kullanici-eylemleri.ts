@@ -3,13 +3,10 @@
 import { refresh } from 'next/cache';
 import { headers } from 'next/headers';
 import { z } from 'zod';
-import {
-  alanHatalari,
-  type BackendHatasi,
-  kimlikGerekliyseGiriseDon,
-} from '../../shared/backend/hata';
+import type { BackendHatasi } from '../../shared/backend/hata';
 import { backendIstegi } from '../../shared/backend/istek';
 import { gonderilenDegerler, type KullaniciIsDurumu } from './form-durumu';
+import { isHatasi as ortakIsHatasi, KAYIT_BULUNAMADI } from './is-hatasi';
 import {
   GorunenAdSemasi,
   KullaniciAcSemasi,
@@ -20,9 +17,6 @@ import {
 // Kullanıcı işlerinin Server Action'ları (TS-004 Değişmez 4 ve "Yönetim ekranları"): girdi önce
 // şemayla doğrulanır, sonra backend çağrılır. Kaydı değiştiren iş başarıdan sonra sayfayı
 // tazeler; sayfa güncel kaydı backend'den yeniden okur.
-
-const YETKI_YOK = 'Bu iş için yetkin yok';
-const KAYIT_BULUNAMADI = 'Kayıt bulunamadı';
 
 const BASARILI: KullaniciIsDurumu = {
   genelHata: null,
@@ -37,21 +31,9 @@ function genelHata(ileti: string): KullaniciIsDurumu {
   return { ...BASARILI, genelHata: ileti };
 }
 
-// 401 çerezleri silip giriş ekranına döner (fırlatır); 403 ve 404 sabit ileti olur;
-// dogrulama_hatasi alanlara dağılır; öbürleri (409 cakisma, ulaşılamadı) backend'in iletisidir.
+// Hatanın ekran iletisi tek yerdedir (is-hatasi.ts); kullanıcı işinin durumunda adres yoktur.
 async function isHatasi(hata: BackendHatasi): Promise<KullaniciIsDurumu> {
-  await kimlikGerekliyseGiriseDon(hata);
-  const alanlar = alanHatalari(hata);
-  if (Object.keys(alanlar).length > 0) {
-    return { ...BASARILI, alanHatalari: alanlar };
-  }
-  if (hata.kod === 'yetki_yok') {
-    return genelHata(YETKI_YOK);
-  }
-  if (hata.kod === 'bulunamadi') {
-    return genelHata(KAYIT_BULUNAMADI);
-  }
-  return genelHata(hata.ileti);
+  return { ...(await ortakIsHatasi(hata)), parolaAdresi: null };
 }
 
 // Parola belirleme ekranının tam adresi. Sitenin adresi isteğin Origin başlığından okunur; çatı

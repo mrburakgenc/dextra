@@ -4,6 +4,7 @@ import type { Liste } from '../../../shared/liste/liste-istegi';
 import {
   BAGLANTI,
   BOS,
+  kimliginAdi,
   ListeTablosu,
   Sayfalama,
   SiralamaBasligi,
@@ -22,11 +23,9 @@ export function GrupTablosu({
   sorgu,
 }: Readonly<{ liste: Liste<GrupKaydi>; sorgu: GrupListesiSorgusu }>) {
   const { sirala, ustGrupId } = sorgu;
-  // Üst grubun adı aynı sayfadaki kayıtlardan bulunur; sayfada yoksa boş işaret gösterilir.
-  // Anahtar tipi boş ve gelmeyen ustGrupId'yi de kabul eder; onlar için ad bulunmaz.
-  const adlar = new Map<GrupKaydi['ustGrupId'], string | undefined>(
-    liste.kayitlar.map((kayit) => [kayit.id, kayit.ad]),
-  );
+  // Üst grubun adı aynı sayfadaki kayıtlardan bulunur; sayfada yoksa kimlik kısaltılarak gösterilir
+  // (TS-004 "Yönetim formlarının sertleştirilmesi").
+  const adlar = new Map(liste.kayitlar.map((kayit) => [kayit.id, kayit.ad]));
   return (
     <div className="flex flex-col gap-4">
       <nav aria-label="Üst grup süzgeci">
@@ -79,7 +78,7 @@ export function GrupTablosu({
               )}
             </td>
             <td className="px-3 py-2">
-              {adlar.get(kayit.ustGrupId) ?? BOS}
+              {kimliginAdi(adlar, kayit.ustGrupId)}
             </td>
             <td className="px-3 py-2">
               {kayit.olusturmaZamani === undefined

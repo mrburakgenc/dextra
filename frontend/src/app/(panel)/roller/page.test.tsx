@@ -241,4 +241,28 @@ describe('RollerSayfasi durumlar', () => {
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/oturum-bitti');
   });
+
+  it('erişim çerezi yok, yenileme ve cihaz çerezi varken backend çağrılmaz; ulaşılamıyor iletisi gösterilir', async () => {
+    depo.get.mockImplementation((ad: string) =>
+      ad === 'dextra_yenileme' || ad === 'dextra_cihaz'
+        ? { name: ad, value: 'deger' }
+        : undefined,
+    );
+
+    await goster();
+
+    expect(screen.getByRole('alert').textContent).toBe('Şu an ulaşılamıyor');
+    expect(sahteFetch).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(depo.delete).not.toHaveBeenCalled();
+  });
+
+  it('üç çerez de yokken backend çağrılmaz; /oturum-bitti yoluna yönlendirir', async () => {
+    depo.get.mockReturnValue(undefined);
+
+    await expect(
+      RollerSayfasi({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow('yonlendirildi:/oturum-bitti');
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
 });

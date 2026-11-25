@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { GrupOlusturFormu } from '../../../../features/kimlik/grup/grup-olustur-formu';
 import { ustGrupSecenekleri } from '../../../../features/kimlik/grup/grup-listesi';
+import { YETKI_YOK } from '../../../../features/kimlik/is-hatasi';
 import { listeHatasi } from '../../../../shared/liste/liste-parcalari';
 import { Can } from '../../../../shared/yetki/yetki-saglayici';
 
@@ -28,7 +29,7 @@ export default async function YeniGrupSayfasi({
         )}
       </Can>
       <Can not I="olustur" a="Grup">
-        <p role="alert">Bu iş için yetkin yok</p>
+        <p role="alert">{YETKI_YOK}</p>
       </Can>
     </main>
   );

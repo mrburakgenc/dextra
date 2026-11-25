@@ -16,12 +16,14 @@ export const GrupListesiSorgusu = z.object({
 });
 export type GrupListesiSorgusu = z.infer<typeof GrupListesiSorgusu>;
 
-// ustGrupId kök grupta boştur (null); kişinin göremediği kolon gelmez (undefined).
+// ustGrupId kök grupta boştur (null); silinmeZamani silinmiş kayıtta doludur; kişinin göremediği
+// kolon gelmez (undefined).
 export const GrupKaydi = z.object({
   id: z.string(),
   ustGrupId: z.string().nullable().optional(),
   ad: z.string().optional(),
   olusturmaZamani: z.string().optional(),
+  silinmeZamani: z.string().nullable().optional(),
 });
 export type GrupKaydi = z.infer<typeof GrupKaydi>;
 
