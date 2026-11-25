@@ -55,14 +55,14 @@ Hedef düzen (kanon: `kb/_gelen/ARCHITECTURE.md` "features/<feature>/<sub-featur
                  <iş>.result.ts
     _shared/                               alt özellik içi ortak yardımcı (isteğe bağlı)
   infrastructure/
-    repositories/<ad>.<teknoloji>-repository.ts
+    repositories/<ad>.<teknoloji>-repository.ts   (kökte dosya durmaz; repository olmayan parça kendi klasöründe)
   presentation/
     <alt-özellik>.controller.ts
   <alt-özellik>.module.ts
 ```
 
 Sorumluluklar:
-- Değer nesnesi: ham girdiyi alır, kuralı uygular, ya markalı tipi ya da ret iletisini döndürür (örnek: rol adı baştaki ve sondaki boşluk atıldıktan sonra 1–100 karakter).
+- Değer nesnesi: ham girdiyi alır, kuralı uygular, ya markalı tipi ya da ret kodunu döndürür ve sınırlarını dışa açar (örnek: rol adı baştaki ve sondaki boşluk atıldıktan sonra 1–100 karakter; ret kodları "kısa" ve "uzun"). Ret kodunu cevaptaki iletiye çevirmek komutun yanındaki alan yardımcısının işidir (Seçenekler 4); eşleme tüketici yazılır, eşlenmemiş kod derlenmez.
 - Varlık: oluşturma işlevi değer nesnelerinden kaydın yazılacak hâlini üretir; durum kararları olguları alır (örnek: "sistem rolü mü", "boş mu") ve "tamam" ya da adlı bir ret döndürür. Varlık veritabanından doldurulmaz: yazma kapısı satırı yeteneğin şartıyla veritabanında bulur ve kişi göremediği kolonu okuyamaz (KR-008); bu yüzden karar işlevi satırın tamamını değil, işleyicinin topladığı olguları alır.
 - Komut ve sorgu: girdinin biçimini Zod ile doğrular; alan kuralı için değer nesnesini çağırır. Ret, bugünkü `dogrulama_hatasi` cevabıyla aynı biçimde döner.
 - İşleyici beş adımdır: bağlamdan isteyeni al; domain nesnesini ya da kararı kur; işlemi aç; kapıdan yaz ve notu bırak; sonucu döndür. İş kuralı içermez.
