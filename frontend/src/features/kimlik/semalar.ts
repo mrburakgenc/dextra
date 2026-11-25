@@ -88,6 +88,14 @@ export const GrupTasiSemasi = z.object({ ustGrupId });
 
 export const KayitKimligi = z.uuid();
 
+// Üyelik ver (TS-004 "Yönetim ekranları"); gövde backend'in POST kimlik/uyelik gövdesidir: kişi,
+// grup ve rol kimlikleri uuid'dir.
+export const UyelikVerSemasi = z.object({
+  kullaniciId: z.uuid(),
+  grupId: z.uuid({ error: 'Grup seçilmeli' }),
+  rolId: z.uuid({ error: 'Rol seçilmeli' }),
+});
+
 // Zod hatasından her alanın ilk iletisi.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {
   const alanlar: Record<string, string> = {};
