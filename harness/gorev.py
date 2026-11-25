@@ -261,18 +261,27 @@ def is_taslaklari(kok: pathlib.Path, d: dict, p: dict | None = None) -> list:
     kimlikler = dict.fromkeys(p["taslaklar"] + [k for k in d.get("dayanak") or []
                                                  if dz.kimlik.get(k, {}).get("durum") != "kabul"])
     return [{"kimlik": k, "baslik": dz.kimlik[k]["baslik"], "durum": dz.kimlik[k]["durum"],
-             "acik_uclar": h.acik_uclar(dz.kimlik[k])} for k in kimlikler]
+             "acik_uclar": h.acik_uclar(dz.kimlik[k]), "ajan_karari": len(h.ajan_kararlari(dz.kimlik[k]))}
+            for k in kimlikler]
+
+
+def taslak_durumu(t: dict) -> str:
+    """Taslağın durumu; ajan kararı taşıyorsa sayısıyla (TS-006 Yapı 20)."""
+    return t["durum"] + ("; %d ajan kararı" % t["ajan_karari"] if t.get("ajan_karari") else "")
 
 
 def taslak_satiri(t: dict, girinti: str = "  ") -> str:
     """Taslağın satırı ve altında açık uçları (TS-006 Yapı 19: kullanıcı neye izin verdiğini görür)."""
-    return "\n".join(["%s%s %s (%s)" % (girinti, t["kimlik"], t["baslik"], t["durum"])] + [
+    return "\n".join(["%s%s %s (%s)" % (girinti, t["kimlik"], t["baslik"], taslak_durumu(t))] + [
         "%s    %s/AU-%d: %s" % (girinti, t["kimlik"], no, metin) for no, metin in t.get("acik_uclar") or []])
 
 
 def _uc_sayisi(taslaklar: list) -> str:
+    """Taslakların açık uç ve ajan kararı toplamı: " (2 açık uç, 52 ajan kararı)"; ikisi de yoksa boş."""
     n = sum(len(t.get("acik_uclar") or []) for t in taslaklar)
-    return " (%d açık uç)" % n if n else ""
+    a = sum(t.get("ajan_karari") or 0 for t in taslaklar)
+    parcalar = [s for s in (n and "%d açık uç" % n, a and "%d ajan kararı" % a) if s]
+    return " (%s)" % ", ".join(parcalar) if parcalar else ""
 
 
 def taslak_engeli(kimlik: str, taslaklar: list, izin_komutu: str) -> str:

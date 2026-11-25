@@ -576,7 +576,7 @@ def bekleyen_taslaklar(kok: pathlib.Path, ep: str) -> list:
 def taslak_ozeti(kok: pathlib.Path, ep: str) -> str:
     """`plan yurut --taslakla` sorusunda gösterilen özet: bekleyen yapraklara düşen taslaklar."""
     satirlar = ["  %s %s (%s): %s" % (y["no"], y["baslik"], y["gorev"], "; ".join(
-        "%s %s (%s)" % (t["kimlik"], t["baslik"], t["durum"]) for t in taslaklar)) + "".join(
+        "%s %s (%s)" % (t["kimlik"], t["baslik"], gorev.taslak_durumu(t)) for t in taslaklar)) + "".join(
         "\n      %s/AU-%d: %s" % (t["kimlik"], no, metin) for t in taslaklar for no, metin in t["acik_uclar"])
                 for y, taslaklar in bekleyen_taslaklar(kok, ep)]
     return "%s — %s\ntaslak düşen %d yaprak:\n%s" % (ep, oku(kok, ep)["baslik"], len(satirlar),

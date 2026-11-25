@@ -404,6 +404,10 @@ def oturum_basi(girdi: dict, ortam: dict) -> dict | None:
         satirlar.append("Açık uç: %d (%s). Karara bağlanmamış noktalardır: o noktadaki seçimi kullanıcı yapar; liste: "
                         "`python3 harness/h.py acik-uc`." % (sum(n for _, n in uclar),
                                                             ", ".join("%s %d" % ku for ku in uclar)))
+    ajan = h.ajan_karari_sayimi(dz)
+    if ajan:
+        satirlar.append("Ajan kararı: %s. Kullanıcıya sorulmadan verilmiş kararlardır; taslak kabul edilince onlar da "
+                        "teyit edilmiş olur; liste: `python3 harness/h.py ajan-karari`." % ajan)
     satirlar.append("Zincir temiz." if not kirmizi else
                     "Zincirde %d kırmızı bulgu var:\n%s" % (len(kirmizi), _bulgu_metni(kirmizi, 6)))
     if dz.ayar.get("ogretici"):
@@ -618,7 +622,7 @@ def _kabul_sorusu(girdi: dict, ortam: dict, metin: str, cagrilar: list) -> dict:
         if d["durum"] != "taslak":
             return _red("%s taslak değil (durum: %s); kabul sorulmadı." % (kimlik, d["durum"]))
         satirlar += ["%s@%s %s — %s" % (kimlik, d["surum"], d["tur"], d["baslik"]), "  " + d["_ifade"],
-                     "  dosya: " + d["_yol"]]
+                     "  dosya: " + d["_yol"]] + h.ajan_karari_satirlari(d)
     h.onay_yaz(kok, kimlikler)
     return _karar("PreToolUse", "ask", "[harness] Onaylarsan şu taslaklar kabul edilir ve bağlayıcı olur:\n"
                   + "\n".join(satirlar))
