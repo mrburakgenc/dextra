@@ -22,7 +22,7 @@ Dayanak: KR-005 (taslak) kanonun alt özellik düzenini alır ve kullanıcı 202
 - Başarının ölçüsü: yapı denetimi 0 ihlal bildirir; taşınan alt özelliğin uçtan uca testleri beklentileri değişmeden geçer.
 
 ## Kısıtlar
-- Davranış değişmez: her ucun adresi, yöntemi, gövdesi, durum kodu, hata kodu ve iletisi aynı kalır; denetimlerin sırası da (hangi durumda `bulunamadi`, hangisinde `cakisma` döndüğü bilgi sızdırmamak için sıraya bağlıdır) aynı kalır.
+- Davranış değişmez (tek istisna: alan kuralı reddinde `neden` metni, bkz. Seçenekler 4): her ucun adresi, yöntemi, gövdesi, durum kodu, hata kodu ve iletisi aynı kalır; denetimlerin sırası da (hangi durumda `bulunamadi`, hangisinde `cakisma` döndüğü bilgi sızdırmamak için sıraya bağlıdır) aynı kalır.
 - Kaynağa erişim yetki kapılarından geçmeye devam eder (KR-010); çekirdek yollar ve çekirdek parçalar değişmez (TS-002).
 - Katman yönü (KU-008, taslak): sunum uygulamayı, uygulama domain'i kullanır; altyapı domain'deki arayüzü gerçekler; domain hiçbir katmanı ve çatıyı içe aktarmaz.
 - Doğrulama kitaplığı Zod'dur (KR-014); yeni paket eklenmez.
@@ -115,6 +115,11 @@ Konu adları değişmez (`guvenlik`, `yetki`, `tohum` Türkçe; `database`, `mes
 ### 3. Varlığın kapsamı
 - A (seçildi) — Varlık yazma tarafındadır; okuma düz kayıt döndürür (komut ve sorgunun ayrıldığı düzen). Kazanç: kolon sınırı korunur (kişi göremediği kolonu varlık üzerinden de göremez), okuma yolu yalın kalır. Bedel: varlık satırdan doldurulmadığı için durum kararları olguları parametre alır.
 - B — Her işte satırın tamamı varlığa doldurulur: klasik düzen; ama kolon sınırını deler ya da çekirdek dışı yeni bir okuma yolu ister (KR-010 Seçim 48'e aykırı).
+
+### 4. Alan kuralının ret iletisi (GV-106 incelemesi)
+Bugün geçersiz alanın `dogrulama_hatasi` cevabındaki `neden` metni doğrulama kitaplığının kendi İngilizce iletisidir ("Too small: expected string to have >=1 characters") ve ön yüz onu form alanının altında gösterir. Kural değer nesnesine taşınınca iletiyi kim üretecek sorusu çıktı.
+- A (seçildi) — Ret iletisini değer nesnesi üretir ve Türkçedir ("Rol adı 1 ile 100 karakter arasında olmalı"); şema onu `neden` olarak aynen taşır. Kazanç: kuralın dili de domain'dedir, kullanıcı kendi dilinde ve kuralı söyleyen bir ileti görür. Bedel: `neden` metni değişir; hata kodu, durum kodu ve alan yolu değişmez. Bu, "davranış değişmez" kısıtının adıyla sayılı tek istisnasıdır.
+- B — Değer nesnesi ret kodunu döndürür, şema onu kitaplığın kendi sorununa çevirir: metin aynı kalır; ama İngilizce ve kuralı anlatmayan ileti korunur, domain'in reddi kitaplığın sözlüğüne geri çevrilir.
 
 Ek ajan kararları: komut yolu (bus) ve ortak taban sınıfı eklenmez, işleyici doğrudan çağrılır (isteyen bilgisi istek bağlamından gelir; KU-013). İşleyicinin yanında birim testi zorunlu değildir: kurallar domain'e taşındığı için birim testleri domain dosyalarının yanındadır, işin bütünü uçtan uca testlerle sınanmaya devam eder (kanondan sapma; teyit bekler). Sonuç dosyası yalnız işleyici veri döndürüyorsa yazılır.
 
