@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 102 görevin 97 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1023 dakika, 403.88 dolar.
+Kayıtlı 103 görevin 98 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1021 dakika, 403.03 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -120,10 +120,11 @@ Kayıtlı 102 görevin 97 tanesi alındı. Son koşuların ve incelemelerin topl
 | GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | alındı | 2.6 | 7.6 | 4.15 | 23 | 0 engel, 1 öneri | 0 |
 | GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | alındı | 2.3 | 5.8 | 3.28 | 3 | 0 engel, 1 öneri | 1 |
 | GV-098 | EP-007 9 | Lint sınırlarına ara katman dosyasının eklenmesi | alındı | 3.1 | 3.6 | 2.12 | 1 | 0 engel, 1 öneri | 0 |
-| GV-099 | EP-007 10 | Yönetim ekranları: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi ve düğme adları | soru | 3.8 | 8.2 | 5.33 | 39 | 1 engel, 3 öneri | 1 |
+| GV-099 | EP-007 10 | Yönetim ekranları: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi ve düğme adları | alındı | 3.2 | 6.3 | 4.48 | 42 | 0 engel, 2 öneri | 1 |
 | GV-100 | EP-003 31 | Parola değiştirme: eski parolayla doğrulama, kilit altında yeniden bakış, bütün oturumları | alındı | 6.2 | 6.9 | 4.77 | 10 | 0 engel, 1 öneri | 0 |
 | GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | alındı | 3.4 | 7.3 | 4.54 | 10 | 0 engel, 1 öneri | 1 |
 | GV-102 | EP-003 32 | Okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar | alındı | 2.7 | 4.1 | 2.61 | 2 | 0 engel, 0 öneri | 0 |
+| GV-103 | EP-007 11 | Parolamı değiştir ve oturumlar ekranları | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -302,6 +303,7 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Hâlâ yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı (yayın şartı), tek kullanımlık kodla giriş; ön yüzde parola değiştirme ve oturumlarım ekranları backend alınınca yazılacak.
 - Senaryo testi iki kişiye kaynak başına tek kural veriyordu; okuma kapısındaki hatayı bu yüzden yakalamadı. Senaryoya 'aynı kaynakta iki kurallı kişi' adımı eklenmeli (kapı testine GV-102 ekliyor).
 - Oturum listesinin 'geçmiş' görünümü derin sayfada parça başına çok satırı belleğe alıyor ve erişim kaydındaki kayıt sayısı cevaptakinden büyük çıkıyor (GV-101 incelemesi); kapalı oturumlar birikince yavaşlar. Kapıya 'veya' koşulu desteği gelince tek sorguya iner.
+- Grup kayıt sayfasında, üst grup listede olup adı okunamıyorsa '—' görünüyor; kural kısaltılmış kimlik diyor (GV-099 son incelemesi; küçük tutarsızlık).
 
 ## 9. PR'lar
 
@@ -403,3 +405,4 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 05:16 — GV-099 (ön yüzde son sertleştirme) ikinci koşuda incelemede kaldı: korumalı düzen 'ulaşılamıyor' iletisini gösterirken sayfanın kendisi backend'e belirteçsiz istek atıp 401 alıyor ve oturum bitti yoluna düşüyordu (çatı sayfayı düzenden bağımsız çiziyor). Karar TS-004'e yazıldı: erişim çerezi yokken oturumlu istek backend'e gitmez. Bulgularla yeniden koşuyor.
 - 05:20 — Okuma kapısı ortak yer olduğu için düzeltmeden (GV-102) etkilenen öbür kimlik testlerini de dosya dosya koşturdum (kendi ölçümüm, 05:20): rol, grup ve üyelik okuma ve yazma testleri 6 dosyada 82; yetenek ve kullanıcı testleri 6 dosyada 142; yazma kapısı, erişim kaydı, yetki, yazma işareti, çekirdek ve kurulum testleri 6 dosyada 92. On sekiz dosyanın hepsi geçti.
 - 05:20 — GV-099 üçüncü koşuda tasarım sorusuyla durdu (erişim çerezi yokken sayfanın backend'e gitmesi); karar verildi ve cevaplandı: yenilenebilir çift varsa istek atılmaz ve 'ulaşılamıyor' döner, yoksa backend çağrılmadan oturum bitti yoluna gidilir.
+- 05:30 — GV-099 (ön yüzde son sertleştirme: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi, düğme adları, yenilenemeyen oturum, silinmiş kayıt sayfası) dört koşuda alındı: on iki test dosyasında 297 test; tip ve lint 0. Son görev GV-103 (parolamı değiştir ve oturumlar ekranları) koşuyor.
