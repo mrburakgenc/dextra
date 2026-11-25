@@ -27,6 +27,30 @@ export class KullaniciKapiYazmaRepo extends KullaniciYazmaRepo {
   ): Promise<string> {
     return this.kapi.olustur(islem, isAdi, KAYNAK, { kullaniciAdi, gorunenAd });
   }
+
+  gorunenAdiDegistir(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    gorunenAd: string,
+  ): Promise<void> {
+    return this.kapi.guncelle(islem, isAdi, KAYNAK, id, { gorunenAd });
+  }
+
+  parolaBaglantisiNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+  ): Promise<void> {
+    return this.kapi.niyet(
+      islem,
+      isAdi,
+      KAYNAK,
+      'parola_baglantisi_uret',
+      id,
+      {},
+    );
+  }
 }
 
 export function kullaniciPrismaRepository(
