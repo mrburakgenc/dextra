@@ -17,7 +17,8 @@ Kullanıcının itirazı (2026-11-25, kendi sözü): "interface katmanı nerede,
 Dayanak: KR-005 (taslak) kanonun alt özellik düzenini alır ve kullanıcı 2026-11-23'te "DDD tam sağlanmalı, kurallar tam geçmeli" demiştir; "sapma gerekiyorsa önce bu karar değiştirilir". Sapma kullanıcıya hiç getirilmedi (ajanın hatası): ilk kartlara kanonun klasör düzeni yazılmadı, sonraki kartlar "var olan kodu örnek al" dedi ve düz düzen yedi alt özelliğe yayıldı. Mimari kuralların hepsi taslak olduğu için işçilere ve inceleyicilere bağlayıcı kural olarak da gitmedi.
 
 - Amaç: yedi alt özelliğin dosya düzeni, adları ve katman sorumlulukları aşağıdaki "Yapı"ya uyar; iş kuralları domain katmanında durur.
-- Kapsam dışı: HTTP sözleşmesi (adresler, gövdeler, kodlar, iletiler) ve veritabanı; `kimlik/_shared` klasörünün iç düzeni; ortak kodun (`shared/`) iç düzeni; ön yüz. Bunlar ayrı iştir.
+- Kapsam dışı: HTTP sözleşmesi (adresler, gövdeler, kodlar, iletiler) ve veritabanı; ön yüz.
+- Kapsam genişledi (kullanıcı, 2026-11-25: "_shared ve shared içini de aynı düzene çek"): `kimlik/_shared` ve ortak kod (`backend/src/shared`) da kanondaki katman düzenine çekilir (aşağıda "Ortak kodun ve feature içi ortak klasörün düzeni").
 - Başarının ölçüsü: yapı denetimi 0 ihlal bildirir; taşınan alt özelliğin uçtan uca testleri beklentileri değişmeden geçer.
 
 ## Kısıtlar
@@ -68,6 +69,37 @@ Sorumluluklar:
 - Sonuç: işleyicinin döndürdüğü düz veri tipi; çatıdan bağımsızdır. Okumada kayıt, kişinin görebildiği kolonları taşıyan düz kayıttır (yetki kapısının verdiği hâl); okuma tarafında varlık kurulmaz.
 - Repository arayüzü: adı `I` ile başlar (`IRolOkumaRepo`, `IRolYazmaRepo`); yazma tarafı da arayüz ve belirteçtir, soyut sınıf değildir.
 
+### Ortak kodun ve feature içi ortak klasörün düzeni
+Kanon (`ARCHITECTURE.md` "Shared Tekelliği" ve "Key Files Reference"): ortak koddaki her konu kendi küçük katmanlı düzenini taşır (`shared/<konu>/{domain,application,infrastructure}`); gözlemlenebilirlik alt alanlara bölünür; hata süzgeçleri `shared/filters` altındadır; konular arası sözleşmeler `shared/<konu>/domain/i-<ad>.contract.ts` adını taşır. Feature içi ortak klasör `_shared/{domain,application,infrastructure}` düzenindedir.
+
+Dosyanın katmanı içeriğinden belirlenir (denetlenebilir kural):
+- domain: saf tip, sabit, hata tipi, sözleşme ve saf kural; yalnız başka domain dosyalarını ve dilin kendi modüllerini içe aktarır.
+- application: hizmet, arayüz (port), derleyici, düzenleyici; domain'i, çatının bağımlılık enjeksiyonu süsleyicilerini ve saf kitaplıkları içe aktarabilir; veritabanı istemcisini, kuyruk kitaplığını ve HTTP bağlayıcı sınıflarını (guard, boru, süzgeç, denetleyici) içe aktarmaz.
+- infrastructure: geri kalan her şey: veritabanı ve kuyruk gerçeklemeleri, repository'ler, guard, boru, süzgeç, denetleyici, açılış denetimi, komut satırı girişleri.
+- Modül dosyası (`<konu>.module.ts`) konunun kökünde durur.
+
+```
+shared/
+  database/        {domain, application, infrastructure}
+  guvenlik/        {domain, application, infrastructure}
+  yetki/           {domain, application, infrastructure}
+  kimlik/          domain/i-<ad>.contract.ts            (kimliğin uyguladığı sözleşmeler)
+  messaging/       {domain, application, infrastructure}
+  tohum/           {domain, application, infrastructure}
+  http/            {domain, application, infrastructure} (doğrulama borusu, kodlu hata)
+  filters/         hata süzgeci                          (kanondaki yeri)
+  observability/   erisim/  iz/  health/  istek-baglami/ (alt alanlar; kanondaki yeri)
+  domain/          sonuc.ts                              (domain işlevlerinin ortak sonuç tipi)
+
+features/kimlik/_shared/
+  domain/          saf tipler; repositories/i-<ad>.repository.ts (çekirdek repository arayüzleri)
+  application/     çekirdek parçalar (genel sayaç, kişi kilidi, kök üyelik, bütünlük sorusu, bağlantı, ...)
+  infrastructure/  repositories/ (çekirdek repository gerçeklemeleri), tohum/ (kurulum göçü)
+  kimlik-cekirdek.module.ts
+```
+
+Konu adları değişmez (`guvenlik`, `yetki`, `tohum` Türkçe; `database`, `messaging`, `observability` bugünkü gibi): yeniden adlandırma bu işin dışındadır. Bugün tek dosyada duran arayüz ile gerçekleme (çekirdek repository'ler) ikiye ayrılır: arayüz ve belirteç domain'e, gerçekleme infrastructure'a. Lint ayarındaki yol desenleri (çekirdek sınırı, ham istemci sınırı, katman tanımları) yeni yollara taşınır; hiçbir kural gevşetilmez.
+
 ## Seçenekler
 Üç karar ajanındır (kullanıcı devretti: "tamam onları da yap", 2026-11-25); kabul edilmiş karar değildir, kullanıcı teyidi bekler.
 
@@ -90,7 +122,9 @@ Ek ajan kararları: komut yolu (bus) ve ortak taban sınıfı eklenmez, işleyic
 Hepsi çift yönlüdür (dosya düzeni ve adlar; veri ve sözleşme değişmez).
 1. Yapı denetimi ve kalıp: denetim yazılır ve `rol` alt özelliği hedef düzene çekilir; `rol` öbür görevlerin örneğidir.
 2. Öbür alt özellikler `rol` kalıbına çekilir: kullanıcı, grup, üyelik, yetenek (dosyaları kesişmez; yan yana koşabilir), sonra parola ve ardından oturum (oturum parolanın giriş yöntemini içe aktarır).
-3. Denetim sıkılaşır: taşınmamış alt özellik kalmadığı sınanır.
+3. Feature içi ortak klasör (`kimlik/_shared`) düzene çekilir.
+4. Ortak kod üç adımda düzene çekilir (içe aktarma yolları bütün depoda değiştiği için sırayla): yetki, güvenlik ve kimlik sözleşmeleri; veritabanı, tohum ve mesajlaşma; HTTP, süzgeçler ve gözlemlenebilirlik.
+5. Denetim sıkılaşır: taşınmamış alt özellik kalmadığı ve ortak kodun düzeni de sınanır.
 
 ## Doğrulama
 - Yapı denetimi (birim testi; `backend/src/shared/yapi/`): `features/*/*` altındaki her alt özelliğin düzenini kurallara karşı sınar ve ihlalleri dosya yoluyla bildirir. Taşıma sürerken yalnız taşınmış alt özellikler (içinde `application/commands` ya da `application/queries` olanlar) sınanır; son adımda hepsi.
