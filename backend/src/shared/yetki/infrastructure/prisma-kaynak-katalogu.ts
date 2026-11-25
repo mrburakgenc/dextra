@@ -1,7 +1,7 @@
 import { Prisma } from '../../database/generated/client.js';
 import type { AlanTipi } from '../domain/alan-tipi.js';
 import type { YazmaKatalogu } from '../domain/kaynak-katalogu.js';
-import { ALAN_TIPLERI } from './alan-tipleri.js';
+import { ALAN_TIPLERI, BOS_OLABILIRLIK } from './alan-tipleri.js';
 
 // Her kaynakta sistemin yazdığı alanlar (KR-008 Seçim 34): kimlik ile oluşturma, güncelleme ve
 // silinme zamanı. Modelde olmayan ad o kaynakta yok sayılır.
@@ -22,7 +22,8 @@ export type SistemAlanlari = {
 
 // Verilen Prisma modellerinden katalog: kaynak model adıdır ve alanları modelin ilişki olmayan
 // alanlarıdır (KR-008 Seçim 21 ve 33). Listede olmayan model kaynak değildir. Sistem alanları ortak
-// adlar ile verilen kaynağa özgü alanlardır. Alan tipleri ALAN_TIPLERI tablosundan okunur.
+// adlar ile verilen kaynağa özgü alanlardır. Alan tipleri ALAN_TIPLERI, kolonların boş olabilirliği
+// BOS_OLABILIRLIK tablosundan okunur.
 export function prismaKaynakKatalogu(
   kaynaklar: readonly Prisma.ModelName[],
   sistemAlanlari: SistemAlanlari = {},
@@ -47,9 +48,13 @@ export function prismaKaynakKatalogu(
   const tipler = new Map<string, Readonly<Record<string, AlanTipi>>>(
     kaynaklar.map((kaynak) => [kaynak, ALAN_TIPLERI[kaynak]]),
   );
+  const bosOlabilirlik = new Map<string, Readonly<Record<string, boolean>>>(
+    kaynaklar.map((kaynak) => [kaynak, BOS_OLABILIRLIK[kaynak]]),
+  );
   return {
     alanlar: (tur) => alanlar.get(tur),
     alanTipleri: (tur) => tipler.get(tur),
+    bosOlabilirlik: (tur) => bosOlabilirlik.get(tur),
     sistemAlanlari: (tur) => sistem.get(tur) ?? [],
   };
 }

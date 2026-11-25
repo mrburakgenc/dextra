@@ -1,6 +1,7 @@
 // YetkiVerisiOkumaRepo'nun gerçeklemesi: yetki verisini ve sürümleri işlemsiz istemciyle, yetki
 // kapısından geçmeden okur (KR-010 Seçim 48'in adıyla istisnası). Sürümler iki sorguyla (kişi, genel
-// sayaç), öbür metotlar birer sorguyla okunur; sorgular arasında ortak anlık görüntü yoktur.
+// sayaç), yetenekler iki sorguyla (yetenek, izin), öbür metotlar birer sorguyla okunur; sorgular
+// arasında ortak anlık görüntü yoktur.
 import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { YetkiVerisiOkumaRepo } from '../../domain/repositories/i-yetki-verisi.repository.js';
 
@@ -44,6 +45,9 @@ export function yetkiVerisiRepo(istemci: RepoIstemcisi): YetkiVerisiOkumaRepo {
             butunBirimler: true,
             kolonlar: true,
             butunKolonlar: true,
+            giremez: true,
+            oncelik: true,
+            sistemSatiri: true,
             izin: { select: { kaynak: true, eylem: true } },
           },
           orderBy: { id: 'asc' },
@@ -59,8 +63,16 @@ export function yetkiVerisiRepo(istemci: RepoIstemcisi): YetkiVerisiOkumaRepo {
         butunBirimler: satir.butunBirimler,
         kolonlar: satir.kolonlar,
         butunKolonlar: satir.butunKolonlar,
+        giremez: satir.giremez,
+        oncelik: satir.oncelik,
+        sistemSatiri: satir.sistemSatiri,
       })),
     gruplar: () =>
       istemci.grup.findMany({ select: { id: true, ustGrupId: true } }),
+    rolKodlari: (rolIdleri) =>
+      istemci.rol.findMany({
+        where: { id: { in: [...rolIdleri] } },
+        select: { id: true, kod: true },
+      }),
   };
 }

@@ -5,6 +5,9 @@ import type { AlanTipi } from './alan-tipi.js';
 export interface KaynakKatalogu {
   alanlar(tur: string): readonly string[] | undefined;
   alanTipleri(tur: string): Readonly<Record<string, AlanTipi>> | undefined;
+  // Şartta kullanılabilen her alan için kolonun boş değer (null) alıp alamadığı (TS-008 "Veri
+  // modeli"); şarta giremeyen ('obur') alan yoktur.
+  bosOlabilirlik(tur: string): Readonly<Record<string, boolean>> | undefined;
 }
 
 // Yazma kapısının kataloğu: alanlara ek olarak yalnız sistemin yazdığı alanları bilir; onlar istek

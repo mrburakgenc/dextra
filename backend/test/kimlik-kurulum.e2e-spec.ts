@@ -426,6 +426,9 @@ describe('kurulum', () => {
           butunBirimler: false,
           kolonlar: [],
           butunKolonlar: y.butun_kolonlar,
+          giremez: false,
+          oncelik: 0,
+          yasaktanMuaf: false,
         })),
         altGruplar: {},
       },
@@ -437,6 +440,7 @@ describe('kurulum', () => {
           tur === 'Oturum'
             ? { id: 'kimlik', kullaniciId: 'kimlik' }
             : undefined,
+        bosOlabilirlik: () => undefined,
       },
     );
     expect(derlenmeyenler).toEqual([]);

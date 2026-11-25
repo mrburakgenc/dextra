@@ -51,6 +51,9 @@ export const KIMLIK_SISTEM_ALANLARI: SistemAlanlari = {
   ],
 };
 
+// Kök yönetici rolünün saklanan kodu (TS-002 AK-3).
+const KOK_YONETICI_ROL_KODU = 'superadmin';
+
 // Saklanan şartın biçimi (TS-002 "Veri modeli"): öğelerin düz dizisi; her öğe tam olarak alan,
 // işleç ve değer taşır.
 const sabitDeger = z.union([z.string(), z.number(), z.boolean()]);
@@ -103,8 +106,22 @@ export class KimlikYetkiVerisi implements YetkiVerisi {
     if (uyelikler.length === 0) {
       return { ...surumler, uyelikler, yetenekler: [], altGruplar: {} };
     }
-    const yetenekler = this.biciminiDogrula(await repo.yetenekler(uyelikler));
+    const saklananlar = await repo.yetenekler(uyelikler);
     const gruplar = await repo.gruplar();
+    // Rol kodları yalnız satırlar arasında yasak varken okunur: yasağı olmayan kişi bugünkü sorguları
+    // atar (TS-008 Değişmez 1) ve onda muafiyetin kapatacağı yasak yoktur.
+    const kokYoneticiRolleri = new Set(
+      saklananlar.some((satir) => satir.giremez)
+        ? (await repo.rolKodlari(saklananlar.map((satir) => satir.rolId)))
+            .filter((rol) => rol.kod === KOK_YONETICI_ROL_KODU)
+            .map((rol) => rol.id)
+        : [],
+    );
+    const yetenekler = this.biciminiDogrula(
+      saklananlar,
+      gruplar,
+      kokYoneticiRolleri,
+    );
     const altGruplar: Record<string, string[]> = {};
     for (const { grupId } of uyelikler) {
       altGruplar[grupId] ??= grupVeAltindakiler(grupId, gruplar);
@@ -112,15 +129,29 @@ export class KimlikYetkiVerisi implements YetkiVerisi {
     return { ...surumler, uyelikler, yetenekler, altGruplar };
   }
 
-  // Boş şart null saklanır.
+  // Boş şart null saklanır. Yasaktan muaf olan yalnız kök yönetici rolünün sistem satırlarıdır
+  // (TS-008 "Muafiyetler"; kapanan AU-27): kök grupta (üst grubu olmayan grup), kök yönetici rolünde
+  // ve sistem satırı. Temel rolün ve öbür rollerin sistem satırları muaf değildir.
   private biciminiDogrula(
     satirlar: readonly SaklananYetenek[],
+    gruplar: readonly GrupDugumu[],
+    kokYoneticiRolleri: ReadonlySet<string>,
   ): YetenekSatiri[] {
+    const kokGruplar = new Set(
+      gruplar.filter((grup) => grup.ustGrupId === null).map((grup) => grup.id),
+    );
     const gecerliler: YetenekSatiri[] = [];
-    for (const satir of satirlar) {
+    for (const { sistemSatiri, ...satir } of satirlar) {
       const sart = sartSemasi.safeParse(satir.sart ?? []);
       if (sart.success) {
-        gecerliler.push({ ...satir, sart: sart.data });
+        gecerliler.push({
+          ...satir,
+          sart: sart.data,
+          yasaktanMuaf:
+            sistemSatiri &&
+            kokYoneticiRolleri.has(satir.rolId) &&
+            kokGruplar.has(satir.grupId),
+        });
       } else {
         this.gunluk.warn(
           `Yetenek derlenmedi: yetenek=${satir.yetenekId} neden=şartın biçimi bozuk`,
