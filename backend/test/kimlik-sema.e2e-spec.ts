@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import pg from 'pg';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
+import { yasakKisitiniDusur } from './yardimci/yasak-kisiti.js';
 
 const backendDir = fileURLToPath(new URL('..', import.meta.url));
 const gocKlasoru = `${backendDir}prisma/migrations`;
@@ -147,6 +148,8 @@ const tablolar: { ad: string; kolonlar: string[] }[] = [
       'yerine_gectigi_id | uuid | YES | - | -',
       'koken | text | NO | - | -',
       `olusturma_zamani | ${zaman} | NO | clock_timestamp() | 6`,
+      'giremez | boolean | NO | false | -',
+      'oncelik | integer | NO | 0 | -',
     ],
   },
   {
@@ -189,7 +192,9 @@ const beklenenKisitlar = [
   `yetenek | yetenek_izin_id_ya | ${ya('izin_id', 'izin')}`,
   'yetenek | yetenek_kayit_siniri_denetim | CHECK ((NOT (butun_kayitlar AND (sart IS NOT NULL))))',
   'yetenek | yetenek_kolon_siniri_denetim | CHECK ((NOT (butun_kolonlar AND (kolonlar IS NOT NULL))))',
+  'yetenek | yetenek_oncelik_araligi_denetim | CHECK (((oncelik >= 0) AND (oncelik <= 100)))',
   `yetenek | yetenek_rol_id_ya | ${ya('rol_id', 'rol')}`,
+  'yetenek | yetenek_yasak_yazimi_kapali_denetim | CHECK (((NOT giremez) AND (oncelik = 0)))',
   `yetenek | yetenek_yerine_gectigi_id_ya | ${ya('yerine_gectigi_id', 'yetenek')}`,
   'yetki_surumu | yetki_surumu_ba | PRIMARY KEY (id)',
   'yetki_surumu | yetki_surumu_tek_satir_denetim | CHECK ((id = 1))',
@@ -753,4 +758,58 @@ describe('k) göç', () => {
     await annotate(`prisma migrate diff çıktısı: ${stdout.trim()}`);
     expect(stdout).toContain('-- This is an empty migration.');
   }, 30_000);
+});
+
+// Grup, rol ve izin ekler; dönen işlev o üçlüye verilen etki ve öncelikle bir yetenek satırı yazar.
+async function etkiliYetenekEkleyici(calistir: Calistir) {
+  const grup = await grupEkle(calistir, null);
+  const rol = await rolEkle(calistir, null);
+  const izin = await izinEkle(calistir, 'kullanici', 'okuma');
+  return (giremez: boolean, oncelik: number) =>
+    calistir(
+      `insert into yetenek (id, grup_id, rol_id, izin_id, koken, giremez, oncelik)
+         values ($1, $2, $3, $4, 'deneme', $5, $6)`,
+      [randomUUID(), grup, rol, izin, giremez, oncelik],
+    );
+}
+
+describe('l) yetenekte etki ve öncelik (TS-008)', () => {
+  it('l) yazım kapalıyken giremez evet olan satır da öncelik 5 olan satır da reddedilir; giremez hayır ve öncelik 0 kabul edilir', async () => {
+    await islemde(async (calistir) => {
+      const ekle = await etkiliYetenekEkleyici(calistir);
+      await expect(ekle(true, 0)).rejects.toMatchObject(
+        reddi('23514', 'yetenek_yasak_yazimi_kapali_denetim'),
+      );
+      await expect(ekle(false, 5)).rejects.toMatchObject(
+        reddi('23514', 'yetenek_yasak_yazimi_kapali_denetim'),
+      );
+      await ekle(false, 0);
+    });
+  });
+
+  it('l) yardımcı geçici kısıtı düşürünce giremez evet ve öncelik 10 yazılır; öncelik 101 ve -1 yine reddedilir', async () => {
+    // Kısıt ayrı bir geçici veritabanında düşürülür; yukarıdaki döküm testleri etkilenmez.
+    const ayri = await createTestDatabase([], { migrations: true });
+    try {
+      await yasakKisitiniDusur(ayri);
+      const client = new pg.Client({ connectionString: ayri.url });
+      await client.connect();
+      try {
+        const ekle = await etkiliYetenekEkleyici(async (sql, values = []) => {
+          await client.query(sql, values);
+        });
+        await ekle(true, 10);
+        await expect(ekle(true, 101)).rejects.toMatchObject(
+          reddi('23514', 'yetenek_oncelik_araligi_denetim'),
+        );
+        await expect(ekle(false, -1)).rejects.toMatchObject(
+          reddi('23514', 'yetenek_oncelik_araligi_denetim'),
+        );
+      } finally {
+        await client.end();
+      }
+    } finally {
+      await ayri.drop();
+    }
+  }, 60_000);
 });
