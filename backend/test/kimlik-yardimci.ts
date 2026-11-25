@@ -12,7 +12,7 @@ import pg from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
-import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/kurulum-baglantisi.handler.js';
+import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
 import { ParolaOzetleyici } from '../src/features/kimlik/parola/domain/parola-ozetleyici.port.js';
 import {
   ARACI_KATMAN_SIRRI_DEGISKENI,

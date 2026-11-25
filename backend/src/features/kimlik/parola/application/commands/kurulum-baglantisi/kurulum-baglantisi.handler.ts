@@ -1,12 +1,13 @@
+// Kurulum komutunun işleyicisi (TS-002 AK-15; KR-009 Seçim 9).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
-import { ParolaBaglantisi } from '../../_shared/baglanti/parola-baglantisi.js';
-import type { IzBilgisi } from '../../_shared/iz.js';
-import { KisiKilidi } from '../../_shared/kisi-kilidi.js';
-import { PAROLA_REPO } from '../domain/parola.repository.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { ParolaBaglantisi } from '../../../../_shared/baglanti/parola-baglantisi.js';
+import type { IzBilgisi } from '../../../../_shared/iz.js';
+import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
+import { PAROLA_REPO } from '../../../domain/repositories/i-parola.repository.js';
+import { SUPERADMIN_KULLANICI_ADI } from './kurulum-baglantisi.command.js';
+import type { KurulumBaglantisiSonucu } from './kurulum-baglantisi.result.js';
 
-// İlk SuperAdmin'in kullanıcı adı (TS-002 AK-3; ilk kurulum göçü yazar).
-export const SUPERADMIN_KULLANICI_ADI = 'superadmin';
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:kurulum';
 
@@ -20,7 +21,7 @@ export class KurulumBaglantisiHandler {
     private readonly baglanti: ParolaBaglantisi,
   ) {}
 
-  async calistir(): Promise<string> {
+  async calistir(): Promise<KurulumBaglantisiSonucu> {
     const okuma = this.uow.read(PAROLA_REPO);
     const kullaniciId = await okuma.kullaniciAdiylaBul(
       SUPERADMIN_KULLANICI_ADI,

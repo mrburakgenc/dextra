@@ -1,19 +1,25 @@
+// Parola ile giriş işinin işleyicisi: oturum çekirdeğinin tükettiği giriş yöntemi sözleşmesini uygular;
+// sözleşme gereği tek calistir yerine iki adımı (doğrula, kesinleştir) vardır.
 import { Injectable } from '@nestjs/common';
 import {
   type Islem,
   UnitOfWork,
-} from '../../../../shared/database/unit-of-work.js';
+} from '../../../../../../shared/database/unit-of-work.js';
 import type {
   GirisDogrulamaSonucu,
   GirisKesinlestirmeSonucu,
   GirisYontemi,
-} from '../../../../shared/kimlik/giris-yontemi.contract.js';
-import { ParolaOzetleyici } from '../domain/parola-ozetleyici.port.js';
-import { PAROLA_REPO } from '../domain/parola.repository.js';
+} from '../../../../../../shared/kimlik/giris-yontemi.contract.js';
+import {
+  girisKarari,
+  girisKesinlestirmeKarari,
+} from '../../../domain/entities/kullanici-sirri.entity.js';
+import { ParolaOzetleyici } from '../../../domain/parola-ozetleyici.port.js';
+import { PAROLA_REPO } from '../../../domain/repositories/i-parola.repository.js';
 import {
   type ParolaGirisGovdesi,
   parolaGirisSemasi,
-} from './parola-giris.schema.js';
+} from './parola-giris.command.js';
 
 // Kişi yokken ya da parolası belirlenmemişken doğrulamanın karşılaştırıldığı sabit sahte özet (TS-002
 // AK-15): rastgele bir girdinin Argon2id özetidir, hiçbir parolaya uymaz. Ayarları ARGON2ID_AYARLARI
@@ -43,17 +49,20 @@ export class ParolaGirisYontemi implements GirisYontemi<ParolaGirisGovdesi> {
     const sir = await this.uow
       .read(PAROLA_REPO)
       .girisSirri(kullaniciAdi.toLowerCase());
-    const dogru = await this.ozetleyici.dogrula(
-      parola,
-      sir?.parolaOzeti ?? SAHTE_OZET,
-    );
-    if (sir === null || !dogru) {
+    const karar = girisKarari({
+      sir,
+      parolaDogruMu: await this.ozetleyici.dogrula(
+        parola,
+        sir?.parolaOzeti ?? SAHTE_OZET,
+      ),
+    });
+    if (karar.tur === 'ret') {
       return { sonuc: 'yanlis' };
     }
     return {
       sonuc: 'tamam',
-      kullaniciId: sir.kullaniciId,
-      kanit: sir.guncellemeZamani.toISOString(),
+      kullaniciId: karar.deger.kullaniciId,
+      kanit: karar.deger.guncellemeZamani.toISOString(),
     };
   }
 
@@ -62,7 +71,10 @@ export class ParolaGirisYontemi implements GirisYontemi<ParolaGirisGovdesi> {
     kullaniciId: string,
     kanit: string,
   ): Promise<GirisKesinlestirmeSonucu> {
-    const zaman = await islem.repo(PAROLA_REPO).sirZamani(kullaniciId);
-    return zaman?.toISOString() === kanit ? 'tamam' : 'gecersiz';
+    const karar = girisKesinlestirmeKarari({
+      kanit,
+      kilitAltindakiZaman: await islem.repo(PAROLA_REPO).sirZamani(kullaniciId),
+    });
+    return karar.tur === 'tamam' ? 'tamam' : 'gecersiz';
   }
 }

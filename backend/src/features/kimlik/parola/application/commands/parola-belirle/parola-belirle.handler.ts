@@ -1,26 +1,29 @@
+// Bağlantıyla parola belirle işinin işleyicisi (TS-002 "İşlem sınırları"; KR-009 Seçim 9).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
-import { KodluHata } from '../../../../shared/http/kodlu-hata.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import { baglantiKodununOzeti } from '../../_shared/baglanti/parola-baglantisi.js';
-import { PAROLA_BAGLANTISI_REPO } from '../../_shared/baglanti/parola-baglantisi.repository.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../../_shared/iz.js';
-import { KisiKilidi } from '../../_shared/kisi-kilidi.js';
-import { ParolaOzetleyici } from '../domain/parola-ozetleyici.port.js';
-import { PAROLA_REPO } from '../domain/parola.repository.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { baglantiKodununOzeti } from '../../../../_shared/baglanti/parola-baglantisi.js';
+import { PAROLA_BAGLANTISI_REPO } from '../../../../_shared/baglanti/parola-baglantisi.repository.js';
+import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/iz.js';
+import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
+import { parolaBelirlemeKarari } from '../../../domain/entities/kullanici-sirri.entity.js';
+import { ParolaOzetleyici } from '../../../domain/parola-ozetleyici.port.js';
+import { PAROLA_REPO } from '../../../domain/repositories/i-parola.repository.js';
 import type { ParolaBelirleKomutu } from './parola-belirle.command.js';
 
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:parola-belirle';
 
 // Bağlantı yok, kullanılmış ya da süresi geçmişse dönen tek tip hata; hangisi olduğu dışarıya verilmez.
+// Varlığın reddi (baglanti_gecersiz) ve kilit altındaki yeniden bakışın reddi bu hataya çevrilir.
 function gecersizBaglanti(): KodluHata {
   return new KodluHata('bulunamadi', 'Parola bağlantısı geçersiz');
 }
 
 // Bağlantıyla parola belirleme (TS-002 "İşlem sınırları"; KR-009 Seçim 9). Sıra:
-// 1. Kodun özeti işlemin dışında hesaplanır ve satır bulunur; geçersizse parola özetlenmez
-//    (geçersiz bağlantıyla özetleme yükü bindirilemez).
+// 1. Kodun özeti işlemin dışında hesaplanır ve satır bulunur; varlık bağlantı geçersiz derse parola
+//    özetlenmez (geçersiz bağlantıyla özetleme yükü bindirilemez).
 // 2. Parola işlemin dışında özetlenir.
 // 3. Tek işlemde kişi, ardından bağlantı satırı kilitlenir; bağlantı kullanıldı diye işaretlenir,
 //    sır yazılır ve kişinin bütün oturumları parola_degisimi nedeniyle kapatılır.
@@ -39,15 +42,12 @@ export class ParolaBelirleHandler {
     const baglanti = await this.uow
       .read(PAROLA_BAGLANTISI_REPO)
       .ozetIleBul(baglantiKodununOzeti(kod));
-    // Bağlantı yoksa ilk koşul da doğrudur.
-    if (
-      baglanti?.kullanilmaZamani !== null ||
-      baglanti.sonGecerlilikZamani.getTime() <= Date.now()
-    ) {
+    const karar = parolaBelirlemeKarari({ baglanti, simdi: new Date() });
+    if (karar.tur === 'ret') {
       throw gecersizBaglanti();
     }
     const parolaOzeti = await this.ozetleyici.ozetle(parola);
-    const { id, kullaniciId } = baglanti;
+    const { id, kullaniciId } = karar.deger;
     const iz: IzBilgisi = { yazanId: kullaniciId, isAdi: IS_ADI };
 
     await this.uow.run(async (islem) => {

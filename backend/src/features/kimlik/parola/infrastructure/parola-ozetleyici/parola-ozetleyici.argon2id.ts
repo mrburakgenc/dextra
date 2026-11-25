@@ -1,7 +1,7 @@
 import { argon2, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { Injectable } from '@nestjs/common';
-import { ParolaOzetleyici } from '../domain/parola-ozetleyici.port.js';
+import { ParolaOzetleyici } from '../../domain/parola-ozetleyici.port.js';
 
 // Argon2id ayarları (KR-009 Seçim 6; OWASP'ın en az ayarları): bellek KiB cinsindendir (19 MiB).
 export const ARGON2ID_AYARLARI = {
