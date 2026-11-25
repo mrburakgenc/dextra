@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 98 görevin 93 tanesi alındı. Son koşuların ve incelemelerin toplamı: 982 dakika, 387.30 dolar.
+Kayıtlı 101 görevin 94 tanesi alındı. Son koşuların ve incelemelerin toplamı: 980 dakika, 386.63 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -117,9 +117,12 @@ Kayıtlı 98 görevin 93 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-093 | EP-007 6 | Yetenek ekranları: liste, yaz, yenile ve sil | alındı | 13.0 | 7.8 | 8.72 | 18 | 0 engel, 5 öneri | 0 |
 | GV-094 | EP-003 30 | Oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım ve kapatıp reddeden dallar | alındı | 11.4 | 5.3 | 7.26 | 12 | 0 engel, 4 öneri | 0 |
 | GV-095 | EP-007 7 | Oturumun sessiz yenilenmesi: ara katmanda yenileme ve çerezlerin döndürülmesi | alındı | 1.5 | 6.8 | 3.07 | 6 | 0 engel, 1 öneri | 1 |
-| GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | tamam | 3.8 | 8.3 | 4.83 | 23 | — | 0 |
+| GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | alındı | 2.6 | 7.6 | 4.15 | 23 | 0 engel, 1 öneri | 0 |
 | GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | alındı | 2.3 | 5.8 | 3.28 | 3 | 0 engel, 1 öneri | 1 |
 | GV-098 | EP-007 9 | Lint sınırlarına ara katman dosyasının eklenmesi | alındı | 3.1 | 3.6 | 2.12 | 1 | 0 engel, 1 öneri | 0 |
+| GV-099 | EP-007 10 | Yönetim ekranları: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi ve düğme adları | bekliyor | — | — | — | 0 | — | 0 |
+| GV-100 | EP-003 31 | Parola değiştirme: eski parolayla doğrulama, kilit altında yeniden bakış, bütün oturumları | bekliyor | — | — | — | 0 | — | 0 |
+| GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -200,6 +203,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-095 | işçi soruyla durdu: lint ayar dosyası kartın dosya listesinde yok (benim kart hatam) | bitiş kaydı | 'iki lint hatası beklenir' diye cevaplandı; GV-098 düzeltti |
 | GV-097 | inceleme kaldı: kartın iki isteği çelişiyor (benim kart hatam) | inceleme kaydı | üst sınır 4 saniye diye cevaplandı |
 | GV-096 | inceleme kaldı: var olan hata iletisi bozulmuş | inceleme kaydı | bulgularla yeniden koştu |
+| GV-096 | iki inceleme kaldı: bozulan hata iletisi; satır sonu içeren değerin sessizce değişmesi | inceleme kayıtları | bulgularla iki kez yeniden koştu |
 
 ## 6. Hatalarım
 
@@ -289,6 +293,8 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Tarayıcı denemesinde görüldü: değeri boş olan kolon da (sistem aktörünün kullanıcı adı, telefon) '—' ile gösteriliyor; TS-004'te '—' 'göremediğin kolon' demek. İki durum ayrı gösterilmeli.
 - Pasif kişinin sayfasında 'Üyelik ver' ve 'Parola kodu üret' hâlâ görünüyor; backend 409 ile reddeder.
 - Yerel deneme betiği Ctrl-C ile kapanınca temizliği yapıyor ama 1 koduyla çıkıyor.
+- Yetenek formunda değiştirilmiş (oynanmış) değer türü ya da işleç gönderilirse form ileti göstermeden hiçbir şey yapmıyor (GV-096 üçüncü incelemesi); yalnız elle oynanmış istekte olur.
+- Hâlâ yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı (yayın şartı), tek kullanımlık kodla giriş; ön yüzde parola değiştirme ve oturumlarım ekranları backend alınınca yazılacak.
 
 ## 9. PR'lar
 
@@ -381,3 +387,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 04:33 — GV-095 (ön yüzde sessiz oturum yenileme) iki koşuda alındı: dört test dosyasında 74 test. GV-098 (lint sınırlarına ara katman dosyası) alındı: lint yeniden 0. GV-097 (kayıt yok dalının uyarı günlüğü ve senaryo testindeki yarış) üç koşuda alındı: üç test dosyasında 51 test.
 - 04:33 — GERÇEK TARAYICIDA UÇTAN UCA DENEME (04:29-04:33; yerel deneme betiği, geçici veritabanları; form sertleştirme görevinden önceki derleme): ilk yönetici parolasını belirledi ve girdi; grup, rol ve kullanıcı açtı; kullanıcıya üyelik verdi; (Destek, Okuyucu) kümesine 'yeteneğin grubu ve altı' şartıyla Grup:oku yeteneği yazdı; yeteneği yeniledi (kolon sınırı yalnız ad; yeni satırın sayfasına gidildi); görünen adı değiştirdi; pasife aldı ve yeniden açtı (Destek üyeliği geri gelmedi, temel üyelik yeniden yazıldı); parola kodu üretti; üyesi olan rolü silmeyi denedi (backend'in 409 iletisi göründü). OTURUM YENİLEME: erişim çerezi silinip sayfa istenince liste 200 ile geldi, erişim ve yenileme çerezleri değişti (14 dakika ve 7 gün), üç çerez de betiğe kapalı, document.cookie boş. KISITLI KULLANICI: ikinci kişi girince menüde yalnız 'Gruplar' var, listede yalnız Destek görünüyor (Kök yok), kullanıcılar sayfası 'Bu sayfayı görme yetkin yok', yeni grup sayfası 'Bu iş için yetkin yok' diyor. Çıkışta üç çerez silindi. Görüntü: docs/rapor/gorsel/2026-11-25-kisitli-kullanici.png. Ortam kapatıldı: iki geçici veritabanı silindi, 3001 ve 3100 boş.
 - 04:33 — GV-096 (yönetim formlarının sertleştirilmesi) incelemede kaldı (bir hata iletisi İngilizce 'Invalid input'a dönmüş; yetenek formu betiksiz tarayıcıda adres çubuğuna düz gönderime düşüyordu); bulgularla yeniden koştu, incelemede.
+- 04:52 — GV-096 (yönetim formlarının sertleştirilmesi) üç koşuda alındı: altı test dosyasında 148 test; tip ve lint 0. İkinci inceleme yerinde bir açık buldu: içinde satır sonu geçen şart değeri, form değiştirilmeden gönderilince başka bir değere dönüyordu; üçüncü koşu kapattı.
+- 04:52 — Vakit olduğu için tasarımı hazır iki auth işi daha başlatıldı: parola değiştirme (GV-100; sözleşme AK-50) ve oturumların listelenmesi ile kapatılması (GV-101; AK-51; AK-39 bunu ilk sürümün dışında bırakmıştı). Ön yüzde son sertleştirme görevi (GV-099) koşuyor.
