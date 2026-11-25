@@ -20,6 +20,11 @@ import h
 
 BASLA = "<!-- otomatik:basla -->"
 BITIR = "<!-- otomatik:bitir -->"
+# İkinci otomatik blok (TS-006 Yapı 13): tablodaki görevlerin inceleme önerileri. İşaretsiz eski raporda eklenmez.
+ONERI_BASLA = "<!-- oneriler:basla -->"
+ONERI_BITIR = "<!-- oneriler:bitir -->"
+ONERI_SINIRI = 200
+ONERI_YOK = "Tablodaki görevlerin son incelemelerinde öneri yok."
 # Şablondaki her elle yazılan bölüm bu biçimde tek satırlık yer tutucu taşır; denetim onu boş sayar.
 YER_TUTUCU = re.compile(r"^_\(doldurulacak:.*\)_$")
 ZORUNLU_BOLUMLER = ("Kısa özet", "Kullanıcıdan beklenenler")
@@ -62,6 +67,13 @@ def _geciyor_mu(kimlik: str, metin: str) -> bool:
     return re.search(r"(?<!yerine )\b%s\b" % re.escape(kimlik), metin) is not None
 
 
+def _onerisiz(metin: str) -> str:
+    """İkinci otomatik bloğun içi çıkarılmış metin: önerinin metninde adı geçen görev raporda geçmiş sayılmaz."""
+    bas = metin.find(ONERI_BASLA)
+    son = metin.find(ONERI_BITIR, bas) if bas >= 0 else -1
+    return metin[:bas + len(ONERI_BASLA)] + metin[son:] if son >= 0 else metin
+
+
 def _bolum_bos_mu(metin: str, ad: str) -> bool:
     """`## [N. ]<ad>...` bölümü yoksa, boşsa ya da yalnız yer tutucu taşıyorsa True."""
     govde = None
@@ -76,12 +88,12 @@ def _bolum_bos_mu(metin: str, ad: str) -> bool:
     return not [s for s in govde or [] if s and not YER_TUTUCU.match(s)]
 
 
-def _blok(metin: str, yol: pathlib.Path) -> tuple:
+def _blok(metin: str, yol: pathlib.Path, basla: str = BASLA, bitir: str = BITIR) -> tuple:
     """Otomatik bloğun içinin (başı, sonu) konumu."""
-    bas, son = metin.find(BASLA), metin.find(BITIR)
+    bas, son = metin.find(basla), metin.find(bitir)
     if bas < 0 or son < bas:
-        raise h.HarnessHata("%s içinde otomatik blok işaretleri yok (%s ... %s)" % (yol, BASLA, BITIR))
-    return bas + len(BASLA), son
+        raise h.HarnessHata("%s içinde otomatik blok işaretleri yok (%s ... %s)" % (yol, basla, bitir))
+    return bas + len(basla), son
 
 
 # ── Görev tablosu ────────────────────────────────────────────────────────────────────
@@ -173,10 +185,40 @@ def tablo(kok: pathlib.Path, kimlikler) -> str:
     return "\n".join([NOT_SATIRI, "", toplam, "", TABLO_BASI] + [s["metin"] for s in satirlar])
 
 
-def uret(kok: pathlib.Path, dosya) -> pathlib.Path:
-    """Raporun otomatik bloğunu yeniden üretir; bloğun dışına dokunmaz.
+def _oneriler(kok: pathlib.Path, kimlik: str) -> list:
+    """Görevin son inceleme kaydındaki 'öneri' önemindeki bulgular; 'engel' bulguları alınmaz."""
+    bulgular = (_oku(gorev._kayit(kok, kimlik) / "inceleme-rapor.json") or {}).get("bulgular")
+    return [b for b in bulgular if isinstance(b, dict) and b.get("onem") == "oneri"] if isinstance(bulgular, list) else []
 
-    Tablo, bloğun içinde zaten yazılı kimlikleri ve başka hiçbir raporda geçmeyen kayıtlı görevlerin hepsini taşır."""
+
+def oneriler(kok: pathlib.Path, kimlikler) -> str:
+    """İkinci otomatik bloğun içeriği: öneri başına bir satır (görev, dosya ve satır, açıklamanın ilk cümlesi)."""
+    satirlar = []
+    for k in sorted(set(kimlikler), key=lambda k: int(k[3:])):
+        for b in _oneriler(kok, k):
+            yer = str(b.get("dosya") or CIZGI) + (":%s" % b["satir"] if b.get("satir") is not None else "")
+            yer = yer.replace("<!--", "&lt;!--")   # inceleyicinin metni blok işaretini taşıyıp bloğu bozmasın
+            aciklama = " ".join(str(b.get("aciklama") or "").split()).replace("<!--", "&lt;!--")
+            cumle = re.split(r"(?<=[.!?])\s", aciklama, maxsplit=1)[0][:ONERI_SINIRI]
+            satirlar.append("- %s · `%s` — %s" % (k, yer, cumle or CIZGI))
+    return "\n".join(satirlar) or ONERI_YOK
+
+
+def oneri_sayisi(kok: pathlib.Path, ayar: dict) -> int:
+    """Rapor dizinindeki raporların görev tablolarında geçen görevlerin toplam öneri sayısı (görev bir kez sayılır)."""
+    kimlikler = set()
+    for metin in _raporlar(kok, ayar).values():
+        bas, son = metin.find(BASLA), metin.find(BITIR)
+        if 0 <= bas < son:
+            kimlikler |= set(GOREV_KIMLIGI.findall(metin[bas:son]))
+    return sum(len(_oneriler(kok, k)) for k in kimlikler)
+
+
+def uret(kok: pathlib.Path, dosya) -> pathlib.Path:
+    """Raporun otomatik bloklarını yeniden üretir; blokların dışına dokunmaz.
+
+    Tablo, bloğun içinde zaten yazılı kimlikleri ve başka hiçbir raporda geçmeyen kayıtlı görevlerin hepsini taşır.
+    Raporda ikinci bloğun işaretleri varsa o blok tablodaki görevlerin inceleme önerilerini taşır."""
     kok = pathlib.Path(kok)
     ayar = h.ayar_oku(kok)
     yol = pathlib.Path(dosya) if pathlib.Path(dosya).is_absolute() else kok / dosya
@@ -184,10 +226,13 @@ def uret(kok: pathlib.Path, dosya) -> pathlib.Path:
         raise h.HarnessHata("rapor bulunamadı: %s" % dosya)
     metin = yol.read_text(encoding="utf-8")
     bas, son = _blok(metin, yol)
-    baska = [t for p, t in _raporlar(kok, ayar).items() if p.resolve() != yol.resolve()]
+    baska = [_onerisiz(t) for p, t in _raporlar(kok, ayar).items() if p.resolve() != yol.resolve()]
     kimlikler = set(GOREV_KIMLIGI.findall(metin[bas:son])) | {
         k for k in _kayitli_gorevler(kok) if not any(_geciyor_mu(k, t) for t in baska)}
     yeni_metin = metin[:bas] + "\n" + tablo(kok, kimlikler) + "\n" + metin[son:]
+    if ONERI_BASLA in yeni_metin or ONERI_BITIR in yeni_metin:   # işaretsiz eski raporda ikinci blok eklenmez
+        bas, son = _blok(yeni_metin, yol, ONERI_BASLA, ONERI_BITIR)
+        yeni_metin = yeni_metin[:bas] + "\n" + oneriler(kok, kimlikler) + "\n" + yeni_metin[son:]
     if yeni_metin != metin:
         yol.write_text(yeni_metin, encoding="utf-8")
     return yol
@@ -229,7 +274,7 @@ def dal_bulgulari(kok: pathlib.Path, ayar: dict) -> list:
     basliklar = h._git(kok, "log", "--format=%s", "%s..HEAD" % taban).split("\n")
     kimlikler = sorted({m.group(1) for s in basliklar for m in [ALMA_BASLIGI.match(s)] if m},
                        key=lambda k: int(k[3:]))
-    raporlar = _commitli_raporlar(kok, ayar)
+    raporlar = {yol: _onerisiz(metin) for yol, metin in _commitli_raporlar(kok, ayar).items()}
     s = [h.B("Z19", "raporsuz-gorev", k, "bu dalda alındı ama %s altında commit edilmiş hiçbir raporda geçmiyor — "
              "raporu aç: python3 harness/h.py rapor yeni \"<konu>\" (var olan raporun tablosunu yenilemek için: "
              "rapor uret <dosya>) ve commit et; raporu commit eden ve gönderen komutları ayrı ayrı çalıştır (tek "
@@ -263,15 +308,16 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         try:
             bulgular = dal_bulgulari(kok, h.ayar_oku(kok))
         except h.HarnessHata as e:
-            print("rapor durum: %s" % e)
+            print("rapor durum: %s; tablolarda %d inceleme önerisi" % (e, oneri_sayisi(kok, h.ayar_oku(kok))))
             return 0
         for b in bulgular:
             print("  %s %s — %s" % (b["ad"], b["yer"], b["mesaj"]))
         for yol in commitsiz_raporlar(kok, h.ayar_oku(kok)):
             print("  commit-edilmemis-rapor %s — çalışma ağacındaki hâli commit edilmemiş; push kapısı dalın "
                   "ucundaki commit'e bakar: commit et" % yol)
-        print("rapor durum: %d raporsuz görev, %d boş bölüm" % (
+        print(("rapor durum: %d raporsuz görev, %d boş bölüm" % (
             sum(b["ad"] == "raporsuz-gorev" for b in bulgular), sum(b["ad"] == "bos-rapor-bolumu" for b in bulgular))
-              if bulgular else "rapor durum: bu dalda raporsuz görev ve boş bölümlü rapor yok")
+               if bulgular else "rapor durum: bu dalda raporsuz görev ve boş bölümlü rapor yok")
+              + "; tablolarda %d inceleme önerisi" % oneri_sayisi(kok, h.ayar_oku(kok)))
         return 0
     raise h.HarnessHata('kullanım: h.py rapor <yeni "<konu>" [--tarih YYYY-AA-GG] | uret <dosya> | durum>')

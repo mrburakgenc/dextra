@@ -15,34 +15,41 @@ _(doldurulacak: ne yapıldı, ne değişti ve kullanıcı neye bakmalı; madde m
 <!-- otomatik:basla -->
 <!-- otomatik:bitir -->
 
-## 3. Kullanıcının verdiği kararlar
+## 3. İncelemenin önerileri
+
+Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablodaki her görevin son incelemesindeki 'öneri' bulguları; 'engel' bulguları listelenmez.
+
+<!-- oneriler:basla -->
+<!-- oneriler:bitir -->
+
+## 4. Kullanıcının verdiği kararlar
 
 _(doldurulacak: kullanıcının verdiği her karar, kendi sözüyle ve nerede kayıtlı olduğuyla)_
 
-## 4. Ajanın verdiği kararlar
+## 5. Ajanın verdiği kararlar
 
 _(doldurulacak: ajanın kendi verdiği kararlar, gerekçeleri ve hangisinin kullanıcının teyidini beklediği)_
 
-## 5. Duruşlar ve nedenleri
+## 6. Duruşlar ve nedenleri
 
 _(doldurulacak: duran, yeniden koşulan ya da atılan görevler ve nedenleri)_
 
-## 6. Hatalar
+## 7. Hatalar
 
 _(doldurulacak: ajanın hataları ve nasıl düzeltildikleri)_
 
-## 7. Araçta değişenler
+## 8. Araçta değişenler
 
 _(doldurulacak: harness'ta değişen davranış; değişen yoksa "yok" yaz)_
 
-## 8. Kullanıcıdan beklenenler ve açık işler
+## 9. Kullanıcıdan beklenenler ve açık işler
 
 _(doldurulacak: kullanıcının yapması gerekenler, teyit bekleyen kararlar, yapılmayan işler; yoksa "yok" yaz)_
 
-## 9. PR'lar
+## 10. PR'lar
 
 _(doldurulacak: açılan PR'lar ve durumları; yoksa nedeni)_
 
-## 10. Günlük
+## 11. Günlük
 
 _(doldurulacak: zaman sırasıyla ne oldu)_
