@@ -95,6 +95,7 @@ Ajan kararı (2026-11-25 gecesi); backend uçları TS-002 AK-39'daki ortak sözl
   - Yenileme formunun ön doldurması kayıpsızdır: metne çevrilip geri çevrildiğinde özgün değerini vermeyen şart öğesi (virgül içeren liste öğesi, karışık tipli liste, baş ya da son boşluklu metin, boş metin) düzenlenebilir satır olarak açılmaz; saklandığı yazımla salt okunur gösterilir, gövdeye özgün değeriyle gider ve yalnız çıkarılabilir.
   - Alan hatası alanın yanındadır: şart satırının hatası o satırın altında görünür ve hatalı girdi işaretlenir.
   - Ad listesi alınamayınca sayfa ayakta kalır: grup, rol ya da izin listesi okunamıyorsa (yetki yok ya da ulaşılamadı) tablo yine çizilir ve silme, kaldırma gibi ada bağlı olmayan işler çalışır; yalnız seçim isteyen form yerine "liste alınamadı" iletisi çıkar. Adı bilinmeyen kimlik, kimliğin ilk sekiz karakteriyle gösterilir; "—" yalnız kayıtta gelmeyen kolon içindir.
+  - Silinmiş kayıt sayfası (tarayıcı denemesinde görüldü, 2026-11-25): backend silinmiş kaydı kimliğiyle okutur (TS-002 AK-42). Rol, grup ve yetenek kayıt sayfası, silinme zamanı dolu olan kaydı "Silinmiş" işaretiyle ve silinme zamanıyla gösterir; iş formları ve düğmeleri gösterilmez. Silinme zamanı kolonu kayıtta gelmediyse (kişi göremiyor) sayfa bugünkü gibi davranır; kararı backend verir.
   - İş hatasının ekran iletisine çevrilmesi tek yerdedir (403, 404, 409 ve doğrulama hatası); satır başına yinelenen düğmeler hangi kayda ait olduklarını erişilebilir adlarında taşır.
 
 ## Oturumun yenilenmesi
