@@ -84,6 +84,7 @@ shared/
   guvenlik/        {domain, application, infrastructure}
   yetki/           {domain, application, infrastructure}
   kimlik/          domain/i-<ad>.contract.ts            (kimliğin uyguladığı sözleşmeler)
+                   application/i-<ad>.port.ts           (doğrulama kitaplığının ya da işlemin tipini taşıyan arayüz)
   messaging/       {domain, application, infrastructure}
   tohum/           {domain, application, infrastructure}
   http/            {domain, application, infrastructure} (doğrulama borusu, kodlu hata)
@@ -98,7 +99,7 @@ features/kimlik/_shared/
   kimlik-cekirdek.module.ts
 ```
 
-Konu adları değişmez (`guvenlik`, `yetki`, `tohum` Türkçe; `database`, `messaging`, `observability` bugünkü gibi): yeniden adlandırma bu işin dışındadır. Bugün tek dosyada duran arayüz ile gerçekleme (çekirdek repository'ler) ikiye ayrılır: arayüz ve belirteç domain'e, gerçekleme infrastructure'a. Lint ayarındaki yol desenleri (çekirdek sınırı, ham istemci sınırı, katman tanımları) yeni yollara taşınır; hiçbir kural gevşetilmez.
+Sözleşmenin saf tipleri domain'de durur; arayüzün kendisi doğrulama kitaplığının ya da veritabanı işleminin tipini taşıyorsa port olarak application'a girer (GV-116'nın sorusu: giriş yöntemi sözleşmesi böyle ikiye bölündü). Konu adları değişmez (`guvenlik`, `yetki`, `tohum` Türkçe; `database`, `messaging`, `observability` bugünkü gibi): yeniden adlandırma bu işin dışındadır. Bugün tek dosyada duran arayüz ile gerçekleme (çekirdek repository'ler) ikiye ayrılır: arayüz ve belirteç domain'e, gerçekleme infrastructure'a. Lint ayarındaki yol desenleri (çekirdek sınırı, ham istemci sınırı, katman tanımları) yeni yollara taşınır; hiçbir kural gevşetilmez.
 
 ## Seçenekler
 Üç karar ajanındır (kullanıcı devretti: "tamam onları da yap", 2026-11-25); kabul edilmiş karar değildir, kullanıcı teyidi bekler.
