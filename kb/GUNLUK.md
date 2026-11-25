@@ -36,3 +36,6 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-24] taslak | TS-003 Outbox, iz aktarımı ve olay yolu: tablolar, aktarıcı sözleşmesi ve kuyruğun yeri
 ## [2026-11-24] taslak | TS-004 Web arayüzü: aracı katman, oturum çerezleri, ilk ekranlar ve dosya düzeni
 ## [2026-11-25] taslak | TS-005 Kimlik alt özelliklerinin kanondaki katman düzenine çekilmesi: komut ve sorgu klasörleri, domain kuralları, repository arayüzleri
+## [2026-11-25] taslak | KR-015 Alınan her iş raporla kapanır; raporu olmayan iş gönderilemez
+## [2026-11-25] taslak | KU-016 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
+## [2026-11-25] taslak | DN-001 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
