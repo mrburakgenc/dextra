@@ -160,6 +160,7 @@ describe('PanelDuzeni', () => {
     { kaynak: 'Rol', etiket: 'Roller', adres: '/roller' },
     { kaynak: 'Grup', etiket: 'Gruplar', adres: '/gruplar' },
     { kaynak: 'Izin', etiket: 'İzinler', adres: '/izinler' },
+    { kaynak: 'Yetenek', etiket: 'Yetenekler', adres: '/yetenekler' },
   ])(
     '$kaynak:oku kuralı varken menüde $etiket bağlantısı görünür, yokken görünmez',
     async ({ kaynak, etiket, adres }) => {

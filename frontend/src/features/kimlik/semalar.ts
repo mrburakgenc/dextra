@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  DEGER_TURLERI,
+  type DegerTuru,
+  ISLECLER,
+  LISTELI_ISLECLER,
+  type SabitDeger,
+  type SartOgesi,
+  YER_TUTUCULAR,
+} from './yetenek/yetenek-sarti';
 
 // Kimlik ekranlarının Zod şemaları (KR-014: ön yüzün kendi şeması; backend'den içe aktarılmaz).
 // Biçimler backend sözleşmesindeki gibidir (TS-004 "İlk ekranların sözleşmesi"); son sözü
@@ -95,6 +104,122 @@ export const UyelikVerSemasi = z.object({
   grupId: z.uuid({ error: 'Grup seçilmeli' }),
   rolId: z.uuid({ error: 'Rol seçilmeli' }),
 });
+
+// Yetenek yaz ve yenile (TS-004 "Yönetim ekranları"); kurallar backend'in POST kimlik/yetenek
+// gövdesindeki gibidir: boş şart ve boş kolon listesi null gider; işaret ile içerik birlikte
+// yazılamaz; ikisi de yoksa satır kayıt ya da kolon vermez ama yazılır. Alan ve kolon adlarını ekran
+// bilmez; onları backend sınar. Şart satırının hatası satır numarasıyla 'sart' alanına yazılır.
+const sartSatiri = z.object({
+  alan: z.string(),
+  islec: z.enum(ISLECLER),
+  tur: z.enum(DEGER_TURLERI),
+  deger: z.string(),
+});
+
+type Cevrim<T> = { readonly deger: T } | { readonly hata: string };
+
+function sabiteCevir(tur: DegerTuru, metin: string): Cevrim<SabitDeger> {
+  const parca = metin.trim();
+  if (parca === '') {
+    return { hata: 'Değer boş olamaz' };
+  }
+  if (tur === 'sayi') {
+    const sayi = Number(parca);
+    return Number.isFinite(sayi) ? { deger: sayi } : { hata: 'Değer sayıya çevrilemiyor' };
+  }
+  if (tur === 'mantiksal') {
+    return parca === 'true' || parca === 'false'
+      ? { deger: parca === 'true' }
+      : { hata: 'Değer true ya da false olmalı' };
+  }
+  return { deger: parca };
+}
+
+function sartOgesine(satir: z.infer<typeof sartSatiri>): Cevrim<SartOgesi> {
+  const alan = satir.alan.trim();
+  if (alan === '') {
+    return { hata: 'Alan boş olamaz' };
+  }
+  const { islec, tur } = satir;
+  if (tur === 'yerTutucu') {
+    const yerTutucu = z.enum(YER_TUTUCULAR).safeParse(satir.deger);
+    return yerTutucu.success
+      ? { deger: { alan, islec, deger: { yerTutucu: yerTutucu.data } } }
+      : { hata: 'Yer tutucu seçilmeli' };
+  }
+  if (!LISTELI_ISLECLER.includes(islec)) {
+    const deger = sabiteCevir(tur, satir.deger);
+    return 'hata' in deger ? deger : { deger: { alan, islec, deger: deger.deger } };
+  }
+  const degerler: SabitDeger[] = [];
+  for (const parca of satir.deger.split(',')) {
+    const deger = sabiteCevir(tur, parca);
+    if ('hata' in deger) {
+      return deger;
+    }
+    degerler.push(deger.deger);
+  }
+  return { deger: { alan, islec, deger: degerler } };
+}
+
+const yetenekIcerigi = {
+  sart: z.array(sartSatiri).transform((satirlar, ctx) => {
+    const ogeler: SartOgesi[] = [];
+    for (const [sira, satir] of satirlar.entries()) {
+      const oge = sartOgesine(satir);
+      if ('hata' in oge) {
+        ctx.addIssue({ code: 'custom', message: `${String(sira + 1)}. şart: ${oge.hata}` });
+        return z.NEVER;
+      }
+      ogeler.push(oge.deger);
+    }
+    return ogeler.length === 0 ? null : ogeler;
+  }),
+  butunKayitlar: z.boolean(),
+  butunBirimler: z.boolean(),
+  kolonlar: z.string().transform((metin, ctx) => {
+    if (metin.trim() === '') {
+      return null;
+    }
+    const kolonlar = metin.split(',').map((kolon) => kolon.trim());
+    if (kolonlar.includes('')) {
+      ctx.addIssue({ code: 'custom', message: 'Kolon adı boş olamaz' });
+      return z.NEVER;
+    }
+    return kolonlar;
+  }),
+  butunKolonlar: z.boolean(),
+};
+
+function sinirlariDenetle<
+  T extends z.ZodType<{
+    sart: unknown;
+    butunKayitlar: boolean;
+    kolonlar: unknown;
+    butunKolonlar: boolean;
+  }>,
+>(sema: T): T {
+  return sema
+    .refine((g) => !(g.butunKayitlar && g.sart !== null), {
+      error: 'Bütün kayıtlar işaretliyken şart yazılamaz',
+      path: ['sart'],
+    })
+    .refine((g) => !(g.butunKolonlar && g.kolonlar !== null), {
+      error: 'Bütün kolonlar işaretliyken kolon yazılamaz',
+      path: ['kolonlar'],
+    });
+}
+
+export const YetenekYazSemasi = sinirlariDenetle(
+  z.object({
+    grupId: z.uuid({ error: 'Grup seçilmeli' }),
+    rolId: z.uuid({ error: 'Rol seçilmeli' }),
+    izinId: z.uuid({ error: 'İzin seçilmeli' }),
+    ...yetenekIcerigi,
+  }),
+);
+
+export const YetenekYenileSemasi = sinirlariDenetle(z.object(yetenekIcerigi));
 
 // Zod hatasından her alanın ilk iletisi.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {

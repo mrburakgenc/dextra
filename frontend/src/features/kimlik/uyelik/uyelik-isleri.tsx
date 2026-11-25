@@ -67,7 +67,7 @@ export function UyelikKaldir({ kayit }: Readonly<{ kayit: UyelikKaydi }>) {
 
 // Etiketi seçime bağlı, hatası seçimin yanında ve ekran okuyucuya duyurulan seçim (TS-004 form
 // kuralları). Seçenekler listenin ilk 100 kaydıdır; daha fazlası varsa altında not gösterilir.
-function SecimAlani({
+export function SecimAlani({
   ad,
   etiket,
   secenekler,

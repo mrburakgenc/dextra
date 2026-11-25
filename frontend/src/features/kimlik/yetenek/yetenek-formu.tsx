@@ -1,0 +1,344 @@
+'use client';
+
+import { useActionState, useRef, useState } from 'react';
+import { GonderDugmesi } from '../../../shared/ui/gonder-dugmesi';
+import { BOS_FORM_DURUMU } from '../form-durumu';
+import { GenelHata } from '../is-parcalari';
+import { SecimAlani } from '../uyelik/uyelik-isleri';
+import type { YetenekSecenekleri } from './yetenek-listesi';
+import { yetenekYaz, yetenekYenile } from './yetenek-eylemleri';
+import {
+  DEGER_TURLERI,
+  DEGER_TURU_ETIKETLERI,
+  ISLECLER,
+  LISTELI_ISLECLER,
+  type SartSatiri,
+  YER_TUTUCULAR,
+} from './yetenek-sarti';
+
+// Yetenek yaz ve yenile formları (TS-004 "Yönetim ekranları" ve form kuralları). İçerik alanları
+// denetimlidir; böylece eylem doğrulama hatası döndürünce çatının form sıfırlaması onları silmez ve
+// sınırı boş kalan yeteneğin uyarısı yazarken görünür. Alan ve kolon adlarını ekran bilmez; hatayı
+// backend söyler.
+
+const GIRDI =
+  'rounded border border-gray-500 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
+const IKINCIL_DUGME =
+  'self-start rounded border border-gray-500 px-4 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
+
+export interface YetenekIcerigi {
+  readonly sart: readonly SartSatiri[];
+  readonly butunKayitlar: boolean;
+  readonly butunBirimler: boolean;
+  readonly kolonlar: string;
+  readonly butunKolonlar: boolean;
+}
+
+const BOS_ICERIK: YetenekIcerigi = {
+  sart: [],
+  butunKayitlar: false,
+  butunBirimler: false,
+  kolonlar: '',
+  butunKolonlar: false,
+};
+
+// Satırın anahtarı listede kalıcıdır; satır çıkarılınca öbürlerinin durumu kaymaz.
+interface AnahtarliSatir extends SartSatiri {
+  readonly anahtar: number;
+}
+
+function Kutu({
+  ad,
+  etiket,
+  isaretli,
+  degistir,
+}: Readonly<{ ad: string; etiket: string; isaretli: boolean; degistir: (deger: boolean) => void }>) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        id={ad}
+        name={ad}
+        type="checkbox"
+        checked={isaretli}
+        onChange={(olay) => {
+          degistir(olay.target.checked);
+        }}
+        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+      />
+      <label htmlFor={ad} className="font-medium">
+        {etiket}
+      </label>
+    </div>
+  );
+}
+
+function SartSatirAlanlari({
+  sira,
+  satir,
+  degistir,
+  cikar,
+}: Readonly<{
+  sira: number;
+  satir: AnahtarliSatir;
+  degistir: (satir: AnahtarliSatir) => void;
+  cikar: () => void;
+}>) {
+  const kimlik = `sart-${String(satir.anahtar)}`;
+  const listeli = LISTELI_ISLECLER.includes(satir.islec);
+  return (
+    <fieldset className="flex flex-col gap-2 rounded border border-gray-300 p-3">
+      <legend className="font-medium">{`${String(sira + 1)}. şart`}</legend>
+      <label htmlFor={`${kimlik}-alan`}>Alan</label>
+      <input
+        id={`${kimlik}-alan`}
+        name="sartAlan"
+        type="text"
+        autoComplete="off"
+        value={satir.alan}
+        onChange={(olay) => {
+          degistir({ ...satir, alan: olay.target.value });
+        }}
+        className={GIRDI}
+      />
+      <label htmlFor={`${kimlik}-islec`}>İşleç</label>
+      <select
+        id={`${kimlik}-islec`}
+        name="sartIslec"
+        value={satir.islec}
+        onChange={(olay) => {
+          const islec = ISLECLER.find((ad) => ad === olay.target.value);
+          if (islec !== undefined) {
+            degistir({ ...satir, islec });
+          }
+        }}
+        className={GIRDI}
+      >
+        {ISLECLER.map((islec) => (
+          <option key={islec} value={islec}>
+            {islec}
+          </option>
+        ))}
+      </select>
+      <label htmlFor={`${kimlik}-tur`}>Değer türü</label>
+      <select
+        id={`${kimlik}-tur`}
+        name="sartTur"
+        value={satir.tur}
+        onChange={(olay) => {
+          const tur = DEGER_TURLERI.find((ad) => ad === olay.target.value);
+          if (tur !== undefined) {
+            // Yer tutucu seçimi ile yazılan değer birbirine çevrilmez; tür o sınırı geçince değer
+            // boşalır.
+            const sinirGecildi = (tur === 'yerTutucu') !== (satir.tur === 'yerTutucu');
+            degistir({ ...satir, tur, deger: sinirGecildi ? '' : satir.deger });
+          }
+        }}
+        className={GIRDI}
+      >
+        {DEGER_TURLERI.map((tur) => (
+          <option key={tur} value={tur}>
+            {DEGER_TURU_ETIKETLERI[tur]}
+          </option>
+        ))}
+      </select>
+      <label htmlFor={`${kimlik}-deger`}>
+        {listeli && satir.tur !== 'yerTutucu' ? 'Değer (virgülle ayrılmış)' : 'Değer'}
+      </label>
+      {satir.tur === 'yerTutucu' ? (
+        <select
+          id={`${kimlik}-deger`}
+          name="sartDeger"
+          value={satir.deger}
+          onChange={(olay) => {
+            degistir({ ...satir, deger: olay.target.value });
+          }}
+          className={GIRDI}
+        >
+          <option value="">Seç</option>
+          {YER_TUTUCULAR.map((yerTutucu) => (
+            <option key={yerTutucu} value={yerTutucu}>
+              {yerTutucu}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={`${kimlik}-deger`}
+          name="sartDeger"
+          type="text"
+          autoComplete="off"
+          value={satir.deger}
+          onChange={(olay) => {
+            degistir({ ...satir, deger: olay.target.value });
+          }}
+          className={GIRDI}
+        />
+      )}
+      <button type="button" onClick={cikar} className={IKINCIL_DUGME}>
+        {`${String(sira + 1)}. şartı çıkar`}
+      </button>
+    </fieldset>
+  );
+}
+
+function HataIletisi({ kimlik, ileti }: Readonly<{ kimlik: string; ileti: string | undefined }>) {
+  if (ileti === undefined) {
+    return null;
+  }
+  return (
+    <p id={kimlik} role="alert" className="text-sm text-red-700">
+      {ileti}
+    </p>
+  );
+}
+
+// Yaz ve yenile formlarının ortak içerik alanları; sınırı boş kalan yeteneğin uyarısı altta görünür.
+function IcerikAlanlari({
+  baslangic,
+  alanHatalari,
+}: Readonly<{ baslangic: YetenekIcerigi; alanHatalari: Readonly<Record<string, string>> }>) {
+  const sonrakiAnahtar = useRef(baslangic.sart.length);
+  const [satirlar, satirlariYap] = useState<readonly AnahtarliSatir[]>(() =>
+    baslangic.sart.map((satir, anahtar) => ({ ...satir, anahtar })),
+  );
+  const [butunKayitlar, butunKayitlarYap] = useState(baslangic.butunKayitlar);
+  const [butunBirimler, butunBirimlerYap] = useState(baslangic.butunBirimler);
+  const [kolonlar, kolonlarYap] = useState(baslangic.kolonlar);
+  const [butunKolonlar, butunKolonlarYap] = useState(baslangic.butunKolonlar);
+  const sartHatasi = alanHatalari['sart'];
+  const kolonHatasi = alanHatalari['kolonlar'];
+  return (
+    <>
+      <Kutu
+        ad="butunKayitlar"
+        etiket="Bütün kayıtlar"
+        isaretli={butunKayitlar}
+        degistir={butunKayitlarYap}
+      />
+      <fieldset
+        aria-describedby={sartHatasi === undefined ? undefined : 'sart-hata'}
+        className="flex flex-col gap-3"
+      >
+        <legend className="font-medium">Şart</legend>
+        {satirlar.map((satir, sira) => (
+          <SartSatirAlanlari
+            key={satir.anahtar}
+            sira={sira}
+            satir={satir}
+            degistir={(yeni) => {
+              satirlariYap(satirlar.map((eski) => (eski.anahtar === yeni.anahtar ? yeni : eski)));
+            }}
+            cikar={() => {
+              satirlariYap(satirlar.filter((eski) => eski.anahtar !== satir.anahtar));
+            }}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const anahtar = sonrakiAnahtar.current;
+            sonrakiAnahtar.current += 1;
+            satirlariYap([
+              ...satirlar,
+              { anahtar, alan: '', islec: 'esit', tur: 'metin', deger: '' },
+            ]);
+          }}
+          className={IKINCIL_DUGME}
+        >
+          Şart ekle
+        </button>
+        <HataIletisi kimlik="sart-hata" ileti={sartHatasi} />
+      </fieldset>
+      <Kutu
+        ad="butunBirimler"
+        etiket="Bütün birimler"
+        isaretli={butunBirimler}
+        degistir={butunBirimlerYap}
+      />
+      <Kutu
+        ad="butunKolonlar"
+        etiket="Bütün kolonlar"
+        isaretli={butunKolonlar}
+        degistir={butunKolonlarYap}
+      />
+      <div className="flex flex-col gap-1">
+        <label htmlFor="kolonlar" className="font-medium">
+          Kolonlar (virgülle ayrılmış)
+        </label>
+        <input
+          id="kolonlar"
+          name="kolonlar"
+          type="text"
+          autoComplete="off"
+          value={kolonlar}
+          onChange={(olay) => {
+            kolonlarYap(olay.target.value);
+          }}
+          aria-invalid={kolonHatasi !== undefined}
+          aria-describedby={kolonHatasi === undefined ? undefined : 'kolonlar-hata'}
+          className={GIRDI}
+        />
+        <HataIletisi kimlik="kolonlar-hata" ileti={kolonHatasi} />
+      </div>
+      <div role="status" className="flex flex-col gap-1 text-sm">
+        {!butunKayitlar && satirlar.length === 0 && (
+          <p>Kayıt sınırı boş: bu yetenek kayıt vermez</p>
+        )}
+        {!butunKolonlar && kolonlar.trim() === '' && (
+          <p>Kolon sınırı boş: bu yetenek kolon vermez</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Başarıda Server Action yeni yeteneğin kayıt sayfasına yönlendirir.
+export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSecenekleri }>) {
+  const [durum, eylem] = useActionState(yetenekYaz, BOS_FORM_DURUMU);
+  return (
+    <form action={eylem} className="flex flex-col gap-4">
+      <GenelHata ileti={durum.genelHata} />
+      <SecimAlani
+        ad="grupId"
+        etiket="Grup"
+        secenekler={secenekler.gruplar}
+        fazlasiNotu="İlk 100 grup gösteriliyor"
+        hata={durum.alanHatalari['grupId']}
+      />
+      <SecimAlani
+        ad="rolId"
+        etiket="Rol"
+        secenekler={secenekler.roller}
+        fazlasiNotu="İlk 100 rol gösteriliyor"
+        hata={durum.alanHatalari['rolId']}
+      />
+      <SecimAlani
+        ad="izinId"
+        etiket="İzin"
+        secenekler={secenekler.izinler}
+        fazlasiNotu="İlk 100 izin gösteriliyor"
+        hata={durum.alanHatalari['izinId']}
+      />
+      <IcerikAlanlari baslangic={BOS_ICERIK} alanHatalari={durum.alanHatalari} />
+      <GonderDugmesi>Yeteneği yaz</GonderDugmesi>
+    </form>
+  );
+}
+
+// Grup, rol ve izin değişmez; form var olan içerikle dolu gelir. Başarıda Server Action yeni satırın
+// kayıt sayfasına yönlendirir.
+export function YetenekYenileFormu({
+  id,
+  baslangic,
+}: Readonly<{ id: string; baslangic: YetenekIcerigi }>) {
+  const [durum, eylem] = useActionState(yetenekYenile, BOS_FORM_DURUMU);
+  return (
+    <form action={eylem} aria-label="Yenile" className="flex flex-col gap-4">
+      <h2 className="text-2xl font-bold">Yenile</h2>
+      <GenelHata ileti={durum.genelHata} />
+      <input type="hidden" name="id" value={id} />
+      <IcerikAlanlari baslangic={baslangic} alanHatalari={durum.alanHatalari} />
+      <GonderDugmesi>Yenile</GonderDugmesi>
+    </form>
+  );
+}
