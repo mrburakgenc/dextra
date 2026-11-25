@@ -42,7 +42,7 @@ describe('oturum çerezleri', () => {
 
     const ortak = { httpOnly: true, sameSite: 'lax', path: '/', secure: false };
     expect(depo.set.mock.calls).toEqual([
-      ['dextra_erisim', 'erisim-degeri', { ...ortak, maxAge: 900 }],
+      ['dextra_erisim', 'erisim-degeri', { ...ortak, maxAge: 840 }],
       ['dextra_yenileme', 'yenileme-degeri', { ...ortak, maxAge: 604800 }],
       ['dextra_cihaz', 'cihaz-degeri', { ...ortak, maxAge: 604800 }],
     ]);
