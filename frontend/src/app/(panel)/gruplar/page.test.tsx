@@ -363,10 +363,33 @@ describe('GruplarSayfasi kolonların yetkisi', () => {
   it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
     sahteFetch.mockResolvedValue(listeCevabi());
 
-    await goster({}, [{ action: 'oku', subject: 'Grup', conditions: { silinmeZamani: null } }]);
+    // Şart kayıtta gelmeyen silinme zamanına bakar ve bu kayıtlarda tutmaz: kolonu kayıt düzeyinde
+    // soran bir ekran kolonları kaldırırdı.
+    await goster({}, [
+      { action: 'oku', subject: 'Grup', conditions: { silinmeZamani: { not: null } } },
+    ]);
 
     expect(basliklar()).toEqual(['Ad', 'Üst grup', 'Oluşturma zamanı', 'Alt gruplar']);
     expect(hucreSayilari()).toEqual([4, 4, 4]);
+  });
+
+  it('adı okuyamayan kişide Ad başlığı düz yazıdır; sıralama bağlantısı yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [{ id: KOK, ustGrupId: null }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', fields: ['ustGrupId'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Üst grup', 'Alt gruplar']);
+    expect(screen.queryByRole('link', { name: 'Ad' })).toBeNull();
+    expect(baglanti(`…${KOK.slice(-8)}`)).toBe(`/gruplar/${KOK}`);
+  });
+
+  it('adı okuyabilen kişide Ad başlığı sıralama bağlantısıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Grup', fields: ['ad'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Alt gruplar']);
+    expect(baglanti('Ad')).toBe('/gruplar?sirala=ad');
   });
 
   it('gelmiş ama boş üst grup boş işaretle çizilir; kolon kalkmaz', async () => {

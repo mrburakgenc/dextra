@@ -22,9 +22,9 @@ import type {
 // Yetenek listesinin süzgeci, tablosu ve sayfalaması (TS-004 "Yönetim ekranları"). Grup, rol ve
 // izin adları seçeneklerden eşlenir; adı bulunamayan kimlik kısaltılarak görünür. Kişinin tür
 // düzeyinde okuyamadığı kolon çizilmez; çizilen kolonda alanı gelmeyen kaydın hücresi boş işarettir.
-// İzin yazısı kayıt sayfasına bağlantıdır ve hep çizilir. Süzgeç adresin sorgusuna yazılan bir
-// GET formudur; gönderilince ilk sayfaya dönülür, sıralama korunur. Listesi alınamayan süzgecin
-// yerinde ileti çıkar; seçili değeri korunur.
+// İzin yazısı kayıt sayfasına bağlantıdır ve hep çizilir; izin gelmediyse yazı kaydın kısaltılmış
+// kimliğidir. Süzgeç adresin sorgusuna yazılan bir GET formudur; gönderilince ilk sayfaya dönülür,
+// sıralama korunur. Listesi alınamayan süzgecin yerinde ileti çıkar; seçili değeri korunur.
 
 const ADRES = '/yetenekler';
 const KAYNAK = 'Yetenek';
@@ -150,7 +150,9 @@ export function YetenekTablosu({
             </Kolon>
             <td className="px-3 py-2">
               <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
-                {kimliginAdi(izinAdi, kayit.izinId)}
+                {kayit.izinId === undefined
+                  ? kimliginAdi(null, kayit.id)
+                  : kimliginAdi(izinAdi, kayit.izinId)}
               </Link>
             </td>
             <Kolon a={KAYNAK} alanlar={['butunKayitlar', 'sart']}>

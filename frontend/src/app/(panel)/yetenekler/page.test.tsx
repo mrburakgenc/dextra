@@ -219,13 +219,13 @@ describe('YeteneklerSayfasi liste', () => {
     expect(hucreler(satir).slice(3, 6)).toEqual(['Kayıt vermez', 'Kolon vermez', 'Tohum']);
   });
 
-  it('kayıtta gelmeyen kolonların hücresi boş işarettir', async () => {
+  it('kayıtta gelmeyen kolonların hücresi boş işarettir; izin bağlantısı kaydın kısaltılmış kimliğidir', async () => {
     backend(() => listeCevabi({ kayitlar: [{ id: SARTLI }] }));
 
     await goster();
 
     const [, satir] = screen.getAllByRole('row');
-    expect(hucreler(satir)).toEqual(['—', '—', '—', '—', '—', '—', '—']);
+    expect(hucreler(satir)).toEqual(['—', '—', `…${SARTLI.slice(-8)}`, '—', '—', '—', '—']);
   });
 
   it('izin yazısı kayıt sayfasına bağlantıdır', async () => {
@@ -516,6 +516,17 @@ describe('YeteneklerSayfasi kolonların yetkisi', () => {
       'Oluşturma zamanı',
     ]);
     expect(hucreSayilari()).toEqual([7, 7]);
+  });
+
+  it('izin alanı gelmeyen kayıtların bağlantı adı kaydın kısaltılmış kimliğidir; adlar birbirinden ayrıdır', async () => {
+    backend(() => listeCevabi({ kayitlar: [{ id: BUTUN, grupId: GRUP }, { id: SARTLI, grupId: GRUP }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Yetenek', fields: ['grupId'] }]);
+
+    expect(basliklar()).toEqual(['Grup', 'İzin']);
+    expect(baglanti(`…${BUTUN.slice(-8)}`)).toBe(`/yetenekler/${BUTUN}`);
+    expect(baglanti(`…${SARTLI.slice(-8)}`)).toBe(`/yetenekler/${SARTLI}`);
+    expect(screen.queryByRole('link', { name: '—' })).toBeNull();
   });
 
   it('gelmiş ama boş tohum anahtarı kolonu kaldırmaz', async () => {
