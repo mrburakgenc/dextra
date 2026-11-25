@@ -1,17 +1,24 @@
+// Yenileme işinin işleyicisi (TS-002 "İşlem sınırları" Yenile, AK-49).
 import { Injectable, Logger } from '@nestjs/common';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../../../../shared/guvenlik/belirtec.js';
-import { KodluHata } from '../../../../shared/http/kodlu-hata.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import type { KapatilmaNedeni } from '../../_shared/cekirdek/oturum.repository.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../../_shared/iz.js';
-import { KisiKilidi } from '../../_shared/kisi-kilidi.js';
-import { oturumSirrininOzeti } from '../domain/oturum.js';
-import { OTURUM_REPO } from '../domain/oturum.repository.js';
-import { yenilemeKarari } from '../domain/yenileme.js';
-import { kapatmaNotu } from './kapatma-notu.js';
-import type { YenileCevabi, YenileKomutu } from './yenile.command.js';
+import type { Islem } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { BelirtecServisi } from '../../../../../../shared/guvenlik/belirtec.js';
+import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import type { KapatilmaNedeni } from '../../../../_shared/cekirdek/oturum.repository.js';
+import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/iz.js';
+import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
+import {
+  dondurme,
+  oturumSirrininOzeti,
+  pencereKarari,
+  yeniNesil,
+  yenilemeKarari,
+} from '../../../domain/entities/oturum.entity.js';
+import { OTURUM_REPO } from '../../../domain/repositories/i-oturum.repository.js';
+import { kapatmaNotu } from '../../_shared/kapatma-notu.js';
+import type { YenileKomutu } from './yenile.command.js';
+import type { YenileSonucu } from './yenile.result.js';
 
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:yenile';
@@ -36,9 +43,10 @@ type IslemSonucu =
 // 1. Belirtecin imzası, süresi ve türü işlemin dışında doğrulanır; geçersizse hiçbir satıra
 //    dokunulmaz.
 // 2. Tek işlemde kişi, sonra oturum kilitlenir; sır satırı kilit altında okunur; karar
-//    yenilemeKarari'ndadır.
-// 3. Geçerli nesilde döndürülür; pencere içinde bir önceki nesille gelende döndürülmez, geçerli
-//    neslin belirteci satırdaki son döndürme zamanıyla yeniden imzalanır (aynı dizge).
+//    varlığın yenilemeKarari'ndadır.
+// 3. Geçerli nesilde döndürülür (döndürmenin hâli varlıktandır); pencere içinde bir önceki nesille
+//    gelende döndürülmez, geçerli neslin belirteci satırdaki son döndürme zamanıyla yeniden
+//    imzalanır (aynı dizge; tutması varlığın pencereKarari'ndadır).
 // Kapatmaların notunda yazan kimlik sistem aktörü, döndürmenin notunda kişidir (AK-35, AK-49
 // madde 6). Günlüğe ve notlara belirteç, sır, özet, adres ve tarayıcı bilgisi yazılmaz (AK-13).
 @Injectable()
@@ -52,7 +60,7 @@ export class YenileHandler {
     private readonly yazici: OutboxYazici,
   ) {}
 
-  async calistir(komut: YenileKomutu): Promise<YenileCevabi> {
+  async calistir(komut: YenileKomutu): Promise<YenileSonucu> {
     const dogrulama = await this.belirtecler.yenilemeBelirteciDogrula(
       komut.yenilemeBelirteci,
     );
@@ -114,25 +122,17 @@ export class YenileHandler {
           sonDondurmeZamani,
         );
         // Yeniden imzalanan belirteç saklanan özete uymuyorsa reddedilir; oturum yaşar.
-        if (
-          oturumSirrininOzeti(yenilemeBelirteci) !== sir.gecerliYenilemeOzeti
-        ) {
+        if (pencereKarari(sir, yenilemeBelirteci).tur === 'ret') {
           return { tur: 'ret', kapananlar: [] };
         }
         return { tur: 'tamam', yenilemeBelirteci };
       }
 
-      const yeniNesil = sir.nesil + 1;
       const yenilemeBelirteci = await this.belirtecler.yenilemeBelirteciUret(
-        { kullaniciId, oturumId, nesil: yeniNesil },
+        { kullaniciId, oturumId, nesil: yeniNesil(sir) },
         simdi,
       );
-      await repo.dondur(oturumId, {
-        nesil: yeniNesil,
-        gecerliYenilemeOzeti: oturumSirrininOzeti(yenilemeBelirteci),
-        oncekiYenilemeOzeti: sir.gecerliYenilemeOzeti,
-        sonDondurmeZamani: simdi,
-      });
+      await repo.dondur(oturumId, dondurme(sir, yenilemeBelirteci, simdi));
       const iz: IzBilgisi = { yazanId: kullaniciId, isAdi: IS_ADI };
       await this.yazici.degisiklikKaydi(islem, {
         ...notunOrtakAlanlari(iz, 'Oturum', oturumId, kullaniciId),

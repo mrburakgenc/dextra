@@ -33,7 +33,7 @@ import { TohumYardimcisi } from '../src/features/kimlik/_shared/tohum-yardimcisi
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/tohum/kimlik-kurulum.goc.js';
 import { KimlikYetkiVerisi } from '../src/features/kimlik/_shared/yetki-verisi/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
-import { OturumDenetimiHandler } from '../src/features/kimlik/oturum/application/oturum-denetimi.handler.js';
+import { OturumDenetimiHandler } from '../src/features/kimlik/oturum/application/commands/oturum-denetimi/oturum-denetimi.handler.js';
 import { KurulumBaglantisiHandler } from '../src/features/kimlik/parola/application/commands/kurulum-baglantisi/kurulum-baglantisi.handler.js';
 import type { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';

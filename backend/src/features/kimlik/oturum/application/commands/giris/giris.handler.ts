@@ -1,20 +1,23 @@
+// Giriş işinin işleyicisi (TS-002 "İşlem sınırları" Giriş; KR-009 Kural 12).
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../../../../shared/database/kimlik.js';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
-import { BelirtecServisi } from '../../../../shared/guvenlik/belirtec.js';
-import { KodluHata } from '../../../../shared/http/kodlu-hata.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import { type IzBilgisi, notunOrtakAlanlari } from '../../_shared/iz.js';
-import { KisiKilidi } from '../../_shared/kisi-kilidi.js';
+import { yeniKimlik } from '../../../../../../shared/database/kimlik.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { BelirtecServisi } from '../../../../../../shared/guvenlik/belirtec.js';
+import { KodluHata } from '../../../../../../shared/http/kodlu-hata.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { type IzBilgisi, notunOrtakAlanlari } from '../../../../_shared/iz.js';
+import { KisiKilidi } from '../../../../_shared/kisi-kilidi.js';
 import {
-  EN_COK_ACIK_OTURUM,
-  MUTLAK_OMUR_MS,
-  oturumSirrininOzeti,
-} from '../domain/oturum.js';
-import { OTURUM_REPO } from '../domain/oturum.repository.js';
-import type { GirisCevabi, GirisKomutu } from './giris.command.js';
-import { kapatmaNotu } from './kapatma-notu.js';
+  ILK_NESIL,
+  oturumAc,
+  oturumAcmaKarari,
+} from '../../../domain/entities/oturum.entity.js';
+import { OTURUM_REPO } from '../../../domain/repositories/i-oturum.repository.js';
+import { sinirdaKapanacaklar } from '../../../domain/services/acik-oturum-siniri.js';
+import { kapatmaNotu } from '../../_shared/kapatma-notu.js';
+import type { GirisKomutu } from './giris.command.js';
+import type { GirisSonucu } from './giris.result.js';
 
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:giris';
@@ -28,7 +31,8 @@ export function girisBasarisiz(): KodluHata {
   return new KodluHata('kimlik_gerekli', 'Giriş yapılamadı');
 }
 
-// Giriş (TS-002 "İşlem sınırları"; KR-009 Kural 12). Sıra:
+// Giriş (TS-002 "İşlem sınırları"; KR-009 Kural 12). Kararlar ve yeni oturumun hâli varlıktan, sınır
+// domain servisindendir. Sıra:
 // 1. Yöntem girdiyi işlemin dışında doğrular.
 // 2. Tek işlemde kişi kilitlenir; pasif, unutulmuş ve sistem aktörü reddedilir; yöntem kilit altında
 //    kesinleştirir. Ret işlemi geri alır; o ana kadar yazma yoktur.
@@ -49,7 +53,7 @@ export class GirisHandler {
     girdi,
     ipAdresi,
     tarayiciBilgisi,
-  }: GirisKomutu<TGirdi>): Promise<GirisCevabi> {
+  }: GirisKomutu<TGirdi>): Promise<GirisSonucu> {
     const dogrulama = await yontem.dogrula(girdi);
     if (dogrulama.sonuc !== 'tamam') {
       throw girisBasarisiz();
@@ -62,7 +66,7 @@ export class GirisHandler {
       this.belirtecler.yenilemeBelirteciUret({
         kullaniciId,
         oturumId,
-        nesil: 1,
+        nesil: ILK_NESIL,
       }),
     ]);
     const iz: IzBilgisi = { yazanId: kullaniciId, isAdi: IS_ADI };
@@ -70,8 +74,8 @@ export class GirisHandler {
     await this.uow.run(async (islem) => {
       await this.kisiKilidi.kilitle(islem, kullaniciId);
       const repo = islem.repo(OTURUM_REPO);
-      const kisi = await repo.kisininDurumu(kullaniciId);
-      if (kisi.pasif || kisi.unutulmus || kisi.sistemAktoru) {
+      const karar = oturumAcmaKarari(await repo.kisininDurumu(kullaniciId));
+      if (karar.tur === 'ret') {
         throw girisBasarisiz();
       }
       if ((await yontem.kesinlestir(islem, kullaniciId, kanit)) !== 'tamam') {
@@ -79,10 +83,8 @@ export class GirisHandler {
       }
 
       const simdi = new Date();
-      const acik = await repo.acikOturumlar(kullaniciId, simdi);
-      const fazla = acik.slice(
-        0,
-        Math.max(0, acik.length - (EN_COK_ACIK_OTURUM - 1)),
+      const fazla = sinirdaKapanacaklar(
+        await repo.acikOturumlar(kullaniciId, simdi),
       );
       if (fazla.length > 0) {
         const kapananlar = await repo.kapat(fazla, 'oturum_siniri', simdi);
@@ -94,21 +96,17 @@ export class GirisHandler {
         }
       }
 
-      const oturum = {
+      const { oturum, sir } = oturumAc({
         id: oturumId,
         kullaniciId,
         girisYontemi: yontem.ad,
         baslangicZamani: simdi,
-        mutlakBitisZamani: new Date(simdi.getTime() + MUTLAK_OMUR_MS),
-        sonDondurmeZamani: simdi,
         ipAdresi,
         tarayiciBilgisi,
-      };
-      await repo.ekle(oturum, {
-        nesil: 1,
-        gecerliYenilemeOzeti: oturumSirrininOzeti(yenilemeBelirteci),
-        cihazSirriOzeti: oturumSirrininOzeti(cihazSirri),
+        yenilemeBelirteci,
+        cihazSirri,
       });
+      await repo.ekle(oturum, sir);
       await this.yazici.degisiklikKaydi(islem, {
         ...notunOrtakAlanlari(iz, 'Oturum', oturumId, kullaniciId),
         eylem: 'olusturma',

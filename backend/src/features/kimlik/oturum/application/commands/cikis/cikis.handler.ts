@@ -1,10 +1,11 @@
+// Çıkış işinin işleyicisi (TS-002 "İşlem sınırları" Çıkış).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import type { IzBilgisi } from '../../_shared/iz.js';
-import { OTURUM_REPO } from '../domain/oturum.repository.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import type { IzBilgisi } from '../../../../_shared/iz.js';
+import { OTURUM_REPO } from '../../../domain/repositories/i-oturum.repository.js';
+import { kapatmaNotu } from '../../_shared/kapatma-notu.js';
 import type { CikisKomutu } from './cikis.command.js';
-import { kapatmaNotu } from './kapatma-notu.js';
 
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:cikis';

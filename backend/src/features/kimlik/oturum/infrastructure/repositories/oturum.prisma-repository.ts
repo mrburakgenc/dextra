@@ -1,9 +1,11 @@
-import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
-import { kimlikSistemAktoru } from '../../_shared/cekirdek/sistem-aktoru.js';
-import { HAREKETSIZLIK_SINIRI_MS } from '../domain/oturum-denetimi.js';
-import type { OturumRepo } from '../domain/oturum.repository.js';
+// IOturumRepo'nun gerçeklemesi: giriş, çıkış ve yenilemenin okuma ve yazmaları, işlemin istemcisiyle
+// ve yetki kapısından geçmeden (çekirdek yollar).
+import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import { kimlikSistemAktoru } from '../../../_shared/cekirdek/sistem-aktoru.js';
+import { HAREKETSIZLIK_SINIRI_MS } from '../../domain/entities/oturum.entity.js';
+import type { IOturumRepo } from '../../domain/repositories/i-oturum.repository.js';
 
-export function oturumPrismaRepository(istemci: RepoIstemcisi): OturumRepo {
+export function oturumPrismaRepository(istemci: RepoIstemcisi): IOturumRepo {
   return {
     kisininDurumu: async (kullaniciId) => {
       const satir = await istemci.kullanici.findUniqueOrThrow({

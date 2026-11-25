@@ -1,42 +1,19 @@
-import { Injectable } from '@nestjs/common';
+// IOturumYonetimOkumaRepo'nun gerçeklemesi: oturum kayıtlarını işlemin istemcisiyle, yetki kapısının
+// okuma yüzünden okur.
 import type {
   RepoFabrikasi,
   RepoIstemcisi,
-} from '../../../../shared/database/registrar.js';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
+} from '../../../../../shared/database/registrar.js';
 import type {
   Kayit,
   OkumaKapisi,
   Siralama,
-} from '../../../../shared/yetki/okuma-kapisi.js';
-import type { KosulOgesi } from '../../../../shared/yetki/sart-cevirici.js';
-import { YazmaKapisi } from '../../../../shared/yetki/yazma-kapisi.js';
-import { HAREKETSIZLIK_SINIRI_MS } from '../domain/oturum-denetimi.js';
-import {
-  type OturumKapatmasi,
-  type OturumYonetimOkumaRepo,
-  OturumYonetimYazmaRepo,
-} from '../domain/oturum-yonetim.repository.js';
+} from '../../../../../shared/yetki/okuma-kapisi.js';
+import type { KosulOgesi } from '../../../../../shared/yetki/sart-cevirici.js';
+import { HAREKETSIZLIK_SINIRI_MS } from '../../domain/entities/oturum.entity.js';
+import type { IOturumYonetimOkumaRepo } from '../../domain/repositories/i-oturum-yonetim.repository.js';
 
 const KAYNAK = 'Oturum';
-
-@Injectable()
-export class OturumKapiYazmaRepo extends OturumYonetimYazmaRepo {
-  constructor(private readonly kapi: YazmaKapisi) {
-    super();
-  }
-
-  kapatNiyeti(
-    islem: Islem,
-    isAdi: string,
-    id: string,
-    kapatma?: OturumKapatmasi,
-  ): Promise<void> {
-    return this.kapi.niyet(islem, isAdi, KAYNAK, 'kapat', id, {
-      ...kapatma,
-    });
-  }
-}
 
 // Açıklık süzgecinin parçaları (TS-002 "Veri modeli"; oturum denetimiyle aynı tanım). Açık oturum:
 // kapatılmamış, mutlak bitişi geçmemiş ve son döndürmesinden beri hareketsizlik sınırı dolmamış.
@@ -112,9 +89,9 @@ function birlestir(listeler: readonly Kayit[][], siralama: Siralama): Kayit[] {
   }
 }
 
-export function oturumYonetimPrismaRepository(
+export function oturumYonetimOkumaPrismaRepository(
   kapi: OkumaKapisi,
-): RepoFabrikasi<OturumYonetimOkumaRepo> {
+): RepoFabrikasi<IOturumYonetimOkumaRepo> {
   return (istemci: RepoIstemcisi) => ({
     liste: async ({ kullaniciId, acik, simdi, siralama, atla, al }) => {
       const kisi: KosulOgesi[] =
