@@ -42,13 +42,23 @@ export function RolTablosu({
         liste={liste}
         basliklar={
           <>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="ad"
-              etiket="Ad"
-              sirala={sirala}
-              suzgec={{}}
-            />
+            <Kolon
+              a={KAYNAK}
+              alanlar={['ad']}
+              yoksa={
+                <th scope="col" className="px-3 py-2 text-left">
+                  Ad
+                </th>
+              }
+            >
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="ad"
+                etiket="Ad"
+                sirala={sirala}
+                suzgec={{}}
+              />
+            </Kolon>
             <Kolon a={KAYNAK} alanlar={['kod']}>
               <SiralamaBasligi
                 adres={ADRES}

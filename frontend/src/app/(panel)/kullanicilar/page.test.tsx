@@ -421,6 +421,25 @@ describe('KullanicilarSayfasi kolonların yetkisi', () => {
     expect(hucreSayilari()).toEqual([4, 4]);
   });
 
+  it('görünen adı okuyamayan kişide Görünen ad başlığı düz yazıdır; sıralama bağlantısı yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [{ id: 'k1', kullaniciAdi: 'ada' }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Kullanici', fields: ['kullaniciAdi'] }]);
+
+    expect(basliklar()).toEqual(['Görünen ad', 'Kullanıcı adı']);
+    expect(screen.queryByRole('link', { name: 'Görünen ad' })).toBeNull();
+    expect(baglanti('Kullanıcı adı')).toBe('/kullanicilar?sirala=kullaniciAdi');
+  });
+
+  it('görünen adı okuyabilen kişide Görünen ad başlığı sıralama bağlantısıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Kullanici', fields: ['gorunenAd'] }]);
+
+    expect(basliklar()).toEqual(['Görünen ad']);
+    expect(baglanti('Görünen ad')).toBe('/kullanicilar?sirala=gorunenAd');
+  });
+
   it('gelmiş ama boş alan boş işaretle çizilir; kolon kalkmaz', async () => {
     sahteFetch.mockResolvedValue(
       listeCevabi({

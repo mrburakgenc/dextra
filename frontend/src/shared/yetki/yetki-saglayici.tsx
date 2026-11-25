@@ -18,13 +18,15 @@ export function useYetki(): Yetki {
 }
 
 // Liste tablosunun bir kolonunun başlığını ya da hücresini sarar; kolon çizilmiyorsa hiçbir şey
-// çizilmez. Sunucu bileşeni tablolar başlığı ve hücreyi çocuk olarak verir.
+// çizilmez (yoksa verildiyse o çizilir). Sunucu bileşeni tablolar başlığı ve hücreyi çocuk olarak
+// verir.
 export function Kolon({
   a,
   alanlar,
+  yoksa = null,
   children,
-}: Readonly<{ a: string; alanlar: readonly string[]; children: ReactNode }>) {
-  return kolonCizilir(useYetki(), a, alanlar) ? children : null;
+}: Readonly<{ a: string; alanlar: readonly string[]; yoksa?: ReactNode; children: ReactNode }>) {
+  return kolonCizilir(useYetki(), a, alanlar) ? children : yoksa;
 }
 
 export { Can } from '@casl/react';

@@ -24,6 +24,9 @@ const KAYNAK = 'Oturum';
 // Durum kolonu kapatılma zamanı ve nedeninden türer.
 const DURUM_ALANLARI = ['kapatilmaZamani', 'kapatilmaNedeni'];
 const HUCRE = 'px-3 py-2';
+// İsteği yapan oturumun işareti kaydın kimliğinden türer; Durum kolonu çizilmiyorsa İşler hücresinde
+// durur.
+const BU_OTURUM = <strong className="rounded bg-blue-100 px-2 text-sm">Bu oturum</strong>;
 
 const GORUNUMLER = [
   { etiket: 'Açık oturumlar', acik: 'true' },
@@ -198,13 +201,18 @@ export function OturumTablosu({
                   {bu && (
                     <>
                       {' '}
-                      <strong className="rounded bg-blue-100 px-2 text-sm">Bu oturum</strong>
+                      {BU_OTURUM}
                     </>
                   )}
                 </td>
               </Kolon>
               {acikGorunum && (
                 <td className={HUCRE}>
+                  {bu && (
+                    <Kolon a={KAYNAK} alanlar={DURUM_ALANLARI} yoksa={BU_OTURUM}>
+                      {null}
+                    </Kolon>
+                  )}
                   <OturumKapat kayit={kayit} bu={bu} oturum={oturumAdi(kayit)} />
                 </td>
               )}

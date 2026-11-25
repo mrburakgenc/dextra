@@ -659,4 +659,52 @@ describe('OturumlarSayfasi kolonların yetkisi', () => {
     ]);
     expect(hucreSayilari()).toEqual([6, 6]);
   });
+
+  it('kapatılma alanlarını okuyamayan kişide Durum kolonu yoktur; Bu oturum işareti İşler hücresindedir', async () => {
+    const kapanissiz = (kayit: typeof BU_OTURUM) => {
+      const kopya: Partial<typeof BU_OTURUM> = { ...kayit };
+      delete kopya.kapatilmaZamani;
+      delete kopya.kapatilmaNedeni;
+      return kopya;
+    };
+    await goster(
+      {},
+      [
+        {
+          action: 'oku',
+          subject: 'Oturum',
+          fields: ['baslangicZamani', 'sonDondurmeZamani', 'ipAdresi', 'tarayiciBilgisi'],
+        },
+        KAPAT,
+      ],
+      listeCevabi({ kayitlar: [kapanissiz(BU_OTURUM), kapanissiz(OBUR_OTURUM)] }),
+    );
+
+    expect(baslikMetinleri()).toEqual([
+      'Başlangıç ▼',
+      'Son etkinlik',
+      'Adres',
+      'Tarayıcı bilgisi',
+      'İşler',
+    ]);
+    expect(hucreSayilari()).toEqual([5, 5]);
+    const [bu, obur] = satirlar();
+    expect(hucreler(bu ?? document.body)[4]).toMatch(/^Bu oturum/);
+    expect(hucreler(obur ?? document.body)[4]).not.toMatch(/Bu oturum/);
+    expect(screen.getAllByText('Bu oturum')).toHaveLength(1);
+  });
+
+  it('kapatılma alanlarını okuyabilen kişide Bu oturum işareti Durum hücresindedir; İşler hücresinde yoktur', async () => {
+    await goster({}, [
+      { action: 'oku', subject: 'Oturum', fields: ['kapatilmaZamani', 'kapatilmaNedeni'] },
+      KAPAT,
+    ]);
+
+    expect(baslikMetinleri()).toEqual(['Durum', 'İşler']);
+    const [bu, obur] = satirlar();
+    expect(hucreler(bu ?? document.body)[0]).toBe('Açık Bu oturum');
+    expect(hucreler(bu ?? document.body)[1]).not.toMatch(/Bu oturum/);
+    expect(hucreler(obur ?? document.body)[0]).toBe('Açık');
+    expect(screen.getAllByText('Bu oturum')).toHaveLength(1);
+  });
 });

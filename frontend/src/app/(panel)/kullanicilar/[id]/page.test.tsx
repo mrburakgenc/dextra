@@ -685,7 +685,9 @@ describe('KullaniciSayfasi üyelik kolonlarının yetkisi', () => {
 
     await goster(ETKIN_KAYIT, [
       ...kurallar(...ISLER),
-      { action: 'oku', subject: 'Uyelik', conditions: { silinmeZamani: null } },
+      // Şart kayıtta gelmeyen silinme zamanına bakar ve bu kayıtlarda tutmaz: kolonu kayıt düzeyinde
+      // soran bir ekran kolonları kaldırırdı.
+      { action: 'oku', subject: 'Uyelik', conditions: { silinmeZamani: { not: null } } },
       UYELIK_SIL,
     ]);
 

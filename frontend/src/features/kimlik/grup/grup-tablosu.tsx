@@ -46,13 +46,23 @@ export function GrupTablosu({
         liste={liste}
         basliklar={
           <>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="ad"
-              etiket="Ad"
-              sirala={sirala}
-              suzgec={{ ustGrupId }}
-            />
+            <Kolon
+              a={KAYNAK}
+              alanlar={['ad']}
+              yoksa={
+                <th scope="col" className="px-3 py-2 text-left">
+                  Ad
+                </th>
+              }
+            >
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="ad"
+                etiket="Ad"
+                sirala={sirala}
+                suzgec={{ ustGrupId }}
+              />
+            </Kolon>
             <Kolon a={KAYNAK} alanlar={['ustGrupId']}>
               <th scope="col" className="px-3 py-2 text-left">
                 Üst grup

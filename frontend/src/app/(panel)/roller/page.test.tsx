@@ -317,9 +317,32 @@ describe('RollerSayfasi kolonların yetkisi', () => {
   it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolon yine çizilir', async () => {
     sahteFetch.mockResolvedValue(listeCevabi());
 
-    await goster({}, [{ action: 'oku', subject: 'Rol', conditions: { silinmeZamani: null } }]);
+    // Şart kayıtta gelmeyen silinme zamanına bakar ve bu kayıtlarda tutmaz: kolonu kayıt düzeyinde
+    // soran bir ekran kolonu kaldırırdı.
+    await goster({}, [
+      { action: 'oku', subject: 'Rol', conditions: { silinmeZamani: { not: null } } },
+    ]);
 
     expect(basliklar()).toEqual(['Ad', 'Kod']);
     expect(hucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('adı okuyamayan kişide Ad başlığı düz yazıdır; sıralama bağlantısı yoktur', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi({ kayitlar: [{ id: 'r1', kod: 'yonetici' }] }));
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['kod'] }]);
+
+    expect(basliklar()).toEqual(['Ad', 'Kod']);
+    expect(screen.queryByRole('link', { name: 'Ad' })).toBeNull();
+    expect(baglanti('r1')).toBe('/roller/r1');
+  });
+
+  it('adı okuyabilen kişide Ad başlığı sıralama bağlantısıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Rol', fields: ['ad'] }]);
+
+    expect(basliklar()).toEqual(['Ad']);
+    expect(baglanti('Ad')).toBe('/roller?sirala=ad');
   });
 });

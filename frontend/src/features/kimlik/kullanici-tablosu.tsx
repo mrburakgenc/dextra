@@ -61,13 +61,23 @@ export function KullaniciTablosu({
         liste={liste}
         basliklar={
           <>
-            <SiralamaBasligi
-              adres={ADRES}
-              kolon="gorunenAd"
-              etiket="Görünen ad"
-              sirala={sirala}
-              suzgec={{ pasif }}
-            />
+            <Kolon
+              a={KAYNAK}
+              alanlar={['gorunenAd']}
+              yoksa={
+                <th scope="col" className="px-3 py-2 text-left">
+                  Görünen ad
+                </th>
+              }
+            >
+              <SiralamaBasligi
+                adres={ADRES}
+                kolon="gorunenAd"
+                etiket="Görünen ad"
+                sirala={sirala}
+                suzgec={{ pasif }}
+              />
+            </Kolon>
             <Kolon a={KAYNAK} alanlar={['kullaniciAdi']}>
               <SiralamaBasligi
                 adres={ADRES}
