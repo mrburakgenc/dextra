@@ -6,25 +6,23 @@ import { MessagingModule } from '../../../shared/messaging/messaging.module.js';
 import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { ParolaModule } from '../parola/parola.module.js';
-import { CikisHandler } from './application/cikis.handler.js';
-import { GirisHandler } from './application/giris.handler.js';
-import { OturumDenetimiHandler } from './application/oturum-denetimi.handler.js';
-import { OturumKapatHandler } from './application/oturum-kapat.handler.js';
-import { OturumListeleHandler } from './application/oturum-listele.handler.js';
-import { OturumOkuHandler } from './application/oturum-oku.handler.js';
-import { YenileHandler } from './application/yenile.handler.js';
-import { OTURUM_DENETIMI_REPO } from './domain/oturum-denetimi.repository.js';
-import { OTURUM_REPO } from './domain/oturum.repository.js';
+import { CikisHandler } from './application/commands/cikis/cikis.handler.js';
+import { GirisHandler } from './application/commands/giris/giris.handler.js';
+import { OturumDenetimiHandler } from './application/commands/oturum-denetimi/oturum-denetimi.handler.js';
+import { OturumKapatHandler } from './application/commands/oturum-kapat/oturum-kapat.handler.js';
+import { YenileHandler } from './application/commands/yenile/yenile.handler.js';
+import { OturumListeleHandler } from './application/queries/oturum-listele/oturum-listele.handler.js';
+import { OturumOkuHandler } from './application/queries/oturum-oku/oturum-oku.handler.js';
+import { OTURUM_DENETIMI_REPO } from './domain/repositories/i-oturum-denetimi.repository.js';
+import { OTURUM_REPO } from './domain/repositories/i-oturum.repository.js';
 import {
-  OTURUM_YONETIM_REPO,
-  OturumYonetimYazmaRepo,
-} from './domain/oturum-yonetim.repository.js';
-import { oturumDenetimiPrismaRepository } from './infrastructure/oturum-denetimi.prisma-repository.js';
-import { oturumPrismaRepository } from './infrastructure/oturum.prisma-repository.js';
-import {
-  OturumKapiYazmaRepo,
-  oturumYonetimPrismaRepository,
-} from './infrastructure/oturum-yonetim.prisma-repository.js';
+  OTURUM_YONETIM_OKUMA_REPO,
+  OTURUM_YONETIM_YAZMA_REPO,
+} from './domain/repositories/i-oturum-yonetim.repository.js';
+import { oturumDenetimiPrismaRepository } from './infrastructure/repositories/oturum-denetimi.prisma-repository.js';
+import { oturumPrismaRepository } from './infrastructure/repositories/oturum.prisma-repository.js';
+import { oturumYonetimOkumaPrismaRepository } from './infrastructure/repositories/oturum-yonetim-okuma.prisma-repository.js';
+import { KapiOturumYonetimYazmaRepo } from './infrastructure/repositories/oturum-yonetim-yazma.kapi-repository.js';
 import { OturumController } from './presentation/oturum.controller.js';
 
 // Oturum alt özelliği (TS-002 AK-30). Giriş belirteç üreticisini ve adres imzası doğrulayıcısını
@@ -48,7 +46,10 @@ import { OturumController } from './presentation/oturum.controller.js';
     OturumListeleHandler,
     OturumOkuHandler,
     OturumKapatHandler,
-    { provide: OturumYonetimYazmaRepo, useClass: OturumKapiYazmaRepo },
+    {
+      provide: OTURUM_YONETIM_YAZMA_REPO,
+      useClass: KapiOturumYonetimYazmaRepo,
+    },
   ],
   exports: [OturumDenetimiHandler],
 })
@@ -57,8 +58,8 @@ export class OturumModule {
     registrar.register(OTURUM_DENETIMI_REPO, oturumDenetimiPrismaRepository);
     registrar.register(OTURUM_REPO, oturumPrismaRepository);
     registrar.register(
-      OTURUM_YONETIM_REPO,
-      oturumYonetimPrismaRepository(kapi),
+      OTURUM_YONETIM_OKUMA_REPO,
+      oturumYonetimOkumaPrismaRepository(kapi),
     );
   }
 }

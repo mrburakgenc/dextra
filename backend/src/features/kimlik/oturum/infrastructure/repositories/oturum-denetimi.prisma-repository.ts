@@ -1,13 +1,13 @@
-import type { RepoIstemcisi } from '../../../../shared/database/registrar.js';
-import { kimlikSistemAktoru } from '../../_shared/cekirdek/sistem-aktoru.js';
-import type {
-  DenetimSatiri,
-  OturumDenetimiRepo,
-} from '../domain/oturum-denetimi.repository.js';
+// IOturumDenetimiRepo'nun gerçeklemesi: oturum denetiminin okuması ve adres değişince kapatma, işlemin
+// istemcisiyle ve yetki kapısından geçmeden (çekirdek yol).
+import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import { kimlikSistemAktoru } from '../../../_shared/cekirdek/sistem-aktoru.js';
+import type { DenetimSatiri } from '../../domain/entities/oturum.entity.js';
+import type { IOturumDenetimiRepo } from '../../domain/repositories/i-oturum-denetimi.repository.js';
 
 export function oturumDenetimiPrismaRepository(
   istemci: RepoIstemcisi,
-): OturumDenetimiRepo {
+): IOturumDenetimiRepo {
   return {
     // Feature içindeki tek ham sorgu (KR-010 Seçim 49): model arayüzüyle bu okuma üç ayrı deyim
     // olur ve üçü üç ayrı anı görebilir. Genel sayaç satırı yoksa çapraz birleştirme satır vermez.

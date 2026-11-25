@@ -1,5 +1,7 @@
+// Oturumları listele sorgusu: sorgu dizgesinin şeması ve ondan türeyen tip, işleyicinin aldığı sorgu
+// tipi (TS-002 AK-39, AK-51; KR-014).
 import { z } from 'zod';
-import type { Siralama } from '../../../../shared/yetki/okuma-kapisi.js';
+import type { Siralama } from '../../../../../../shared/yetki/okuma-kapisi.js';
 
 // Listenin sıralanabildiği alanlar (TS-002 AK-39 ve AK-51: kaynağın şemasında sabit liste).
 const SIRALANABILIR = ['baslangicZamani', 'sonDondurmeZamani'] as const;
@@ -25,3 +27,11 @@ export const oturumListeleSemasi = z.strictObject({
 });
 
 export type OturumListeleParametreleri = z.infer<typeof oturumListeleSemasi>;
+
+export interface OturumListeleSorgusu {
+  readonly sayfa: number;
+  readonly boyut: number;
+  readonly siralama: Siralama;
+  readonly kullaniciId?: string;
+  readonly acik?: boolean;
+}

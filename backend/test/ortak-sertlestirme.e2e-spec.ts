@@ -316,9 +316,9 @@ describe('d) lint: katman yönü (AK-36)', () => {
   it('uygulama katmanından sunum katmanı içe aktarılamaz; sunumdan uygulama aktarılabilir', async () => {
     const [uygulamadan, sunumdan] = await Promise.all([
       lintStdin(
-        'src/features/kimlik/oturum/application/cikis.handler.ts',
+        'src/features/kimlik/oturum/application/commands/cikis/cikis.handler.ts',
         [
-          "import { OturumController } from '../presentation/oturum.controller.js';",
+          "import { OturumController } from '../../../presentation/oturum.controller.js';",
           'export const denetleyici = OturumController;',
           '',
         ].join('\n'),
@@ -326,7 +326,7 @@ describe('d) lint: katman yönü (AK-36)', () => {
       lintStdin(
         'src/features/kimlik/oturum/presentation/oturum.controller.ts',
         [
-          "import { CikisHandler } from '../application/cikis.handler.js';",
+          "import { CikisHandler } from '../application/commands/cikis/cikis.handler.js';",
           'export const isleyici = CikisHandler;',
           '',
         ].join('\n'),

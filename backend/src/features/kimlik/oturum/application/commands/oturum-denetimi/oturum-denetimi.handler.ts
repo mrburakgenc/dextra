@@ -1,22 +1,24 @@
+// Oturum denetimi işinin işleyicisi (TS-002 "Yapı", AK-12, AK-13): ortak koddaki sözleşmeyi uygular;
+// sözleşme gereği tek calistir yerine denetle vardır.
 import { Injectable, Logger } from '@nestjs/common';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
 import type {
   OturumDenetimi,
-  OturumDenetimiGirdisi,
   OturumDenetimiSonucu,
-} from '../../../../shared/kimlik/oturum-denetimi.contract.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
-import { notunOrtakAlanlari } from '../../_shared/iz.js';
-import { denetimSonucu } from '../domain/oturum-denetimi.js';
-import { OTURUM_DENETIMI_REPO } from '../domain/oturum-denetimi.repository.js';
+} from '../../../../../../shared/kimlik/oturum-denetimi.contract.js';
+import { OutboxYazici } from '../../../../../../shared/messaging/outbox/outbox-yazici.js';
+import { notunOrtakAlanlari } from '../../../../_shared/iz.js';
+import { denetimSonucu } from '../../../domain/entities/oturum.entity.js';
+import { OTURUM_DENETIMI_REPO } from '../../../domain/repositories/i-oturum-denetimi.repository.js';
+import type { OturumDenetimiKomutu } from './oturum-denetimi.command.js';
 
 // Çekirdek yolun adı; notların işin adı alanına yazılır (TS-002 AK-2).
 const IS_ADI = 'kimlik:oturum-denetimi';
 
 // OturumDenetimi sözleşmesinin uygulaması (TS-002 "Yapı", AK-12, AK-13). Her çağrıda tek okuma
-// yapılır; yalnız adres ya da tarayıcı bilgisi uymadığında o oturum kapatılır (KR-009 Kural 8).
-// Kapatma ret sonucuyla birlikte kalıcıdır: işlem tamamlanır, ret hata olarak atılmaz (TS-002
-// "Kapatıp reddeden dallar").
+// yapılır; sonucu varlık verir. Yalnız adres ya da tarayıcı bilgisi uymadığında o oturum kapatılır
+// (KR-009 Kural 8). Kapatma ret sonucuyla birlikte kalıcıdır: işlem tamamlanır, ret hata olarak
+// atılmaz (TS-002 "Kapatıp reddeden dallar").
 @Injectable()
 export class OturumDenetimiHandler implements OturumDenetimi {
   private readonly gunluk = new Logger(OturumDenetimiHandler.name);
@@ -26,7 +28,7 @@ export class OturumDenetimiHandler implements OturumDenetimi {
     private readonly yazici: OutboxYazici,
   ) {}
 
-  async denetle(girdi: OturumDenetimiGirdisi): Promise<OturumDenetimiSonucu> {
+  async denetle(girdi: OturumDenetimiKomutu): Promise<OturumDenetimiSonucu> {
     const satir = await this.uow.read(OTURUM_DENETIMI_REPO).oku(girdi.oturumId);
     const sonuc = denetimSonucu(satir, girdi, Date.now());
     if (satir !== null && !sonuc.gecerli && sonuc.neden === 'adres_degisti') {
