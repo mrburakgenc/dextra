@@ -117,6 +117,15 @@ class SinamaController {
     }
   }
 
+  @Post('yabanci-anahtar')
+  @HerkeseAcik()
+  async yabanciAnahtar(): Promise<void> {
+    // Var olmayan kişiye bağ veren gerçek ekleme; veritabanı yabancı anahtar kısıtına takılır.
+    await this.prisma.kullaniciSirri.create({
+      data: { kullaniciId: yeniKimlik(), parolaOzeti: 'ozet' },
+    });
+  }
+
   @Get('sure-asimi')
   @HerkeseAcik()
   async sureAsimi(): Promise<void> {
@@ -317,6 +326,26 @@ describe('HTTP temeli', () => {
         ileti: 'Kayıt başka bir kayıtla çakışıyor',
         ayrinti: null,
       });
+    });
+
+    it('yabancı anahtar ihlali 409 cakisma olur; gövde kısıt ya da tablo adı taşımaz, hata günlüğüne yazılmaz (AK-45)', async () => {
+      const gunluk = hataGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/yabanci-anahtar');
+
+        expect(cevap.status).toBe(409);
+        expect(cevap.body).toEqual({
+          kod: 'cakisma',
+          ileti: 'İlişkili kayıt nedeniyle işlem yapılamadı',
+          ayrinti: null,
+        });
+        expect(cevap.text).not.toMatch(
+          /kullanici|sirri|_ya\b|foreign|constraint/i,
+        );
+        expect(gunluk).not.toHaveBeenCalled();
+      } finally {
+        gunluk.mockRestore();
+      }
     });
 
     it('işlem süre aşımı 503 yeniden_dene olur', async () => {
