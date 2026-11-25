@@ -14,6 +14,7 @@ Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime
 import hashlib
 import json
@@ -30,7 +31,7 @@ HEDEF_YERTUTUCU = "(orchestrator doldurur: bu görev bittiğinde ne değişmiş 
 OLCUT_YERTUTUCU = "(orchestrator doldurur: bittiğini gösteren, sınanabilir ölçüt)"
 HUKUMLER = ("uyuyor", "uymuyor", "uygulanmaz")
 BITIS_DURUMLARI = ("tamam", "kismi", "soru")
-BITIS_ALANLARI = ("gorev", "durum", "ozet", "dokunulan", "kararlar", "reddedilenler", "kurallar", "denenmedi")
+BITIS_ALANLARI = ("gorev", "durum", "ozet", "kararlar", "reddedilenler", "kurallar", "denenmedi")
 INCELEME_ALANLARI = ("gorev", "hukum", "ozet", "kurallar", "bulgular", "kosulan")
 INCELEME_HUKUMLERI = ("gecti", "kaldi")
 KURAL_KIMLIGI = re.compile(r"(?m)^(?:\[ \] )?((?:KU)-\d{3,}@\d+) ")
@@ -68,7 +69,6 @@ Bir test ya da komut beklenmedik biçimde başarısız olursa tahminle yama yapm
   "gorev": "{kimlik}",
   "durum": "tamam | kismi | soru",
   "ozet": "ne yapıldı, tek paragraf",
-  "dokunulan": ["değiştirdiğin her dosyanın yolu"],
   "kararlar": [{{"karar": "verdiğin her tasarım kararı", "neden": "gerekçesi"}}],
   "reddedilenler": [{{"secenek": "denemeyip bıraktığın yol", "neden": "neden bıraktın"}}],
   "kurallar": [{{"kimlik": "KU-001@1", "hukum": "uyuyor | uymuyor | uygulanmaz", "not": "kısa gerekçe"}}],
@@ -79,6 +79,7 @@ Bir test ya da komut beklenmedik biçimde başarısız olursa tahminle yama yapm
 }}
 ```
 
+Değişen dosyaları araç ölçer; listelerini yazman gerekmez.
 "Kurallar" bölümündeki her kural için bir hüküm zorunludur. Bilgi tabanına (`kb/`) yazma;
 aldığın kararı yukarıdaki "kararlar" alanında bildir. İşini başka bir oturum bağımsız olarak inceleyecek.
 """
@@ -257,12 +258,46 @@ def yeni(kok: pathlib.Path, baslik: str, rol: str, yollar: list, konular: list,
     return ana / kimlik / "kart.md"
 
 
-def asama(d: dict, rapor: dict, inceleme_zorunlu: bool) -> tuple:
-    """Görevin bulunduğu aşama: (iş alındı mı, okunur metin). Plan işareti buradan türer."""
+def kosu_isareti(kayit: pathlib.Path) -> dict | None:
+    """Süren işçi ya da inceleme oturumunun işareti (kosuyor.json); işareti koyan süreç ölmüşse işaret silinir."""
+    yol = kayit / "kosuyor.json"
+    if not yol.is_file():
+        return None
+    isaret = _json_oku(yol)
+    pid = isaret.get("pid")
+    canli = isinstance(pid, int) and not isinstance(pid, bool) and pid > 0
+    if canli:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            canli = False
+        except PermissionError:
+            pass   # süreç var; yalnız sinyal izni yok (başka kullanıcı ya da kum havuzu)
+    if not canli:
+        try:
+            yol.unlink(missing_ok=True)
+        except OSError:
+            pass   # silinemese de yok sayılır (kum havuzundaki oturum ana ağacın kaydına yazamaz)
+        return None
+    return isaret
+
+
+def kosu_metni(isaret: dict) -> str:
+    """Koşu işaretinin okunur hâli: 'koşuyor · 12 dk' ya da 'inceleniyor · 3 dk'."""
+    dk = (datetime.datetime.now() - datetime.datetime.fromisoformat(isaret["basla"])).total_seconds() // 60
+    return "%s · %d dk" % ("inceleniyor" if isaret.get("tip") == "inceleme" else "koşuyor", dk)
+
+
+def asama(d: dict, rapor: dict, inceleme_zorunlu: bool, kosu: dict | None = None) -> tuple:
+    """Görevin bulunduğu aşama: (iş alındı mı, okunur metin). Plan işareti buradan türer.
+
+    `kosu`, görevin koşu işaretidir (kosu_isareti); verilirse süren oturum aşama olarak gösterilir."""
     if d["durum"] == "atildi":
         return False, "atıldı"
     if d.get("alindi"):
         return True, "alındı"
+    if kosu:
+        return False, kosu_metni(kosu)
     if d["durum"] == "taslak":
         return False, "bekliyor"
     if d["durum"] in ("sorunlu", "zaman-asimi"):
@@ -479,6 +514,72 @@ def _kullanim(cikti: str) -> dict:
     return {}
 
 
+def _cikti_oku(cikti: str) -> dict:
+    """`--output-format json` çıktısının kendisi; okunamazsa boş sözlük."""
+    for parca in (cikti.strip(), cikti.strip().split("\n")[-1] if cikti.strip() else ""):
+        try:
+            veri = json.loads(parca)
+        except ValueError:
+            continue
+        if isinstance(veri, dict):
+            return veri
+    return {}
+
+
+def _gecmis_satiri(tip: str, basla: datetime.datetime, sure_sn: float, cikti: str, sonuc: str,
+                   agac: pathlib.Path) -> dict:
+    """Koşu geçmişinin bir satırı. Alt ajan sayıları, oturumun hook defteri varsa ondan sayılır."""
+    veri = _cikti_oku(cikti)
+    satir = {"tip": tip, "basla": basla.isoformat(timespec="seconds"), "sure_sn": sure_sn,
+             "tur_sayisi": veri.get("num_turns"), "maliyet_usd": veri.get("total_cost_usd"),
+             "sonuc": "tur-siniri" if veri.get("subtype") == "error_max_turns" else sonuc}
+    sid = veri.get("session_id")
+    defter = agac / ".harness" / "defter" / (re.sub(r"[^A-Za-z0-9_.-]", "_", str(sid)) + ".jsonl")
+    if sid and defter.is_file():
+        olaylar = []
+        for s in defter.read_text(encoding="utf-8").splitlines():
+            try:
+                olaylar.append(json.loads(s))
+            except ValueError:
+                continue
+        olaylar = [o for o in olaylar if isinstance(o, dict) and o.get("olay") == "paket-verildi"]
+        satir["alt_ajan"] = sum(o.get("kanal") == "baslangic" for o in olaylar)
+        satir["workflow"] = sum(o.get("kanal") == "workflow" for o in olaylar)
+    return satir
+
+
+def _gecmise_ekle(kayit: pathlib.Path, satir: dict) -> None:
+    with (kayit / "kosular.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(satir, ensure_ascii=False) + "\n")
+
+
+def kosu_gecmisi(kayit: pathlib.Path) -> list:
+    """Görevin bütün işçi koşuları ve incelemeleri, sırayla (kosular.jsonl); geçmiş yoksa boş liste."""
+    yol = kayit / "kosular.jsonl"
+    satirlar = []
+    for s in yol.read_text(encoding="utf-8").splitlines() if yol.is_file() else []:
+        try:
+            veri = json.loads(s)
+        except ValueError:
+            continue
+        if isinstance(veri, dict):
+            satirlar.append(veri)
+    return satirlar
+
+
+@contextlib.contextmanager
+def _kosuyor(kayit: pathlib.Path, tip: str):
+    """Oturum sürerken görevin kaydına koşu işareti koyar; oturum bitince (hata olsa da) kaldırır."""
+    yol = kayit / "kosuyor.json"
+    gecici = kayit / "kosuyor.json.yaz"   # yarım yazılmış işareti okuyan onu ölü sanıp silmesin
+    _json_yaz(gecici, {"tip": tip, "pid": os.getpid(), "basla": _simdi()})
+    os.replace(gecici, yol)
+    try:
+        yield
+    finally:
+        yol.unlink(missing_ok=True)
+
+
 def _ust_talimat_dosyalari(agac: pathlib.Path) -> list:
     """Ağacın üstündeki klasörlerde durup oturuma yüklenebilecek talimat dosyalarının yolları."""
     yollar = set()
@@ -675,8 +776,9 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
 
     basla = datetime.datetime.now()
     komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
-    cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + onceki_kayit,
-                                               agac, kimlik, d["rol"], g["model"])
+    with _kosuyor(kayit, "isci"):
+        cikti, sorunlar, zaman_asimi = _oturum_kos(g, kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + onceki_kayit,
+                                                   agac, kimlik, d["rol"], g["model"])
     (kayit / "sonuc.json").write_text(cikti or "", encoding="utf-8")
     uyarilar = []
     for komsu, once in komsular.items():   # işçi kendi ağacından çıkıp orchestrator'ın ya da ana ağacın dosyasına yazdı mı
@@ -698,10 +800,6 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
     bitis = {}
     if not zaman_asimi and not any(s["ad"] == "sozlesmesiz" for s in bitis_sorunlari):
         bitis = _json_oku(kayit / "bitis.json")
-        beyan = sorted(set(bitis.get("dokunulan") or []))
-        if beyan != degisen:
-            sorunlar.append({"ad": "beyan-uyusmuyor",
-                             "mesaj": "beyan edilen dosyalar %s, gerçekte değişen %s" % (beyan, degisen)})
     try:
         for b in h.denetle(agac):
             if b["seviye"] == "kirmizi":
@@ -715,6 +813,7 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
              "kullanim": _kullanim(cikti), "sure_sn": round((datetime.datetime.now() - basla).total_seconds(), 1),
              "bitis": bitis}
     _json_yaz(kayit / "rapor.json", rapor)
+    _gecmise_ekle(kayit, _gecmis_satiri("isci", basla, rapor["sure_sn"], cikti, durum, agac))
     d.update({"durum": durum, "kosuldu": basla.isoformat(timespec="seconds"), "inceleme": None,
               "kosum_imza": _imza(agac, d["taban"]), "sozlesme": _sozlesme(kart), "incelenen_imza": None})
     _json_yaz(kayit / "durum.json", d)
@@ -751,8 +850,9 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
 
     basla = datetime.datetime.now()
     once = _imza(agac, d["taban"])
-    cikti, sorunlar, zaman_asimi = _oturum_kos(g, istem, agac, kimlik, "inceleyici",
-                                               g.get("inceleme_model") or g["model"])
+    with _kosuyor(kayit, "inceleme"):
+        cikti, sorunlar, zaman_asimi = _oturum_kos(g, istem, agac, kimlik, "inceleyici",
+                                                   g.get("inceleme_model") or g["model"])
     if _imza(agac, d["taban"]) != once:
         sorunlar.append({"ad": "inceleyici-dokundu",
                          "mesaj": "inceleyici çalışma ağacındaki dosyaları değiştirdi; inceleme geçersiz"})
@@ -780,6 +880,8 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
              "kosulan": inc.get("kosulan") or [],
              "kullanim": _kullanim(cikti), "sure_sn": round((datetime.datetime.now() - basla).total_seconds(), 1)}
     _json_yaz(kayit / "inceleme-rapor.json", rapor)
+    _gecmise_ekle(kayit, _gecmis_satiri("inceleme", basla, rapor["sure_sn"], cikti,
+                                        "zaman-asimi" if zaman_asimi else sonuc, agac))
     d.update({"inceleme": sonuc, "incelendi": basla.isoformat(timespec="seconds"), "incelenen_imza": once})
     _json_yaz(kayit / "durum.json", d)
     _plani_guncelle(kok, d)
@@ -930,7 +1032,8 @@ def komut(kok: pathlib.Path, arg: list) -> int:
         for p in sorted(ana.glob("GV-*/durum.json")) if ana.is_dir() else []:
             d = _json_oku(p)
             print("%s [%s] %s — %s%s" % (
-                d["kimlik"], asama(d, _json_oku(p.parent / "rapor.json"), zorunlu)[1], d["rol"], d["baslik"],
+                d["kimlik"], asama(d, _json_oku(p.parent / "rapor.json"), zorunlu, kosu_isareti(p.parent))[1],
+                d["rol"], d["baslik"],
                 (" · %s %s" % (d["plan"], d["adim"])) if d.get("plan") else ""))
         return 0
     raise h.HarnessHata('kullanım: h.py gorev <yeni | kos GV-NNN [--cevap "..."] | incele GV-NNN | al GV-NNN | '

@@ -66,7 +66,7 @@ PLAN_YURUT = re.compile(r"h\.py[\"']?\s+plan\s+yurut\s+(EP-\d+)")
 GOREV_SORUSU = {"kos": "Bu görev ayrı bir oturumda, kendi çalışma ağacında koşturulacak",
                 "incele": "Bu görev, işi yapmayan ikinci bir oturuma inceletilecek",
                 "al": "Bu görevin işi birleştirilecek", "at": "Bu görevin işi silinecek"}
-KANIT = re.compile(r"\.harness/gorev/GV-\d+/(?:durum|rapor|inceleme-rapor|bitis|inceleme)\.json$")
+KANIT = re.compile(r"\.harness/gorev/GV-\d+/(?:(?:durum|rapor|inceleme-rapor|bitis|inceleme)\.json|kosular\.jsonl)$")
 PLAN_DOSYASI = re.compile(r"\.harness/plan/.+\.md$")
 CD = re.compile(r"^\s*cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&|]+)\s*(?:&&|;)")
 ANA_AGAC_REDDI = ("Bu oturum ana çalışma ağacında. Her oturum kendi çalışma ağacında (worktree) çalışır: "
@@ -212,6 +212,13 @@ def oturum_basi(girdi: dict, ortam: dict) -> dict | None:
         satirlar += ["Açık epic: " + s for s in plan.acik_planlar(kok)]
     except (h.HarnessHata, OSError, ValueError):
         pass
+    kosanlar = []
+    for p in sorted(gorev._kayit(kok).glob("GV-*")):
+        isaret = gorev.kosu_isareti(p)
+        if isaret:
+            kosanlar.append("%s %s" % (p.name, gorev.kosu_metni(isaret)))
+    if kosanlar:
+        satirlar.append("Koşan görev: %s." % ", ".join(kosanlar))
     if taslak:
         satirlar.append("Kabul bekleyen %d taslak: %s. Kabulü yalnız kullanıcı verir: kullanıcı isterse "
                         "`python3 harness/h.py kabul <KİMLİK>` çalıştırılır ve hook ona sorar."

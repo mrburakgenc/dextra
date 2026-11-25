@@ -34,7 +34,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 ## Yapma
 
 - Sorunlu ya da uyarılı koşumu kendin düzeltmeye girişme, gizleme: kullanıcıya olduğu gibi söyle; karar onundur (yeniden koştur ya da `gorev at`).
-- Ölçüm kayıtlarını (`durum.json`, `rapor.json`, `inceleme-rapor.json`) elle düzenleme; hook reddeder.
+- Ölçüm kayıtlarını (`durum.json`, `rapor.json`, `inceleme-rapor.json`, koşu geçmişi `kosular.jsonl`) elle düzenleme; hook reddeder.
 - İşçinin "bitti" demesini kanıt sayma: kanıt ölçüm ve inceleme raporudur.
 - Görevin dosyalarında ya da `kb/` altında commit edilmemiş değişiklik varken koşturma: koşum reddedilir, önce kullanıcıya söyle.
 - Sonucu gördükten sonra kartın hedefini ya da ölçütünü değiştirme, işçinin ağacına dokunma: araç ikisini de ölçer ve işi incelemez, almaz.
