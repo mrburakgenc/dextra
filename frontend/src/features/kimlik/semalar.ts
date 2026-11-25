@@ -42,6 +42,32 @@ export const ParolaBelirleSemasi = z
     path: ['parolaTekrar'],
   });
 
+// Kullanıcı işleri (TS-004 "Yönetim ekranları"); kurallar backend'in POST kimlik/kullanici
+// gövdesindeki gibidir: kullanıcı adı küçük harfe çevrilir, sonra 3-64 karakter ve yalnız küçük
+// harf, rakam, nokta, tire ve alt çizgi olur; görünen adın baştaki ve sondaki boşluğu atılır, sonra
+// 1-200 karakter olur.
+const gorunenAd = z
+  .string({ error: 'Görünen ad boş olamaz' })
+  .trim()
+  .min(1, 'Görünen ad boş olamaz')
+  .max(200, 'Görünen ad en çok 200 karakter olabilir');
+
+export const KullaniciAcSemasi = z.object({
+  kullaniciAdi: z
+    .string({ error: 'Kullanıcı adı boş olamaz' })
+    .toLowerCase()
+    .regex(
+      /^[a-z0-9._-]{3,64}$/,
+      'Kullanıcı adı 3-64 karakter olmalı; yalnız a-z harfleri, rakam, nokta, tire ve alt çizgi taşıyabilir',
+    ),
+  gorunenAd,
+});
+
+export const GorunenAdSemasi = z.object({ gorunenAd });
+
+// Kullanıcının kimliği backend'de uuid'dir; backend yoluna girdiği için başka biçim reddedilir.
+export const KullaniciKimligi = z.uuid();
+
 // Zod hatasından her alanın ilk iletisi.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {
   const alanlar: Record<string, string> = {};

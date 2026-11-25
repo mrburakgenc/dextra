@@ -86,7 +86,15 @@ export function KullaniciTablosu({
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
-            <td className="px-3 py-2">{kayit.gorunenAd ?? BOS}</td>
+            <td className="px-3 py-2">
+              {kayit.gorunenAd === undefined ? (
+                BOS
+              ) : (
+                <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
+                  {kayit.gorunenAd}
+                </Link>
+              )}
+            </td>
             <td className="px-3 py-2">{kayit.kullaniciAdi ?? BOS}</td>
             <td className="px-3 py-2">{durum(kayit.pasifZamani)}</td>
             <td className="px-3 py-2">
