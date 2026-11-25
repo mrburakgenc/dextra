@@ -68,11 +68,7 @@ Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 ### 4. Değer (kullanıcı, 2026-11-25: "Sayı, varsayılan 0, büyük kazanır")
 
 ## Açık uçlar
-- AU-7: Önceliğin aralığı: alt ve üst sınır var mı, negatif yazılabilir mi?
-- AU-8: Etkiyi ve önceliği kim yazabilir: yetenek yazabilen herkes mi, ayrı bir izin mi?
-- AU-11: Güncellemede yeni hâl bir yasağın içine giriyorsa yazma reddedilir mi (iki hâl kuralının yasak karşılığı)?
 - AU-12: Sistem satırlarının (tohumla gelen yetenekler) etkisi ve önceliği çalışma anında değiştirilemez; yalnız göçle değişir. Bu kabul mü?
-- AU-13: Kişisiz işlerin sistem aktörü yasaklardan etkilenir mi?
 - AU-14: Erişim kaydına ve değişiklik kaydına yasaklar yazılır mı (hangi yasak hangi kolonu kapattı)? Yönetici "bu kişi bu kayıtta neden şunu göremiyor" sorusunu nereden cevaplar?
 - AU-15: Bir kişide aynı izin için kural ve öncelik düzeyi sayısına üst sınır konur mu (sorgu büyüklüğü; ölçülmedi)?
 - AU-16: Bu tasarım yetenek kararını değiştirir (KR-008 Seçim 3, 9 ve 30; KR-010 derleme eşlemesi): değişikliği hangi karar taslağı taşıyacak?
@@ -87,6 +83,10 @@ Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 - AU-6 (kullanıcı, 2026-11-25): "Değerlendirilemeyen yasak ekranda yasak sayılsın": ekran emin olamadığı düğmeyi ve formu gizler; özel eşleyici yazılır. Kararı her durumda sunucu verir. Soru: Ekran, şartı ekrana gelmeyen bir kolona bakan giremez kuralını değerlendiremez ve bugünkü kitaplıkla "izin var" der (çürütme turunda ölçüldü): kısıtlı kişi yazamayacağı formu görür, backend reddeder. Değerlendirilemeyen yasak ekranda "yasak" mı sayılsın (özel eşleyici ister; bazı düğmeler gereksiz gizlenir), yoksa bugünkü sınır mı geçerli olsun (ekran gösterebilir, kararı backend verir)?
 - AU-9 (kullanıcı, 2026-11-25): "Eski satırın değerleri korunsun": yenilemede etki ve öncelik verilmezse eski satırınkiler yazılır; değiştirmek isteyen açıkça verir. Soru: Yenilemede etki ve öncelik verilmezse eski satırın değerleri mi korunur, varsayılan mı yazılır? (Varsayılan yazılırsa yasak sessizce izne döner; çürütme 10.)
 - AU-10 (kullanıcı, 2026-11-25): "Bütün eylemlerde": her izin için yasak yazılabilir; oluşturma, silme ve niyet eylemlerinde yasak kaydın bütünü içindir. Soru: Giremez kuralı hangi eylemlerde yazılabilir: yalnız okuma ve güncellemede mi, oluşturma, silme ve niyet eylemlerinde de mi? Silme ve niyet eylemlerinde kolon sınırı olmadığı için yasak kaydın bütünü içindir.
+- AU-7 (kullanıcı, 2026-11-25): "0 ile 100 arası": negatif yok; 0 en alt düzeydir ve varsayılanla yazılan satır hiçbir şeyi ezmez; üst sınır 100. Soru: Önceliğin aralığı: alt ve üst sınır var mı, negatif yazılabilir mi?
+- AU-8 (kullanıcı, 2026-11-25): "Ayrı bir izin": yeteneğin etkisini (yasak) ve önceliğini yazmak için yetenek yazma izninden ayrı bir izin gerekir; izin satırı, göç ve tohum yeteneği eklenir. İznin adı ve bu iznin yenilemeyle ilişkisi tasarımın 'Yapı'sında yazılacak. Soru: Etkiyi ve önceliği kim yazabilir: yetenek yazabilen herkes mi, ayrı bir izin mi?
+- AU-11 (kullanıcı, 2026-11-25): "Reddedilsin": yazmanın sonucu yasaklı bir kayıtsa işlem "yetki yok" alır ve geri alınır (iki hâl kuralının yasak karşılığı). Soru: Güncellemede yeni hâl bir yasağın içine giriyorsa yazma reddedilir mi (iki hâl kuralının yasak karşılığı)?
+- AU-13 (kullanıcı, 2026-11-25): "etkilemesin ve şöyle de bir şey var sistem aktörü ile asla giriş yapılamasın": sistem aktörünün yetenekleri yasakların üstünde sayılır. İkinci cümle ayrı bir karardır ve TS-002'ye yazıldı (bugün girişte, oturum denetiminde, parola bağlantısında ve giriş bilgisi değişikliğinde reddediliyor; testleri var). Soru: Kişisiz işlerin sistem aktörü yasaklardan etkilenir mi?
 
 ## Aşamalar (açık uçlar kapanınca kesinleşir)
 1. Veri ve taşıma: iki kolon, göç, katalog, derleyici, yönetim uçlarının gövdesi; motor etkiyi ve önceliği taşır ama henüz kullanmaz, giremez yazılamaz (davranış değişmez).
