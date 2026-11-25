@@ -3,8 +3,9 @@
 
 Rapor elle yazılan bölümlerle aracın ürettiği görev tablosundan oluşur (KR-015, KU-016). Tablo iki işaret satırı
 arasındadır ve görev kayıtlarından (ana çalışma ağacında .harness/gorev/) üretilir; elle yazılmaz.
-Push kapısı (`h.py denetle --dal`) bu dalda alınmış olup commit edilmiş hiçbir raporda geçmeyen görevi kırmızı
-bildirir (Z19).
+Push kapısı (`h.py denetle --dal`) bu dalda alınmış olup commit edilmiş hiçbir raporun tablosunda 'alındı' satırıyla
+yer almayan görevi kırmızı bildirir (Z19). Görev bir raporda ancak tablosundaki satırı 'alındı' ya da 'atıldı' ise
+kapanmış sayılır; hiç koşmamış görev tabloya girmez (TS-006 Yapı 15).
 
 Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 """
@@ -65,6 +66,22 @@ def commitsiz_raporlar(kok: pathlib.Path, ayar: dict) -> list:
 def _geciyor_mu(kimlik: str, metin: str) -> bool:
     """Kimlik metinde tam sözcük olarak geçiyor mu (GV-0071, GV-007'yi taşımaz)."""
     return re.search(r"(?<!yerine )\b%s\b" % re.escape(kimlik), metin) is not None
+
+
+def _tablo_asamalari(metin: str) -> dict:
+    """Raporun görev tablosundaki (otomatik bloğun içi) satırlar: kimlik → aşama hücresi; tablo yoksa boş."""
+    bas, son = metin.find(BASLA), metin.find(BITIR)
+    asamalar = {}
+    for satir in metin[bas:son].split("\n") if 0 <= bas < son else []:
+        hucreler = [x.strip() for x in satir.strip().strip("|").split("|")]
+        if satir.startswith("|") and len(hucreler) > 3 and re.fullmatch(r"GV-\d+", hucreler[0]):
+            asamalar[hucreler[0]] = hucreler[3].split(" · ")[0]
+    return asamalar
+
+
+def _kapanmislar(metin: str, asamalar=("alındı", "atıldı")) -> set:
+    """Raporun tablosunda aşaması verilenlerden biri olan görevler (varsayılan: kapanmış, yani alındı ya da atıldı)."""
+    return {k for k, a in _tablo_asamalari(metin).items() if a in asamalar}
 
 
 def _onerisiz(metin: str) -> str:
@@ -130,6 +147,12 @@ def _asama(d: dict) -> str:
 def _kayitli_gorevler(kok: pathlib.Path) -> list:
     ana = gorev._kayit(kok)
     return [p.name for p in ana.iterdir() if p.is_dir() and re.fullmatch(r"GV-\d+", p.name)] if ana.is_dir() else []
+
+
+def _kosmamis(kok: pathlib.Path, kimlik: str) -> bool:
+    """Görev hiç koşmamış mı (durumu 'taslak'). Kaydı okunamayan görev koşmamış sayılmaz: tabloda görünür kalır."""
+    d = _oku(gorev._kayit(kok, kimlik) / "durum.json")
+    return d is not None and d.get("durum") == "taslak"
 
 
 def _satir(kok: pathlib.Path, kimlik: str) -> dict:
@@ -217,7 +240,8 @@ def oneri_sayisi(kok: pathlib.Path, ayar: dict) -> int:
 def uret(kok: pathlib.Path, dosya) -> pathlib.Path:
     """Raporun otomatik bloklarını yeniden üretir; blokların dışına dokunmaz.
 
-    Tablo, bloğun içinde zaten yazılı kimlikleri ve başka hiçbir raporda geçmeyen kayıtlı görevlerin hepsini taşır.
+    Tablo, bloğun içinde zaten yazılı kimlikleri ve kayıtlı görevleri taşır; başka bir raporun tablosunda kapanmış
+    ('alındı' ya da 'atıldı') olan görev ile hiç koşmamış görev tabloya girmez, bloğun içinde yazılıysa çıkarılır.
     Raporda ikinci bloğun işaretleri varsa o blok tablodaki görevlerin inceleme önerilerini taşır."""
     kok = pathlib.Path(kok)
     ayar = h.ayar_oku(kok)
@@ -226,9 +250,9 @@ def uret(kok: pathlib.Path, dosya) -> pathlib.Path:
         raise h.HarnessHata("rapor bulunamadı: %s" % dosya)
     metin = yol.read_text(encoding="utf-8")
     bas, son = _blok(metin, yol)
-    baska = [_onerisiz(t) for p, t in _raporlar(kok, ayar).items() if p.resolve() != yol.resolve()]
-    kimlikler = set(GOREV_KIMLIGI.findall(metin[bas:son])) | {
-        k for k in _kayitli_gorevler(kok) if not any(_geciyor_mu(k, t) for t in baska)}
+    kapanmis = set().union(*(_kapanmislar(t) for p, t in _raporlar(kok, ayar).items() if p.resolve() != yol.resolve()))
+    kimlikler = {k for k in set(GOREV_KIMLIGI.findall(metin[bas:son])) | set(_kayitli_gorevler(kok))
+                 if k not in kapanmis and not _kosmamis(kok, k)}
     yeni_metin = metin[:bas] + "\n" + tablo(kok, kimlikler) + "\n" + metin[son:]
     if ONERI_BASLA in yeni_metin or ONERI_BITIR in yeni_metin:   # işaretsiz eski raporda ikinci blok eklenmez
         bas, son = _blok(yeni_metin, yol, ONERI_BASLA, ONERI_BITIR)
@@ -263,7 +287,8 @@ def yeni(kok: pathlib.Path, konu: str, tarih: str | None = None) -> pathlib.Path
 # ── Denetim (Z19) ────────────────────────────────────────────────────────────────────
 
 def dal_bulgulari(kok: pathlib.Path, ayar: dict) -> list:
-    """Z19: taban dala göre bu dalda alınmış (`GV-NNN:` başlıklı commit) olup hiçbir raporda geçmeyen görev ve bu
+    """Z19: taban dala göre bu dalda alınmış (`GV-NNN:` başlıklı commit) olup hiçbir raporun tablosunda 'alındı'
+    satırıyla yer almayan görev (kimliğin raporun başka yerinde ya da 'bekliyor' satırında geçmesi yetmez) ve bu
     görevleri taşıyan raporda boş bırakılmış zorunlu bölüm. Eski raporlar (bu dalın görevini taşımayan) sınanmaz.
     Raporlar dalın ucundaki commit'ten okunur: commit edilmemiş rapor kapıyı geçirmez."""
     kok = pathlib.Path(kok)
@@ -275,11 +300,13 @@ def dal_bulgulari(kok: pathlib.Path, ayar: dict) -> list:
     kimlikler = sorted({m.group(1) for s in basliklar for m in [ALMA_BASLIGI.match(s)] if m},
                        key=lambda k: int(k[3:]))
     raporlar = {yol: _onerisiz(metin) for yol, metin in _commitli_raporlar(kok, ayar).items()}
-    s = [h.B("Z19", "raporsuz-gorev", k, "bu dalda alındı ama %s altında commit edilmiş hiçbir raporda geçmiyor — "
-             "raporu aç: python3 harness/h.py rapor yeni \"<konu>\" (var olan raporun tablosunu yenilemek için: "
+    alinmis = set().union(*(_kapanmislar(t, ("alındı",)) for t in raporlar.values()))
+    s = [h.B("Z19", "raporsuz-gorev", k, "bu dalda alındı ama %s altında commit edilmiş hiçbir raporun tablosunda "
+             "'alındı' satırıyla yer almıyor — raporu aç: python3 harness/h.py rapor yeni \"<konu>\" (görev var "
+             "olan bir raporun tablosunda 'bekliyor' gibi eski bir aşamayla duruyorsa raporun tablosunu yenile: "
              "rapor uret <dosya>) ve commit et; raporu commit eden ve gönderen komutları ayrı ayrı çalıştır (tek "
              "satırda kanca raporu henüz göremez)" % ayar["rapor"]["dizin"])
-         for k in kimlikler if not any(_geciyor_mu(k, t) for t in raporlar.values())]
+         for k in kimlikler if k not in alinmis]
     for yol, metin in raporlar.items():
         if not any(_geciyor_mu(k, metin) for k in kimlikler):
             continue
