@@ -5,8 +5,16 @@ import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { YetenekListeleHandler } from './application/yetenek-listele.handler.js';
 import { YetenekOkuHandler } from './application/yetenek-oku.handler.js';
-import { YETENEK_REPO } from './domain/yetenek.repository.js';
-import { yetenekPrismaRepository } from './infrastructure/yetenek.prisma-repository.js';
+import { YetenekOlusturHandler } from './application/yetenek-olustur.handler.js';
+import { YetenekSilHandler } from './application/yetenek-sil.handler.js';
+import {
+  YETENEK_REPO,
+  YetenekYazmaRepo,
+} from './domain/yetenek.repository.js';
+import {
+  YetenekKapiYazmaRepo,
+  yetenekPrismaRepository,
+} from './infrastructure/yetenek.prisma-repository.js';
 import { YetenekController } from './presentation/yetenek.controller.js';
 
 // Yetenek alt özelliği (TS-002 AK-30). Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez
@@ -14,7 +22,13 @@ import { YetenekController } from './presentation/yetenek.controller.js';
 @Module({
   imports: [DatabaseModule, KimlikCekirdekModule],
   controllers: [YetenekController],
-  providers: [YetenekListeleHandler, YetenekOkuHandler],
+  providers: [
+    YetenekListeleHandler,
+    YetenekOkuHandler,
+    YetenekOlusturHandler,
+    YetenekSilHandler,
+    { provide: YetenekYazmaRepo, useClass: YetenekKapiYazmaRepo },
+  ],
 })
 export class YetenekModule {
   constructor(registrar: Registrar, kapi: OkumaKapisi) {
