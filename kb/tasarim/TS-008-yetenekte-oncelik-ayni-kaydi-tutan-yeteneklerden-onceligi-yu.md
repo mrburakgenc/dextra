@@ -22,18 +22,18 @@ Yön (kullanıcı, 2026-11-25): ilk taslak "önceliği yüksek olan yetenek tek 
 
 - Amaç: yöneticinin bir eylemi, bir kaydı ya da bir kolonu açıkça yasaklayabilmesi ve yasağın hangi izinlerin önüne geçeceğini öncelikle belirleyebilmesi.
 - Kapsam dışı: kayıt katmanının yeri (TS-007; ondan bağımsızdır: etki ve öncelik yalnız yetki motorunun içini ve derlemeyi değiştirir, repository'lerin biçimini değiştirmez).
-- Başarının ölçüsü: var olan bütün veri ve testler değişmeden bugünkü gibi çalışır (hepsi girebilir, öncelik 0); Stajyer rolüne yazılan bir giremez kuralıyla örnekteki kişi yasaklanan kolonu göremez ve yazamaz; ekran aynı kararı gösterir.
+- Başarının ölçüsü: var olan veri bugünkü gibi çalışır (hepsi izin, öncelik 0) ve davranışı sınayan testler beklentileri değişmeden geçer; şemanın, izinlerin ve yetenek kolonlarının dökümünü sayan envanter testleri iki yeni kolon ve iki yeni izinle genişler. Stajyer rolüne yazılan bir okuma yasağıyla örnekteki kişi yasaklanan kolonu göremez; yazmayı kısıtlamak ayrı bir yasak ister (her eylem için yasak ayrıca yazılır). Ekran aynı kararı gösterir.
 
 ## Kısıtlar
 - Kullanıcının kararları (2026-11-25) bağlayıcıdır: yön (giremez kuralı ve öncelik); girebilir kuralları eşit öncelikte bugünkü gibi birleşir; yazmada yasak alanı kapsıyorsa cevap "yetki yok"tur; öncelik sayıdır, varsayılan 0, büyük sayı kazanır.
 - Var olan davranış korunur: etkisi yazılmamış yetenek girebilirdir, önceliği yazılmamış yetenek 0'dır; göç var olan satırlara bunları yazar.
 - Veri kararını sunucuda veritabanı verir (KR-010): yasak da sorguya çevrilir, bellekte kayıt süzülmez.
 - Süzme ve sıralama görünmeyen kolonu ele vermez (bugünkü kural).
-- Yetenek değişmez satırdır (KR-008 Seçim 7): etki ve öncelik yazılırken ve yenilenirken verilir.
+- Yetenek değişmez satırdır (KR-008 Seçim 7): etki yazılırken verilir ve sonra değişmez; öncelik yazılırken verilir, yenilemede değişebilir.
 - Kullanıcının ilkesi (KR-008; 2026-11-23): önce kapatılır, sonra açılır; tanım yanlış ya da eksikse erişim kapalı kalır.
 
 ## Değişmezler
-1. Yasağı olmayan kişinin her isteği bugünkü cevabı verir ve bugünkü sorguları atar.
+1. Yasağı olmayan kişinin her isteği bugünkü cevabı verir ve bugünkü sorguları atar; `yetkilerim` cevabı da aynıdır (izin kurallarına alan eklenmez ve sıraları değişmez; sıralama yalnız yasağı olan kişide uygulanır).
 2. Kök yönetici rolünün sistem satırlarının verdiği izin hiçbir yasakla kapanmaz (kilitlenme olmaz).
 3. Yasak hiçbir yoldan sessizce kalkmaz: uygulanamayan yasak, o izni o kişide kapatır.
 4. Veri kararını veritabanı verir; ekran gizleyebilir, izin veremez.
@@ -45,17 +45,17 @@ Ortam: bugünkü tek süreçli backend ve yerel PostgreSQL. Sayılar sayımdır;
 1. Kolon yasağı (şartsız): Müdür'e "kullanıcı okuma, bütün kayıtlar, bütün kolonlar"; Stajyer'e "kullanıcı okuma, giremez, kolon: telefon, öncelik 10". Kişinin kullanıcı listesinde ve kayıt sayfasında telefon 0 kayıtta gelir; ekranda telefon kolonu hiç çizilmez (tür düzeyi soru "hayır").
 2. Kayıt yasağı (şartlı, yazma): Müdür'e "oturum kapatma, bütün kayıtlar"; Stajyer'e "oturum kapatma, giremez, şart: oturumun sahibi isteği yapan değil, öncelik 10". Kişi başkasının oturumunu kapatamaz: cevap "yetki yok", 0 satır değişir, değişiklik kaydı yazılmaz, ret kaydına 1 satır düşer; kendi oturumunu kapatabilir.
 3. Öncelik: yasak öncelik 10, aynı kaydı tutan izin öncelik 20 ise izin geçerlidir; ikisi de 10 ise yasak kazanır.
-4. Bozuk yasak: kolon listesindeki ad şemada kalmamış bir yasak (testte veritabanına doğrudan yazılır) kişide o izni tümden kapatır: liste 0 kayıt döner, yazma "yetki yok" alır, derleme başına günlüğe 1 hata satırı düşer.
+4. Bozuk yasak: iki kolonlu bir yasağın kolonlarından birinin adı şemada kalmamıştır (testte veritabanına doğrudan yazılır). Yasak daralarak yaşamaz: kişide o izni tümden kapatır; liste 0 kayıt döner, yazma "yetki yok" alır, derleme başına günlüğe 1 hata satırı düşer.
 5. Muafiyet: kök yöneticinin üyesi olduğu kümeye yazılan yasak onun sistem yeteneklerini kapatmaz; kök yönetici bütün kayıtları ve kolonları görür (0 fark). Aynı yasak, sistem satırı olsa da başka rolün iznini kapatır.
 6. Boş değer: Stajyer'e "grup okuma, giremez, şart: üst grubu X" yazılır; üst grubu boş olan kök grup yasaklı sayılmaz ve listede kalır.
-7. Var olan veri: 29 canlı yeteneğin hepsi izin ve öncelik 0'dır; var olan uçtan uca testler değişmeden geçer ve yasağı olmayan kişinin okumasında sorgu sayısı bugünküyle aynıdır (0 ek sorgu).
+7. Var olan veri: bugünkü 29 canlı yeteneğin hepsi izin ve öncelik 0'dır (birinci aşamadan sonra iki yeni izinle 31 olur); davranışı sınayan uçtan uca testler değişmeden geçer ve yasağı olmayan kişinin okumasında sorgu sayısı bugünküyle aynıdır (0 ek sorgu).
 8. Ekran: 2. senaryodaki kişi başkasının oturum satırında "Kapat" düğmesini görmez, kendi satırında görür. Şartlı bir kolon yasağında kolonun başlığı çizilir, yasağın tuttuğu kaydın hücresi boştur.
-9. Biçim: ne "bütün kolonlar" işareti ne kolon listesi olan yasak, kimlik kolonunu listeleyen yasak ve grup yazma eylemine yazılan yasak doğrulama hatası alır; 0 satır saklanır.
+9. Biçim: ne "bütün kolonlar" işareti ne kolon listesi olan yasak ile kimlik kolonunu listeleyen yasak doğrulama hatası alır; grup yazma eylemine yazılan yasak bugünkü korunan kaynak reddiyle (çakışma) reddedilir; üçünde de 0 satır saklanır.
 
 ## Kapasite
 - Ölçüm (yerel veritabanı, tohum hâli, 2026-11-25): 29 canlı yetenek, 27 izin, 2 rol, 1 grup, 2 üyelik, 2 kullanıcı; bir kişiye aynı izin için düşen yetenek en çok 2'dir (ortalama 1,1). Gerçek kullanım verisi yoktur: bu depo base'dir, üzerinde proje yoktur.
 - Aritmetik (ölçüm değildir): bir izin için k izin kuralı ve y kayıt yasağı varsa satır koşulu en çok k × (1 + y) şart öbeği taşır. k = 2 ve y = 10 için 22, k = 5 ve y = 50 için 255.
-- Sorgu sayısı (yasağı olan kişide): 1 sayfa sorgusu + izin kuralı başına 1 kolon sorgusu + şartlı kolon yasağı başına 1 sorgu (yasağın sayfadaki hangi kayıtları tuttuğu; veri kararını veritabanı verdiği için bellekte değerlendirilmez). Yasağı olan kişide "kolon kümeleri aynıysa yeniden okuma" kısa yolu kapanır. Şartsız kolon yasağı ek sorgu istemez.
+- Sorgu sayısı (yasağı olan kişide): 1 sayfa sorgusu + izin kuralı başına 1 kolon sorgusu + izin kuralı başına, onu kapatabilen her şartlı kolon yasağı için 1 sorgu. Şartlı yasağın kapattığı kolonların değeri, yasağın "kesin tutmuyor" koşuluyla AYNI deyimde okunur: değer ile yasak kararı farklı anlık görüntüden gelmez (üçüncü çürütme 2). k izin kuralı ve c şartlı kolon yasağı için en çok 1 + k + k × c sorgu (k = 2, c = 3 için 9). Yasağı olan kişide "kolon kümeleri aynıysa yeniden okuma" kısa yolu kapanır. Şartsız kolon yasağı ek sorgu istemez.
 - Etkisi ölçülmedi; son aşamada 1, 10 ve 50 yasakla ölçülür (kapanan AU-15 ve AU-20).
 
 ## Veri modeli
@@ -75,7 +75,8 @@ Yasak iki biçimde yazılır: kolon listesi olmayan yasak ("bütün kolonlar" i�
 - Yazmada tek yetenek: yazmanın yeteneği, yazılan bütün alanları tek başına vermelidir (bugünkü kural; KR-008); izin kurallarının kolonları yazmada birleşmez. Yasak, aday yeteneği yazılan alanlardan herhangi birinde kapatıyorsa o yetenek aday olmaz.
 - Oluşturma, silme ve niyet eylemleri kayıt düzeyindedir: kaydı kesin tutan ve yeteneğin önceliğinden düşük olmayan bir kayıt yasağı varsa yetenek aday olmaz.
 - İzin kuralları birbirini kapatmaz: aynı kaydı tutanların kolonları okumada birleşir.
-- Kimlik kolonu kolon yasağıyla kapatılamaz; kaydın bütününü kapatan yasak kimliği de kapatır (kayıt gelmez).
+- Kimlik kolonu kolon yasağıyla kapatılamaz; kaydın bütününü kapatan yasak kimliği de kapatır (kayıt gelmez). Kolon yasaklarından sonra bir kayıtta kimlikten başka hiçbir kolonu kalmayan izin kuralı o kaydı vermez (bugün de kolon vermeyen kural kayıt göstermez).
+- Varsayılan öncelikle (0) yazılan yasak, öncelik 0'daki izinleri kapatır (eşitlikte yasak kazanır); "varsayılanla yazılan satır hiçbir şeyi ezmez" yalnız izinler için doğrudur.
 
 ### Muafiyetler
 - Kök yönetici rolünün sistem satırı olan izin kuralları yasaklardan etkilenmez (kapanan AU-2 ve AU-27).
@@ -84,7 +85,7 @@ Yasak iki biçimde yazılır: kolon listesi olmayan yasak ("bütün kolonlar" i�
 
 ### Derleme
 - Derleyici her kurala önceliğini, etkisini ve muafiyetini yazar.
-- Bozuk yasak: şartı çözülemeyen, şartının biçimi bozuk olan, ne işareti ne şartı olan ya da kolon listesi boşalan yasak, o eylem ve kaynak için kişiye koşulsuz, bütün kolonlu, önceliği 100 olan bir yasak olarak derlenir ve günlüğe hata yazılır (kapanan AU-4 ve AU-22). Bunun için biçimi bozuk satırlar derleyiciye ulaşmadan atılmaz; yasaksa "bozuk yasak" olarak iletilir. Muafiyet bunda da geçerlidir.
+- Bozuk yasağın tek tanımı: yazıldığı hâliyle eksiksiz kural üretmeyen her yasak bozuktur. Buna şartı çözülemeyen, şartının biçimi ya da değer tipi bozuk olan, ne işareti ne şartı olan, kolon listesinden bir ad bile düşen (liste boşalmasa da; yasak daralarak yaşamaz), yer tutucusu boş listeye çözülen ve göçle gelmiş olup "Yasağın biçimi"ne uymayan yasak dahildir. Bozuk yasak, o eylem ve kaynak için kişiye koşulsuz, bütün kolonlu, önceliği 100 olan bir yasak olarak derlenir ve günlüğe hata yazılır (kapanan AU-4 ve AU-22). Bunun için biçimi bozuk satırlar derleyiciye ulaşmadan atılmaz; yasaksa "bozuk yasak" olarak iletilir. Muafiyet bunda da geçerlidir. Yazım denetimi aynı tanımı kullanır: bozuk derlenecek bir yasak yazılırken reddedilir (bozuk yasak yalnız sonradan, şema ya da veri değişince oluşabilir).
 - Yasağın olumsuzu veritabanı istemcisinin genel "değil"i ile yazılmaz: şart çevirici, şart ağacından "yasak bu kaydı kesin tutmuyor" koşulunu üretir (yaprakta: koşul sağlanmıyor ya da kolon boş; "ve" ile "veya" yer değiştirir; kolonun boş olabilirliği katalogdan okunur). Koşulsuz yasak için bu koşul hiçbir kaydı tutmayan koşuldur (boş koşul değil; kapanan AU-5).
 - Uç guard'ı yalnız izin kurallarını sayar; yasaklar guard'ın baktığı kümeye girmez (Değişmez 5).
 
@@ -92,13 +93,13 @@ Yasak iki biçimde yazılır: kolon listesi olmayan yasak ("bütün kolonlar" i�
 - Satırlar: izin kuralı başına bir dal. Dal, kuralın şartı ile ondan düşük öncelikli olmayan kayıt yasaklarının "kesin tutmuyor" koşullarının "ve"sidir; muaf kuralın dalına yasak eklenmez; dallar "veya" ile birleşir. Uygulanacak yasağı olmayan koşulsuz izin dalı süzgeci koşulsuz yapar (TS-002 AK-52'deki kural yasaklı hâlde de geçerlidir: boş dal "veya"ya konmaz).
 - Kolonlar: kayıt, kendisini tutan ve kayıt yasağıyla kapatılmamış izin kurallarının kolonlarından, o kuraldan düşük öncelikli olmayan ve kaydı kesin tutan kolon yasaklarının kolonları çıkarılmış hâlini taşır. Şartlı kolon yasağının hangi kayıtları tuttuğu veritabanına sorulur.
 - Okumaya katılma: çağıranın süzdüğü ya da sıraladığı kolon kayıtta görünür olmalıdır; şartsız yasakla o kolonu kaybeden kural okumaya katılmaz; şartlı yasakla kaybeden kayıtlar satır koşulundan çıkarılır.
-- Erişim kaydı birikimine izin veren yetenekler girer (bugünkü gibi); yasaklar ret kaydına yazılır, erişim kaydına değil.
+- Erişim kaydı birikimine izin veren yetenekler girer (bugünkü gibi). Okuma reddetmez, süzer: okumada ret kaydı yazılmaz; ret kaydı yalnız reddedilen yazmada yazılır.
 
 ### Yazma
-Şartlı yazmanın bugünkü sırası korunur. Satır kilitlendikten sonra, kilit altında: satırı kesin tutan yasaklar veritabanına sorulur ve adaylar "Tanım"a göre elenir; aday kalmazsa cevap "yetki yok"tur ve karar veren yasak ret kaydına yazılır. Düz güncellemede yazmadan sonra yeni hâl de sınanır: yeni hâli kesin tutan bir yasak yazmanın yeteneğini kapatıyorsa iş geri alınır (kapanan AU-11); niyet eylemlerinde ve silmede yalnız önceki hâle bakılır (kapanan AU-26). Oluşturmada sınama yazılan satırın üzerinde yapılır. Ret kaydı, geri alınan işlemin dışında yazılır.
+Şartlı yazmanın bugünkü sırası korunur. Satır kilitlendikten sonra, kilit altında: satırı kesin tutan yasaklar veritabanına sorulur ve adaylar "Tanım"a göre elenir; aday kalmazsa cevap "yetki yok"tur ve karar veren yasak ret kaydına yazılır. Düz güncellemede yazmadan sonra yeni hâl de sınanır: yeni hâli kesin tutan bir yasak yazmanın yeteneğini kapatıyorsa iş geri alınır (kapanan AU-11); niyet eylemlerinde ve silmede yalnız önceki hâle bakılır (kapanan AU-26). Oluşturmada sınama yazılan satırın üzerinde yapılır. Ret kaydı, geri alınan işlemin dışında yazılır; "karar veren yasak", son adayı kapatan en yüksek öncelikli yasaktır (eşitlikte en eski).
 
 ### Ekran
-- `kimlik/oturum/yetkilerim` kuralları artan öncelikle, aynı öncelikte izinler önce yasaklar sonra gelecek biçimde verir; yasak ters kuraldır; muaf izinler en sonda verilir (ikinci çürütmede ölçüldü: bu sıra muafiyeti kayıt, kolon ve tür düzeyinde verir). Ekranın kural şeması ve kural tipi ters kural alanını taşır.
+- `kimlik/oturum/yetkilerim`: yasağı olmayan kişide cevap bugünküyle aynıdır (Değişmez 1). Yasağı olan kişide kurallar artan öncelikle, aynı öncelikte izinler önce yasaklar sonra, muaf izinler en sonda verilir ve yasak ters kuraldır (ikinci çürütmede ölçüldü: bu sıra muafiyeti kayıt, kolon ve tür düzeyinde verir). Ekranın kural şeması ve kural tipi ters kural alanını taşır.
 - Yasaklar için özel eşleyici: şartın baktığı kolon kayıtta yoksa ya da işleç tanınmıyorsa yasak tutuyor sayılır (kapanan AU-6); kolon kayıtta var ve boşsa yasak tutmuyor sayılır (sunucuyla aynı; kapanan AU-28).
 - Tür düzeyi sorular (menü, kolon başlığı): şartlı yasaktan etkilenmez; şartsız yasak tür düzeyinde de "hayır"dır.
 
@@ -125,6 +126,9 @@ Yasak iki biçimde yazılır: kolon listesi olmayan yasak ("bütün kolonlar" i�
 - Kısıt niyetiyle yazılıp önceliği izinden düşük bırakılan yasak etkisizdir. Fark edilmesi: teşhis ekranı karar veren kuralı gösterir.
 - Ekran ile sunucu ayrışır: ekran yanlış düğme gösterir ya da gizler; karar sunucudadır, veri sızmaz. Fark edilmesi: eşlik testi.
 - Ret kaydı yazılamaz: ret cevabı yine verilir, kayıt kaybolur; günlüğe hata düşer (AK-5).
+- Okuma yasağı bir işin karar kolonuna denk gelir (örnek: yenilemenin ya da oturum kapatmanın okuduğu kolon): yazma işi dolaylı kapanır; ret işleyiciden gelir, ret kaydı düşmez ve teşhis o eylemde yasak göstermez. Fark edilmesi: teşhis ekranı okuma eylemi için de sorulur; yardım metni bunu anlatır.
+- Şartı gizli bir kolona bakan yazma yasağı, "yetki yok" ile "bulunamadı" farkından o kolonun değerini ele verebilir. Çözülmedi; yasak yazan yöneticinin bilmesi gereken sınırdır.
+- Açılıştan sonra geri dönüş: yasak satırları varken veritabanı kısıtı geri konamaz; önce yasak satırları pasife çekilir ("Aşamalar"daki geri dönüş yordamı).
 - Yazmada yarış: karar kilit altında verilir; kilit beklerken koşulun yeniden değerlendirildiği varsayımdır ve üçüncü aşamanın başında ölçülür.
 - Veritabanı istemcisinin olumsuzlama ve boş değer davranışı varsayımdır; ikinci aşamanın başında ölçülür.
 
@@ -152,7 +156,12 @@ Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 
 ### 4. Değer (kullanıcı, 2026-11-25: "Sayı, varsayılan 0, büyük kazanır")
 
+## Açık uçlar
+- AU-31: Ret kaydının hacmi: her reddedilen yazma iz veritabanına bir satır yazar. Saklama süresi ve aynı kişinin art arda retleri için hız sınırı olsun mu? (Beşinci aşamadan önce sorulur.)
+- AU-32: Teşhis ucunun sözleşmesi: uç başka bir kişinin yetkisini derler ve kaydı soranın süzgeci olmadan sorgular; bu, yetki kapısından geçmeyen yeni bir çekirdek yol demektir ve çekirdek yolların listesi kapalıdır (KR-010 Seçim 48: her ekleme kullanıcıya sorulur). Adresi, girdisi, çıktısı ve çekirdek yol olarak eklenmesi altıncı aşamadan önce sorulur.
+
 ## Kapanan uçlar
+AU-16 (bu değişikliği hangi karar taslağının taşıyacağı) usul adımıdır ve "Aşamalar"ın 0. adımına yazıldı; kullanıcı kararı gerektirmez.
 - AU-1 (kullanıcı, 2026-11-25): "Yasak kazanır": aynı öncelikte giremez kuralı girebilir kuralını kapatır; izin yasağı aşmak için daha yüksek öncelikle yazılır. Soru: Aynı öncelikte bir girebilir ve bir giremez kuralı aynı kaydı ve kolonu tutuyorsa hangisi geçerli? Kullanıcının ilkesi ("önce kapatılır") giremezin kazanmasını gösterir; karar kullanıcınındır.
 - AU-2 (kullanıcı, 2026-11-25): "Kapatamaz": SuperAdmin'in sistem yetenekleri her yasağın üstünde sayılır; kilitlenme olmaz, SuperAdmin hiçbir yasakla daraltılamaz. Soru: SuperAdmin'in sistem yetenekleri bir giremez kuralıyla kapatılabilir mi? Kapatılabilirse yönetici kendini kilitleyebilir (çürütme: herkesin taşıdığı temel üyeliğe düşen bir yasak yetenek ekranını kör eder; ikinci bir hatayla tek çıkış göçtür). Adaylar: sistem satırları her yasağın üstündedir; ya da korunan kaynaklarda ve kök kümelerde giremez yazılamaz; ya da kapatılabilir kalır ve kilit göçle çözülür.
 - AU-3 (kullanıcı, 2026-11-25): "Evet, kişinin bütün izinlerini": yasak kişiye yapışır; hangi üyelikten gelirse gelsin şartı tuttuğu kayıtlarda geçerlidir. Soru: Giremez kuralı kişinin bütün üyeliklerindeki izinleri mi kapatır, yalnız aynı birimin izinlerini mi? Birim şartı olan kaynakta yasak zaten o birimin kayıtlarıyla sınırlıdır; birim kolonu olmayan kaynaklarda (kullanıcı, oturum, rol, izin) bir birimden gelen yasak kişiyi her yerde kısıtlar. KR-008 "Rol karışması" güvencesiyle birlikte düşünülmelidir.
@@ -184,24 +193,41 @@ Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 - AU-30 (kullanıcı, 2026-11-25): "Veritabanı kısıtı koy": yazım açılana kadar veritabanında da "yasak yok, öncelik 0" kısıtı durur; son aşamadaki göç kısıtı kaldırır. Soru: Yazım kapalıyken göç ya da doğrudan veritabanı yazımı yasak satırı oluşturabilir; veritabanı kısıtıyla da engellensin mi?
 
 ## Aşamalar
-0. Karar ve kurallar: bu kayıttan bir karar taslağı ve kural taslakları açılır; yetenek kararındaki (KR-008) Seçim 3, 9, 17, 30 ile KR-010'un derleme eşlemesi ve erişim kaydı seçimine "ezildi, bkz." notu düşülür. Kullanıcı kabul etmeden sonraki aşama başlamaz.
-1. Veri ve taşıma: iki kolon, göç ve veritabanı kısıtı; iki yeni izin ve tohumu; katalogda boş olabilirlik; yetki verisinin ve derleyicinin etkiyi, önceliği ve muafiyeti taşıması; yönetim uçlarının gövdesi ve biçim doğrulaması. Yasak ve sıfırdan farklı öncelik yazımı REDDEDİLİR; davranış değişmez.
-2. Okuma motoru. Başında ölçüm: veritabanı istemcisinde olumsuzlama ile boş değer ve iç içe boş koşul davranışı. Sonra: "kesin tutmuyor" koşulu, yasaklı satır koşulu ve boş dal kuralı, kolonların çıkarılması, okumaya katılma, muafiyet, bozuk yasak, guard'ın yalnız izinleri sayması.
-3. Yazma motoru. Başında ölçüm: iki işlemle kilit yarışı. Sonra: yasağın kilit altında sınanması, düz güncellemede yeni hâl, oluşturma, silme ve niyet, ikinci izin, ret kaydı (tablo, göç, yazım yolu).
-4. Ekran: yetkilerim cevabı ve kural şeması, yasaklar için özel eşleyici, sunucu ile ekranın eşlik testi, yetenek formu, liste ve kayıt sayfası, yardım metni.
-5. Teşhis: uç ve ekranı; göçten önce tarama.
-6. Bütün: dokuz senaryonun uçtan uca testi, tarayıcı denemesi, 1, 10 ve 50 yasakla ölçüm; veritabanı kısıtının kalkması ve yasak yazımının açılması.
-Sıra bağlayıcıdır ve her aşama ayrı görevdir. En ince uçtan uca dilim birinci senaryodur (şartsız kolon yasağı, okuma): ikinci ve dördüncü aşamanın o senaryoya yeten kısmı bittiğinde yazım kapalıyken testle uçtan uca gösterilir.
+0. Karar ve kurallar: bu kayıttan bir karar taslağı ve kural taslakları açılır; yetenek kararındaki (KR-008) Seçim 3, 5, 9, 11, 17, 30 ve 44 ile KR-010'un Seçim 40, 48 ve derleme eşlemesine, TS-002'nin izin listesine "ezildi, bkz." notu düşülür. Kullanıcı kabul etmeden sonraki aşama başlamaz.
+1. Veri ve taşıma (dört ayrı görev): (a) iki kolon, göç ve veritabanı kısıtı; şema ve yetenek dökümünü sayan envanter testleri; (b) iki yeni izin ve tohumu; izin sayan envanter testleri; (c) katalogda boş olabilirlik; yetki verisinin, ortak sözleşmenin ve derleyicinin etkiyi, önceliği ve muafiyeti taşıması; (d) yetenek yazma, yenileme ve silme uçları: gövde, biçim doğrulaması, karar kolonları, bozuk yasağın yazımda reddi. Yasak ve sıfırdan farklı öncelik yazımı uçta ve veritabanında REDDEDİLİR; davranış değişmez.
+2. Okuma motoru. Başında ölçüm: veritabanı istemcisinde olumsuzlama ile boş değer ve iç içe koşul davranışı (üçüncü çürütmede tek yaprak için ölçüldü: genel "değil" boş satırı düşürüyor, "değil ya da boş" tutuyor). Sonra: "kesin tutmuyor" koşulu, yasaklı satır koşulu ve boş dal kuralı, kolonların çıkarılması (değer ile yasak aynı deyimde), okumaya katılma, muafiyet, bozuk yasak, guard'ın yalnız izinleri sayması.
+3. Ekran, okuma tarafı: yetkilerim cevabı ve kural şeması, yasaklar için özel eşleyici, sunucu ile ekranın eşlik testi, tablolarda ve kayıt sayfalarında kolon. En ince uçtan uca dilim burada gösterilir: birinci senaryo (şartsız kolon yasağı) test veritabanında, yazım kapalıyken, uçtan uca geçer.
+4. Yazma motoru: yasağın kilit altında sınanması, düz güncellemede yeni hâl, oluşturma, silme ve niyet, ikinci izin. Başında ölçüm: iki işlemle kilit yarışı.
+5. Ret kaydı (ayrı görev): tablo, göç, geri alınan işlemin dışında yazım. AU-31 bundan önce sorulur.
+6. Teşhis: uç ve ekranı; göçten önce tarama; ekranın yazma tarafı (yetenek formu, yardım metni). AU-32 bundan önce sorulur.
+7. Bütün: dokuz senaryonun uçtan uca testi, tarayıcı denemesi, 1, 10 ve 50 yasakla ölçüm; veritabanı kısıtının kalkması ve yasak yazımının açılması.
+
+Sıra bağlayıcıdır ve her madde (birinci aşamada her harf) ayrı görevdir.
+
+Test veritabanı: veritabanı kısıtı test veritabanlarında da kurulur (göçler aynen uygulanır). Yasak satırı gerektiren testler, kendi geçici veritabanlarında kısıtı test yardımcısıyla düşürür; motoru yetki verisini kendisi vererek sınayan testler kısıttan etkilenmez.
+
+Tek ve çift yönlü: iki kolonun ve iki iznin eklenmesi çift yönlüdür (yasak yokken etkisizdir; geri alması bir göçtür, veri kaybı yoktur). Motor, ekran ve teşhis çift yönlüdür (yazım kapalıyken ölü koddur). Tek yönlü olan yedinci aşamadaki açılıştır: yasak satırları yazıldıktan sonra davranış onlara bağlanır. Açılışın geri dönüş yordamı: yasak satırları pasife çekilir (değişmez satır; silme notuyla), öncelikler göçle 0'a çekilir, veritabanı kısıtı geri konur; motor yerinde kalır.
 
 ## Doğrulama
-- Var olan uçtan uca testlerin hepsi beklentileri değişmeden geçer (hepsi izin, öncelik 0); yasağı olmayan kişinin okumasında sorgu sayısı bugünküyle aynıdır (testle).
+- Davranışı sınayan var olan uçtan uca testler beklentileri değişmeden geçer (hepsi izin, öncelik 0). Envanter testleri bilerek genişler: şema ve kısıt dökümü (`test/kimlik-sema.e2e-spec.ts`), izin sayısı ve göç dökümü (`test/kimlik-kurulum.e2e-spec.ts`), yetenek kolon listesi (`test/kimlik-yetenek-oku.e2e-spec.ts`). `yetkilerim` cevabının tam eşitlik testi (`test/kimlik-yetki.e2e-spec.ts`) değişmeden geçer.
+- Yasağı olmayan kişinin okumasında sorgu sayısı bugünküyle aynıdır (testle).
 - "Senaryolar"daki dokuz senaryonun her biri bir testtir.
-- Ek testler: koşulsuz yasak ve koşulsuz izin, uygulanacak yasağı kalmayan koşulsuz izin dalı (TS-002 AK-52'nin yasaklı karşılığı); "ve" ve sekiz işleç için "kesin tutmuyor" koşulunun doğruluk tablosu (boş değer dahil); yer tutuculu şart; yasaklı kolona göre süzme ve sıralama; yazmada yarış; bozuk yasağın dört biçimi; muafiyet (kök yönetici evet, başka rolün sistem satırı hayır); yalnız yasağı olan kişinin uca girememesi; yenilemede önceliğin korunması ve etkinin çevrilememesi; ikinci iznin yazma, yenileme ve silmede aranması; biçim doğrulamaları; yazımın ve veritabanı kısıtının son aşamaya kadar reddi; ret kaydı (yazılır, işlemle birlikte geri alınmaz).
+- Ek testler: koşulsuz yasak ve koşulsuz izin, uygulanacak yasağı kalmayan koşulsuz izin dalı; "ve" ve sekiz işleç için "kesin tutmuyor" koşulunun doğruluk tablosu (boş değer dahil); yer tutuculu şart; yasaklı kolona göre süzme ve sıralama; şartlı kolon yasağında değer ile kararın aynı deyimden gelmesi; kimlikten başka kolonu kalmayan kayıt; yazmada yarış; bozuk yasağın bütün biçimleri (listeden tek ad düşmesi dahil) ve yazımda reddi; muafiyet (kök yönetici evet, başka rolün sistem satırı hayır); yalnız yasağı olan kişinin uca girememesi; yenilemede önceliğin korunması ve etkinin çevrilememesi; ikinci iznin yazma, yenileme ve silmede aranması; biçim doğrulamaları; yazımın ve veritabanı kısıtının son aşamaya kadar reddi; ret kaydı (yazılır, işlemle birlikte geri alınmaz).
 - Ekran: sunucu ile ekranın aynı kurallar ve aynı kayıtla aynı kararı verdiğini gösteren eşlik testi (sekiz işleç; kolonu eksik kayıt; boş değerli kayıt; ters kural; muaf izin).
-- Ölçümler: ikinci aşamanın başında veritabanı istemcisinin olumsuzlama davranışı; üçüncü aşamanın başında kilit yarışı; son aşamada 1, 10 ve 50 yasakla liste süresi ve sorgu sayısı.
-- Üçüncü bağımsız çürütme turu bu yazımdan sonra koşturulur.
+- Ölçümler: ikinci aşamanın başında veritabanı istemcisinin olumsuzlama davranışı (ağaç ve büyüklük işleçleriyle); dördüncü aşamanın başında kilit yarışı; son aşamada 1, 10 ve 50 yasakla liste süresi ve sorgu sayısı.
 
 ## Çürütme
+### Üçüncü tur (2026-11-25; otuz karardan sonraki yazım için)
+Bağımsız bir oturum yazımın uygulanmaya hazır olup olmadığını sınadı (dosya değiştirmedi; kodu okudu; veritabanı istemcisinin olumsuzlama ve boş koşul davranışını yerel veritabanında yalnız sayım sorgusuyla ölçtü). Hükmü: "bu hâliyle imzalamam, ama uzak değil; yön ve otuz karar uygulanabilir; zorunlu listesi kapanınca imzalarım".
+
+İkinci turun on dört bulgusundan on ikisi kapanmış, ikisi kısmen kapanmış bulundu. Yeni tek engel: iki kolonlu yasağın bir kolonu şemadan düşünce yasağın bozuk sayılmayıp daralarak yaşaması.
+
+"Başlamadan önce zorunlu" altı madde ve bu yazımdaki karşılıkları: (1) bozuk yasağın tek tanımı ve yazımda reddi: "Derleme" ve Senaryo 4. (2) Değer ile yasak kararının aynı deyimde okunması: "Kapasite" ve "Okuma". (3) Veritabanı kısıtı altında testlerin nasıl yazılacağı ve ince dilimin yeri: "Aşamalar" (test veritabanı; üçüncü aşama). (4) "Var olan testler değişmeden geçer" cümlesinin düzeltilmesi: "Sorun", Değişmez 1 ve "Doğrulama". (5) Birinci aşamanın bölünmesi ve ret kaydının ayrı görev olması: "Aşamalar". (6) Okumadaki ret kaydı cümlesinin tanımlanması, tek ve çift yönlü ayrım ile açılışın geri dönüşü: "Okuma" ve "Aşamalar".
+
+Aşamasında kapatılacaklar görev kartlarına yazılacak: yazım kapalıyken ve biçim retlerinde hata kodları; silmede iki yeni kolon görülemiyorsa kapalı düşme; muafiyetin veriyle tanımı (kök grup, rol kodu, sistem satırı); iç içe ağaçta ve büyüklük işleçlerinde "kesin tutmuyor" ölçümü; niyet döngüsündeki erken çıkış; ikinci izin yokken cevabın "yetki yok" olması; ret kaydının yazım noktası; eşleyicide ters kural işareti; eşlik testinin hangi pakette koşacağı; yetkilerim sıralamasının ortak koda alınması; teşhis sözleşmesi (AU-32); kolon adı değişikliği yordamı.
+
+Bu yazımın (beşinci) ardından dördüncü bir çürütme turu koşmadı; altı zorunlu maddenin karşılıkları yukarıda gösterildi ve kabul eden kullanıcı bunu bilerek kabul eder.
+
 ### İkinci tur (2026-11-25; yeni yön için)
 Bağımsız bir oturum yeniden yazılan kaydı çürütmeye çalıştı (dosya değiştirmedi; ekrandaki kitaplığı kurulu sürümle ölçtü, kodu okudu; veritabanı davranışını ölçmedi). Hükmü yine: "bu hâliyle imzalamam".
 
