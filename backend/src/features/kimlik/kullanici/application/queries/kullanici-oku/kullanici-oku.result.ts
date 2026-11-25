@@ -1,4 +1,4 @@
 // Kullanıcıyı oku işinin sonucu: isteyenin görebildiği kolonları ve kimliği taşıyan düz kayıt.
-import type { Kayit } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { KullaniciGorunumu } from '../../../domain/repositories/i-kullanici.repository.js';
 
-export type KullaniciOkuSonucu = Kayit;
+export type KullaniciOkuSonucu = KullaniciGorunumu;

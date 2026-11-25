@@ -17,11 +17,12 @@ import {
   KULLANICI_YAZMA_REPO,
 } from './domain/repositories/i-kullanici.repository.js';
 import { kullaniciOkumaPrismaRepository } from './infrastructure/repositories/kullanici-okuma.prisma-repository.js';
-import { KapiKullaniciYazmaRepo } from './infrastructure/repositories/kullanici-yazma.kapi-repository.js';
+import { PrismaKullaniciYazmaRepo } from './infrastructure/repositories/kullanici-yazma.prisma-repository.js';
 import { KullaniciController } from './presentation/kullanici.controller.js';
 
-// Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
-// AK-42). Bütünlük sorusu, genel sayaç ve öbür çekirdek parçalar çekirdek modülden gelir.
+// Kaynağı kendi sorgularıyla okur ve kendi deyimleriyle yazar; süzgeci ve yazmanın sırasını yetki
+// kapısının okuma ve yazma yüzü verir (TS-007); kapıları kök modülde bir kez kurulan genel YetkiModule
+// verir (TS-002 AK-42). Bütünlük sorusu, genel sayaç ve öbür çekirdek parçalar çekirdek modülden gelir.
 @Module({
   imports: [DatabaseModule, KimlikCekirdekModule],
   controllers: [KullaniciController],
@@ -33,7 +34,7 @@ import { KullaniciController } from './presentation/kullanici.controller.js';
     ParolaBaglantisiUretHandler,
     KullaniciPasifeAlHandler,
     KullaniciYenidenAcHandler,
-    { provide: KULLANICI_YAZMA_REPO, useClass: KapiKullaniciYazmaRepo },
+    { provide: KULLANICI_YAZMA_REPO, useClass: PrismaKullaniciYazmaRepo },
   ],
 })
 export class KullaniciModule {
