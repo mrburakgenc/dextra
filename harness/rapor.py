@@ -22,7 +22,8 @@ BITIR = "<!-- otomatik:bitir -->"
 # Şablondaki her elle yazılan bölüm bu biçimde tek satırlık yer tutucu taşır; denetim onu boş sayar.
 YER_TUTUCU = re.compile(r"^_\(doldurulacak:.*\)_$")
 ZORUNLU_BOLUMLER = ("Kısa özet", "Kullanıcıdan beklenenler")
-GOREV_KIMLIGI = re.compile(r"\bGV-\d+\b")
+# Atılan görevin aşama hücresindeki "yerine GV-NNN" yerine geçen görevi bu rapora koymaz (o kendi satırıyla girer).
+GOREV_KIMLIGI = re.compile(r"(?<!yerine )\bGV-\d+\b")
 ALMA_BASLIGI = re.compile(r"^(GV-\d+):")   # `gorev al` commit'i böyle başlar
 CIZGI = "—"
 BASLIK_SINIRI = 90
@@ -44,7 +45,7 @@ def _raporlar(kok: pathlib.Path, ayar: dict) -> dict:
 
 def _geciyor_mu(kimlik: str, metin: str) -> bool:
     """Kimlik metinde tam sözcük olarak geçiyor mu (GV-0071, GV-007'yi taşımaz)."""
-    return re.search(r"\b%s\b" % re.escape(kimlik), metin) is not None
+    return re.search(r"(?<!yerine )\b%s\b" % re.escape(kimlik), metin) is not None
 
 
 def _bolum_bos_mu(metin: str, ad: str) -> bool:
@@ -88,7 +89,7 @@ def _sayi(kayit: dict | None, *anahtarlar: str) -> float | None:
 
 def _asama(d: dict) -> str:
     if d.get("durum") == "atildi":
-        return "atıldı"
+        return "atıldı" + (" · yerine %s" % d["yerine"] if d.get("yerine") else "")
     if d.get("alindi"):
         return "alındı"
     if d.get("durum") == "taslak":
