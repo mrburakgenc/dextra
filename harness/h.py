@@ -88,6 +88,9 @@ VARSAYILAN_AYAR = {
               # kendiliginden_devam: işçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik
               # varsa aynı `gorev kos` çağrısında en çok kaç kez kendiliğinden sürdürülür; 0 = sürdürülmez
               "kendiliginden_devam": 1,
+              # alma_bekleme_sn: yan yana gelen almalar sıraya girer; bir alma, öncekinin bitmesini en çok bu kadar
+              # bekler, aşılırsa hiçbir şeyi değiştirmeden durur
+              "alma_bekleme_sn": 600,
               # Görev oturumu web araçları olmadan başlar ve şu yolları okuyamaz (izinleri atlayan modda da)
               "ag_araclari": False,
               "okunmaz": ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.claude.json", "~/.claude/CLAUDE.md",

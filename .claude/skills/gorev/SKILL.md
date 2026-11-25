@@ -27,7 +27,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 4. Raporu oku: durum, değişen dosyalar, sorunlar, uyarılar, işçinin kararları ve reddettiği seçenekler.
 5. Koşum temizse incelet: `python3 harness/h.py gorev incele GV-NNN`. İnceleyici işi yapmayan ayrı bir oturumdur ve işçinin öz değerlendirmesini görmez.
 6. İnceleme raporunu kullanıcıya ver: sonuç, bulgular, her kural için inceleyicinin hükmü ve işçiyle çeliştiği yerler.
-7. İnceleme geçtiyse al: `python3 harness/h.py gorev al GV-NNN` (hook sorar). İş bu oturumun dalına birleştirilir; görevin ağacı ve dalı silinir.
+7. İnceleme geçtiyse al: `python3 harness/h.py gorev al GV-NNN` (hook sorar). İş bu oturumun dalına birleştirilir; görevin ağacı ve dalı silinir. Alma çakışmayla ya da başka bir hatayla yarıda kalırsa oturum dalı ve görev ağacı alma öncesine döner ve çakışan dosyalar bildirilir; çakışmayı giderdikten sonra (oturum dalında, gerekirse ardından `gorev tazele GV-NNN` ve yeniden inceleme) görevi yeniden koşturmadan yeniden al. Birleştirmeden sonra ağacın ya da dalın silinmesi hata verirse iş alınmış sayılır ve uyarı verilir; aynı komutu yeniden çalıştırınca yalnız kalan temizlik yapılır. Aynı anda başlayan almalar sıraya girer (`gorev.alma_bekleme_sn`).
 8. İşçinin verdiği her karar için bir karar taslağı öner (`karar`); bilgi tabanına işçi değil sen yazarsın, kabulü kullanıcı verir.
 9. Dalı göndermeden önce raporu yaz: `python3 harness/h.py rapor yeni "<konu>"` raporu açar ve görev tablosunu kayıtlardan üretir; elle yazılan bölümleri (en az kısa özet ve kullanıcıdan beklenenler) doldur; `python3 harness/h.py rapor durum` raporsuz görev ve boş bölüm göstermiyorsa gönder. Push kapısı raporsuz görevde durur.
 
