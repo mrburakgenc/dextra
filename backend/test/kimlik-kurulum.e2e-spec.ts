@@ -335,6 +335,10 @@ describe('kurulum', () => {
       {
         alanlar: (tur) =>
           tur === 'Oturum' ? ['id', 'kullaniciId'] : undefined,
+        alanTipleri: (tur) =>
+          tur === 'Oturum'
+            ? { id: 'kimlik', kullaniciId: 'kimlik' }
+            : undefined,
       },
     );
     expect(derlenmeyenler).toEqual([]);
