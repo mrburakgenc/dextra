@@ -7,6 +7,7 @@ import { YetenekListeleHandler } from './application/yetenek-listele.handler.js'
 import { YetenekOkuHandler } from './application/yetenek-oku.handler.js';
 import { YetenekOlusturHandler } from './application/yetenek-olustur.handler.js';
 import { YetenekSilHandler } from './application/yetenek-sil.handler.js';
+import { YetenekYenileHandler } from './application/yetenek-yenile.handler.js';
 import {
   YETENEK_REPO,
   YetenekYazmaRepo,
@@ -27,6 +28,7 @@ import { YetenekController } from './presentation/yetenek.controller.js';
     YetenekOkuHandler,
     YetenekOlusturHandler,
     YetenekSilHandler,
+    YetenekYenileHandler,
     { provide: YetenekYazmaRepo, useClass: YetenekKapiYazmaRepo },
   ],
 })

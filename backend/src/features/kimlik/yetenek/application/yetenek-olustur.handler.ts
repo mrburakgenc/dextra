@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
+import {
+  type Islem,
+  UnitOfWork,
+} from '../../../../shared/database/unit-of-work.js';
 import { istekBaglami } from '../../../../shared/http/istek-baglami.js';
 import { KodluHata } from '../../../../shared/http/kodlu-hata.js';
 import {
@@ -42,35 +45,41 @@ export class YetenekOlusturHandler {
   calistir(yetenek: YeniYetenek): Promise<string> {
     return this.uow.run(async (islem) => {
       await this.genelSayac.kilitle(islem, { artir: true });
-      if (
-        !(await this.butunluk.grupCanliMi(islem, yetenek.grupId)) ||
-        !(await this.butunluk.rolCanliMi(islem, yetenek.rolId))
-      ) {
-        throw new KodluHata('cakisma', 'Grup ya da rol yok ya da silinmiş');
-      }
-      const izin = await islem.repo(YETENEK_REPO).izin(yetenek.izinId);
-      const kaynak = izin?.['kaynak'];
-      const eylem = izin?.['eylem'];
-      if (typeof kaynak !== 'string' || typeof eylem !== 'string') {
-        throw new KodluHata('cakisma', 'İzin katalogda yok');
-      }
-      this.denetle(yetenek, kaynak, eylem);
-      if (
-        KORUNAN_KAYNAKLAR.includes(kaynak) &&
-        eylem !== OKUMA_EYLEMI &&
-        !(await this.butunluk.kokSuperAdminKumesiMi(
-          islem,
-          yetenek.grupId,
-          yetenek.rolId,
-        ))
-      ) {
-        throw new KodluHata(
-          'cakisma',
-          'Bu izin yalnız (Kök, SuperAdmin) kümesine yazılabilir',
-        );
-      }
+      await this.dogrula(islem, yetenek);
       return this.repo.olustur(islem, IS_ADI, yetenek);
     });
+  }
+
+  // Yazılacak satırın denetimleri (grup ve rol canlılığı, izin, satırın kendisi, korunan kaynak). Genel
+  // sayaç satırını kilitlemiş bir run içinden çağrılır; yenileme de yeni satırı bununla sınar.
+  async dogrula(islem: Islem, yetenek: YeniYetenek): Promise<void> {
+    if (
+      !(await this.butunluk.grupCanliMi(islem, yetenek.grupId)) ||
+      !(await this.butunluk.rolCanliMi(islem, yetenek.rolId))
+    ) {
+      throw new KodluHata('cakisma', 'Grup ya da rol yok ya da silinmiş');
+    }
+    const izin = await islem.repo(YETENEK_REPO).izin(yetenek.izinId);
+    const kaynak = izin?.['kaynak'];
+    const eylem = izin?.['eylem'];
+    if (typeof kaynak !== 'string' || typeof eylem !== 'string') {
+      throw new KodluHata('cakisma', 'İzin katalogda yok');
+    }
+    this.denetle(yetenek, kaynak, eylem);
+    if (
+      KORUNAN_KAYNAKLAR.includes(kaynak) &&
+      eylem !== OKUMA_EYLEMI &&
+      !(await this.butunluk.kokSuperAdminKumesiMi(
+        islem,
+        yetenek.grupId,
+        yetenek.rolId,
+      ))
+    ) {
+      throw new KodluHata(
+        'cakisma',
+        'Bu izin yalnız (Kök, SuperAdmin) kümesine yazılabilir',
+      );
+    }
   }
 
   // Kolonlar kaynağın alanlarından olmalıdır (derleyici bilinmeyen kolonu sessizce attığı için ayrıca
