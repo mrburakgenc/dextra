@@ -772,6 +772,7 @@ def kanarya() -> list:
 # ── Ajan paketi ──────────────────────────────────────────────────────────────────────
 
 PAKET = re.compile(r"\[\[KB-PAKET rol=(\S+) ozet=([0-9a-f]{8})\]\]\n(.*?)\n\[\[/KB-PAKET\]\]", re.S)
+TASLAK = re.compile(r"\n\n\[\[KB-TASLAK\]\]\n.*?\n\[\[/KB-TASLAK\]\]", re.S)
 
 
 def _kural_satiri(k: dict, inceleme: bool = False) -> str:
@@ -813,9 +814,31 @@ def _paket(dz: Dizin, rol: str, yollar, konular) -> dict:
             satirlar += ["", "Bu kararlarda değerlendirilmiş seçenekler (reddedileni yeniden önerme):"] + red
     govde = "\n".join(satirlar) if satirlar else "(bu role verilecek kural yok)"
     ozet = hashlib.sha256(govde.encode("utf-8")).hexdigest()[:8]
-    return {"metin": "[[KB-PAKET rol=%s ozet=%s]]\n%s\n[[/KB-PAKET]]" % (rol, ozet, govde),
+    metin = "[[KB-PAKET rol=%s ozet=%s]]\n%s\n[[/KB-PAKET]]" % (rol, ozet, govde)
+    # Taslak bloğu: aynı yol ve konu eşlemesiyle seçilen, kabul bekleyen kurallar. Özetin (damganın) dışındadır.
+    taslak = [k for k in dz.tur("kural", "taslak")
+              if (k.get("kesinlik") == "kesin" and (rol == "*" or not liste(k, "rol") or rol in liste(k, "rol"))
+                  and (not konular or not liste(k, "konu") or konular & set(liste(k, "konu"))))
+              or any(dz.yola_duser(k, y) for y in yollar)]
+    taslak_kararlar = [kr for kr in dz.tur("karar", "taslak")
+                       if kr["kimlik"] in {_dayanak_coz(o)[0] for k in taslak for o in liste(k, "dayanak")}]
+    tam = metin
+    if taslak:   # satırlar "- " ile başlar: hüküm istenen kural satırı (KU-NNN@N) sayılmaz
+        blok = ["[[KB-TASLAK]]", "Taslak (bağlayıcı değil; bilgi): aşağıdakiler henüz kabul edilmedi. Bilgi için "
+                "verilir; kabul edilmeden bağlayıcı değildir, onlara aykırılık engel değil öneridir."]
+        if inceleme:
+            blok.append("İnceleyici: taslağa aykırılığı bulgu olarak yaz, önemini \"oneri\" yap; hüküm listesine koyma.")
+        blok += [""] + ["- %s@%s %s: %s (%s)" % (k["kimlik"], k["surum"], k["baslik"], k["_ifade"],
+                                                  ", ".join(_dayanak_coz(o)[0] for o in liste(k, "dayanak")))
+                        for k in taslak]
+        if taslak_kararlar:
+            blok += ["", "Dayandıkları taslak kararlar:"] + ["- %s %s" % (kr["kimlik"], kr["baslik"])
+                                                             for kr in taslak_kararlar]
+        tam += "\n\n" + "\n".join(blok + ["[[/KB-TASLAK]]"])
+    return {"metin": metin, "tam": tam,
             "ozet": ozet, "kurallar": ["%s@%s" % (k["kimlik"], k["surum"]) for k in kesin + yoldan],
-            "bos": not (kesin or yoldan)}
+            "bos": not (kesin or yoldan),
+            "taslaklar": [k["kimlik"] for k in taslak] + [kr["kimlik"] for kr in taslak_kararlar]}
 
 
 def paket(kok: pathlib.Path, rol: str, yollar=(), konular=()) -> dict:
@@ -1100,7 +1123,7 @@ def _komut_paket(kok: pathlib.Path, arg: list) -> int:
     rol = (_secenek(arg, "--rol") or [None])[0]
     if not rol:
         raise HarnessHata("kullanım: h.py paket --rol <rol> [--yol <yol>]... [--konu <ad>]...")
-    print(paket(kok, rol, _secenek(arg, "--yol"), _secenek(arg, "--konu"))["metin"])
+    print(paket(kok, rol, _secenek(arg, "--yol"), _secenek(arg, "--konu"))["tam"])
     return 0
 
 

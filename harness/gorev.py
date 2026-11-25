@@ -206,13 +206,18 @@ def _dosya_listesi(yollar: list) -> str:
     return "\n".join("- " + y for y in yollar) or "- (yol verilmedi)"
 
 
-def _kart_metni(kok: pathlib.Path, kimlik: str, d: dict, hedef: str, olcut: str) -> str:
+def _kart_metni(kimlik: str, d: dict, hedef: str, olcut: str, paket: str) -> str:
     plan_satiri = ("\nYer: %s\n" % d["yer"]) if d.get("yer") else ""
     return KART.format(
         kimlik=kimlik, baslik=d["baslik"], hedef=hedef, olcut=olcut, plan_satiri=plan_satiri,
         baslik_satiri=_baslik_satiri(d["rol"], d["yollar"], d["konular"]),
-        dosyalar=_dosya_listesi(d["yollar"]),
-        paket=h.paket(kok, d["rol"], d["yollar"], d["konular"])["metin"])
+        dosyalar=_dosya_listesi(d["yollar"]), paket=paket)
+
+
+def taslak_uyarisi(kimlik: str, taslaklar: list) -> str:
+    """İşe düşen, kabul bekleyen kural ve kararlar için tek satırlık uyarı."""
+    return "[harness] %s işine düşen %d taslak var: %s — kabul edilmeden bağlayıcı gitmez" % (
+        kimlik, len(taslaklar), ", ".join(taslaklar))
 
 
 def _bolum(metin: str, ad: str) -> str:
@@ -243,9 +248,12 @@ def yeni(kok: pathlib.Path, baslik: str, rol: str, yollar: list, konular: list,
             continue
     d = {"kimlik": kimlik, "baslik": baslik, "rol": rol, "yollar": list(yollar),
          "konular": list(konular), "durum": "taslak", "acildi": _simdi(), "plan": plan, "adim": adim, "yer": yer}
+    p = h.paket(kok, rol, d["yollar"], d["konular"])
     (ana / kimlik / "kart.md").write_text(
-        _kart_metni(kok, kimlik, d, hedef or HEDEF_YERTUTUCU, olcut or OLCUT_YERTUTUCU), encoding="utf-8")
+        _kart_metni(kimlik, d, hedef or HEDEF_YERTUTUCU, olcut or OLCUT_YERTUTUCU, p["tam"]), encoding="utf-8")
     _json_yaz(ana / kimlik / "durum.json", d)
+    if p["taslaklar"]:
+        print(taslak_uyarisi(kimlik, p["taslaklar"]), flush=True)
     return ana / kimlik / "kart.md"
 
 
@@ -647,11 +655,16 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None) -> dict:
         if r.returncode != 0:
             raise h.HarnessHata("%s koşturulamadı: hazırlık komutu %d koduyla çıktı: %s"
                                 % (kimlik, r.returncode, (r.stderr or r.stdout)[-400:]))
-    guncel = h.paket(kok, d["rol"], d["yollar"], d["konular"])["metin"]
+    p = h.paket(kok, d["rol"], d["yollar"], d["konular"])
+    if p["taslaklar"]:
+        print(taslak_uyarisi(kimlik, p["taslaklar"]), flush=True)
     eski = h.PAKET.search(kart)
-    if eski and eski.group(0) != guncel:   # kurallar kart yazıldıktan sonra değişmiş
-        kart = kart.replace(eski.group(0), guncel)
-        (kayit / "kart.md").write_text(kart, encoding="utf-8")
+    if eski:
+        taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak bloğu da yenilenir
+        eski_metin = kart[eski.start():taslak.end() if taslak else eski.end()]
+        if eski_metin != p["tam"]:   # kurallar kart yazıldıktan sonra değişmiş
+            kart = kart.replace(eski_metin, p["tam"])
+            (kayit / "kart.md").write_text(kart, encoding="utf-8")
     yerel = _yerel(agac, kimlik)
     yerel.mkdir(parents=True, exist_ok=True)
     (yerel / "kart.md").write_text(kart, encoding="utf-8")
@@ -726,7 +739,7 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
     degisen = _degisen(agac, d["taban"])
     istem = INCELEME.format(kimlik=kimlik, baslik=d["baslik"], hedef=_bolum(kart, "Hedef"),
                             olcut=_bolum(kart, "Kabul ölçütü"), dosyalar=_dosya_listesi(d["yollar"]),
-                            degisen=_dosya_listesi(degisen), paket=paket["metin"], fark=_fark(agac, d["taban"]))
+                            degisen=_dosya_listesi(degisen), paket=paket["tam"], fark=_fark(agac, d["taban"]))
     istem += _cevaplar(kayit)
     yerel = _yerel(agac, kimlik)
     yerel.mkdir(parents=True, exist_ok=True)
