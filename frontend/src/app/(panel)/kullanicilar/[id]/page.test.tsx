@@ -580,8 +580,8 @@ describe('KullaniciSayfasi üyelikler', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Üyelikler');
     const [ilk, adsiz] = uyelikSatirlari();
     expect(hucreler(ilk)).toEqual(['Merkez', 'Üye', tarihSaat(VERILME)]);
-    // Adı listede bulunmayan kimlik ilk sekiz karakteriyle; gelmeyen kolon boş işaretle.
-    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+    // Adı listede bulunmayan kimlik son sekiz karakteriyle; gelmeyen kolon boş işaretle.
+    expect(hucreler(adsiz)).toEqual(['…55555555', '…66666666', '—']);
   });
 
   it('listede olup ad kolonu gelmeyen grup ve rol de kısaltılmış kimlikle görünür', async () => {
@@ -595,8 +595,8 @@ describe('KullaniciSayfasi üyelikler', () => {
 
     const [ilk] = uyelikSatirlari();
     expect(hucreler(ilk)).toEqual([
-      `${KOK_GRUP.slice(0, 8)}…`,
-      `${UYE.slice(0, 8)}…`,
+      `…${KOK_GRUP.slice(-8)}`,
+      `…${UYE.slice(-8)}`,
       tarihSaat(VERILME),
     ]);
   });
@@ -947,20 +947,20 @@ describe('KullaniciSayfasi üyelikler ad listesi alınamayınca', () => {
     await goster(ETKIN_KAYIT, TUM_KURALLAR);
 
     const [ilk, adsiz] = uyelikSatirlari();
-    expect(hucreler(ilk)).toEqual(['Merkez', '44444444…', tarihSaat(VERILME)]);
-    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+    expect(hucreler(ilk)).toEqual(['Merkez', '…44444444', tarihSaat(VERILME)]);
+    expect(hucreler(adsiz)).toEqual(['…55555555', '…66666666', '—']);
     expect(uyelikFormu()).toBeNull();
     expect(screen.queryByLabelText('Rol')).toBeNull();
     expect(screen.getByRole('alert').textContent).toBe('Rol listesi alınamadı');
 
     await userEvent.click(
       within(ilk ?? document.body).getByRole('button', {
-        name: 'Merkez grubundaki 44444444… üyeliğini kaldır',
+        name: 'Merkez grubundaki …44444444 üyeliğini kaldır',
       }),
     );
     sahteFetch.mockResolvedValueOnce(bosCevap());
     await userEvent.click(
-      screen.getByRole('button', { name: 'Evet, kaldır: Merkez grubundaki 44444444… üyeliği' }),
+      screen.getByRole('button', { name: 'Evet, kaldır: Merkez grubundaki …44444444 üyeliği' }),
     );
 
     await vi.waitFor(() => {
@@ -978,20 +978,20 @@ describe('KullaniciSayfasi üyelikler ad listesi alınamayınca', () => {
     await goster(ETKIN_KAYIT, TUM_KURALLAR);
 
     const [ilk, adsiz] = uyelikSatirlari();
-    expect(hucreler(ilk)).toEqual(['11111111…', 'Üye', tarihSaat(VERILME)]);
-    expect(hucreler(adsiz)).toEqual(['55555555…', '66666666…', '—']);
+    expect(hucreler(ilk)).toEqual(['…11111111', 'Üye', tarihSaat(VERILME)]);
+    expect(hucreler(adsiz)).toEqual(['…55555555', '…66666666', '—']);
     expect(uyelikFormu()).toBeNull();
     expect(screen.queryByLabelText('Grup')).toBeNull();
     expect(screen.getByRole('alert').textContent).toBe('Grup listesi alınamadı');
 
     await userEvent.click(
       within(ilk ?? document.body).getByRole('button', {
-        name: '11111111… grubundaki Üye üyeliğini kaldır',
+        name: '…11111111 grubundaki Üye üyeliğini kaldır',
       }),
     );
     sahteFetch.mockResolvedValueOnce(bosCevap());
     await userEvent.click(
-      screen.getByRole('button', { name: 'Evet, kaldır: 11111111… grubundaki Üye üyeliği' }),
+      screen.getByRole('button', { name: 'Evet, kaldır: …11111111 grubundaki Üye üyeliği' }),
     );
 
     await vi.waitFor(() => {

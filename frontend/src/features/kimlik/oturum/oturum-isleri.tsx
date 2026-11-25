@@ -19,8 +19,8 @@ const IKINCIL_DUGME =
 
 // Geri alınamayan kapatma iki adımlıdır: ilk düğme onay satırını açar, işi onay satırındaki düğme
 // yapar. Düğmeler satır başına yinelendiği için erişilebilir adları oturumu adlandırır; görünen yazı
-// kısa kalır ve adın başında geçer (WCAG 2.5.3). oturum: '<başlangıç> başlayan <kimliğin ilk 8
-// karakteri>… oturumu'.
+// kısa kalır ve adın başında geçer (WCAG 2.5.3). oturum: '<başlangıç> başlayan …<kimliğin son 8
+// karakteri> oturumu'.
 function KapatIsi({
   id,
   bu,

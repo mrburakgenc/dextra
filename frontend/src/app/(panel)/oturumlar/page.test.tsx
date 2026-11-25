@@ -137,8 +137,8 @@ function baglanti(ad: string): string | null {
   return screen.getByRole('link', { name: ad }).getAttribute('href');
 }
 
-const BU_ADI = `${tarihSaat(BASLANGIC_1)} başlayan ${BU_ID.slice(0, 8)}… oturumu`;
-const OBUR_ADI = `${tarihSaat(BASLANGIC_2)} başlayan ${OBUR_ID.slice(0, 8)}… oturumu`;
+const BU_ADI = `${tarihSaat(BASLANGIC_1)} başlayan …${BU_ID.slice(-8)} oturumu`;
+const OBUR_ADI = `${tarihSaat(BASLANGIC_2)} başlayan …${OBUR_ID.slice(-8)} oturumu`;
 
 beforeEach(() => {
   vi.stubEnv('BACKEND_ADRESI', 'http://backend.sinama:3001');
@@ -321,8 +321,8 @@ describe('OturumlarSayfasi kullanıcı süzgeci', () => {
     );
 
     expect(baslikMetinleri()[0]).toBe('Kullanıcı');
-    expect(baglanti(`${KISI.slice(0, 8)}…`)).toBe(`/kullanicilar/${KISI}`);
-    expect(baglanti(`${OBUR_KISI.slice(0, 8)}…`)).toBe(`/kullanicilar/${OBUR_KISI}`);
+    expect(baglanti(`…${KISI.slice(-8)}`)).toBe(`/kullanicilar/${KISI}`);
+    expect(baglanti(`…${OBUR_KISI.slice(-8)}`)).toBe(`/kullanicilar/${OBUR_KISI}`);
   });
 
   it('kayıtlar tek kişiye aitse ya da süzgeç varsa Kullanıcı kolonu yoktur', async () => {
@@ -431,6 +431,28 @@ describe('OturumlarSayfasi kapat', () => {
       `Kapat: ${OBUR_ADI}`,
     ]);
     expect(dugmeler.map((d) => d.textContent)).toEqual(['Kapat', 'Kapat']);
+  });
+
+  it('aynı dakikada açılan, kimliğinin baş tarafı aynı iki oturumun düğme adları farklıdır', async () => {
+    // Kimlikler zaman sıralıdır: baş tarafları aynı, sonları farklı.
+    const ILK = '019a6b2c-7d10-7e2f-8a3b-4c5d91b2c3d4';
+    const IKINCI = '019a6b2c-7d10-7e2f-8a3b-4c5de5f6a7b8';
+    await goster(
+      {},
+      BUTUN_KURALLAR,
+      listeCevabi({
+        kayitlar: [
+          { ...BU_OTURUM, id: ILK },
+          { ...BU_OTURUM, id: IKINCI },
+        ],
+      }),
+    );
+
+    const dugmeler = screen.getAllByRole('button', { name: /^Kapat: / });
+    expect(dugmeler.map((d) => d.getAttribute('aria-label'))).toEqual([
+      `Kapat: ${tarihSaat(BASLANGIC_1)} başlayan …91b2c3d4 oturumu`,
+      `Kapat: ${tarihSaat(BASLANGIC_1)} başlayan …e5f6a7b8 oturumu`,
+    ]);
   });
 
   it('bu oturumun onay satırı oturumun biteceğini söyler ve formla işaret gider', async () => {

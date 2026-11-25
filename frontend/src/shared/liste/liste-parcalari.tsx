@@ -12,7 +12,8 @@ export const BOS = '—';
 
 // Kimliğin ekrandaki adı (TS-004 "Yönetim formlarının sertleştirilmesi"): kimlik kayıtta gelmediyse
 // ya da boşsa boş işaret; adı bilinmiyorsa (listede yok ya da liste alınamadı: adlar null) kimliğin
-// ilk sekiz karakteri ve '…'.
+// '…' ve kimliğin son sekiz karakteri. Kimlikler zaman sıralıdır, baş tarafları zamandır; aynı
+// dakikada oluşan kayıtları sonları ayırır. Sekiz karakterden kısa kimlik olduğu gibi yazılır.
 export function kimliginAdi(
   adlar: ReadonlyMap<string, string | undefined> | null,
   id: string | null | undefined,
@@ -20,7 +21,7 @@ export function kimliginAdi(
   if (id === undefined || id === null) {
     return BOS;
   }
-  return adlar?.get(id) ?? `${id.slice(0, 8)}…`;
+  return adlar?.get(id) ?? (id.length < 8 ? id : `…${id.slice(-8)}`);
 }
 
 export const BAGLANTI =

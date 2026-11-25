@@ -684,7 +684,7 @@ describe('YetenekSayfasi ad listesi alınamayınca', () => {
     expect(kayitSatirlari().slice(0, 3)).toEqual([
       ['Grup', 'Merkez'],
       ['Rol', 'Yönetici'],
-      ['İzin', '33333333…'],
+      ['İzin', '…33333333'],
     ]);
     expect(yenileFormu()).not.toBeNull();
 
@@ -705,8 +705,8 @@ describe('YetenekSayfasi ad listesi alınamayınca', () => {
     render(await sayfa(kurallar(...ISLER)));
 
     expect(kayitSatirlari().slice(0, 3)).toEqual([
-      ['Grup', '11111111…'],
-      ['Rol', '22222222…'],
+      ['Grup', '…11111111'],
+      ['Rol', '…22222222'],
       ['İzin', 'Kullanici:oku'],
     ]);
     expect(dugme('Sil')).not.toBeNull();

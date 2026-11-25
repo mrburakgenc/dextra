@@ -136,7 +136,7 @@ describe('GruplarSayfasi liste', () => {
     ]);
     expect(hucreler(baska)).toEqual([
       'Satış',
-      '44444444…',
+      '…44444444',
       tarihSaat(OLUSTURMA),
       'Alt gruplar',
     ]);
