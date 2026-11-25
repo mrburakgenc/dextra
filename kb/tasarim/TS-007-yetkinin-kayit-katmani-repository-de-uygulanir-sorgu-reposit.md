@@ -79,12 +79,19 @@ adDegistir(islem, isAdi, id, ad) {
 - B — Ortak kapıda (bugünkü; AK-19): unutulamaz; ama repository boş bir aktarma katmanıdır, sorgu görünmez, tipler kaybolur.
 
 ### 2. Kolon indirgeme
-- A (seçildi) — Bugünkü anlam korunur: her kayıt yalnız onu gören kuralların kolonlarını taşır; birleştirme ortak işlevde kalır, yeniden okuma deyimini repository verir.
+- A (seçildi; kullanıcı teyidi, 2026-11-25: "Bugünkü gibi: kayıt başına") — Bugünkü anlam korunur: her kayıt yalnız onu gören kuralların kolonlarını taşır; birleştirme ortak işlevde kalır, yeniden okuma deyimini repository verir.
 - B — Kanondaki gibi tür başına tek kolon listesi: tek sorgu, daha sade; ama bir kaydı gören kural başka kuralın kolonlarını da göstermiş olur (KR-010'un ikinci çürütme turu bunu reddetti).
 
 ### 3. Yazmada sıra
-- A (seçildi) — Motor sıralar, deyimi repository verir: adım unutulamaz.
+- A (seçildi; kullanıcı teyidi, 2026-11-25: "Motor sıralasın") — Motor sıralar, deyimi repository verir: adım unutulamaz. Kilit, eski hâl ve görünürlük sorguları motorun içinde, modelin vekili addan bulunarak yapılır; repository yalnız kaynağa yazan deyimi verir (kalıp görevinin incelemesi bu yorumu kullanıcıya bıraktı; kullanıcı kod örneğini görerek onayladı).
 - B — Repository sıralar (kilitle, yaz, kapat): deyim daha doğal okunur; bir adımı unutmak yetkisiz yazmaya ya da kayıtsız değişikliğe yol açar.
+
+### 4. Geçiş
+- A (seçildi; kullanıcı teyidi, 2026-11-25: "Adım adım, sarmalayıcıyla") — Eski yüz ince sarmalayıcı olarak kalır, alt özellikler tek tek taşınır, sonunda sarmalayıcı koddan çıkar.
+- B — Tek seferde: ara durum kalmaz; iş büyür ve kırılan testin nedeni zor bulunur.
+
+### Öncelik (kapsam dışı; ayrı tasarım)
+Kullanıcı kolon sorusunda önceliği sordu (2026-11-25: "adamda 2 yeri aynı yeteneği varsa kazanma durumu vardı priority mevzusu ne oldu"). Bugün kazanan yoktur: okumada yeteneklerin satırları birleşir, yazmada ilk oluşturulan yetenek kayda geçer; öncelik ve etki (girebilir / giremez) KR-008 Seçim 9 ile ertelenmişti. Kullanıcı "şimdi tasarlansın" dedi: ayrı bir tasarım kaydı yazılır ve kullanıcı onaylamadan kod başlamaz. Bu kaydın işi (kayıt katmanının yeri) öncelikten bağımsız ilerler.
 
 ## Aşamalar
 1. Kalıp: yetki yüzünün yeni okuma ve yazma biçimi, rol alt özelliği ve yapı denetimi kuralları (eski yüz sarmalayıcı olarak durur).
