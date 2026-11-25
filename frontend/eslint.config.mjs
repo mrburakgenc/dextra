@@ -54,6 +54,11 @@ export default defineConfig(
           capture: ['feature'],
           partialMatch: false,
         },
+        {
+          type: 'ara-katman',
+          pattern: ['src/proxy.ts', 'src/proxy.test.ts'],
+          mode: 'full',
+        },
       ],
       'import/resolver': {
         node: { extensions: ['.ts', '.tsx', '.js', '.jsx', '.css'] },
@@ -96,6 +101,11 @@ export default defineConfig(
               // Ortak kod yalnız ortak kodu içe aktarır.
               from: { element: { type: 'shared' } },
               allow: { to: { element: { type: 'shared' } } },
+            },
+            {
+              // Ara katman ortak kodu ve yalnız kendini (testi ara katmanı) içe aktarır.
+              from: { element: { type: 'ara-katman' } },
+              allow: { to: { element: { type: ['ara-katman', 'shared'] } } },
             },
           ],
         },
