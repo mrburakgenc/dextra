@@ -16,7 +16,7 @@ import {
   GRUP_YAZMA_REPO,
 } from './domain/repositories/i-grup.repository.js';
 import { grupOkumaPrismaRepository } from './infrastructure/repositories/grup-okuma.prisma-repository.js';
-import { KapiGrupYazmaRepo } from './infrastructure/repositories/grup-yazma.kapi-repository.js';
+import { PrismaGrupYazmaRepo } from './infrastructure/repositories/grup-yazma.prisma-repository.js';
 import { GrupController } from './presentation/grup.controller.js';
 
 // Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
@@ -31,7 +31,7 @@ import { GrupController } from './presentation/grup.controller.js';
     GrupGuncelleHandler,
     GrupTasiHandler,
     GrupSilHandler,
-    { provide: GRUP_YAZMA_REPO, useClass: KapiGrupYazmaRepo },
+    { provide: GRUP_YAZMA_REPO, useClass: PrismaGrupYazmaRepo },
   ],
 })
 export class GrupModule {

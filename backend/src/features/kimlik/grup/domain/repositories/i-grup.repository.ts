@@ -3,12 +3,18 @@
 // infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniGrup } from '../entities/grup.entity.js';
 import type { GrupAdi } from '../value-objects/grup-adi.js';
+
+// Okunan grup kaydı: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface GrupGorunumu {
+  readonly id: string;
+  readonly ustGrupId?: string | null;
+  readonly ad?: string;
+  readonly silinmeZamani?: Date | null;
+  readonly olusturmaZamani?: Date;
+}
 
 export interface GrupListeIstegi {
   // Verilirse yalnız bu grubun doğrudan altındaki gruplar.
@@ -20,9 +26,9 @@ export interface GrupListeIstegi {
 
 // Kayıtlar yalnız isteyenin görebildiği kolonları ve her zaman kimliği taşır (AK-38).
 export interface IGrupOkumaRepo {
-  liste(istek: GrupListeIstegi): Promise<Kayit[]>;
+  liste(istek: GrupListeIstegi): Promise<GrupGorunumu[]>;
   // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  tek(id: string): Promise<Kayit>;
+  tek(id: string): Promise<GrupGorunumu>;
 }
 
 export const GRUP_OKUMA_REPO = new RepoBelirteci<
