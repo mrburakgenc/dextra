@@ -1,7 +1,7 @@
 ---
 kimlik: DN-001
 tur: denetim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
 cesit: yerlesik

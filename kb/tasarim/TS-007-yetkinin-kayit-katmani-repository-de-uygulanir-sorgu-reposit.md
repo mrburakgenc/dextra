@@ -1,7 +1,7 @@
 ---
 kimlik: TS-007
 tur: tasarim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
 agirlik: cift-yonlu

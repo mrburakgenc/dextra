@@ -43,3 +43,8 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] taslak | DN-002 Yapı denetimi: alt özellikler ve ortak kod kanondaki katman düzenindedir
 ## [2026-11-25] taslak | TS-007 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden
 ## [2026-11-25] taslak | TS-008 Yetenekte öncelik: aynı kaydı tutan yeteneklerden önceliği yüksek olan tek başına geçerlidir
+## [2026-11-25] kabul | KR-015@1 Alınan her iş raporla kapanır; raporu olmayan iş gönderilemez
+## [2026-11-25] kabul | DN-001@1 Raporsuz görev denetimi: dalda alınan her görev bir raporda geçer
+## [2026-11-25] kabul | KU-016@1 Alınan her görev gönderilmeden önce bir raporda yer alır; görev tablosunu araç üretir
+## [2026-11-25] kabul | TS-006@1 Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
+## [2026-11-25] kabul | TS-007@1 Yetkinin kayıt katmanı repository'de uygulanır: sorgu repository'de, süzgeç yetki yüzünden

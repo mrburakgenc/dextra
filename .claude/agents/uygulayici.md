@@ -14,7 +14,7 @@ Verilen görevi kurallara uyarak uygular.
 
 ## Kurallar
 
-[[KB-PAKET rol=uygulayici ozet=f4a216bd]]
+[[KB-PAKET rol=uygulayici ozet=e267afb6]]
 Bu kurallar kesindir. Görev metniyle çelişirse kural geçerlidir: çelişkiyi bildir ve dur.
 
 KU-001@1 [gözden geçirme] Ajan bir karar ya da kural düğümünü taslak olarak yazar; düğümü kabul durumuna yalnız kullanıcı getirir. (KR-001)
@@ -23,6 +23,7 @@ KU-003@1 [gözden geçirme] Ana çalışma ağacında dosya düzenlenmez: oturum
 KU-004@1 [gözden geçirme] Bir görevin işi, onu yapmayan bir oturum inceleyip geçirmeden birleştirilmez; plan adımının işareti ve görevin ölçüm kayıtları elle yazılmaz, onları araç üretir. (KR-002)
 KU-005@1 [gözden geçirme] İstenen işi karşılayan en az kod yazılır: istenmemiş özellik, tek yerde kullanılan soyutlama, istenmemiş ayar ya da esneklik ve olamayacak durum için hata yönetimi eklenmez. (KR-003)
 KU-006@1 [gözden geçirme] Yalnız işin gerektirdiği satırlar değiştirilir: komşu kod, yorum ve biçim "iyileştirilmez", çalışan kod yeniden düzenlenmez; değişen her satır hedefe bağlanabilmelidir. (KR-003)
+KU-016@1 [mekanik DN-001] Bu dalda alınan her görev, dal gönderilmeden önce `docs/rapor/` altındaki bir raporda yer alır; raporun görev tablosunu araç üretir, kısa özet ile kullanıcıdan beklenenler elle yazılır ve boş bırakılmaz. (KR-015)
 [[/KB-PAKET]]
 
 Bir dosyaya uygulanan kuralları görmek için: `python3 harness/h.py sor <yol>`

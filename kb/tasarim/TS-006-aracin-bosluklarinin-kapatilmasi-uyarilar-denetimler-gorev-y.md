@@ -1,7 +1,7 @@
 ---
 kimlik: TS-006
 tur: tasarim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Aracın boşluklarının kapatılması: uyarılar, denetimler, görev yaşam döngüsü ve rapor
 agirlik: cift-yonlu

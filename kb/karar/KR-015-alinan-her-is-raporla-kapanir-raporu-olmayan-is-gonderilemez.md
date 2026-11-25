@@ -1,7 +1,7 @@
 ---
 kimlik: KR-015
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Alınan her iş raporla kapanır; raporu olmayan iş gönderilemez
 agirlik: cift-yonlu
