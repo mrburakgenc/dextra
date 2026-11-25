@@ -1,39 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../../database/generated/client.js';
-import type { RepoIstemcisi } from '../../database/infrastructure/registrar.js';
 import {
   type IstekBaglami,
   istekBaglami,
 } from '../../observability/istek-baglami/istek-baglami.js';
-import { KodluHata } from '../../http/domain/kodlu-hata.js';
-import {
-  type KosulOgesi,
-  kosuluCevir,
-  type PrismaKosulu,
-} from '../application/sart-cevirici.js';
+import type { PrismaKosulu } from '../application/sart-cevirici.js';
 import type { YetenekKurali } from '../application/yetenek-derleyici.js';
-import type { AlanTipi } from '../domain/alan-tipi.js';
 import {
   KAYNAK_KATALOGU,
   type KaynakKatalogu,
 } from '../domain/kaynak-katalogu.js';
-import type { Kayit, Siralama } from '../domain/okuma-tipleri.js';
-import {
-  type KolonSecimi,
-  modelAdi,
-  type SatirSuzgeci,
-} from './model-tipleri.js';
-
-// Çağıranın listeye verdiği koşul, sıralama ve sayfa; koşul yetkinin satır süzgeciyle "ve" ile birleşir.
-// yalnizCanli açıkken yalnız silinme zamanı boş kayıtlar gelir (TS-002 AK-42); bu süzgeç kapınındır,
-// çağıranın koşulu değildir: baktığı kolon, katılan yetenekler hesabına girmez. Silinme zamanı alanı
-// olmayan kaynakta hatadır.
-export interface ListeIstegi {
-  readonly kosul?: readonly KosulOgesi[];
-  readonly siralama?: readonly Siralama[];
-  readonly sayfa?: { readonly atla: number; readonly al: number };
-  readonly yalnizCanli?: boolean;
-}
+import type { Kayit } from '../domain/okuma-tipleri.js';
+import type { KolonSecimi, SatirSuzgeci } from './model-tipleri.js';
 
 // Bu istekteki okumalarda kullanılan yetenek ve üyelik kimlikleri ve dönen kayıt sayısı (erişim kaydı
 // için; KR-010 Seçim 40).
@@ -44,7 +22,6 @@ export interface OkumaBirikimi {
 }
 
 const OKUMA_EYLEMI = 'oku';
-const SILINME_ALANI = 'silinmeZamani';
 
 interface Birikim {
   readonly yetenekIdleri: Set<string>;
@@ -65,23 +42,9 @@ export function okumaBirikimi(): OkumaBirikimi {
   };
 }
 
-interface OkumaVekili {
-  findMany(
-    args: object,
-  ): Promise<({ readonly id: unknown } & Record<string, unknown>)[]>;
-}
-
 interface Katilan {
   readonly kural: YetenekKurali;
   readonly kolonlar: readonly string[];
-}
-
-interface Okuma {
-  readonly kosul: PrismaKosulu;
-  // Çağıranın süzgecinin ve sıralamasının baktığı kolonlar.
-  readonly bakilan: readonly string[];
-  readonly siralama: readonly Siralama[];
-  readonly sayfa?: ListeIstegi['sayfa'];
 }
 
 // Okunan kayıt: kimlik her zaman vardır; kişinin göremediği kolon kayıtta yoktur.
@@ -121,28 +84,26 @@ interface GenelOkumaYetkisi {
   ): Promise<Kayit[]>;
 }
 
-// Yetki kapısının okuma yüzü (TS-002 AK-19; KR-010 Seçim 26, 37 ve "Derleme eşlemesi"). Feature
-// repository'si kataloğa bildirilmiş bir kaynağı yalnız buradan okur; yetki parametre değildir, istek
-// bağlamındaki derlenmiş yetkiden alınır.
+// Yetki kapısının okuma yüzü (TS-007 "Yapı"; KR-010 Seçim 26, 37 ve "Derleme eşlemesi"). Feature
+// repository'si kataloğa bildirilmiş bir kaynağın Prisma sorgusunu kendisi yazar; satır süzgecini, kolon
+// seçimini ve okumayı kapatan işlevi buradan, yetki'den alır. Yetki parametre değildir, istek
+// bağlamındaki derlenmiş yetkiden alınır; motorun kuralları (kuralların seçimi, satır süzgecinin
+// kurulması, kolon kümelerinin birleştirilmesi) yalnız buradadır.
 //
-// Okuma iki adımdır. (1) Sayfa: çağıranın koşulu, okuma kurallarının koşullarının "veya"sıyla "ve"
-// bağlanır; sıralama (sonda kimlik) ve sayfa bu tek sorguda veritabanında uygulanır, böylece sayfalar
-// birleşik sonuç üzerinde tutarlıdır. (2) Kolonlar: kurallar farklı kolon kümeleri veriyorsa her kural
-// kendi koşulu ve kendi kolonlarıyla, yalnız sayfadaki kimlikler için bir sorgu atar; sonuçlar kayıt
-// kimliğinde birleşir ve her kayıt yalnız onu gören kuralların kolonlarının birleşimini taşır. Kolon
-// kümeleri aynıysa ilk sorgu kolonları doğrudan seçer. Hiç kuralı olmayan kişide sorgu yine gider ve
-// veritabanı hiçbir satır döndürmez.
+// Okuma iki adımdır. (1) Sayfa: repository'nin sorgusu kendi koşulunu satır süzgeciyle (okuma
+// kurallarının koşullarının "veya"sı) "ve" bağlar; sıralama (sonda kimlik) ve sayfa bu tek sorguda
+// veritabanında uygulanır, böylece sayfalar birleşik sonuç üzerinde tutarlıdır. (2) Kolonlar: kurallar
+// farklı kolon kümeleri veriyorsa kayitlar her kural için, kendi koşulu ve kendi kolonlarıyla, yalnız
+// sayfadaki kimlikleri repository'nin verdiği yeniden okuma deyimiyle okur; sonuçlar kayıt kimliğinde
+// birleşir ve her kayıt yalnız onu gören kuralların kolonlarının birleşimini taşır. Kolon kümeleri
+// aynıysa ilk sorgu kolonları doğrudan seçer. Hiç kuralı olmayan kişide sorgu yine gider ve veritabanı
+// hiçbir satır döndürmez.
 //
 // Kayıt kimliği her okuma kuralında görünür (TS-002 AK-38): kolon listesinde olmasa da her cevapta
 // bulunur, kimliğe göre süzme ve sıralama her kuralda serbesttir. Bedeli: kimlik zaman sıralı (UUIDv7)
 // olduğu için kaydı okuyabilen kişi oluşturma sırasını öğrenir. Çağıranın süzdüğü ya da sıraladığı
-// başka bir kolonu göremeyen kural o okumaya katılmaz: süzme ve sıralama görünmeyen kolonu ele vermez
-// (KR-010 ikinci çürütme turu kuralları).
-//
-// İki yüzü vardır (TS-007 "Yapı"). Yeni yüz yetki'dir: repository Prisma sorgusunu kendisi yazar,
-// süzgeci, seçimi ve okumayı kapatan işlevi buradan alır. Kaynak adıyla çalışan liste ve tek eski
-// yüzdür: modelin vekilini addan bulur ve sorguyu yeni yüzün üstünde kendisi atar; motorun kuralları
-// yalnız yetki'dedir.
+// başka bir kolonu (bakilan) göremeyen kural o okumaya katılmaz: süzme ve sıralama görünmeyen kolonu
+// ele vermez (KR-010 ikinci çürütme turu kuralları).
 @Injectable()
 export class OkumaKapisi {
   constructor(
@@ -243,109 +204,6 @@ export class OkumaKapisi {
       },
     };
     return genel as unknown as OkumaYetkisi<M>;
-  }
-
-  async liste(
-    istemci: RepoIstemcisi,
-    kaynak: string,
-    istek: ListeIstegi = {},
-  ): Promise<Kayit[]> {
-    const { alanlar, tipler, vekil } = this.kaynak(istemci, kaynak);
-    const ceviri = kosuluCevir(istek.kosul ?? [], tipler);
-    // Tipi uymayan değer istekten gelir (uç şemasından kaçmıştır); veritabanına gitmeden doğrulama
-    // hatası olur (TS-002 AK-44). Öbür çeviri hataları kodundur.
-    if ('uyumsuz' in ceviri) {
-      throw new KodluHata('dogrulama_hatasi', 'İstek doğrulanamadı', [
-        { alan: 'kosul', neden: ceviri.uyumsuz },
-      ]);
-    }
-    if ('neden' in ceviri) {
-      throw new Error(`Okuma koşulu çevrilemedi: ${ceviri.neden}`);
-    }
-    const siralama = istek.siralama ?? [];
-    for (const { alan } of siralama) {
-      if (!alanlar.includes(alan)) {
-        throw new Error(`Sıralama için bilinmeyen alan: ${alan}`);
-      }
-    }
-    if (istek.yalnizCanli === true && !alanlar.includes(SILINME_ALANI)) {
-      throw new Error(`Silinme zamanı alanı olmayan kaynak: ${kaynak}`);
-    }
-    return this.oku(kaynak, vekil, {
-      kosul:
-        istek.yalnizCanli === true
-          ? { AND: [ceviri.kosul, { [SILINME_ALANI]: null }] }
-          : ceviri.kosul,
-      bakilan: [
-        ...(istek.kosul ?? []).map((oge) => oge.alan),
-        ...siralama.map((oge) => oge.alan),
-      ],
-      siralama,
-      ...(istek.sayfa === undefined ? {} : { sayfa: istek.sayfa }),
-    });
-  }
-
-  // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  async tek(
-    istemci: RepoIstemcisi,
-    kaynak: string,
-    id: string,
-  ): Promise<Kayit> {
-    const { vekil } = this.kaynak(istemci, kaynak);
-    const [kayit] = await this.oku(kaynak, vekil, {
-      kosul: { id: { equals: id } },
-      bakilan: [],
-      siralama: [],
-    });
-    if (kayit === undefined) {
-      throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
-    }
-    return kayit;
-  }
-
-  private kaynak(
-    istemci: RepoIstemcisi,
-    kaynak: string,
-  ): {
-    alanlar: readonly string[];
-    tipler: Readonly<Record<string, AlanTipi>>;
-    vekil: OkumaVekili;
-  } {
-    const alanlar = this.katalog.alanlar(kaynak);
-    const tipler = this.katalog.alanTipleri(kaynak);
-    // Prisma istemcisinde modelin vekili, model adının ilk harfi küçük hâlidir.
-    const vekil = (istemci as unknown as Partial<Record<string, OkumaVekili>>)[
-      kaynak.charAt(0).toLowerCase() + kaynak.slice(1)
-    ];
-    if (alanlar === undefined || tipler === undefined || vekil === undefined) {
-      throw new Error(`Kaynak kataloğunda olmayan kaynak: ${kaynak}`);
-    }
-    return { alanlar, tipler, vekil };
-  }
-
-  // Eski yüzün sorgusu: tek sorguda sayfa, sonra yeni yüzün kapatma işleviyle kayıtlar.
-  private async oku(
-    kaynak: string,
-    vekil: OkumaVekili,
-    okuma: Okuma,
-  ): Promise<Kayit[]> {
-    const yetki = this.yetki(modelAdi(kaynak), { bakilan: okuma.bakilan });
-    const sayfa = await vekil.findMany({
-      where: { AND: [okuma.kosul, yetki.satirlar] },
-      orderBy: [
-        ...okuma.siralama.map(({ alan, yon }) => ({
-          [alan]: yon === 'artan' ? 'asc' : 'desc',
-        })),
-        { id: 'asc' },
-      ],
-      ...(okuma.sayfa === undefined
-        ? {}
-        : { skip: okuma.sayfa.atla, take: okuma.sayfa.al }),
-      select: yetki.kolonlar,
-    });
-    return yetki.kayitlar(sayfa, (where, select) =>
-      vekil.findMany({ where, select }),
-    );
   }
 }
 

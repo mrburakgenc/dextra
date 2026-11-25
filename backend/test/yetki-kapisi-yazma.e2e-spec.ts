@@ -34,6 +34,7 @@ import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derl
 import { YazmaKapisi } from '../src/shared/yetki/infrastructure/yazma-kapisi.js';
 import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
+import { EskiYazmaKapisi } from './yardimci/eski-yuz.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 // Kullanıcının sistemin yazdığı alanları (TS-002 "Veri modeli", çürütme 17) katalogda işaretlidir.
@@ -118,7 +119,7 @@ let gozlemci: pg.Client;
 let gozlemciPid: number;
 let prisma: PrismaClient<'query'>;
 let uow: UnitOfWork;
-let kapi: YazmaKapisi;
+let kapi: EskiYazmaKapisi;
 const sorgular: string[] = [];
 
 function yetenek(degisen: Partial<YetenekSatiri>): YetenekSatiri {
@@ -315,7 +316,9 @@ beforeAll(async () => {
   const kayitlar = new RepoKayitlari();
   kayitlar.register(OUTBOX_REPO, outboxRepo);
   uow = new UnitOfWork(prisma, kayitlar);
-  kapi = new YazmaKapisi(KATALOG, new OutboxYazici(), kayitlar);
+  kapi = new EskiYazmaKapisi(
+    new YazmaKapisi(KATALOG, new OutboxYazici(), kayitlar),
+  );
 }, 120_000);
 
 afterAll(async () => {

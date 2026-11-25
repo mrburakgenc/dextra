@@ -43,11 +43,11 @@ import {
 import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
-import { OkumaKapisi } from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
+import { EskiOkumaKapisi } from './yardimci/eski-yuz.js';
 
 const BACKEND = fileURLToPath(new URL('..', import.meta.url));
 const IZ_GOCLERI = `${BACKEND}prisma/iz/migrations`;
@@ -100,7 +100,7 @@ interface SinamaTam extends SinamaOkuma {
 const SINAMA_REPO = new RepoBelirteci<SinamaOkuma, SinamaTam>(
   'ErisimSinamaRepo',
 );
-const kapi = new OkumaKapisi(prismaKaynakKatalogu(['Kullanici']));
+const kapi = new EskiOkumaKapisi(prismaKaynakKatalogu(['Kullanici']));
 
 // Son okuma ucunun okuduğu kayıt sayısı: hata dönen istekte verinin okunduğunu gösterir.
 let sonOkunan = -1;
