@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { z } from 'zod';
 import { cikisYap } from '../../features/kimlik/eylemler';
 import { kimlikGerekliyseOturumuBitir } from '../../shared/backend/hata';
-import { backendIstegi } from '../../shared/backend/istek';
-import { erisimBelirteciniOku } from '../../shared/oturum/cerezler';
+import { backendIstegi, ULASILAMIYOR } from '../../shared/backend/istek';
+import { BAGLANTI } from '../../shared/liste/liste-parcalari';
+import { erisimBelirteciniOku, yenilemeCerezleriVar } from '../../shared/oturum/cerezler';
 import { GonderDugmesi } from '../../shared/ui/gonder-dugmesi';
+import { YenidenDene } from '../../shared/ui/yeniden-dene';
 import { Can, YetkiSaglayici } from '../../shared/yetki/yetki-saglayici';
 
 // "yetkilerim" cevabının ekrana giden kısmı; yetenekId ekranda kullanılmadığı için atılır.
@@ -33,10 +35,23 @@ const MENU = [
 // Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden giriş ekranına dönülür. Bu bir
 // kolaylıktır, güvenlik denetimi değildir; kararı backend verir (TS-004). Kişinin yetki
 // kuralları her sayfa isteğinde sunucuda çekilir ve istemcideki yetki sağlayıcısına verilir.
+// Yenilenemeyen oturum (TS-004 "Oturumun yenilenmesi"): erişim çerezi yokken yenileme ve cihaz
+// çerezi duruyorsa ara katman backend'e ulaşamamıştır; kişi girişe gitmez, backend'e gidilmeden
+// ileti ve aynı adrese tam sayfa yüklemesiyle giden 'Yeniden dene' bağlantısı gösterilir.
 export default async function PanelDuzeni({
   children,
 }: Readonly<{ children: ReactNode }>) {
   if ((await erisimBelirteciniOku()) === undefined) {
+    if (await yenilemeCerezleriVar()) {
+      return (
+        <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-4 p-8">
+          <p role="alert">{ULASILAMIYOR}</p>
+          <p>
+            <YenidenDene className={BAGLANTI} />
+          </p>
+        </main>
+      );
+    }
     redirect('/giris');
   }
   const sonuc = await backendIstegi({

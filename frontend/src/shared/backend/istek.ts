@@ -1,6 +1,6 @@
 import 'server-only';
 import { headers } from 'next/headers';
-import { erisimBelirteciniOku } from '../oturum/cerezler';
+import { erisimBelirteciniOku, yenilemeCerezleriVar } from '../oturum/cerezler';
 import { type BackendHatasi, hataGovdesiniOku } from './hata';
 import { imzaBasliklari } from './imza';
 
@@ -33,13 +33,15 @@ function ortamDegiskeni(ad: string): string {
   return deger;
 }
 
+export const ULASILAMIYOR = 'Şu an ulaşılamıyor';
+
 // Ağ hatası ve JSON olmayan cevap; durum ağ hatasında 0'dır.
 function ulasilamadi(durum: number): BackendSonucu {
   return {
     basarili: false,
     hata: {
       kod: 'ulasilamadi',
-      ileti: 'Şu an ulaşılamıyor',
+      ileti: ULASILAMIYOR,
       ayrinti: null,
       durum,
     },
@@ -126,10 +128,28 @@ export async function backendCagrisi(
   return { basarili: false, hata: hataGovdesiniOku(govde, cevap.status) };
 }
 
+// Oturumlu istek erişim çerezi yokken backend'e gitmez (TS-004 "Oturumun yenilenmesi"). Yenileme
+// ve cihaz çerezi duruyorsa ara katman yenileyememiştir: ulaşılamadı döner, oturum bitti yoluna
+// gidilmez ve çerezlere dokunulmaz. Yenilenebilir çift yoksa backend'in vereceği kimlik_gerekli
+// sonucu döner; çağıran bugünkü gibi oturum bitti yoluna gider.
 export async function backendIstegi(
   istek: BackendIstegi,
 ): Promise<BackendSonucu> {
   const { oturumlu, ...cagri } = istek;
   const belirtec = oturumlu ? await erisimBelirteciniOku() : undefined;
+  if (oturumlu && belirtec === undefined) {
+    if (await yenilemeCerezleriVar()) {
+      return ulasilamadi(0);
+    }
+    return {
+      basarili: false,
+      hata: {
+        kod: 'kimlik_gerekli',
+        ileti: 'Kimlik doğrulanamadı',
+        ayrinti: null,
+        durum: 401,
+      },
+    };
+  }
   return backendCagrisi(cagri, await headers(), belirtec);
 }

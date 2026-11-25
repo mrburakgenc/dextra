@@ -10,6 +10,19 @@ import { type SorguAlanlari, sorguMetni } from './sorgu';
 // Kayıtta gelmeyen (kişinin göremediği) ya da boş kolon.
 export const BOS = '—';
 
+// Kimliğin ekrandaki adı (TS-004 "Yönetim formlarının sertleştirilmesi"): kimlik kayıtta gelmediyse
+// ya da boşsa boş işaret; adı bilinmiyorsa (listede yok ya da liste alınamadı: adlar null) kimliğin
+// ilk sekiz karakteri ve '…'.
+export function kimliginAdi(
+  adlar: ReadonlyMap<string, string | undefined> | null,
+  id: string | null | undefined,
+): string {
+  if (id === undefined || id === null) {
+    return BOS;
+  }
+  return adlar?.get(id) ?? `${id.slice(0, 8)}…`;
+}
+
 export const BAGLANTI =
   'text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
 

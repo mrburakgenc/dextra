@@ -565,6 +565,80 @@ describe('YeniYetenekSayfasi yazılanın korunması', () => {
   });
 });
 
+// Ad listesi alınamayınca form yerine ileti çıkar (GV-099). Verilen ad listesi bu cevabı alır.
+function adListesiCevabi(yol: string, cevap: () => Response) {
+  const onceki = sahteFetch.getMockImplementation();
+  sahteFetch.mockImplementation((adres, init) => {
+    if (adres instanceof URL && adres.pathname === yol) {
+      return Promise.resolve(cevap());
+    }
+    return onceki === undefined
+      ? Promise.reject(new Error('backend kurulmadı'))
+      : onceki(adres, init);
+  });
+}
+
+async function listeAlinamazkenGoster(
+  yollar: readonly string[],
+  cevap: () => Response,
+  kurallar: YetkiKurali[] = OLUSTURUR,
+) {
+  backend();
+  for (const yol of yollar) {
+    adListesiCevabi(yol, cevap);
+  }
+  render(
+    <YetkiSaglayici kurallar={kurallar}>
+      <Yakalayici>{await YeniYetenekSayfasi()}</Yakalayici>
+    </YetkiSaglayici>,
+  );
+}
+
+describe('YeniYetenekSayfasi ad listesi alınamayınca', () => {
+  it('izin listesi 403 dönünce form yerine İzin listesi alınamadı iletisi görünür', async () => {
+    await listeAlinamazkenGoster(['/kimlik/izin'], () => hataCevabi('yetki_yok', 'Yetki yok', 403));
+
+    expect(screen.queryByRole('button', { name: 'Yeteneği yaz' })).toBeNull();
+    expect(screen.queryByLabelText('Grup')).toBeNull();
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'İzin listesi alınamadı',
+    ]);
+  });
+
+  it('grup ve rol listesine ulaşılamayınca iki liste de adıyla söylenir', async () => {
+    await listeAlinamazkenGoster(
+      ['/kimlik/grup', '/kimlik/rol'],
+      () => new Response('Bad Gateway', { status: 502 }),
+    );
+
+    expect(screen.queryByRole('button', { name: 'Yeteneği yaz' })).toBeNull();
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'Grup listesi alınamadı',
+      'Rol listesi alınamadı',
+    ]);
+  });
+
+  it('olustur kuralı olmayan kişi liste iletisini görmez, yetki iletisini görür', async () => {
+    await listeAlinamazkenGoster(
+      ['/kimlik/izin'],
+      () => hataCevabi('yetki_yok', 'Yetki yok', 403),
+      [{ action: 'oku', subject: 'Yetenek' }],
+    );
+
+    expect(screen.getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'Bu iş için yetkin yok',
+    ]);
+  });
+
+  it('ad listesi 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
+    backend();
+    adListesiCevabi('/kimlik/grup', () => hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401));
+
+    await expect(YeniYetenekSayfasi()).rejects.toThrow('yonlendirildi:/oturum-bitti');
+    expect(redirect).toHaveBeenCalledWith('/oturum-bitti');
+  });
+});
+
 describe('YeniYetenekSayfasi yetki', () => {
   it('Yetenek olustur kuralı olmayan kişi formu görmez', async () => {
     await goster([{ action: 'oku', subject: 'Yetenek' }]);

@@ -3,12 +3,15 @@ import { createHmac } from 'node:crypto';
 import { inspect } from 'node:util';
 import { headers } from 'next/headers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { erisimBelirteciniOku } from '../oturum/cerezler';
+import { erisimBelirteciniOku, yenilemeCerezleriVar } from '../oturum/cerezler';
 import { backendIstegi } from './istek';
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({ headers: vi.fn() }));
-vi.mock('../oturum/cerezler', () => ({ erisimBelirteciniOku: vi.fn() }));
+vi.mock('../oturum/cerezler', () => ({
+  erisimBelirteciniOku: vi.fn(),
+  yenilemeCerezleriVar: vi.fn(),
+}));
 
 const SIR = 'sinama-sirri-0123456789abcdefghijklmnop';
 const SIMDI = 1768512600000;
@@ -108,6 +111,37 @@ describe('backend isteği', () => {
 
     expect(sonIstek().basliklar.has('authorization')).toBe(false);
     expect(erisimBelirteciniOku).not.toHaveBeenCalled();
+  });
+
+  it('oturumlu istek erişim çerezi yokken yenileme ve cihaz çerezi duruyorsa backend\'e gitmez, ulaşılamadı döner', async () => {
+    vi.mocked(erisimBelirteciniOku).mockResolvedValue(undefined);
+    vi.mocked(yenilemeCerezleriVar).mockResolvedValue(true);
+
+    await expect(
+      backendIstegi({ yol: '/x', yontem: 'GET', oturumlu: true }),
+    ).resolves.toEqual({
+      basarili: false,
+      hata: {
+        kod: 'ulasilamadi',
+        ileti: 'Şu an ulaşılamıyor',
+        ayrinti: null,
+        durum: 0,
+      },
+    });
+    expect(sahteFetch).not.toHaveBeenCalled();
+  });
+
+  it('oturumlu istek erişim çerezi ve yenilenebilir çift yokken backend\'e gitmez, kimlik_gerekli döner', async () => {
+    vi.mocked(erisimBelirteciniOku).mockResolvedValue(undefined);
+    vi.mocked(yenilemeCerezleriVar).mockResolvedValue(false);
+
+    const sonuc = await backendIstegi({ yol: '/x', yontem: 'GET', oturumlu: true });
+
+    expect(sonuc).toMatchObject({
+      basarili: false,
+      hata: { kod: 'kimlik_gerekli', durum: 401 },
+    });
+    expect(sahteFetch).not.toHaveBeenCalled();
   });
 
   it('backend hata gövdesini koda, iletiye, ayrıntıya ve duruma çevirir', async () => {

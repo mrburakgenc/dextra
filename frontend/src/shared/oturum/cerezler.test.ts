@@ -5,6 +5,7 @@ import {
   OTURUM_CEREZLERI,
   oturumCerezleriniSil,
   oturumCerezleriniYaz,
+  yenilemeCerezleriVar,
 } from './cerezler';
 
 vi.mock('server-only', () => ({}));
@@ -68,6 +69,18 @@ describe('oturum çerezleri', () => {
   it('çerez yoksa erişim belirteci yoktur', async () => {
     depo.get.mockReturnValue(undefined);
     await expect(erisimBelirteciniOku()).resolves.toBeUndefined();
+  });
+
+  it.each([
+    [['dextra_yenileme', 'dextra_cihaz'], true],
+    [['dextra_yenileme'], false],
+    [['dextra_cihaz'], false],
+    [[], false],
+  ])('yenilenebilir çift yalnız ikisi birlikteyken vardır (%j)', async (adlar, beklenen) => {
+    depo.get.mockImplementation((ad: string) =>
+      adlar.includes(ad) ? { name: ad, value: 'deger' } : undefined,
+    );
+    await expect(yenilemeCerezleriVar()).resolves.toBe(beklenen);
   });
 
   it('silme üç çerezi de siler', async () => {

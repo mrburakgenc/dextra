@@ -1,14 +1,17 @@
 import { GrupIsleri } from '../../../../features/kimlik/grup/grup-isleri';
 import { GrupKaydi, ustGrupSecenekleri } from '../../../../features/kimlik/grup/grup-listesi';
+import { KAYIT_BULUNAMADI } from '../../../../features/kimlik/is-hatasi';
 import { kaydiGetir } from '../../../../features/kimlik/kayit-istegi';
-import { KayitSatirlari } from '../../../../features/kimlik/kayit-satirlari';
+import { KayitBasligi, KayitSatirlari } from '../../../../features/kimlik/kayit-satirlari';
+import { kimlikGerekliyseOturumuBitir } from '../../../../shared/backend/hata';
 import { tarihSaat } from '../../../../shared/bicim/bicim';
-import { BOS, listeHatasi } from '../../../../shared/liste/liste-parcalari';
+import { BOS, kimliginAdi, listeHatasi } from '../../../../shared/liste/liste-parcalari';
 
-// Grubun kaydı ve işleri (TS-004 "Yönetim ekranları"). 404 'Kayıt bulunamadı' olur; 401 oturum
+// Grubun kaydı ve işleri (TS-004 "Yönetim ekranları"). 404 bulunamadı iletisi olur; 401 oturum
 // bitti yoluna gider; 403 ve öbür hatalar liste ekranlarındaki gibi ileti olur. Taşı için üst grup
-// seçimi grup listesinden kurulur; üst grubun adı da oradan okunur, listede yoksa boş işaret
-// gösterilir. Liste alınamazsa taşı yerine liste hatası gösterilir.
+// seçimi grup listesinden kurulur; üst grubun adı da oradan okunur, listede yoksa ya da liste
+// alınamazsa kimlik kısaltılarak gösterilir. Liste alınamazsa taşı yerine ileti çıkar (TS-004
+// "Yönetim formlarının sertleştirilmesi"). Silinmiş kayıtta iş gösterilmez.
 export default async function GrupSayfasi({
   params,
 }: Readonly<{ params: Promise<{ id: string }> }>) {
@@ -19,7 +22,7 @@ export default async function GrupSayfasi({
       <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
         <h1 className="text-3xl font-bold">Grup</h1>
         {sonuc.hata.kod === 'bulunamadi' ? (
-          <p role="alert">Kayıt bulunamadı</p>
+          <p role="alert">{KAYIT_BULUNAMADI}</p>
         ) : (
           listeHatasi(sonuc.hata)
         )}
@@ -28,15 +31,21 @@ export default async function GrupSayfasi({
   }
   const { kayit } = sonuc;
   const liste = await ustGrupSecenekleri();
+  if (!liste.basarili) {
+    kimlikGerekliyseOturumuBitir(liste.hata);
+  }
   const secenekler = liste.basarili ? liste.secenekler : null;
-  const ustGrup = secenekler?.gruplar.find((grup) => grup.id === kayit.ustGrupId);
+  const adlar =
+    secenekler === null
+      ? null
+      : new Map(secenekler.gruplar.map((grup) => [grup.id, grup.etiket]));
   return (
     <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-bold">{kayit.ad ?? 'Grup'}</h1>
+      <KayitBasligi baslik={kayit.ad ?? 'Grup'} silinmeZamani={kayit.silinmeZamani} />
       <KayitSatirlari
         satirlar={[
           { etiket: 'Ad', deger: kayit.ad ?? BOS },
-          { etiket: 'Üst grup', deger: ustGrup?.etiket ?? BOS },
+          { etiket: 'Üst grup', deger: kimliginAdi(adlar, kayit.ustGrupId) },
           {
             etiket: 'Oluşturma zamanı',
             deger:
@@ -44,8 +53,9 @@ export default async function GrupSayfasi({
           },
         ]}
       />
-      <GrupIsleri kayit={kayit} secenekler={secenekler} />
-      {!liste.basarili && listeHatasi(liste.hata)}
+      {typeof kayit.silinmeZamani !== 'string' && (
+        <GrupIsleri kayit={kayit} secenekler={secenekler} />
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import type { BackendHatasi } from '../backend/hata';
+import { type BackendHatasi, kimlikGerekliyseOturumuBitir } from '../backend/hata';
 import { backendIstegi } from '../backend/istek';
 import { type SorguAlanlari, sorguMetni } from './sorgu';
 
@@ -37,4 +37,15 @@ export async function listeyiGetir<K>(
     sonrakiVar: z.boolean(),
   });
   return { basarili: true, liste: cevap.parse(sonuc.govde) };
+}
+
+// Adları gösteren yardımcı liste (TS-004 "Yönetim formlarının sertleştirilmesi"): alınamazsa (yetki
+// yok ya da ulaşılamadı) sayfa ayakta kalır ve null döner; 401 oturum bitti yoluna yönlendirir
+// (fırlatır). Sunucu bileşeninde çağrılır.
+export function yardimciListe<K>(sonuc: ListeSonucu<K>): Liste<K> | null {
+  if (sonuc.basarili) {
+    return sonuc.liste;
+  }
+  kimlikGerekliyseOturumuBitir(sonuc.hata);
+  return null;
 }

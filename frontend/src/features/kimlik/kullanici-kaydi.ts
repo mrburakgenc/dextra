@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import type { BackendHatasi } from '../../shared/backend/hata';
 import { backendIstegi } from '../../shared/backend/istek';
+import { KAYIT_BULUNAMADI } from './is-hatasi';
 import { KullaniciKimligi } from './semalar';
 
 // Tek kullanıcının kaydı (TS-004 "Yönetim ekranları"): backend'in GET kimlik/kullanici/:id
@@ -29,7 +30,7 @@ export async function kullaniciyiGetir(id: string): Promise<KullaniciKaydiSonucu
   if (!kimlik.success) {
     return {
       basarili: false,
-      hata: { kod: 'bulunamadi', ileti: 'Kayıt bulunamadı', ayrinti: null, durum: 404 },
+      hata: { kod: 'bulunamadi', ileti: KAYIT_BULUNAMADI, ayrinti: null, durum: 404 },
     };
   }
   const sonuc = await backendIstegi({

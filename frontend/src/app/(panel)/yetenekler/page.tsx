@@ -10,7 +10,8 @@ import { BAGLANTI, listeHatasi } from '../../../shared/liste/liste-parcalari';
 import { Can } from '../../../shared/yetki/yetki-saglayici';
 
 // Yetenek listesi (TS-004 "Yönetim ekranları"): sorgu ekranın şemasıyla doğrulanır, geçersiz değer
-// varsayılana döner. Liste ve ad listeleri birlikte istenir; biri alınamazsa ilk hatası gösterilir.
+// varsayılana döner. Liste ve ad listeleri birlikte istenir. Liste alınamazsa hatası gösterilir;
+// ad listesi alınamazsa tablo yine çizilir (TS-004 "Yönetim formlarının sertleştirilmesi").
 // 401 oturum bitti yoluna gider; 403 ve öbür hatalar ileti olur.
 export default async function YeteneklerSayfasi({
   searchParams,
@@ -25,12 +26,8 @@ export default async function YeteneklerSayfasi({
   let icerik: ReactNode;
   if (!sonuc.basarili) {
     icerik = listeHatasi(sonuc.hata);
-  } else if (!secenekler.basarili) {
-    icerik = listeHatasi(secenekler.hata);
   } else {
-    icerik = (
-      <YetenekTablosu liste={sonuc.liste} sorgu={sorgu} secenekler={secenekler.secenekler} />
-    );
+    icerik = <YetenekTablosu liste={sonuc.liste} sorgu={sorgu} secenekler={secenekler} />;
   }
   return (
     <main id="ana-icerik" className="mx-auto flex max-w-6xl flex-col gap-6 p-8">

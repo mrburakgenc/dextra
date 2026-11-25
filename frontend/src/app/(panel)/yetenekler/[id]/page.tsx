@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { KAYIT_BULUNAMADI } from '../../../../features/kimlik/is-hatasi';
 import { kaydiGetir } from '../../../../features/kimlik/kayit-istegi';
-import { KayitSatirlari } from '../../../../features/kimlik/kayit-satirlari';
+import { KayitBasligi, KayitSatirlari } from '../../../../features/kimlik/kayit-satirlari';
 import {
   adHaritasi,
   kayitSiniri,
@@ -13,12 +14,15 @@ import {
   yetenekSecenekleri,
 } from '../../../../features/kimlik/yetenek/yetenek-listesi';
 import { tarihSaat } from '../../../../shared/bicim/bicim';
-import { BOS, listeHatasi } from '../../../../shared/liste/liste-parcalari';
+import { BOS, kimliginAdi, listeHatasi } from '../../../../shared/liste/liste-parcalari';
 
-function Kabuk({ children }: Readonly<{ children: ReactNode }>) {
+function Kabuk({
+  children,
+  silinmeZamani,
+}: Readonly<{ children: ReactNode; silinmeZamani?: string | null | undefined }>) {
   return (
     <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-bold">Yetenek</h1>
+      <KayitBasligi baslik="Yetenek" silinmeZamani={silinmeZamani} />
       {children}
     </main>
   );
@@ -32,8 +36,9 @@ function evetHayir(deger: boolean | undefined): string {
 }
 
 // Yeteneğin kaydı ve işleri (TS-004 "Yönetim ekranları"); kayıt listedeki yazımla gösterilir. 404
-// 'Kayıt bulunamadı' olur; 401 oturum bitti yoluna gider; 403 ve öbür hatalar liste ekranlarındaki
-// gibi ileti olur. Grup, rol ve izin adları listelerden okunur.
+// bulunamadı iletisi olur; 401 oturum bitti yoluna gider; 403 ve öbür hatalar liste ekranlarındaki
+// gibi ileti olur. Grup, rol ve izin adları listelerden okunur; liste alınamazsa kayıt yine çizilir
+// ve adı bilinmeyen kimlik kısaltılır. Silinmiş kayıtta iş gösterilmez.
 export default async function YetenekSayfasi({
   params,
 }: Readonly<{ params: Promise<{ id: string }> }>) {
@@ -46,25 +51,22 @@ export default async function YetenekSayfasi({
     return (
       <Kabuk>
         {sonuc.hata.kod === 'bulunamadi' ? (
-          <p role="alert">Kayıt bulunamadı</p>
+          <p role="alert">{KAYIT_BULUNAMADI}</p>
         ) : (
           listeHatasi(sonuc.hata)
         )}
       </Kabuk>
     );
   }
-  if (!secenekler.basarili) {
-    return <Kabuk>{listeHatasi(secenekler.hata)}</Kabuk>;
-  }
   const { kayit } = sonuc;
-  const { gruplar, roller, izinler } = secenekler.secenekler;
+  const { gruplar, roller, izinler } = secenekler;
   return (
-    <Kabuk>
+    <Kabuk silinmeZamani={kayit.silinmeZamani}>
       <KayitSatirlari
         satirlar={[
-          { etiket: 'Grup', deger: adHaritasi(gruplar).get(kayit.grupId) ?? BOS },
-          { etiket: 'Rol', deger: adHaritasi(roller).get(kayit.rolId) ?? BOS },
-          { etiket: 'İzin', deger: adHaritasi(izinler).get(kayit.izinId) ?? BOS },
+          { etiket: 'Grup', deger: kimliginAdi(adHaritasi(gruplar), kayit.grupId) },
+          { etiket: 'Rol', deger: kimliginAdi(adHaritasi(roller), kayit.rolId) },
+          { etiket: 'İzin', deger: kimliginAdi(adHaritasi(izinler), kayit.izinId) },
           { etiket: 'Kayıt sınırı', deger: kayitSiniri(kayit.butunKayitlar, kayit.sart) },
           { etiket: 'Bütün birimler', deger: evetHayir(kayit.butunBirimler) },
           { etiket: 'Kolon sınırı', deger: kolonSiniri(kayit.butunKolonlar, kayit.kolonlar) },
@@ -76,7 +78,7 @@ export default async function YetenekSayfasi({
           },
         ]}
       />
-      <YetenekIsleri kayit={kayit} />
+      {typeof kayit.silinmeZamani !== 'string' && <YetenekIsleri kayit={kayit} />}
     </Kabuk>
   );
 }

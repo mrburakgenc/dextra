@@ -19,8 +19,10 @@ const IKINCIL_DUGME =
   'rounded border border-gray-500 px-4 py-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
 
 // Geri alınamayan kaldırma iki adımlıdır: ilk düğme onay satırını açar, işi onay satırındaki düğme
-// yapar.
-function KaldirIsi({ id }: Readonly<{ id: string }>) {
+// yapar. Düğmeler satır başına yinelendiği için erişilebilir adları üyeliği adlandırır (TS-004
+// "Yönetim formlarının sertleştirilmesi"); görünen yazı kısa kalır ve adın içinde bitişik geçer
+// (WCAG 2.5.3). uyelik: '<grup> grubundaki <rol> üyeliği'.
+function KaldirIsi({ id, uyelik }: Readonly<{ id: string; uyelik: string }>) {
   const [onayAcik, onayAcikYap] = useState(false);
   const [durum, gonder] = useActionState(uyelikKaldir, BOS_FORM_DURUMU);
   return (
@@ -30,10 +32,11 @@ function KaldirIsi({ id }: Readonly<{ id: string }>) {
         <form action={gonder} className="flex flex-wrap items-center gap-4">
           <input type="hidden" name="id" value={id} />
           <p>Üyelik kaldırılsın mı?</p>
-          <GonderDugmesi>Evet, kaldır</GonderDugmesi>
+          <GonderDugmesi erisilebilirAd={`Evet, kaldır: ${uyelik}`}>Evet, kaldır</GonderDugmesi>
           <button
             type="button"
             autoFocus
+            aria-label={`${uyelik}ni kaldırmaktan vazgeç`}
             onClick={() => {
               onayAcikYap(false);
             }}
@@ -45,6 +48,7 @@ function KaldirIsi({ id }: Readonly<{ id: string }>) {
       ) : (
         <button
           type="button"
+          aria-label={`${uyelik}ni kaldır`}
           onClick={() => {
             onayAcikYap(true);
           }}
@@ -57,10 +61,15 @@ function KaldirIsi({ id }: Readonly<{ id: string }>) {
   );
 }
 
-export function UyelikKaldir({ kayit }: Readonly<{ kayit: UyelikKaydi }>) {
+// grup, rol: satırda görünen grup ve rol adı.
+export function UyelikKaldir({
+  kayit,
+  grup,
+  rol,
+}: Readonly<{ kayit: UyelikKaydi; grup: string; rol: string }>) {
   return (
     <Can I="sil" this={kaydiEtiketle('Uyelik', kayit)}>
-      <KaldirIsi id={kayit.id} />
+      <KaldirIsi id={kayit.id} uyelik={`${grup} grubundaki ${rol} üyeliği`} />
     </Can>
   );
 }

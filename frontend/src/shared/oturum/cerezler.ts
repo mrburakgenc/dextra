@@ -58,6 +58,15 @@ export async function erisimBelirteciniOku(): Promise<string | undefined> {
   return depo.get(OTURUM_CEREZLERI.erisim)?.value;
 }
 
+// Yenileme ve cihaz çerezi birlikte duruyor mu: ara katman oturumu yalnız ikisi varken yeniler.
+export async function yenilemeCerezleriVar(): Promise<boolean> {
+  const depo = await cookies();
+  return (
+    depo.get(OTURUM_CEREZLERI.yenileme) !== undefined &&
+    depo.get(OTURUM_CEREZLERI.cihaz) !== undefined
+  );
+}
+
 export async function oturumCerezleriniSil(): Promise<void> {
   const depo = await cookies();
   for (const ad of Object.values(OTURUM_CEREZLERI)) {

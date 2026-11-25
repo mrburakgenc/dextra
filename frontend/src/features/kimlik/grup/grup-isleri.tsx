@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { GonderDugmesi } from '../../../shared/ui/gonder-dugmesi';
 import { kaydiEtiketle } from '../../../shared/yetki/yetki';
 import { Can } from '../../../shared/yetki/yetki-saglayici';
+import { AlinamayanListeler } from '../alinamayan-listeler';
 import { BOS_FORM_DURUMU } from '../form-durumu';
 import { AdFormu, GenelHata, SilmeIsi } from '../is-parcalari';
 import { grupAdiniDegistir, grupSil, grupTasi } from './grup-eylemleri';
@@ -35,7 +36,7 @@ function TasiIsi({
   );
 }
 
-// secenekler: üst grup seçimi; liste alınamadıysa null'dır ve taşı gösterilmez.
+// secenekler: üst grup seçimi; liste alınamadıysa null'dır ve taşı yerine ileti çıkar.
 export function GrupIsleri({
   kayit,
   secenekler,
@@ -46,11 +47,13 @@ export function GrupIsleri({
       <Can I="guncelle" this={etiketli} field="ad">
         <AdFormu id={kayit.id} eylem={grupAdiniDegistir} />
       </Can>
-      {secenekler !== null && (
-        <Can I="tasi" this={etiketli}>
+      <Can I="tasi" this={etiketli}>
+        {secenekler === null ? (
+          <AlinamayanListeler listeler={{ Grup: secenekler }} />
+        ) : (
           <TasiIsi id={kayit.id} secenekler={secenekler} />
-        </Can>
-      )}
+        )}
+      </Can>
       <Can I="sil" this={etiketli}>
         <SilmeIsi id={kayit.id} eylem={grupSil} soru="Grup silinsin mi?" />
       </Can>

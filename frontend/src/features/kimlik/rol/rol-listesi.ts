@@ -12,11 +12,13 @@ export const RolListesiSorgusu = z.object({
 });
 export type RolListesiSorgusu = z.infer<typeof RolListesiSorgusu>;
 
-// kod yalnız sistem rollerinde doludur; kişinin göremediği kolon gelmez (undefined).
+// kod yalnız sistem rollerinde doludur; silinmeZamani silinmiş kayıtta doludur; kişinin göremediği
+// kolon gelmez (undefined).
 export const RolKaydi = z.object({
   id: z.string(),
   kod: z.string().nullable().optional(),
   ad: z.string().optional(),
+  silinmeZamani: z.string().nullable().optional(),
 });
 export type RolKaydi = z.infer<typeof RolKaydi>;
 

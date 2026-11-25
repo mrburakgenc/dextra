@@ -1,7 +1,11 @@
 import 'server-only';
 import { z } from 'zod';
-import type { BackendHatasi } from '../../../shared/backend/hata';
-import { type Liste, type ListeSonucu, listeyiGetir } from '../../../shared/liste/liste-istegi';
+import {
+  type Liste,
+  type ListeSonucu,
+  listeyiGetir,
+  yardimciListe,
+} from '../../../shared/liste/liste-istegi';
 import { BOS } from '../../../shared/liste/liste-parcalari';
 import { sayfaSemasi, siralamaSemasi } from '../../../shared/liste/sorgu';
 import type { Secenekler } from '../uyelik/uyelik-listesi';
@@ -45,6 +49,8 @@ export const YetenekKaydi = z.object({
   sistemSatiri: z.boolean().optional(),
   tohumAnahtari: z.string().nullable().optional(),
   olusturmaZamani: z.string().optional(),
+  // Silinmiş kayıtta doludur.
+  silinmeZamani: z.string().nullable().optional(),
 });
 export type YetenekKaydi = z.infer<typeof YetenekKaydi>;
 
@@ -72,44 +78,36 @@ export interface YetenekSecenekleri {
   readonly izinler: Secenekler;
 }
 
-export type YetenekSecenekleriSonucu =
-  | { readonly basarili: true; readonly secenekler: YetenekSecenekleri }
-  | { readonly basarili: false; readonly hata: BackendHatasi };
+// Alınamayan listenin yeri null'dır (TS-004 "Yönetim formlarının sertleştirilmesi").
+export type YetenekAdListeleri = {
+  readonly [L in keyof YetenekSecenekleri]: Secenekler | null;
+};
 
 function seceneklereCevir<K extends { id: string }>(
-  liste: Liste<K>,
+  liste: Liste<K> | null,
   etiket: (kayit: K) => string | undefined,
-): Secenekler {
+): Secenekler | null {
+  if (liste === null) {
+    return null;
+  }
   return {
     kayitlar: liste.kayitlar.map((kayit) => ({ id: kayit.id, etiket: etiket(kayit) ?? BOS })),
     dahaFazlasiVar: liste.sonrakiVar,
   };
 }
 
-// Üç liste birlikte istenir; biri alınamazsa ilk hatası döner.
-export async function yetenekSecenekleri(): Promise<YetenekSecenekleriSonucu> {
+// Üç liste birlikte istenir; alınamayanın yeri null olur, 401 oturum bitti yoluna gider.
+export async function yetenekSecenekleri(): Promise<YetenekAdListeleri> {
   const [gruplar, roller, izinler] = await Promise.all([
     listeyiGetir('/kimlik/grup', ILK_100, AdliKayit),
     listeyiGetir('/kimlik/rol', ILK_100, AdliKayit),
     listeyiGetir('/kimlik/izin', ILK_100, IzinKaydi),
   ]);
-  if (!gruplar.basarili) {
-    return gruplar;
-  }
-  if (!roller.basarili) {
-    return roller;
-  }
-  if (!izinler.basarili) {
-    return izinler;
-  }
   return {
-    basarili: true,
-    secenekler: {
-      gruplar: seceneklereCevir(gruplar.liste, (grup) => grup.ad),
-      roller: seceneklereCevir(roller.liste, (rol) => rol.ad),
-      izinler: seceneklereCevir(izinler.liste, ({ kaynak, eylem }) =>
-        kaynak === undefined || eylem === undefined ? undefined : `${kaynak}:${eylem}`,
-      ),
-    },
+    gruplar: seceneklereCevir(yardimciListe(gruplar), (grup) => grup.ad),
+    roller: seceneklereCevir(yardimciListe(roller), (rol) => rol.ad),
+    izinler: seceneklereCevir(yardimciListe(izinler), ({ kaynak, eylem }) =>
+      kaynak === undefined || eylem === undefined ? undefined : `${kaynak}:${eylem}`,
+    ),
   };
 }

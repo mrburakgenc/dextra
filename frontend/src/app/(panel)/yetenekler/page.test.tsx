@@ -155,7 +155,7 @@ afterEach(() => {
 });
 
 describe('YeteneklerSayfasi liste', () => {
-  it('iki kayıt tabloya dökülür; adlar eşlenir, adı bulunamayan kimlik boş işaretle görünür', async () => {
+  it('iki kayıt tabloya dökülür; adlar eşlenir, adı bulunamayan kimlik kısaltılarak görünür', async () => {
     backend(() => listeCevabi());
 
     await goster();
@@ -185,7 +185,7 @@ describe('YeteneklerSayfasi liste', () => {
       tarihSaat(OLUSTURMA),
     ]);
     expect(hucreler(sartli)).toEqual([
-      '—',
+      '44444444…',
       'Yönetici',
       'Kullanici:oku',
       'kullaniciId esit {isteyen} ve durum listede [a, b]',
@@ -343,7 +343,7 @@ describe('YeteneklerSayfasi durumlar', () => {
     expect(screen.queryByRole('table')).toBeNull();
   });
 
-  it('ad listelerinden biri 403 dönünce yetki iletisi gösterilir', async () => {
+  it('ad listeleri 403 dönünce tablo çizilir, kimlikler kısaltılır; süzgeç seçimlerinin yerinde ileti çıkar', async () => {
     backend(
       () => listeCevabi(),
       () => hataCevabi('yetki_yok', 'Yetki yok', 403),
@@ -351,8 +351,93 @@ describe('YeteneklerSayfasi durumlar', () => {
 
     await goster();
 
-    expect(screen.getByRole('alert').textContent).toBe('Bu sayfayı görme yetkin yok');
-    expect(screen.queryByRole('table')).toBeNull();
+    const [, butun, sartli] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(hucreler(butun).slice(0, 3)).toEqual(['11111111…', '22222222…', '33333333…']);
+    expect(hucreler(sartli).slice(0, 3)).toEqual(['44444444…', '22222222…', '33333333…']);
+    expect(
+      within(butun ?? document.body)
+        .getByRole('link', { name: '33333333…' })
+        .getAttribute('href'),
+    ).toBe(`/yetenekler/${BUTUN}`);
+    const suzgec = screen.getByRole('form', { name: 'Süzgeç' });
+    expect(within(suzgec).queryByLabelText('Grup')).toBeNull();
+    expect(within(suzgec).queryByLabelText('Rol')).toBeNull();
+    expect(within(suzgec).getAllByRole('alert').map((a) => a.textContent)).toEqual([
+      'Grup listesi alınamadı',
+      'Rol listesi alınamadı',
+    ]);
+  });
+
+  it('yalnız izin listesi 403 dönünce izin hücresi kısaltılır; grup ve rol adları ve süzgeç kalır', async () => {
+    sahteFetch.mockImplementation((adres) => {
+      const yol = adres instanceof URL ? adres.pathname : '';
+      if (yol === '/kimlik/izin') {
+        return Promise.resolve(hataCevabi('yetki_yok', 'Yetki yok', 403));
+      }
+      const adlar = AD_LISTELERI[yol];
+      return Promise.resolve(
+        adlar === undefined
+          ? listeCevabi({ kayitlar: [IKI_KAYIT[0]] })
+          : jsonCevap({ kayitlar: adlar, sayfa: 1, boyut: 100, sonrakiVar: false }, 200),
+      );
+    });
+
+    await goster();
+
+    const [, satir] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(hucreler(satir).slice(0, 3)).toEqual(['Merkez', 'Yönetici', '33333333…']);
+    expect(screen.getByLabelText('Grup')).toBeDefined();
+    expect(screen.getByLabelText('Rol')).toBeDefined();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('listede olup ad kolonu gelmeyen grup, rol ve izin kısaltılmış kimlikle görünür', async () => {
+    const adsizListeler: Readonly<Record<string, unknown[]>> = {
+      '/kimlik/grup': [{ id: GRUP }],
+      '/kimlik/rol': [{ id: ROL }],
+      '/kimlik/izin': [{ id: IZIN, kaynak: 'Kullanici' }],
+    };
+    sahteFetch.mockImplementation((adres) => {
+      const yol = adres instanceof URL ? adres.pathname : '';
+      const adlar = adsizListeler[yol];
+      return Promise.resolve(
+        adlar === undefined
+          ? listeCevabi({ kayitlar: [IKI_KAYIT[0]] })
+          : jsonCevap({ kayitlar: adlar, sayfa: 1, boyut: 100, sonrakiVar: false }, 200),
+      );
+    });
+
+    await goster();
+
+    const [, satir] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(hucreler(satir).slice(0, 3)).toEqual(['11111111…', '22222222…', '33333333…']);
+  });
+
+  it('grup listesine ulaşılamayınca seçili grup süzgeci formda korunur', async () => {
+    backend(
+      () => listeCevabi(),
+      () => new Response('Bad Gateway', { status: 502 }),
+    );
+
+    await goster({ grupId: GRUP });
+
+    const suzgec = screen.getByRole('form', { name: 'Süzgeç' });
+    if (!(suzgec instanceof HTMLFormElement)) {
+      throw new Error('form değil');
+    }
+    expect(new FormData(suzgec).get('grupId')).toBe(GRUP);
+    expect(istekAdresi('/kimlik/yetenek').searchParams.get('grupId')).toBe(GRUP);
+  });
+
+  it('ad listesi 401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
+    backend(
+      () => listeCevabi(),
+      () => hataCevabi('kimlik_gerekli', 'Oturum gerekli', 401),
+    );
+
+    await expect(YeteneklerSayfasi({ searchParams: Promise.resolve({}) })).rejects.toThrow(
+      'yonlendirildi:/oturum-bitti',
+    );
   });
 
   it('401 dönünce /oturum-bitti yoluna yönlendirir', async () => {
