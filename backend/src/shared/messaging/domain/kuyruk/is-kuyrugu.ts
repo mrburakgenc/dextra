@@ -1,5 +1,5 @@
 // İş kuyruğu kapısı. Ortak kod ve feature'lar kuyruğu yalnız bu arayüzden görür; gerçekleyen
-// bağdaştırıcı ve kuyruk paketi bu klasörde kalır (KR-012 Seçim 1).
+// bağdaştırıcı ve kuyruk paketi infrastructure/kuyruk klasöründe kalır (KR-012 Seçim 1).
 
 // Kuyruğa konan iş. Veri düz veridir: JSON'a çevrilip geri okunabilen değerler taşır.
 export interface KuyrukIsi {

@@ -19,7 +19,7 @@ import {
   ISTEMCI_BASLIKLARI,
   istemciImzasiUret,
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 

@@ -5,16 +5,16 @@ import {
   type OnApplicationBootstrap,
   Optional,
 } from '@nestjs/common';
-import { DatabaseModule } from '../../database/database.module.js';
-import { Registrar } from '../../database/registrar.js';
-import { UnitOfWork } from '../../database/unit-of-work.js';
-import { KOMUT_BAGLAMI } from '../komut-baglami.js';
-import { IS_KUYRUGU, type IsKuyrugu } from '../kuyruk/is-kuyrugu.js';
-import { KuyrukModule } from '../kuyruk/kuyruk.module.js';
-import { islenenOlayRepoKaydet } from '../tuketici/islenen-olay.repository.js';
-import { AboneDefteri } from './abone-defteri.js';
-import { OlayAktarici } from './olay-aktarici.js';
-import { outboxOlayRepoKaydet } from './outbox-olay.repository.js';
+import { DatabaseModule } from '../database/database.module.js';
+import { Registrar } from '../database/infrastructure/registrar.js';
+import { UnitOfWork } from '../database/infrastructure/unit-of-work.js';
+import { KOMUT_BAGLAMI } from './komut-baglami.js';
+import { IS_KUYRUGU, type IsKuyrugu } from './domain/kuyruk/is-kuyrugu.js';
+import { KuyrukModule } from './kuyruk.module.js';
+import { islenenOlayRepoKaydet } from './infrastructure/tuketici/islenen-olay.prisma-repository.js';
+import { AboneDefteri } from './application/olay/abone-defteri.js';
+import { OlayAktarici } from './infrastructure/olay/olay-aktarici.js';
+import { outboxOlayRepoKaydet } from './infrastructure/olay/outbox-olay.prisma-repository.js';
 
 // Olay yolu: abone defteri, olay aktarıcısı ve kuyruk kapısı. Dışa abone defteri ve kuyruk kapısı
 // verilir; tüketici tabanı (tuketiciBaslat) Unit of Work ile kuyruk kapısını bunlardan alır.

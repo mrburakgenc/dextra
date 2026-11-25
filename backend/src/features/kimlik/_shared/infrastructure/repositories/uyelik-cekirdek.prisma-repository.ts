@@ -1,6 +1,6 @@
 // UyelikCekirdekRepo'nun gerçeklemesi: uyelik tablosuna işlemin istemcisiyle, yetenek satırı olmadan
 // yazar ve kök kümeyi okur (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { UyelikCekirdekRepo } from '../../domain/repositories/i-uyelik-cekirdek.repository.js';
 
 // Temel rolün saklanan kodu (TS-002 AK-3).

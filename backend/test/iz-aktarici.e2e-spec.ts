@@ -8,8 +8,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
 import { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
-import { RepoKayitlari } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoKayitlari } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   IzAktarici,
   PartiHatasi,

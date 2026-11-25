@@ -9,8 +9,8 @@ import {
 import {
   ISLEM_SURE_SINIRI_MS,
   type UnitOfWork,
-} from '../../database/unit-of-work.js';
-import { Dongu } from '../../messaging/aktarim/dongu.js';
+} from '../../database/infrastructure/unit-of-work.js';
+import { Dongu } from '../../messaging/infrastructure/aktarim/dongu.js';
 import {
   OUTBOX_IZ_REPO,
   type OutboxIzOlculeri,

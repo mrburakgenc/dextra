@@ -1,8 +1,8 @@
 import { Module, type Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { KomutBaglamiModule } from '../messaging/komut-baglami.js';
+import { KomutBaglamiModule } from '../../messaging/komut-baglami.js';
 import { TohumKosucusu } from './tohum-kosucusu.js';
-import { TohumModule } from './tohum.module.js';
+import { TohumModule } from '../tohum.module.js';
 
 // abortOnError: false — açılış hatası süreci process.abort ile öldürmez, çağırana ulaşır. Nest'in
 // seçenek tipi yalnız tip olarak dışa açık bir sınıftır; sınıf tipli yere nesne sabiti verilemediği

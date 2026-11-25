@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import type { Islem } from '../../../../shared/database/domain/islem.js';
+import { OutboxYazici } from '../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import type { KapatilmaNedeni } from '../domain/kapatilma-nedeni.js';
 import { KULLANICI_CEKIRDEK_REPO } from '../domain/repositories/i-kullanici-cekirdek.repository.js';
 import { OTURUM_CEKIRDEK_REPO } from '../domain/repositories/i-oturum-cekirdek.repository.js';

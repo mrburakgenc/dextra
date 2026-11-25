@@ -6,10 +6,10 @@ import {
   Optional,
 } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module.js';
-import { IZ_PRISMA_CLIENT } from '../../database/istemci-belirtecleri.js';
+import { IZ_PRISMA_CLIENT } from '../../database/domain/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../../database/iz/generated/client.js';
-import { Registrar } from '../../database/registrar.js';
-import { UnitOfWork } from '../../database/unit-of-work.js';
+import { Registrar } from '../../database/infrastructure/registrar.js';
+import { UnitOfWork } from '../../database/infrastructure/unit-of-work.js';
 import { KOMUT_BAGLAMI } from '../../messaging/komut-baglami.js';
 import { IzAktarici } from './iz-aktarici.js';
 import { outboxIzRepoKaydet } from './outbox-iz.repository.js';

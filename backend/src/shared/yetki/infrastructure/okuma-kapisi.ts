@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { RepoIstemcisi } from '../../database/registrar.js';
+import type { RepoIstemcisi } from '../../database/infrastructure/registrar.js';
 import { type IstekBaglami, istekBaglami } from '../../http/istek-baglami.js';
 import { KodluHata } from '../../http/kodlu-hata.js';
 import {

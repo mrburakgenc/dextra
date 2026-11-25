@@ -1,6 +1,6 @@
 // YetkiSurumuCekirdekRepo'nun gerçeklemesi: genel sayaç satırına işlemin istemcisiyle, yetki
 // kapısından geçmeden erişir (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { YetkiSurumuCekirdekRepo } from '../../domain/repositories/i-yetki-surumu-cekirdek.repository.js';
 
 // Genel sayaç tek satırdır; kimliği yalnız 1 olabilir (yetki_surumu_tek_satir_denetim).

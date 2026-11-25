@@ -1,6 +1,6 @@
 // IRolYazmaRepo'nun gerçeklemesi: rol yazmaları yetki kapısının yazma yüzünden (TS-002 AK-19, AK-39).
 import { Injectable } from '@nestjs/common';
-import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
 import type { YeniRol } from '../../domain/entities/rol.entity.js';
 import type { IRolYazmaRepo } from '../../domain/repositories/i-rol.repository.js';

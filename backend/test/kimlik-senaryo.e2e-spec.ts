@@ -8,7 +8,7 @@
 import { setTimeout as uyu } from 'node:timers/promises';
 import pg from 'pg';
 import request from 'supertest';
-import { IZ_PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
+import { IZ_PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../src/shared/database/iz/generated/client.js';
 import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
 import { IzAktarici } from '../src/shared/observability/iz/iz-aktarici.js';

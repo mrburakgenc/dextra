@@ -1,7 +1,7 @@
 // Çekirdek repository: yetki verisini ve sürümleri yetki kapısından geçmeden okur (TS-002 "Çekirdek
 // yollar": yetki verisinin ve sürümlerin okunması; KR-010 Seçim 48'in adıyla istisnası). Yalnız
 // okur. Gerçeklemesi infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type {
   UyelikSatiri,
   YetenekSatiri,

@@ -16,31 +16,31 @@ import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import pg from 'pg';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
-import { Registrar } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { Registrar } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import {
   DENEME_SAYISI,
   ILK_ARALIK_MS,
-} from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
+} from '../src/shared/messaging/infrastructure/kuyruk/bullmq-is-kuyrugu.js';
 import {
   IS_KUYRUGU,
   type IsIsleyici,
   type IsKuyrugu,
   type KuyrukIsi,
-} from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
-import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
-import { KuyrukModule } from '../src/shared/messaging/kuyruk/kuyruk.module.js';
+} from '../src/shared/messaging/domain/kuyruk/is-kuyrugu.js';
+import { kuyrukGocunuKos } from '../src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.js';
+import { KuyrukModule } from '../src/shared/messaging/kuyruk.module.js';
 import {
   ISLENEN_OLAY_REPO,
   type IslenenOlayRepo,
-  islenenOlayRepoKaydet,
   type SahiplenmeSonucu,
-} from '../src/shared/messaging/tuketici/islenen-olay.repository.js';
+} from '../src/shared/messaging/domain/tuketici/i-islenen-olay.repository.js';
+import { islenenOlayRepoKaydet } from '../src/shared/messaging/infrastructure/tuketici/islenen-olay.prisma-repository.js';
 import {
   SAHIPLENME_SURESI_SN,
   type Zarf,
   tuketiciBaslat,
-} from '../src/shared/messaging/tuketici/tuketici-tabani.js';
+} from '../src/shared/messaging/infrastructure/tuketici/tuketici-tabani.js';
 import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';

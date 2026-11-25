@@ -26,8 +26,8 @@ import {
   Prisma,
   type PrismaClient,
 } from '../src/shared/database/generated/client.js';
-import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
-import { yeniKimlik } from '../src/shared/database/kimlik.js';
+import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
+import { yeniKimlik } from '../src/shared/database/domain/kimlik.js';
 import { HerkeseAcik } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   ISTEK_KIMLIGI_BASLIGI,

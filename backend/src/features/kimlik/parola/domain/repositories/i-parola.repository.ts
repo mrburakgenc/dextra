@@ -2,7 +2,7 @@
 // tablolarına yetki kapısından geçmeden erişir. Bağlantıyla parola belirleme, parola değiştirme ve
 // kurulum komutu çekirdek yollardır (TS-002 "Çekirdek yollar"; KR-010 Seçim 48'in adıyla istisnası);
 // gerçeklemesi infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 
 export interface IParolaOkumaRepo {
   // Kullanıcı adı verilen kişinin kimliği; yoksa null.

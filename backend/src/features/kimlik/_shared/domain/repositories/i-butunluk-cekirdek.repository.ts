@@ -3,7 +3,7 @@
 // döner, satır vermez; istisnası iki künyedir (TS-002 AK-43), onlar satırın yalnız sayılan alanlarını
 // verir. Yalnız kimlik/_shared içindeki bütünlük sorusu parçası kullanır. Gerçeklemesi
 // infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 
 export interface ButunlukCekirdekRepo {
   kokSuperAdminUyesiMi(kullaniciId: string): Promise<boolean>;

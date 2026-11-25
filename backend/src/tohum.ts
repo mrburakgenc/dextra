@@ -3,7 +3,7 @@
 // ile çıkar.
 import { inspect } from 'node:util';
 import { AppModule } from './app.module.js';
-import { tohumKomutu } from './shared/tohum/tohum-komutu.js';
+import { tohumKomutu } from './shared/tohum/infrastructure/tohum-komutu.js';
 
 const kuru = process.argv.includes('--kuru');
 try {

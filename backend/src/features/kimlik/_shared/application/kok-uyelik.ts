@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { yeniKimlik } from '../../../../shared/database/kimlik.js';
-import type { Islem } from '../../../../shared/database/unit-of-work.js';
-import { OutboxYazici } from '../../../../shared/messaging/outbox/outbox-yazici.js';
+import { yeniKimlik } from '../../../../shared/database/domain/kimlik.js';
+import type { Islem } from '../../../../shared/database/domain/islem.js';
+import { OutboxYazici } from '../../../../shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { UYELIK_CEKIRDEK_REPO } from '../domain/repositories/i-uyelik-cekirdek.repository.js';
 import { type IzBilgisi, notunOrtakAlanlari } from './iz.js';
 

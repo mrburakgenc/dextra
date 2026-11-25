@@ -1,4 +1,4 @@
-import type { Islem } from '../database/unit-of-work.js';
+import type { Islem } from '../../database/domain/islem.js';
 
 // Tohum göçü: adını ve koşucunun açtığı işlemi alan uygulama işlevi (TS-002 AK-1).
 export type TohumGocu = (ad: string, islem: Islem) => Promise<void>;

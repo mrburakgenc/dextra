@@ -14,8 +14,8 @@ import { TohumYardimcisi } from '../src/features/kimlik/_shared/application/tohu
 import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/application/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { YetkiModule } from '../src/shared/yetki/yetki.module.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';

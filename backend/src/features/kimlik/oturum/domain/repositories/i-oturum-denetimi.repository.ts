@@ -1,7 +1,7 @@
 // Oturum denetiminin repository arayüzleri ve belirteci: oturum, kullanici ve yetki_surumu tablolarına
 // yetki kapısından geçmeden erişir. Oturum denetimi bir çekirdek yoldur (TS-002 "Çekirdek yollar";
 // KR-010 Seçim 48'in adıyla istisnası); gerçeklemesi infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { DenetimSatiri } from '../entities/oturum.entity.js';
 
 export interface IOturumDenetimiOkumaRepo {

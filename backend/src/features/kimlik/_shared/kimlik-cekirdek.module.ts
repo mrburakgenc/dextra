@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
-import { Registrar } from '../../../shared/database/registrar.js';
+import { Registrar } from '../../../shared/database/infrastructure/registrar.js';
 import { MessagingModule } from '../../../shared/messaging/messaging.module.js';
-import { TohumDefteri } from '../../../shared/tohum/tohum-defteri.js';
+import { TohumDefteri } from '../../../shared/tohum/application/tohum-defteri.js';
 import { TohumModule } from '../../../shared/tohum/tohum.module.js';
 import { ButunlukSorusu } from './application/butunluk-sorusu.js';
 import { GenelSayac } from './application/genel-sayac.js';

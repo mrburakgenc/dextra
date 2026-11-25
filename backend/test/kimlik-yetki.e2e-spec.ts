@@ -15,7 +15,8 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructure/tohum/kimlik-kurulum.goc.js';
-import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import type { Islem } from '../src/shared/database/domain/islem.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
 import {
@@ -32,7 +33,7 @@ import {
   YETKI_VERISI,
   type YetkiVerisi,
 } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { YetenekKurali } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { YazmaKapisi } from '../src/shared/yetki/infrastructure/yazma-kapisi.js';
 import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';

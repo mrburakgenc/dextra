@@ -1,7 +1,8 @@
 // Outbox tablolarının repository'si ve belirteci. Ayrı dosyadadır: feature bu dosyayı içe
 // aktaramaz (eslint.config.mjs); outbox'a yalnız yazma yüzeyinden ulaşır (KR-011 Yazım biçimi).
-import type { Prisma } from '../../database/generated/client.js';
-import { RepoBelirteci, type RepoIstemcisi } from '../../database/registrar.js';
+import { RepoBelirteci } from '../../../database/domain/repo-belirteci.js';
+import type { Prisma } from '../../../database/generated/client.js';
+import type { RepoIstemcisi } from '../../../database/infrastructure/registrar.js';
 
 export interface OutboxRepo {
   olayEkle(

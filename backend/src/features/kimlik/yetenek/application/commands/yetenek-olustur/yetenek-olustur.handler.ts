@@ -1,6 +1,6 @@
 // Yetenek yaz işinin işleyicisi (TS-002 "İşlem sınırları", AK-39; KR-008 Seçim 5, 7, 11, 17, 21, 34).
 import { Inject, Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   type IYetenekYazmaRepo,

@@ -1,6 +1,6 @@
 // Grupları listele işinin işleyicisi (TS-002 AK-39; "Uçlar ve izinler": Grup:oku).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { GRUP_OKUMA_REPO } from '../../../domain/repositories/i-grup.repository.js';
 import type { GrupListeleSorgusu } from './grup-listele.query.js';
 import type { GrupListeleSonucu } from './grup-listele.result.js';

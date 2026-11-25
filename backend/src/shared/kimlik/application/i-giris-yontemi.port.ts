@@ -2,7 +2,7 @@
 // kimlik ve proje uygular. Ortak kodda durur, çünkü projenin kendi yöntemi başka bir feature'da yaşar.
 // İki adımlı yöntemin başlatma adımı (kod iste) kodla giriş yazılırken eklenir.
 import type { z } from 'zod';
-import type { Islem } from '../../database/unit-of-work.js';
+import type { Islem } from '../../database/domain/islem.js';
 import type {
   GirisDogrulamaSonucu,
   GirisKesinlestirmeSonucu,

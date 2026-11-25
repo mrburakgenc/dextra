@@ -1,6 +1,6 @@
 // Yetenekleri listele işinin işleyicisi (TS-002 AK-39; "Uçlar ve izinler": Yetenek:oku).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { YETENEK_REPO } from '../../../domain/repositories/i-yetenek.repository.js';
 import type { YetenekListeleSorgusu } from './yetenek-listele.query.js';
 import type { YetenekListeleSonucu } from './yetenek-listele.result.js';

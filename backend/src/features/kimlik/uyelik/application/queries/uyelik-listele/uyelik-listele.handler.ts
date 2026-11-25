@@ -1,6 +1,6 @@
 // Üyelikleri listele işinin işleyicisi (TS-002 AK-39; "Uçlar ve izinler": Uyelik:oku).
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { UYELIK_OKUMA_REPO } from '../../../domain/repositories/i-uyelik.repository.js';
 import type { UyelikListeleSorgusu } from './uyelik-listele.query.js';
 import type { UyelikListeleSonucu } from './uyelik-listele.result.js';

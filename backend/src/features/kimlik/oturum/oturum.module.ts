@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../../shared/database/database.module.js';
-import { Registrar } from '../../../shared/database/registrar.js';
+import { Registrar } from '../../../shared/database/infrastructure/registrar.js';
 import { GuvenlikModule } from '../../../shared/guvenlik/guvenlik.module.js';
 import { MessagingModule } from '../../../shared/messaging/messaging.module.js';
 import { OkumaKapisi } from '../../../shared/yetki/infrastructure/okuma-kapisi.js';

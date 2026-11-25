@@ -3,7 +3,7 @@
 import type {
   RepoFabrikasi,
   RepoIstemcisi,
-} from '../../../../../shared/database/registrar.js';
+} from '../../../../../shared/database/infrastructure/registrar.js';
 import type { OkumaKapisi } from '../../../../../shared/yetki/infrastructure/okuma-kapisi.js';
 import type { IGrupOkumaRepo } from '../../domain/repositories/i-grup.repository.js';
 

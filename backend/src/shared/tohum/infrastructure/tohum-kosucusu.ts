@@ -1,6 +1,7 @@
-import type { Islem, UnitOfWork } from '../database/unit-of-work.js';
-import type { TohumDefteri, TohumGocu } from './tohum-defteri.js';
-import { TOHUM_GOCU_REPO } from './tohum-gocu.repository.js';
+import type { Islem } from '../../database/domain/islem.js';
+import type { UnitOfWork } from '../../database/infrastructure/unit-of-work.js';
+import type { TohumDefteri, TohumGocu } from '../application/tohum-defteri.js';
+import { TOHUM_GOCU_REPO } from '../domain/i-tohum-gocu.repository.js';
 
 // Kuru koşunun işlemini geri aldırmak için atılır; koşucunun dışına çıkmaz.
 class KuruKosuGeriAlmasi extends Error {}

@@ -6,9 +6,9 @@ import {
   type NestInterceptor,
 } from '@nestjs/common';
 import { concatMap, type Observable } from 'rxjs';
-import { IZ_PRISMA_CLIENT } from '../../database/istemci-belirtecleri.js';
+import { IZ_PRISMA_CLIENT } from '../../database/domain/istemci-belirtecleri.js';
 import type { PrismaClient as IzPrismaClient } from '../../database/iz/generated/client.js';
-import { yeniKimlik } from '../../database/kimlik.js';
+import { yeniKimlik } from '../../database/domain/kimlik.js';
 import { istekBaglami } from '../../http/istek-baglami.js';
 import { okumaBirikimi } from '../../yetki/infrastructure/okuma-kapisi.js';
 

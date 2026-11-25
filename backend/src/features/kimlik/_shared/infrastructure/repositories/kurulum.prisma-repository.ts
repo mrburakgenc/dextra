@@ -1,6 +1,6 @@
 // KurulumRepo'nun gerçeklemesi: ilk kurulum göçünün satırlarını işlemin istemcisiyle, yetki kapısından
 // geçmeden yazar (KR-010 Seçim 48'in adıyla istisnası).
-import type { RepoIstemcisi } from '../../../../../shared/database/registrar.js';
+import type { RepoIstemcisi } from '../../../../../shared/database/infrastructure/registrar.js';
 import type { KurulumRepo } from '../../domain/repositories/i-kurulum.repository.js';
 
 // Genel sayaç tek satırdır; kimliği yalnız 1 olabilir (yetki_surumu_tek_satir_denetim).

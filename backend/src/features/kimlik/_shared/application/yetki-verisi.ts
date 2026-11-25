@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
-import { UnitOfWork } from '../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../shared/database/infrastructure/unit-of-work.js';
 import type {
   Islec,
   KisininSatirlari,

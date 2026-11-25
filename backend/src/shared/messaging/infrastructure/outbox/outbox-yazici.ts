@@ -2,9 +2,9 @@
 // işlemde bırakır (KR-012 Kural 2, TS-003 Yapı). Notları okuyan ve aktaran kod burada değildir.
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import type { Prisma } from '../../database/generated/client.js';
-import { yeniKimlik } from '../../database/kimlik.js';
-import type { Islem } from '../../database/unit-of-work.js';
+import type { Prisma } from '../../../database/generated/client.js';
+import { yeniKimlik } from '../../../database/domain/kimlik.js';
+import type { Islem } from '../../../database/domain/islem.js';
 import { OUTBOX_REPO } from './outbox-repo.js';
 
 // Değişiklik kaydı gövdesinin biçim sürümü; aktarıcı bildiğinden büyük sürümü almaz (TS-003).

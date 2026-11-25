@@ -1,7 +1,7 @@
 // Yetenek yenile işinin işleyicisi (TS-002 "İşlem sınırları", "Durum geçişleri", AK-39, AK-46 ve eki;
 // değişmez 6).
 import { Inject, Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import {
   type HataKodu,
   KodluHata,

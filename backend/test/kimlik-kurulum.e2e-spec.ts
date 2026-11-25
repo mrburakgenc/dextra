@@ -9,9 +9,9 @@ import { KIMLIK_KURULUM_GOCU } from '../src/features/kimlik/_shared/infrastructu
 import { KIMLIK_KAYNAKLARI } from '../src/features/kimlik/_shared/application/yetki-verisi.js';
 import { KimlikModule } from '../src/features/kimlik/kimlik.module.js';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
+import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
 import type { YetenekSatiri } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { yetenekleriDerle } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import { YetkiModule } from '../src/shared/yetki/yetki.module.js';

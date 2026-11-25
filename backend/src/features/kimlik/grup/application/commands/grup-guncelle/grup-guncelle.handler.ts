@@ -1,6 +1,6 @@
 // Grubun adını değiştir işinin işleyicisi (TS-002 "İşlem sınırları"; AK-39).
 import { Inject, Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../../../../../shared/database/unit-of-work.js';
+import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
 import {
   GRUP_YAZMA_REPO,

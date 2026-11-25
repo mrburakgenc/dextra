@@ -2,7 +2,7 @@
 // tablolarına yetki kapısından geçmeden erişir. Giriş, çıkış ve yenileme çekirdek yollardır (TS-002
 // "Çekirdek yollar"; KR-010 Seçim 48'in adıyla istisnası); gerçeklemesi infrastructure/repositories
 // altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { KapatilmaNedeni } from '../../../_shared/domain/kapatilma-nedeni.js';
 import type {
   Dondurme,

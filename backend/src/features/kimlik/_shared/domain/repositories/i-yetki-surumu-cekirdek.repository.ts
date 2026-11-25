@@ -1,7 +1,7 @@
 // Çekirdek repository: genel sayaç satırına yetki kapısından geçmeden erişir (KR-010 Seçim 48'in
 // adıyla istisnası). Yalnız kimlik/_shared içindeki parçalar kullanır. Gerçeklemesi
 // infrastructure/repositories altındadır.
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 
 export interface YetkiSurumuCekirdekRepo {
   // Satırı anahtar dışı güncelleme kilidiyle (FOR NO KEY UPDATE) kilitler: anahtara dokunmayan bir

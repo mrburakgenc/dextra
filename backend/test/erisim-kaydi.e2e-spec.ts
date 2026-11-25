@@ -27,8 +27,9 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseModule } from '../src/shared/database/database.module.js';
-import { Registrar, RepoBelirteci } from '../src/shared/database/registrar.js';
-import { UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../src/shared/database/domain/repo-belirteci.js';
+import { Registrar } from '../src/shared/database/infrastructure/registrar.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { BelirtecServisi } from '../src/shared/guvenlik/application/belirtec.js';
 import {
   HerkeseAcik,
@@ -40,7 +41,7 @@ import {
   istemciImzasiUret,
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { ISTEK_KIMLIGI_BASLIGI } from '../src/shared/http/istek-baglami.js';
-import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
+import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
 import { OkumaKapisi } from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';

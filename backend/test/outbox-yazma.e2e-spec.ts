@@ -6,13 +6,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { z } from 'zod';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
-import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
-import { type Islem, UnitOfWork } from '../src/shared/database/unit-of-work.js';
+import { PRISMA_CLIENT } from '../src/shared/database/domain/istemci-belirtecleri.js';
+import type { Islem } from '../src/shared/database/domain/islem.js';
+import { UnitOfWork } from '../src/shared/database/infrastructure/unit-of-work.js';
 import { MessagingModule } from '../src/shared/messaging/messaging.module.js';
 import {
   type DegisiklikKaydiNotu,
   OutboxYazici,
-} from '../src/shared/messaging/outbox/outbox-yazici.js';
+} from '../src/shared/messaging/infrastructure/outbox/outbox-yazici.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
 interface OlaySatiri {

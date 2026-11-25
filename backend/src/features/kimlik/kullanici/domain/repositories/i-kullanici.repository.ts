@@ -2,8 +2,8 @@
 // kapısının okuma yüzünden, yazma yazma yüzünden erişir (TS-002 AK-19, AK-39); gerçeklemeleri
 // infrastructure/repositories altındadır. Kayıtlar yalnız isteyenin görebildiği kolonları ve her zaman
 // kimliği taşır (AK-38).
-import { RepoBelirteci } from '../../../../../shared/database/registrar.js';
-import type { Islem } from '../../../../../shared/database/unit-of-work.js';
+import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
+import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import type {
   Kayit,
   Siralama,

@@ -12,15 +12,15 @@ import pg from 'pg';
 import {
   DENEME_SAYISI,
   ILK_ARALIK_MS,
-} from '../src/shared/messaging/kuyruk/bullmq-is-kuyrugu.js';
+} from '../src/shared/messaging/infrastructure/kuyruk/bullmq-is-kuyrugu.js';
 import {
   GecersizIsKimligiHatasi,
   IS_KUYRUGU,
   type IsKuyrugu,
   type KuyrukIsi,
-} from '../src/shared/messaging/kuyruk/is-kuyrugu.js';
-import { kuyrukGocunuKos } from '../src/shared/messaging/kuyruk/kuyruk-gocu.js';
-import { KuyrukModule } from '../src/shared/messaging/kuyruk/kuyruk.module.js';
+} from '../src/shared/messaging/domain/kuyruk/is-kuyrugu.js';
+import { kuyrukGocunuKos } from '../src/shared/messaging/infrastructure/kuyruk/kuyruk-gocu.js';
+import { KuyrukModule } from '../src/shared/messaging/kuyruk.module.js';
 import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
