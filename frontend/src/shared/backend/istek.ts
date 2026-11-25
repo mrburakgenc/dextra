@@ -46,8 +46,12 @@ function ulasilamadi(durum: number): BackendSonucu {
   };
 }
 
-export async function backendIstegi(
-  istek: BackendIstegi,
+// Backend isteğinin çatıdan bağımsız kısmı; ara katman da bunu kullanır (orada next/headers
+// çalışmaz). gelen: tarayıcıdan gelen isteğin başlıkları; belirtec varsa Authorization'a konur.
+export async function backendCagrisi(
+  istek: Omit<BackendIstegi, 'oturumlu'>,
+  gelen: Pick<Headers, 'get'>,
+  belirtec: string | undefined,
 ): Promise<BackendSonucu> {
   const adres = ortamDegiskeni(BACKEND_ADRESI);
   const sir = ortamDegiskeni(ARACI_KATMAN_SIRRI);
@@ -82,7 +86,6 @@ export async function backendIstegi(
   }
 
   // İstemci adresi x-forwarded-for başlığının ilk değeridir (TS-004 Yapı).
-  const gelen = await headers();
   const basliklar: Record<string, string> = imzaBasliklari(sir, {
     adres: gelen.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '',
     tarayici: gelen.get('user-agent') ?? '',
@@ -91,11 +94,8 @@ export async function backendIstegi(
   if (istek.govde !== undefined) {
     basliklar['content-type'] = 'application/json';
   }
-  if (istek.oturumlu) {
-    const belirtec = await erisimBelirteciniOku();
-    if (belirtec !== undefined) {
-      basliklar['authorization'] = `Bearer ${belirtec}`;
-    }
+  if (belirtec !== undefined) {
+    basliklar['authorization'] = `Bearer ${belirtec}`;
   }
 
   let cevap: Response;
@@ -124,4 +124,12 @@ export async function backendIstegi(
     return { basarili: true, durum: cevap.status, govde };
   }
   return { basarili: false, hata: hataGovdesiniOku(govde, cevap.status) };
+}
+
+export async function backendIstegi(
+  istek: BackendIstegi,
+): Promise<BackendSonucu> {
+  const { oturumlu, ...cagri } = istek;
+  const belirtec = oturumlu ? await erisimBelirteciniOku() : undefined;
+  return backendCagrisi(cagri, await headers(), belirtec);
 }

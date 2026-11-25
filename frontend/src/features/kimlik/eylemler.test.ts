@@ -75,6 +75,26 @@ describe('girisYap', () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith('/');
   });
 
+  it('erişim çerezi 14 dakika, yenileme ve cihaz çerezleri 7 gün yaşar; üçü de betiğe kapalıdır', async () => {
+    vi.mocked(backendIstegi).mockResolvedValue({
+      basarili: true,
+      durum: 200,
+      govde: { erisimBelirteci: 'erisim', yenilemeBelirteci: 'yenileme', cihazSirri: 'cihaz' },
+    });
+
+    await expect(girisYap(BOS_FORM_DURUMU, form(GECERLI))).rejects.toThrow(
+      'yonlendirildi:/',
+    );
+
+    expect(
+      depo.set.mock.calls.map(([ad, , secenek]: unknown[]) => [ad, secenek]),
+    ).toEqual([
+      ['dextra_erisim', expect.objectContaining({ httpOnly: true, maxAge: 14 * 60 })],
+      ['dextra_yenileme', expect.objectContaining({ httpOnly: true, maxAge: 7 * 24 * 60 * 60 })],
+      ['dextra_cihaz', expect.objectContaining({ httpOnly: true, maxAge: 7 * 24 * 60 * 60 })],
+    ]);
+  });
+
   it('401 kimlik_gerekli gelince tek ileti döner ve çerez yazmaz', async () => {
     vi.mocked(backendIstegi).mockResolvedValue(hata('kimlik_gerekli', 401));
 

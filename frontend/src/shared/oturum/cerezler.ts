@@ -9,9 +9,10 @@ export const OTURUM_CEREZLERI = {
   cihaz: 'dextra_cihaz',
 } as const;
 
-// Erişim çerezi belirtecin süresi kadar (TS-002 AK-6: 15 dakika), öbür ikisi 7 gün yaşar.
-const ERISIM_CEREZI_SURESI_SN = 15 * 60;
-const UZUN_CEREZ_SURESI_SN = 7 * 24 * 60 * 60;
+// Erişim çerezi belirteçten (TS-002 AK-6: 15 dakika) kısa yaşar ki süresi dolmuş belirteç
+// backend'e gitmesin; çerezin yokluğu ara katmana "yenile" der (TS-004). Öbür ikisi 7 gün yaşar.
+export const ERISIM_CEREZI_SURESI_SN = 14 * 60;
+export const UZUN_CEREZ_SURESI_SN = 7 * 24 * 60 * 60;
 
 // Giriş cevabının çerezlere yazılan kısmı.
 export interface GirisBelirtecleri {
@@ -20,7 +21,8 @@ export interface GirisBelirtecleri {
   readonly cihazSirri: string;
 }
 
-function secenekler(maxAge: number) {
+// Ara katman yenilenen çerezleri aynı özniteliklerle yazar.
+export function secenekler(maxAge: number) {
   return {
     httpOnly: true,
     sameSite: 'lax',
