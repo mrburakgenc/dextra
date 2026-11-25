@@ -4,6 +4,7 @@
 export const YALNIZ_KENDISI_UCLARI: readonly string[] = [
   'OturumController.cikis',
   'OturumController.yetkilerim',
+  'ParolaController.degistir',
 ];
 
 // Listeyi açılış denetimine veren belirteç; GuvenlikModule yukarıdaki listeyi bağlar.

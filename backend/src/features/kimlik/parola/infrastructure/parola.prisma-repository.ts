@@ -25,6 +25,11 @@ export function parolaPrismaRepository(istemci: RepoIstemcisi): ParolaRepo {
       }
       return { kullaniciId: satir.id, ...satir.sirri };
     },
+    kisininSirri: (kullaniciId) =>
+      istemci.kullaniciSirri.findUnique({
+        where: { kullaniciId },
+        select: { parolaOzeti: true, guncellemeZamani: true },
+      }),
     sirZamani: async (kullaniciId) => {
       const satir = await istemci.kullaniciSirri.findUnique({
         where: { kullaniciId },
@@ -40,5 +45,10 @@ export function parolaPrismaRepository(istemci: RepoIstemcisi): ParolaRepo {
         select: { kullaniciId: true },
       });
     },
+    oturumAcikMi: async (oturumId, kullaniciId) =>
+      (await istemci.oturum.findFirst({
+        where: { id: oturumId, kullaniciId, kapatilmaZamani: null },
+        select: { id: true },
+      })) !== null,
   };
 }

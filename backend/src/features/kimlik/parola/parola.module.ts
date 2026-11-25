@@ -5,6 +5,7 @@ import { MessagingModule } from '../../../shared/messaging/messaging.module.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { KurulumBaglantisiHandler } from './application/kurulum-baglantisi.handler.js';
 import { ParolaBelirleHandler } from './application/parola-belirle.handler.js';
+import { ParolaDegistirHandler } from './application/parola-degistir.handler.js';
 import { ParolaGirisYontemi } from './application/parola-giris-yontemi.js';
 import { ParolaOzetleyici } from './domain/parola-ozetleyici.port.js';
 import { PAROLA_REPO } from './domain/parola.repository.js';
@@ -19,6 +20,7 @@ import { ParolaController } from './presentation/parola.controller.js';
   providers: [
     { provide: ParolaOzetleyici, useClass: Argon2idParolaOzetleyici },
     ParolaBelirleHandler,
+    ParolaDegistirHandler,
     KurulumBaglantisiHandler,
     ParolaGirisYontemi,
   ],
