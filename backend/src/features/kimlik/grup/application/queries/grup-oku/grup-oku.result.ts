@@ -1,4 +1,4 @@
 // Grubu oku işinin sonucu: isteyenin görebildiği kolonları ve kimliği taşıyan düz kayıt.
-import type { Kayit } from '../../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { GrupGorunumu } from '../../../domain/repositories/i-grup.repository.js';
 
-export type GrupOkuSonucu = Kayit;
+export type GrupOkuSonucu = GrupGorunumu;
