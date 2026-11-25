@@ -4,8 +4,8 @@
 Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 Tasarım: docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md
 
-Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · rapor · denetim · etki · sorgu ·
-           dizin · graf
+Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · rapor · denetim · acik-uc · etki ·
+           sorgu · dizin · graf
 Çıkış kodu: 0 temiz · 1 bulgu var · 2 ölçülemedi (kapılar 2'yi kırmızı sayar)
 """
 from __future__ import annotations
@@ -263,6 +263,125 @@ def kimlik_oku(yol: pathlib.Path) -> str:
 def liste(d: dict, ad: str) -> list:
     v = d.get(ad, [])
     return v if isinstance(v, list) else [v]
+
+
+# ── Açık uç (TS-006 Yapı 19) ─────────────────────────────────────────────────────────
+# Düğümün karara bağlanmamış noktası: `## Açık uçlar` bölümünde `- AU-<n>: <metin>` satırı (n düğüm içinde artar).
+# Kapanan uç satırdan çıkar ve düğümün sonundaki `## Kapanan uçlar` bölümüne tarih ve kararla yazılır.
+
+ACIK_UCLAR, KAPANAN_UCLAR = "Açık uçlar", "Kapanan uçlar"
+ACIK_UC_SATIRI = re.compile(r"^- AU-(\d+)\b:?(.*)$")
+ACIK_UC_KIMLIGI = re.compile(r"\b((?:KR|KU|YP|DN|TS|OZ|AK|SZ|KV)-\d{3,})/AU-(\d+)\b")
+
+
+def acik_uclar(d: dict, bolum: str = ACIK_UCLAR) -> list:
+    """Düğümün bir bölümündeki açık uç satırları: [(numara, metin)]."""
+    return [(int(m.group(1)), m.group(2).strip()) for m in
+            map(ACIK_UC_SATIRI.match, d["_bolumler"].get(bolum, "").split("\n")) if m]
+
+
+def acik_uc_kimlikleri(metin) -> list:
+    """Metinde geçen açık uç kimlikleri: [(düğüm kimliği, numara)], yinelenmeden."""
+    return list(dict.fromkeys((m.group(1), int(m.group(2))) for m in ACIK_UC_KIMLIGI.finditer(str(metin or ""))))
+
+
+def _acik_uc_denetle(d: dict) -> list:
+    """Z21: aynı düğümde yinelenen numara (açık ve kapanan uçlar birlikte), metni boş açık uç ve açık uçlar bölümünde
+    açık uç biçimine uymayan dolu satır (paket, sayım ve liste onu görmez)."""
+    s, gorulen = [], set()
+    for satir in d["_bolumler"].get(ACIK_UCLAR, "").split("\n"):
+        if satir.strip() and not ACIK_UC_SATIRI.match(satir):
+            s.append(B("Z21", "acik-uc-bicim", d["kimlik"], "açık uçlar bölümünde biçime uymayan satır (beklenen "
+                       "'- AU-<n>: <metin>'): %s" % satir.strip()[:80]))
+    for bolum in (ACIK_UCLAR, KAPANAN_UCLAR):
+        for no, metin in acik_uclar(d, bolum):
+            if no in gorulen:
+                s.append(B("Z21", "acik-uc-yinelenen", d["kimlik"], "AU-%d numarası düğümde birden çok kez geçiyor" % no))
+            gorulen.add(no)
+            if bolum == ACIK_UCLAR and not metin:
+                s.append(B("Z21", "acik-uc-bos", d["kimlik"], "AU-%d açık ucunun metni boş" % no))
+    return s
+
+
+def _bolum_araligi(satirlar: list, ad: str) -> tuple | None:
+    """`## <ad>` bölümünün (başlık satırı, bitiş) aralığı; bölüm yoksa None."""
+    for i, s in enumerate(satirlar):
+        if s.startswith("## ") and s[3:].strip() == ad:
+            return i, next((j for j in range(i + 1, len(satirlar)) if satirlar[j].startswith("## ")), len(satirlar))
+    return None
+
+
+def _bolume_ekle(satirlar: list, ad: str, satir: str, once: str | None = None) -> None:
+    """Satırı bölümün son dolu satırının ardına ekler. Bölüm yoksa `once` bölümünün önünde, o da yoksa sonda açılır."""
+    aralik = _bolum_araligi(satirlar, ad)
+    if aralik:
+        son = aralik[1]
+        while son > aralik[0] + 1 and not satirlar[son - 1].strip():
+            son -= 1
+        satirlar.insert(son, satir)
+        return
+    sonraki = _bolum_araligi(satirlar, once) if once else None
+    if sonraki:
+        satirlar[sonraki[0]:sonraki[0]] = ["## " + ad, satir, ""]
+        return
+    while satirlar and not satirlar[-1].strip():
+        satirlar.pop()
+    satirlar += ["", "## " + ad, satir, ""]
+
+
+def _acik_uc_dugumu(kok: pathlib.Path, kimlik: str) -> dict:
+    d = Dizin(pathlib.Path(kok)).kimlik.get(kimlik)
+    if d is None:
+        raise HarnessHata("%s bulunamadı" % kimlik)
+    return d
+
+
+def acik_uc_sayilari(dz: Dizin) -> list:
+    """Açık ucu olan düğümler ve açık uç sayıları: [(kimlik, sayı)]."""
+    return [(d["kimlik"], len(acik_uclar(d))) for d in dz.dugumler if acik_uclar(d)]
+
+
+def acik_uc_metni(kok: pathlib.Path, kimlik: str, no: int) -> str | None:
+    d = Dizin(pathlib.Path(kok)).kimlik.get(kimlik)
+    return dict(acik_uclar(d)).get(no) if d else None
+
+
+def acik_uc_ekle(kok: pathlib.Path, kimlik: str, metin: str) -> tuple:
+    """Düğüme sıradaki numarayla açık uç ekler: (düğüm, numara). Numara açık ve kapanan uçların en büyüğünden artar."""
+    kok = pathlib.Path(kok)
+    d, metin = _acik_uc_dugumu(kok, kimlik), " ".join(str(metin).split())
+    if not metin:
+        raise HarnessHata("açık ucun metni boş olamaz")
+    no = max([n for b in (ACIK_UCLAR, KAPANAN_UCLAR) for n, _ in acik_uclar(d, b)], default=0) + 1
+    yol = kok / d["_yol"]
+    satirlar = yol.read_text(encoding="utf-8").split("\n")
+    _bolume_ekle(satirlar, ACIK_UCLAR, "- AU-%d: %s" % (no, metin), once=KAPANAN_UCLAR)
+    yol.write_text("\n".join(satirlar), encoding="utf-8")
+    return d, no
+
+
+def acik_uc_kapat(kok: pathlib.Path, kimlik: str, no: int, karar: str, tarih: str | None = None) -> str:
+    """Açık ucu bölümünden çıkarır ve `## Kapanan uçlar` bölümüne tarih ve kararla yazar; kapanan ucun metnini döner.
+    Son açık uç kapanınca boş kalan bölüm de silinir."""
+    kok = pathlib.Path(kok)
+    d, karar = _acik_uc_dugumu(kok, kimlik), " ".join(str(karar).split())
+    if not karar:
+        raise HarnessHata("kapatma kararı boş olamaz")
+    yol = kok / d["_yol"]
+    satirlar = yol.read_text(encoding="utf-8").split("\n")
+    aralik = _bolum_araligi(satirlar, ACIK_UCLAR) or (0, 0)
+    bulunan = [i for i in range(*aralik) if ACIK_UC_SATIRI.match(satirlar[i])
+               and int(ACIK_UC_SATIRI.match(satirlar[i]).group(1)) == no]
+    if not bulunan:
+        raise HarnessHata("%s/AU-%d açık uç değil (açık uçlar: python3 harness/h.py acik-uc %s)" % (kimlik, no, kimlik))
+    metin = ACIK_UC_SATIRI.match(satirlar.pop(bulunan[0])).group(2).strip()
+    bas, son = _bolum_araligi(satirlar, ACIK_UCLAR)
+    if not any(s.strip() for s in satirlar[bas + 1:son]):
+        del satirlar[bas:son]
+    _bolume_ekle(satirlar, KAPANAN_UCLAR, "- AU-%d (%s): %s — karar: %s"
+                 % (no, tarih or datetime.date.today().isoformat(), metin, karar))
+    yol.write_text("\n".join(satirlar), encoding="utf-8")
+    return metin
 
 
 GUNLUK = "GUNLUK.md"
@@ -643,7 +762,10 @@ def _normatif(d: dict) -> str:
     alanlar = {"kural": ("kapsam", "kapsam_katman", "kapsam_tur", "olay", "denetim_duzey",
                          "denetim_ref", "kesinlik", "rol", "konu"),
                "karar": ("agirlik",), "yapi": ("yollar", "katman", "bagimli")}.get(d["tur"], ())
-    return json.dumps([d["_ifade"]] + [d.get(a) for a in alanlar], ensure_ascii=False, sort_keys=True)
+    # Açık uçlar da bağlayıcıdır (işçi o noktada durur): kabul edilmiş düğümde eklemek ya da kapatmak sürüm ister
+    uclar = acik_uclar(d)
+    return json.dumps([d["_ifade"]] + [d.get(a) for a in alanlar] + ([uclar] if uclar else []),
+                      ensure_ascii=False, sort_keys=True)
 
 
 def agac_turu(kok: pathlib.Path) -> str:
@@ -706,7 +828,7 @@ def _surum_denetle(dz: Dizin) -> list:
             alanlar, govde = ayristir(_git(dz.kok, "show", "%s:%s" % (taban, yol)))
         except BicimHatasi:
             continue
-        eski = dict(alanlar, _ifade=bolumle(govde)[0])
+        eski = dict(alanlar, _ifade=bolumle(govde)[0], _bolumler=bolumle(govde)[1])
         if eski.get("durum") == "taslak" or "tur" not in eski:
             continue
         if _normatif(eski) != _normatif(d) and d["surum"] <= int(eski.get("surum", 0)):
@@ -721,6 +843,7 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
     s = list(dz.okuma_bulgulari)
     dosyalar = dosyalari_listele(kok, dz.ayar)
     for d in dz.dugumler:
+        s += _acik_uc_denetle(d)   # taslakta da: açık uç çoğu zaman taslak düğümdedir
         if d["durum"] != "kabul":
             continue
         if d["tur"] == "kural":
@@ -763,6 +886,7 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
 _DUZEY = {("Z%d" % i): (1 if i <= 18 else 2 if i <= 23 else 3) for i in range(1, 32)}
 _DUZEY["Z19"] = 1   # rapor denetimi düzeyle değil `rapor.zorunlu` ayarıyla açılıp kapanır (KR-015)
 _DUZEY["Z20"] = 1   # kabul edilmiş mekanik kuralın denetimi her düzeyde kırmızıdır (TS-006 Yapı 2)
+_DUZEY["Z21"] = 1   # açık uç biçimi her düzeyde kırmızıdır: numara, soru ve kapatmanın adresidir (TS-006 Yapı 19)
 
 
 # ── Denetim düğümleri ────────────────────────────────────────────────────────────────
@@ -846,6 +970,9 @@ def kanarya() -> list:
 
 PAKET = re.compile(r"\[\[KB-PAKET rol=(\S+) ozet=([0-9a-f]{8})\]\]\n(.*?)\n\[\[/KB-PAKET\]\]", re.S)
 TASLAK = re.compile(r"\n\n\[\[KB-TASLAK\]\]\n.*?\n\[\[/KB-TASLAK\]\]", re.S)
+ACIK_UC_BLOGU = re.compile(r"\n\n\[\[KB-ACIK-UC\]\]\n.*?\n\[\[/KB-ACIK-UC\]\]", re.S)
+ACIK_UC_YONERGESI = ("Açık uçlar (karara bağlanmamış noktalar): bu noktalardan birinde seçim yapman gerekirse seçme: "
+                     "soruyla dur ve sorunda açık ucun kimliğini yaz (örnek KR-010/AU-1). Cevabı kullanıcı verir.")
 
 
 def _kural_satiri(k: dict, inceleme: bool = False) -> str:
@@ -856,7 +983,7 @@ def _kural_satiri(k: dict, inceleme: bool = False) -> str:
     return "[ ] " + satir + " → uyuyor / uymuyor / uygulanmaz" if inceleme else satir
 
 
-def _paket(dz: Dizin, rol: str, yollar, konular) -> dict:
+def _paket(dz: Dizin, rol: str, yollar, konular, dayanak=()) -> dict:
     konular = set(konular)
     # rol "*": tanınmayan ajan tipi — rol süzgeci uygulanmaz, bütün kesin kurallar verilir.
     kesin = [k for k in dz.tur("kural") if k.get("kesinlik") == "kesin"
@@ -908,14 +1035,24 @@ def _paket(dz: Dizin, rol: str, yollar, konular) -> dict:
             blok += ["", "Dayandıkları taslak kararlar:"] + ["- %s %s" % (kr["kimlik"], kr["baslik"])
                                                              for kr in taslak_kararlar]
         tam += "\n\n" + "\n".join(blok + ["[[/KB-TASLAK]]"])
+    # Açık uç bloğu (TS-006 Yapı 19): işe düşen düğümlerin (bağlayıcı kurallar ve kararları, taslak bloğundakiler,
+    # işin dayanakları) karara bağlanmamış noktaları. Özetin (damganın) dışındadır; açık uç yoksa yazılmaz.
+    bagli_kararlar = [_dayanak_coz(o)[0] for k in kesin + yoldan for o in liste(k, "dayanak")]
+    dugumler = {d["kimlik"]: d for d in kesin + yoldan + taslak + taslak_kararlar}
+    for kimlik in bagli_kararlar + list(dayanak):
+        dugumler.setdefault(kimlik, dz.kimlik.get(kimlik))
+    uclar = ["- %s/AU-%d: %s" % (k, no, m) for k, d in dugumler.items() if d for no, m in acik_uclar(d)]
+    if uclar:
+        tam += "\n\n" + "\n".join(["[[KB-ACIK-UC]]", ACIK_UC_YONERGESI, ""] + uclar + ["[[/KB-ACIK-UC]]"])
     return {"metin": metin, "tam": tam,
             "ozet": ozet, "kurallar": ["%s@%s" % (k["kimlik"], k["surum"]) for k in kesin + yoldan],
             "bos": not (kesin or yoldan),
             "taslaklar": [k["kimlik"] for k in taslak] + [kr["kimlik"] for kr in taslak_kararlar]}
 
 
-def paket(kok: pathlib.Path, rol: str, yollar=(), konular=()) -> dict:
-    """Bir role verilecek kural paketi: kesin kurallar + verilen yollara düşenler."""
+def paket(kok: pathlib.Path, rol: str, yollar=(), konular=(), dayanak=()) -> dict:
+    """Bir role verilecek kural paketi: kesin kurallar + verilen yollara düşenler. `dayanak`, işin dayandığı düğümlerdir;
+    yalnız açık uç bloğuna girer."""
     dz = Dizin(pathlib.Path(kok))
     if rol != "*" and rol not in dz.ayar["roller"]:
         raise HarnessHata("rol '%s' harness.json roller listesinde yok" % rol)
@@ -925,7 +1062,7 @@ def paket(kok: pathlib.Path, rol: str, yollar=(), konular=()) -> dict:
     if desenler:
         acik |= {f for f in dosyalari_listele(dz.kok, dz.ayar)
                  if any(desen_eslesir(d, f) for d in desenler)}
-    return _paket(dz, rol, tuple(sorted(acik)), tuple(konular))
+    return _paket(dz, rol, tuple(sorted(acik)), tuple(konular), tuple(dayanak))
 
 
 def paket_ozeti_dogrula(metin: str) -> str | None:
@@ -1097,6 +1234,59 @@ def onay_kullan(kok: pathlib.Path, kimlikler: list) -> bool:
         return False
 
 
+# Kancanın soruyu gösterirken bıraktığı tek kullanımlık izin işareti (--taslakla, açık uç cevabı, açık uç kapatma).
+# İşaret, kancanın gördüğü komutun araca ulaşacak bağımsız değişkenlerinin özetine bağlıdır; araç aynı özeti kendi
+# bağımsız değişkenlerinden hesaplar ve yalnız eşleşen taze işareti tüketir: reddedilmiş sorunun işareti, bağımsız
+# değişkenleri farklı bir komutu koşturamaz. Güvencenin sınırı: bağımsız değişkenleri birebir aynı olup kancanın çağrı
+# olarak tanımadığı bir komut ($H değişkeni, h.p? kalıbı gibi), işaretin ömrü içinde (IZIN_SURESI_SN) reddedilmiş
+# sorunun işaretini tüketebilir. Kanca aynı tür ve hedef için yeni soru sorarken eski işareti siler: reddedilmiş
+# sorunun işareti sonraki soruyla geçersiz olur.
+IZIN_SURESI_SN = 120
+IZIN_HEDEFI = re.compile(r"[A-Z]{2}-[0-9]+")   # düğüm, görev ya da epic kimliği; işaretin dosya adı yalnız bundan kurulur
+
+
+def komut_ozeti(argv: list) -> str:
+    """Komut satırının `h.py` ardındaki bağımsız değişkenlerinin (komut adı dahil) özeti."""
+    return hashlib.sha256(json.dumps([str(a) for a in argv], ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def izin_isareti(kok: pathlib.Path, tur: str, hedef: str) -> pathlib.Path:
+    """İşaretin yolu. Hedef düğüm, görev ya da epic kimliği değilse ya da yol izin klasörünün dışına çıkıyorsa
+    HarnessHata: işaret yazılmaz, okunmaz, silinmez."""
+    klasor = ortak_kok(pathlib.Path(kok)) / ".harness" / "onay"
+    yol = klasor / ("%s-%s.json" % (tur, hedef))
+    if not IZIN_HEDEFI.fullmatch(str(hedef)) or yol.resolve().parent != klasor.resolve():
+        raise HarnessHata("izin işaretinin hedefi geçersiz: %r (düğüm, görev ya da epic kimliği olmalı)" % (hedef,))
+    return yol
+
+
+def izin_yaz(kok: pathlib.Path, tur: str, hedef: str, ozet: str | None, veri: dict | None = None,
+             simdi: float | None = None) -> None:
+    yol = izin_isareti(kok, tur, hedef)
+    yol.parent.mkdir(parents=True, exist_ok=True)
+    yol.write_text(json.dumps(dict(veri or {}, zaman=simdi or time.time(), ozet=ozet), ensure_ascii=False),
+                   encoding="utf-8")
+
+
+def izin_sil(kok: pathlib.Path, tur: str, hedef: str) -> None:
+    izin_isareti(kok, tur, hedef).unlink(missing_ok=True)
+
+
+def izin_tuket(kok: pathlib.Path, tur: str, hedef: str, ozet: str | None) -> bool:
+    """İşaret taze ve bu komutun özetine bağlıysa tüketilir ve True döner. Süresi geçmiş işaret silinir; başka bir
+    komuta bağlı taze işarete dokunulmaz (sorusu henüz cevaplanmamış olabilir)."""
+    yol = izin_isareti(kok, tur, hedef)
+    try:
+        isaret = json.loads(yol.read_text(encoding="utf-8"))
+        taze = 0 <= time.time() - float(isaret["zaman"]) <= IZIN_SURESI_SN
+        eslesir = ozet is not None and isaret.get("ozet") == ozet
+        if eslesir or not taze:
+            yol.unlink()
+        return taze and eslesir
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def kabul(kok: pathlib.Path, kimlik: str, onay: bool) -> pathlib.Path:
     """Taslağı kabul eder. `onay` kullanıcının kararıdır: terminaldeki cevabı, kapının sorusuna verdiği onay ya da
     iskeletle birlikte kabul edilmiş sayılan çekirdek paket (`kur`)."""
@@ -1236,6 +1426,10 @@ def _komut_durum(kok: pathlib.Path, arg: list) -> int:
     taslak = [d for d in dz.dugumler if d["durum"] == "taslak"]
     if taslak:
         print("  kabul bekleyen %d taslak: %s" % (len(taslak), ", ".join(d["kimlik"] for d in taslak)))
+    uclar = acik_uc_sayilari(dz)
+    if uclar:
+        print("  açık uç: %d (%s) — liste: python3 harness/h.py acik-uc" % (
+            sum(n for _, n in uclar), ", ".join("%s %d" % ku for ku in uclar)))
     yavas = yavas_hooklar(kok)
     if yavas["sayi"]:
         print("  yavaş hook: %d çağrı %d ms eşiğini aştı (en uzun %d ms) — sıklaşırsa dizini hook yoluna alma "
@@ -1332,6 +1526,57 @@ def _komut_kabul(kok: pathlib.Path, arg: list) -> int:
     return 0
 
 
+def _kapatma_izni(kok: pathlib.Path, arg: list, kimlik: str, no: int, karar: str) -> None:
+    """Açık uç kapatma kullanıcının kararıdır: kancanın bu komuta bıraktığı taze işaret ya da kullanıcının kendi
+    uçbiriminde verdiği onay; ikisi de yoksa kapatılmaz."""
+    if izin_tuket(kok, "acik-uc-kapat", kimlik, komut_ozeti(["acik-uc"] + arg)):
+        return
+    if sys.stdin.isatty() and sys.stdout.isatty():   # kullanıcının kendi terminali: soruyu komut sorar
+        print("%s/AU-%d — %s\nyazılacak karar: %s" % (kimlik, no, acik_uc_metni(kok, kimlik, no) or "(bulunamadı)",
+                                                      karar))
+        if input("Açık uç kapatılsın mı? Onay için 'evet' yaz: ").strip().lower() == "evet":
+            return
+        raise HarnessHata("%s/AU-%d kapatılmadı: kullanıcı onaylamadı" % (kimlik, no))
+    raise HarnessHata("%s/AU-%d kapatılmadı: kapatma kullanıcının onayını ister ve bu komut için taze bir onay "
+                      "işareti yok. Claude Code'da bu komutu kanca kullanıcıya sorar ve işareti o bırakır (komut "
+                      "`python3 harness/h.py acik-uc kapat ...` biçiminde tek komut olarak yazılmalı); başka yerde "
+                      "komutu kullanıcı kendi terminalinde çalıştırır." % (kimlik, no))
+
+
+def _komut_acik_uc(kok: pathlib.Path, arg: list) -> int:
+    no = re.fullmatch(r"AU-(\d+)", arg[2]) if arg[:1] == ["kapat"] and len(arg) > 2 else None
+    if arg[:1] == ["ekle"] and len(arg) > 2:
+        d, n = acik_uc_ekle(kok, arg[1], " ".join(arg[2:]))
+        print("eklendi: %s/AU-%d (%s)" % (arg[1], n, d["_yol"]))
+        if d["durum"] != "taslak":
+            print("not: %s %s durumunda; açık uç bağlayıcı içeriktir, sürümü artır (Z12)" % (arg[1], d["durum"]))
+        return 0
+    if no and _secenek(arg, "--karar"):
+        karar = _secenek(arg, "--karar")[0]
+        _kapatma_izni(kok, arg, arg[1], int(no.group(1)), karar)
+        durum = _acik_uc_dugumu(kok, arg[1])["durum"]
+        metin = acik_uc_kapat(kok, arg[1], int(no.group(1)), karar)
+        print("kapandı: %s/AU-%s — %s\n  karar: %s (Kapanan uçlar bölümünde)" % (arg[1], no.group(1), metin, karar))
+        if durum != "taslak":
+            print("not: %s %s durumunda; açık uç bağlayıcı içeriktir, kapatmak onu değiştirir: sürümü artır (Z12)"
+                  % (arg[1], durum))
+        return 0
+    if len(arg) > 1 or (arg and not KIMLIK.match(arg[0])):
+        raise HarnessHata('kullanım: h.py acik-uc [<KİMLİK>] | acik-uc ekle <KİMLİK> "<metin>" | '
+                          'acik-uc kapat <KİMLİK> AU-<n> --karar "<metin>"')
+    dz = Dizin(kok)
+    if arg and arg[0] not in dz.kimlik:
+        raise HarnessHata("%s bulunamadı" % arg[0])
+    dugumler = [dz.kimlik[arg[0]]] if arg else dz.dugumler
+    toplam = 0
+    for d in dugumler:
+        for n, metin in acik_uclar(d):
+            print("%s/AU-%d [%s] %s" % (d["kimlik"], n, d["durum"], metin))
+            toplam += 1
+    print("%d açık uç%s" % (toplam, (", %d düğümde" % sum(bool(acik_uclar(d)) for d in dugumler)) if toplam else ""))
+    return 0
+
+
 def _komut_yeni(kok: pathlib.Path, arg: list) -> int:
     if len(arg) < 2:
         raise HarnessHata("kullanım: h.py yeni <tür> \"<başlık>\"")
@@ -1422,7 +1667,7 @@ def _graf_komutu(ad: str):
 KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
-            "rapor": _komut_rapor, "denetim": _komut_denetim,
+            "rapor": _komut_rapor, "denetim": _komut_denetim, "acik-uc": _komut_acik_uc,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}

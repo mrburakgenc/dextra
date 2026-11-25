@@ -22,7 +22,7 @@ argument-hint: <karar konusu>
 1. Önce var olan kararlara bak: `python3 harness/h.py durum` ve ilgili düğümler için `python3 harness/h.py sor <KİMLİK>`.
 2. Kararın ağırlığını belirle ve kullanıcıya söyle: geri alması pahalıysa tek yönlü, ucuzsa çift yönlü.
 3. Tek yönlü kararda önce `tasarla` skill'ini uygula. Öğretici mod açıksa ilk taslağı kullanıcıdan iste ve onu çürütmeye çalış; kendin yazma.
-4. Taslağı aç: `python3 harness/h.py yeni karar "<başlık>"`. Şablondaki her bölümü doldur; ağırlığın gerektirmediği bölümleri sil.
+4. Taslağı aç: `python3 harness/h.py yeni karar "<başlık>"`. Şablondaki her bölümü doldur; ağırlığın gerektirmediği bölümleri sil. Karara bağlanmamış bir nokta kalırsa onu "belgede yok" ya da "kullanıcıya sorulacak" diye düz metne yazma; açık uç olarak ekle: `python3 harness/h.py acik-uc ekle KR-NNN "<soru>"` (iş o noktaya gelince soru kullanıcıya gider).
 5. Karar cümlesi tek cümledir: şu durum için şu seçildi; şu kazanılıyor, şu bedel kabul ediliyor.
 6. En az iki gerçek seçenek yaz. Ölçülmemiş sayıyı gerekçe yapma: ya kanıtını yaz ya da tarihli "varsayım" olarak işaretle.
 7. "İstisna yolu" bölümünü boş bırakma: kararın uygulanmadığı durumları ve o zaman ne yapılacağını yaz; yoksa nedeniyle "istisnası yok" de.

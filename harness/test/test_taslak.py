@@ -130,7 +130,9 @@ class Uyari(Ortam):
         # izni kancanın soruyu sorarken bıraktığı işaret gösterir
         kok = gorev_deposu(TASLAKLAR)
         kimlik, _ = kart_ac(kok)
-        gorev.taslak_izni_yaz(kok, kimlik, ["KU-002", "KR-002"])
+        # GV-141: işaret kancanın gördüğü komutun özetine bağlıdır; araç yalnız eşleşen işareti tüketir
+        gorev.taslak_izni_yaz(kok, kimlik, ["KU-002", "KR-002"],
+                              ozet=h.komut_ozeti(["gorev", "kos", kimlik, "--taslakla"]))
         kod, cikti = sessiz(gorev.komut, kok, ["kos", kimlik, "--taslakla"])
         self.assertEqual(kod, 0, cikti)
         self.assertIn("2 taslağa rağmen koşuyor: KU-002, KR-002", cikti)
