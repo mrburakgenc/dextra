@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 92 görevin 85 tanesi alındı. Son koşuların ve incelemelerin toplamı: 894 dakika, 351.53 dolar.
+Kayıtlı 94 görevin 88 tanesi alındı. Son koşuların ve incelemelerin toplamı: 910 dakika, 358.03 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -109,11 +109,13 @@ Kayıtlı 92 görevin 85 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-085 | EP-003 27 | Derleyici: şart değerinin ve işlecin kolon tipine uyumu | alındı | 4.2 | 8.7 | 5.27 | 9 | 0 engel, 2 öneri | 2 |
 | GV-086 | EP-003 28 | Hata süzgeci: yabancı anahtar ihlali cakisma (409) olur | alındı | 2.5 | 3.4 | 2.28 | 2 | 0 engel, 1 öneri | 0 |
 | GV-087 | EP-007 4 | Rol ve grup işleri ekranları: oluştur, adını değiştir, taşı, sil | alındı | 2.9 | 5.0 | 3.60 | 28 | 0 engel, 4 öneri | 1 |
-| GV-088 | EP-007 5 | Üyelik ekranı: kullanıcının üyelikleri, üyelik ver ve kaldır | tamam | 9.0 | — | 3.40 | 7 | — | 0 |
+| GV-088 | EP-007 5 | Üyelik ekranı: kullanıcının üyelikleri, üyelik ver ve kaldır | alındı | 9.0 | 5.1 | 5.68 | 7 | 0 engel, 2 öneri | 0 |
 | GV-089 | EP-006 10 | Bütün: kimlik ve yetkinin uçtan uca senaryosu (iki ayrı birim) | bekliyor | — | — | — | 0 | — | 0 |
-| GV-090 | EP-006 11 | Bütün: kimlik ve yetkinin uçtan uca senaryosu (iki ayrı birim; yeniden) | tamam | 7.1 | — | 3.07 | 1 | — | 0 |
+| GV-090 | EP-006 11 | Bütün: kimlik ve yetkinin uçtan uca senaryosu (iki ayrı birim; yeniden) | alındı | 7.1 | 4.8 | 5.01 | 1 | 0 engel, 2 öneri | 0 |
 | GV-091 | EP-005 10 | Kimlik kurulumu testindeki elle kurulmuş kataloğa alan tipleri eklenir | alındı | 1.5 | 1.7 | 1.27 | 1 | 0 engel, 0 öneri | 0 |
-| GV-092 | EP-003 29 | Hata süzgeci: kayıt yok veritabanı hatası bulunamadi (404) olur | bekliyor | — | — | — | 0 | — | 0 |
+| GV-092 | EP-003 29 | Hata süzgeci: kayıt yok veritabanı hatası bulunamadi (404) olur | alındı | 2.0 | 3.6 | 2.28 | 2 | 0 engel, 1 öneri | 0 |
+| GV-093 | EP-007 6 | Yetenek ekranları: liste, yaz, yenile ve sil | bekliyor | — | — | — | 0 | — | 0 |
+| GV-094 | EP-003 30 | Oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım ve kapatıp reddeden dallar | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -266,6 +268,11 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Ön yüzde 403, 404 ve çakışma iletilerinin ekrana çevrilmesi iki dosyada yineleniyor (GV-087 incelemesi); tek yere toplanmalı.
 - Ön yüzde form hata dönünce yazılanlar siliniyor (çatının form davranışı; GV-084 incelemesi); alanların değeri hata durumunda korunmalı.
 - ATILACAK ÖLÜ YAPRAKLAR (gorev at; yetkisi sende): GV-036, GV-068, GV-089.
+- TEYİDİNİ BEKLEYEN KARAR: AK-49 oturum yenileme. (a) Cevabı kaybolan yenilemenin tekrarı için tekrar anahtarı yerine 'aynı içerik aynı imzayı üretir' yolu seçildi; KR-009 Kural 4'ün 'aynı anda gelen farklı istek reddedilir' yarısı karşılanmıyor (o istek de aynı çifti alır). (b) Kapalı oturuma eski nesil gelince kişinin öbür oturumları kapatılmıyor, yalnız günlüğe yazılıyor. (c) Hoşgörü penceresi 10 saniye.
+- Senaryo testinin iz adımı arka plandaki aktarım döngüsüyle yarışabilir (GV-090 incelemesi): test 'aktarılacak not kalmadı' sonucunu döngü notları kilitlemişken de alabilir; ara sıra düşebilecek bir test. Düzeltme: aktarılmamış not sayısı sıfır olana kadar beklemek.
+- 'Kayıt yok' eşlemesi sunucu içi bir aramanın boş dönmesini de 404 gösterir ve hata düzeyinde günlüğe yazmaz (GV-092 incelemesi); gerçek bir hata sessiz kalabilir. Öneri: bu dal uyarı düzeyinde günlüğe yazılsın.
+- Yetenek yazarken boş kolon listesi null gider, okurken boş dizi döner (GV-090 gözlemi); biçim tek olmalı.
+- Ön yüzde üyelik bölümü, grup ya da rol listesini okuyamayan kişide tabloyu hiç çizmiyor (GV-088 incelemesi); adlar boş işaretle gösterilip tablo çizilmeli. Satır başına 'Kaldır' düğmelerinin erişilebilir adı aynı.
 
 ## 9. PR'lar
 
@@ -351,3 +358,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 03:29 — GV-085 (derleyicide tip denetimi) incelemede kaldı: sayı değerinde tam sayı ve aralık denetimi yoktu; bulguyla yeniden koştu, incelemede. Kartın dışındaki bir testte tek satırlık değişiklik gerektiriyor; alma, o satırı ekleyecek küçük görevle art arda yapılacak. GV-064 (pasife al ve yeniden aç) incelemede. Ön yüzde üyelik ekranı (GV-088) koşuyor.
 - 03:43 — GV-064 (kullanıcıyı pasife al ve yeniden aç) ilk koşuda alındı: iki kullanıcı testi 53; kullanıcı alt özelliği ve yönetimin bütün backend uçları tamam. GV-085 (derleyicide şart değerinin kolon tipine uyumu) üç koşuda alındı; derleyiciye dayanan testler 61, 76 ve birim testlerinde 76. Alınınca ana dalda tip denetimi bilerek tek hatayla kırmızı kaldı (kartın dışındaki bir testte elle kurulmuş katalog); GV-091 o satırı ekledi ve dört dakika sonra alındı: tip denetimi ve derleme 0, kimlik kurulumu testi 12. O pencerede yeni backend görevi başlatmadım.
 - 03:43 — Bütünü iki ayrı birimde, yalnız gerçek uçlardan sınayan uçtan uca senaryo görevi (GV-090) eklendi ve koştu; incelemede. 'Kayıt yok' veritabanı hatasını 404'e çeviren görev (GV-092; karar AK-48) koşuyor. Ön yüzde üyelik ekranı (GV-088) incelemede. Ön yüzdeki yetenek ekranları kartını backend'in bugünkü koduna bakarak yeniden yazdım: eski kartım sözleşmeyi yanlış anlatıyordu (boş içerik null gider, ikisi de boş olabilir, işleçler sabit sekizli, tohum satırı da yenilenemez).
+- 03:49 — GV-090 (kimlik ve yetkinin uçtan uca senaryosu) ilk koşuda alındı: on adım, yalnız gerçek uçlardan; iki ayrı birim hem listede hem tek kayıtta ayrışıyor; yenilenen yetenek yalnız o kümenin kolonlarını daraltıyor; pasife alınan kişinin belirteci 401; değişiklik kayıtları ve erişim kaydı iz veritabanında. Kendi koşumda 10 test geçti. GV-092 ('kayıt yok' hatası 404 olur) alındı: üç test dosyasında 52 test. GV-088 (ön yüzde üyelik ekranı) alındı: kayıt sayfası testi 42.
+- 03:49 — Büyük eksik bulundu: oturum yenileme backend'de hiç yazılmamış; ön yüzde oturum 15 dakikada düşüyor. Tasarımdaki iki açık noktayı kapatıp (AK-49) backend görevini (GV-094) başlattım; ön yüz tasarımı TS-004'e yazıldı ('Oturumun yenilenmesi'). Ön yüzde yetenek ekranları (GV-093) koşuyor.
