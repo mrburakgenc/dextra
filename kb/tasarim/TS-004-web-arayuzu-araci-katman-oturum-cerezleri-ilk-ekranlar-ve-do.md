@@ -89,6 +89,14 @@ Ajan kararı (2026-11-25 gecesi); backend uçları TS-002 AK-39'daki ortak sözl
 - `<Can>` güvenli tarafta kalır: ekranın değerlendiremediği bir koşul (yorumlayıcının tanımadığı biçim) hata fırlatmaz, "hayır" sayılır.
 - Bir kez gösterilen kod (yeni kullanıcının ya da üretilen bağlantının parola belirleme kodu) işin cevabında ekranda bir kez gösterilir; adrese, çereze ya da tarayıcı deposuna yazılmaz; sayfa yenilenince kaybolur.
 
+- Yönetim formlarının sertleştirilmesi (ajan kararı, 2026-11-25; GV-084, GV-087, GV-088 ve GV-093 incelemelerinin önerileri):
+  - Hata dönen form yazılanı korur: iş, hatayla birlikte gönderilen değerleri de döndürür ve alanlar o değerlerle açılır (parola alanları hariç). Çatı, işi biten formun denetimsiz alanlarını sıfırladığı için bu açıkça yapılır.
+  - Yetenek yenileme formu, içerik kolonlarından (şart, bütün kayıtlar, bütün birimler, kolonlar, bütün kolonlar) biri kayıtta gelmediğinde gösterilmez: göremediği içeriği boş sayıp üzerine yazan bir form, değiştirilmeden gönderildiğinde yeteneği sessizce daraltır ya da boşaltır.
+  - Yenileme formunun ön doldurması kayıpsızdır: metne çevrilip geri çevrildiğinde özgün değerini vermeyen şart öğesi (virgül içeren liste öğesi, karışık tipli liste, baş ya da son boşluklu metin, boş metin) düzenlenebilir satır olarak açılmaz; saklandığı yazımla salt okunur gösterilir, gövdeye özgün değeriyle gider ve yalnız çıkarılabilir.
+  - Alan hatası alanın yanındadır: şart satırının hatası o satırın altında görünür ve hatalı girdi işaretlenir.
+  - Ad listesi alınamayınca sayfa ayakta kalır: grup, rol ya da izin listesi okunamıyorsa (yetki yok ya da ulaşılamadı) tablo yine çizilir ve silme, kaldırma gibi ada bağlı olmayan işler çalışır; yalnız seçim isteyen form yerine "liste alınamadı" iletisi çıkar. Adı bilinmeyen kimlik, kimliğin ilk sekiz karakteriyle gösterilir; "—" yalnız kayıtta gelmeyen kolon içindir.
+  - İş hatasının ekran iletisine çevrilmesi tek yerdedir (403, 404, 409 ve doğrulama hatası); satır başına yinelenen düğmeler hangi kayda ait olduklarını erişilebilir adlarında taşır.
+
 ## Oturumun yenilenmesi
 Ajan kararı (2026-11-25 gecesi; kullanıcı teyidi bekler); backend tarafı TS-002 AK-49'dadır.
 - Yenilemeyi ara katman yapar: isteği sayfadan önce karşılayan dosya, erişim çerezi yokken yenileme ve cihaz çerezi varsa backend'in yenileme ucunu çağırır. Sunucu bileşeni çerez yazamadığı için yenileme sayfanın çiziminde yapılamaz; ara katman çerezi hem süren isteğe hem cevaba yazabilen tek yerdir.
