@@ -55,6 +55,13 @@ Davranışlar, eklenecekleri sırayla:
 12. **Kapılar.** Push deseni yalnız gerçekten gönderen komutu tanır (komutun sözcükleri "git … push" ya da "gh pr create|merge" biçimindeyse); rapor denetimi raporu commit edilmiş hâlde arar; düzenleme kapısından geçmeden değişen dosyalar (kabuk betiğiyle yazılanlar) koşu sonunda ölçülür, kayda "kapı dışı yazım" diye geçer ve o dosyalara düşen kurallar inceleyiciye verilir.
 13. **İnceleme önerileri raporda.** Raporun ikinci otomatik bloğu, tablodaki görevlerin inceleme önerilerini (görev, dosya ve satır, ilk cümle) listeler; `rapor durum` açık öneri sayısını da söyler.
 14. **Tarayıcı senaryosu testi.** Bugün elle yapılan uçtan uca tarayıcı denemesi kayıtlı bir teste döner ve yerel deneme betiğinin üstünde koşar. Araç dışı, projeye ait iştir (yeni paket ister; ana oturum kurar) ve ayrı epic'tir.
+15. **Kapanmamış görev raporlanmış sayılmaz** (iş sürerken ölçüldü, 2026-11-25): rapor tablosu henüz koşmamış görevleri "bekliyor" diye aldığı için o görevler sonradan alınınca raporsuz sayılmıyor ve yeni raporun tablosuna girmiyordu (EP-009'un görevleri bir önceki raporun tablosuna böyle girdi). Görev bir raporda ancak tablosundaki satırı "alındı" ya da "atıldı" ise kapanmış sayılır; hiç koşmamış görev tabloya girmez.
+16. **Denetim koşumunun sertleştirilmesi** (2. davranışın incelemesinden, GV-122): denetimin komutu normatif içeriktir (kabul edilmiş düğümde sürüm artmadan değişemez); ajanın push kancası komut koşturmaz, komutlar yalnız git'in push kapısında koşar; bir denetimin komutu aracı çağırırsa iç içe koşum olmaz; kapı süreci kesilirse komut geride kalmaz; geçersiz komut "komutu yok" diye gizlenmez.
+
+### Ajan kararları (kullanıcı teyidi bekler)
+- **DN-002'nin komutu `pnpm` kullanmaz** (2026-11-25): `node backend/node_modules/vitest/vitest.mjs run --root backend <dosya>`. Gerekçe: push kapısı, `pnpm`'in yolda olmadığı kabuklarda da (bu oturumun kabuğu böyle; ölçüldü) koşabilmeli. Bedel: komut vitest'in paket içindeki dosya adına bağlıdır.
+- **KU-008 taslağının denetim düzeyi "mekanik" yapıldı ve DN-002'ye bağlandı** (2026-11-25): kural da denetim de taslak olduğu için kapıda koşmaz; kullanıcı ikisini kabul edince koşar. KU-008'in kapsamı (`backend/src/features/**`) değişmedi; denetim ortak kodu da sınar.
+- **DN-001 "yerleşik" olarak işaretlendi**: aracın kendi denetimidir (`denetle --dal` içinde koşar), komut taşımaz.
 
 ## Seçenekler
 ### 1. Taslak kural: uyarı mı, engel mi
@@ -70,7 +77,7 @@ Davranışlar, eklenecekleri sırayla:
 - B — Her denetim düğümü koşar: taslak bir düğüme yazılan komut onaysız çalışmış olur.
 
 ## Aşamalar
-Sıra davranışların numarasıdır; hepsi aynı dosyalara dokunduğu için görevler art arda koşar: (1) taslak uyarısı · (2) denetim düğümleri · (3, 4, 5) beyan, koşu geçmişi ve durum · (6, 7, 8, 9) taban yenileme, genişletme, not ve kendiliğinden devam · (10) alma sağlamlığı · (11) kart ön denetimi · (12) kapılar · (13) rapordaki öneriler · (14) tarayıcı senaryosu (ayrı epic).
+Sıra davranışların numarasıdır; hepsi aynı dosyalara dokunduğu için görevler art arda koşar: (1) taslak uyarısı · (2) denetim düğümleri · (3, 4, 5) beyan, koşu geçmişi ve durum · (6, 7, 8, 9) taban yenileme, genişletme, not ve kendiliğinden devam · (10) alma sağlamlığı · (11) kart ön denetimi · (12) kapılar · (13) rapordaki öneriler · (15) kapanmamış görev · (16) denetim sertleştirmesi · (14) tarayıcı senaryosu (ayrı epic).
 
 ## Doğrulama
 - Her görev aracın test klasörüne kendi test dosyasını ekler; her davranışın en az bir kırmızı ve bir yeşil örneği vardır.
