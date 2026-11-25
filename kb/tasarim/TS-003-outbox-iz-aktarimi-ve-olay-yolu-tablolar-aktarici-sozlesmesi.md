@@ -144,6 +144,13 @@ Görevlerin gerçekleşen dökümü ve kartlarda verilen tasarım kararları (20
   - Veritabanının bütününe dair yokluk sınaması da aynı sınıftandır (GV-038 incelemesi; ajan kararı): iz veritabanında hiç yabancı anahtar olmadığını doğrulayan sınama, erişim kaydının bağlantı tabloları eklenince kırılır; sınama değişiklik kaydı tablosuyla sınırlanır.
 - İncelemelerin açık bıraktıkları: kuyruk kapısının kimlik kısıtı (salt sayı ve iki nokta reddedilir) arayüzde yazmıyor; kuyruk bağdaştırıcısında hata olayına dinleyici bağlı değil; test veritabanının silinememesi iz bırakmadan yutuluyor.
 
+### Ajan kararları (kullanıcı teyidi bekler)
+Ayrıntıları bu kaydın "Onarım" maddelerindedir; burada kabul sorusunda görünsünler diye sayılır.
+- AK-1: Onarım (GV-019 incelemesi): uygulama kapanış kancalarını açar ve bu, derlenmiş uygulamaya sinyal gönderilerek sınanır; `bullmq` için dinamik içe aktarma da yasaklanır.
+- AK-2: Tam tablo listesi sınaması yazılmaz: bütün tabloları birebir sayan test, şemaya her tablo eklendiğinde başka görevin testini kırar; test yalnız kendi tablolarının varlığına bakar.
+- AK-3: Aynı sınıftan kırılgan sınamalar kaldırılır: göç klasörlerinin sayısını ya da son göçün adını birebir doğrulayan sınamalar.
+- AK-4: Veritabanının bütününe dair yokluk sınaması da aynı sınıftandır: iz veritabanında hiç yabancı anahtar olmadığını doğrulayan sınama daraltılır.
+
 ## Doğrulama
 Denetim kimliği ve ölçüm tarihi yok; kod yazılmadı. Görev kartlarına ölçüt olarak girecekler: iş geri alınınca not oluşmaz; iki aktarıcı yan yana aynı notu iki kez yazmaz; iz bağlantısı reddedilirken notlar bekler ve dönünce ulaşır; bozuk satır öbürlerini durdurmaz ve silinmez; büyük sürümlü not alınmaz; çökme penceresinden sonra kayıt tek kalır.
 

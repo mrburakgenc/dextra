@@ -123,7 +123,14 @@ Bugün geçersiz alanın `dogrulama_hatasi` cevabındaki `neden` metni doğrulam
 - B (seçildi; kalıp böyle yazıldı) — Değer nesnesi ret kodunu döndürür ("kısa", "uzun") ve sınırlarını dışa açar; komutun yanındaki alan yardımcısı kodu kitaplığın kendi sorununa çevirir. Kazanç: taşıma hiçbir cevabı değiştirmez, kural yine tek yerdedir, domain'e kitaplık girmez. Bedel: ileti bugünkü gibi İngilizce kalır.
 - Ayrı iş (bu epic'in dışında; sözleşme değişikliği olduğu için kendi görevi ve incelemesi olur): doğrulama iletilerinin tek yerden Türkçeleştirilmesi (doğrulama borusunda kitaplığın yerelleştirmesi), böylece bütün alan iletileri aynı dilde olur.
 
-Ek ajan kararları: komut yolu (bus) ve ortak taban sınıfı eklenmez, işleyici doğrudan çağrılır (isteyen bilgisi istek bağlamından gelir; KU-013). İşleyicinin yanında birim testi zorunlu değildir: kurallar domain'e taşındığı için birim testleri domain dosyalarının yanındadır, işin bütünü uçtan uca testlerle sınanmaya devam eder (kanondan sapma; teyit bekler). Sonuç dosyası yalnız işleyici veri döndürüyorsa yazılır.
+### Ajan kararları (kullanıcı teyidi bekler)
+- AK-1: Doğrulamanın yeri: Zod şeması komutun ve sorgunun yanındadır (Seçenekler 1-A).
+- AK-2: Adların dili: Türkçe adlar kalır, kanonun kalıbı Türkçe uygulanır (Seçenekler 2-A; kanon İngilizce ad ister).
+- AK-3: Varlığın kapsamı: varlık yalnız yazma tarafındadır; okuma düz kayıt döndürür (Seçenekler 3-A).
+- AK-4: Alan kuralının ret iletisi: değer nesnesi ret kodu döndürür, ileti değişmez (Seçenekler 4-B).
+- AK-5: Komut yolu (bus) ve ortak taban sınıfı eklenmez, işleyici doğrudan çağrılır; isteyen bilgisi istek bağlamından gelir (KU-013).
+- AK-6: İşleyicinin yanında birim testi zorunlu değildir: kurallar domain'e taşındığı için birim testleri domain dosyalarının yanındadır, işin bütünü uçtan uca testlerle sınanır (kanondan sapma).
+- AK-7: Sonuç dosyası yalnız işleyici veri döndürüyorsa yazılır.
 
 ## Aşamalar
 Hepsi çift yönlüdür (dosya düzeni ve adlar; veri ve sözleşme değişmez).
