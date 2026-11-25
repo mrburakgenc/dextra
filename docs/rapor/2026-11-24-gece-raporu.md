@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 87 görevin 79 tanesi alındı. Son koşuların ve incelemelerin toplamı: 837 dakika, 328.13 dolar.
+Kayıtlı 88 görevin 82 tanesi alındı. Son koşuların ve incelemelerin toplamı: 869 dakika, 341.37 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -84,14 +84,14 @@ Kayıtlı 87 görevin 79 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-060 | EP-003 23 | Yazma kapısının düzeltmesi, kimlik kaynaklarının sistem alanları ve iki lint yasağı | alındı | 7.6 | 7.7 | 5.67 | 6 | 0 engel, 2 öneri | 0 |
 | GV-061 | EP-003 24 | Unit of Work'ün yazma işareti ve erişim kaydının salt okuma kuralı | alındı | 5.5 | 4.2 | 3.59 | 6 | 0 engel, 0 öneri | 0 |
 | GV-062 | EP-006 4.2 | Kullanıcı aç | alındı | 7.3 | 5.2 | 5.68 | 8 | 0 engel, 2 öneri | 0 |
-| GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | tamam | 3.1 | 5.8 | 4.37 | 8 | — | 0 |
-| GV-064 | EP-006 4.4 | Kullanıcıyı pasife al ve yeniden aç | bekliyor | — | — | — | 0 | — | 0 |
+| GV-063 | EP-006 4.3 | Kullanıcı güncelle ve parola bağlantısı üret | alındı | 2.2 | 4.4 | 3.07 | 8 | 0 engel, 1 öneri | 1 |
+| GV-064 | EP-006 4.4 | Kullanıcıyı pasife al ve yeniden aç | tamam | 9.4 | — | 3.65 | 7 | — | 0 |
 | GV-065 | EP-006 5.2 | Rol: oluştur, adını değiştir ve sil | alındı | 5.9 | 4.6 | 4.96 | 7 | 0 engel, 0 öneri | 1 |
 | GV-066 | EP-006 6.2 | Grup: oluştur ve adını değiştir | alındı | 6.0 | 5.8 | 5.62 | 8 | 0 engel, 3 öneri | 0 |
 | GV-067 | EP-006 6.3 | Grup: taşı ve sil | alındı | 4.8 | 5.1 | 4.27 | 8 | 0 engel, 2 öneri | 0 |
 | GV-068 | EP-006 7.2 | Üyelik: ver ve kaldır | soru | 1.7 | — | 1.22 | 0 | — | 0 |
 | GV-069 | EP-006 8.2 | Yetenek: yaz ve sil | alındı | 2.6 | 6.8 | 4.59 | 8 | 0 engel, 3 öneri | 0 |
-| GV-070 | EP-006 8.3 | Yetenek: yenile | soru | 1.9 | — | 1.07 | 0 | — | 2 |
+| GV-070 | EP-006 8.3 | Yetenek: yenile | alındı | 6.1 | 4.6 | 4.72 | 8 | 0 engel, 1 öneri | 2 |
 | GV-071 | EP-005 4 | Yönetim testlerinin ortak kurulumunda bağlantı sayımı | alındı | 1.8 | 2.0 | 1.38 | 1 | 0 engel, 0 öneri | 0 |
 | GV-072 | EP-003 25 | Okuma kapısı: canlılık süzgeci, boş ve dolu işleçleri ve kapıların tek modülü | alındı | 0.7 | 6.2 | 2.82 | 7 | 0 engel, 2 öneri | 1 |
 | GV-073 | EP-007 1 | Kullanıcılar ekranı: liste, sayfalama ve menü | alındı | 1.5 | 5.0 | 2.71 | 8 | 0 engel, 0 öneri | 0 |
@@ -106,9 +106,10 @@ Kayıtlı 87 görevin 79 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-082 | EP-006 7.3 | Üyelik: ver ve kaldır | alındı | 1.0 | 6.0 | 3.60 | 8 | 0 engel, 3 öneri | 1 |
 | GV-083 | EP-006 5.3 | Rol sil: açık sistem rolü denetimi | alındı | 2.1 | 2.8 | 1.93 | 2 | 0 engel, 0 öneri | 0 |
 | GV-084 | EP-007 3 | Kullanıcı işleri ekranları: aç, kayıt sayfası, güncelle, pasife al, yeniden aç, kod üret | alındı | 10.1 | 5.3 | 6.12 | 15 | 0 engel, 3 öneri | 0 |
-| GV-085 | EP-003 27 | Derleyici: şart değerinin ve işlecin kolon tipine uyumu | soru | 3.6 | — | 1.64 | 0 | — | 1 |
+| GV-085 | EP-003 27 | Derleyici: şart değerinin ve işlecin kolon tipine uyumu | tamam | 4.2 | 8.3 | 5.27 | 9 | — | 2 |
 | GV-086 | EP-003 28 | Hata süzgeci: yabancı anahtar ihlali cakisma (409) olur | alındı | 2.5 | 3.4 | 2.28 | 2 | 0 engel, 1 öneri | 0 |
-| GV-087 | EP-007 4 | Rol ve grup işleri ekranları: oluştur, adını değiştir, taşı, sil | bekliyor | — | — | — | 0 | — | 0 |
+| GV-087 | EP-007 4 | Rol ve grup işleri ekranları: oluştur, adını değiştir, taşı, sil | alındı | 2.9 | 5.0 | 3.60 | 28 | 0 engel, 4 öneri | 1 |
+| GV-088 | EP-007 5 | Üyelik ekranı: kullanıcının üyelikleri, üyelik ver ve kaldır | bekliyor | — | — | — | 0 | — | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -183,6 +184,8 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-085 | işçi soruyla durdu: üretilmiş istemci alan tipini ayırt etmiyor | bitiş kaydı | cevaplandı: derleyicinin doğruladığı tip tablosu |
 | GV-063 | inceleme kaldı: sistem aktörünün görünen adı değiştirilebiliyor | inceleme kaydı | bulguyla yeniden koştu |
 | GV-070 | iki kez soru: kartın yanlış cümlesi; sonra korunan satır bilgisinin çekirdekte olmaması | bitiş kaydı | karar AK-46 ve eki; iki kez cevaplandı |
+| GV-087 | işçi soruyla durdu: iki kartım çelişiyor (grup listesinde ad bağlantısı) | bitiş kaydı | karar verildi, cevaplandı |
+| GV-085 | inceleme kaldı: sayı değerinde tam sayı ve aralık denetimi yok | inceleme kaydı | bulguyla yeniden koştu |
 
 ## 6. Hatalarım
 
@@ -205,6 +208,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - GV-072'nin kartında, kimlik modülünü kök modülsüz kuran testleri aramadım; kapıları tek modüle toplayınca o testlerin açılmayacağını inceleyici buldu. Uygulamanın bütününe dokunan işte etkilenen testleri kart yazarken aramak gerekiyordu (AK-29'daki dersin aynısı).
 - Bitiş kaydındaki dosya listesi duruşlarının nedeni kartlarımdaki cümleydi: 'dokunulan listesi yalnız depoda izlenen ve değişen dosyaların yollarını taşır' yazmışım. İşçiler bunu harfiyen okuyup yeni eklenen (henüz izlenmeyen) dosyaları listeye koymuyor; araç gerçekte değişenle karşılaştırıp uyuşmazlık sayıyor. Bu gece altı duruş bu cümleden (GV-049, GV-053, GV-056, GV-073 iki kez, GV-080). Cümle sonraki kartlar için düzeltildi; önceden yazılmış dört kart (GV-063, GV-064, GV-067, GV-070) eski cümleyi taşıyor.
 - GV-070'in kartına 'sistem satırı yenilenebilir' yazdım; bu, kullanıcının KR-008'deki seçimlerine ve değişmez 8'e aykırıydı. İşçi kodu yazmadan durup sordu.
+- İki ön yüz kartım birbiriyle çelişti: liste görevinde grup adını alt grup süzgeci yaptırdım, sonraki görevde 'satırdaki ad kayıt sayfasına bağlantıdır' dedim. İşçi durup sordu.
 
 ## 7. Araçta (harness) değişenler
 
@@ -251,6 +255,9 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Ertelenen: tohum satırının yönetici tarafından yenilenmesi (KR-008 Seçim 16'daki zincir); 'yeteneğin künyesi' çekirdek eki (yenilemeyi okuma yeteneğinden bağımsız kılar); yazma kapısında niyet eylemiyle oluşturma yolu.
 - Hata süzgeci 'kayıt bulunamadı' veritabanı hatasını (güncellenecek satır yok) tanımıyor; SuperAdmin üyeliği verirken var olmayan kişi 500 dönüyor (GV-082 incelemesi). Öneri: bulunamadi (404) koduna çevrilsin.
 - Kimlik sistem aktörü görünen adıyla bulunuyor (AK-2); ad değişikliği artık reddediliyor ama sabit bir kimlik ya da ayrı bir işaret daha sağlam olur.
+- TEYİDİNİ BEKLEYEN KARAR (KR-010 Seçim 48): AK-47 ve eki, bütünlük sorusunu çağırabilen işlerin listesi genişletildi (kullanıcı güncelle, yeniden aç ve öbür yönetim işleri).
+- Ön yüzde 403, 404 ve çakışma iletilerinin ekrana çevrilmesi iki dosyada yineleniyor (GV-087 incelemesi); tek yere toplanmalı.
+- Ön yüzde form hata dönünce yazılanlar siliniyor (çatının form davranışı; GV-084 incelemesi); alanların değeri hata durumunda korunmalı.
 
 ## 9. PR'lar
 
@@ -332,3 +339,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 03:09 — GV-063 (kullanıcı güncelle ve bağlantı üret) incelemede kaldı: yeni uç kimlik sistem aktörünün görünen adını değiştirmeye izin veriyordu; çekirdek o aktörü görünen adıyla bulduğu için kurulum komutu ve adres uymazlığında oturum kapatma bozulurdu. Bulguyla yeniden koştu, incelemede.
 - 03:09 — GV-070 (yetenek yenile) iki kez soruyla durdu. İlki benim kart hatamdı (sistem satırı yenilenebilir demişim; KR-008 Seçim 15 ve 30'a aykırı). Karar AK-46 ve eki: sistem satırı ve tohum satırı yenilenemez; yenileme yenile ve oluştur yeteneklerini birlikte ister; eski satır okuma kapısından okunur ve iş kapalı tarafa düşer. Cevaplandı, sürüyor.
 - 03:09 — Ön yüzde rol ve grup işleri ekranları (GV-087) başladı.
+- 03:29 — GV-063 (kullanıcı güncelle ve parola bağlantısı üret) dört koşuda alındı: ikinci inceleme davranışı değil, çekirdek soruyu çağıran listesine sormadan ek yapılmasını engel saydı; karar AK-47 ve eki (teyidini bekler). Üç kullanıcı testi 75. GV-070 (yetenek yenile) alındı: üç yetenek testi 62; yetenek alt özelliği tamam. GV-087 (ön yüzde rol ve grup işleri ekranları) alındı: altı test dosyasında 84 test; iki kartım çelişiyordu (grup listesinde satırdaki ad), karar: ad kayıt sayfasına gider, süzgeç ayrı bağlantıya taşındı. Her alımdan sonra tip ve lint 0.
+- 03:29 — GV-085 (derleyicide tip denetimi) incelemede kaldı: sayı değerinde tam sayı ve aralık denetimi yoktu; bulguyla yeniden koştu, incelemede. Kartın dışındaki bir testte tek satırlık değişiklik gerektiriyor; alma, o satırı ekleyecek küçük görevle art arda yapılacak. GV-064 (pasife al ve yeniden aç) incelemede. Ön yüzde üyelik ekranı (GV-088) koşuyor.
