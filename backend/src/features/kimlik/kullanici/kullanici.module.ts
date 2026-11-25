@@ -4,8 +4,10 @@ import { Registrar } from '../../../shared/database/registrar.js';
 import { OkumaKapisi } from '../../../shared/yetki/okuma-kapisi.js';
 import { KimlikCekirdekModule } from '../_shared/kimlik-cekirdek.module.js';
 import { KullaniciAcHandler } from './application/kullanici-ac.handler.js';
+import { KullaniciGuncelleHandler } from './application/kullanici-guncelle.handler.js';
 import { KullaniciListeleHandler } from './application/kullanici-listele.handler.js';
 import { KullaniciOkuHandler } from './application/kullanici-oku.handler.js';
+import { ParolaBaglantisiUretHandler } from './application/parola-baglantisi-uret.handler.js';
 import {
   KULLANICI_REPO,
   KullaniciYazmaRepo,
@@ -25,6 +27,8 @@ import { KullaniciController } from './presentation/kullanici.controller.js';
     KullaniciListeleHandler,
     KullaniciOkuHandler,
     KullaniciAcHandler,
+    KullaniciGuncelleHandler,
+    ParolaBaglantisiUretHandler,
     { provide: KullaniciYazmaRepo, useClass: KullaniciKapiYazmaRepo },
   ],
 })

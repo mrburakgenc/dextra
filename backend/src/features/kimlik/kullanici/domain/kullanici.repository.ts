@@ -33,6 +33,23 @@ export abstract class KullaniciYazmaRepo {
     isAdi: string,
     kullanici: YeniKullanici,
   ): Promise<string>;
+
+  // Yalnız görünen adı yazar; satırı tutan güncelleme yeteneği yoksa bulunamadi, tutan yetenek
+  // görünen adı kapsamıyorsa yetki_yok.
+  abstract gorunenAdiDegistir(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+    gorunenAd: string,
+  ): Promise<void>;
+
+  // Parola bağlantısı üretme niyeti (Kullanici:parola_baglantisi_uret): hiçbir kolon yazmaz, kişinin
+  // satırını yeteneğin şartıyla kilitler ve not bırakır; satırı tutan yetenek yoksa bulunamadi.
+  abstract parolaBaglantisiNiyeti(
+    islem: Islem,
+    isAdi: string,
+    id: string,
+  ): Promise<void>;
 }
 
 export const KULLANICI_REPO = new RepoBelirteci<
