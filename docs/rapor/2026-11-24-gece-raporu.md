@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 97 görevin 90 tanesi alındı. Son koşuların ve incelemelerin toplamı: 947 dakika, 374.01 dolar.
+Kayıtlı 98 görevin 93 tanesi alındı. Son koşuların ve incelemelerin toplamı: 982 dakika, 387.30 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -116,9 +116,10 @@ Kayıtlı 97 görevin 90 tanesi alındı. Son koşuların ve incelemelerin topla
 | GV-092 | EP-003 29 | Hata süzgeci: kayıt yok veritabanı hatası bulunamadi (404) olur | alındı | 2.0 | 3.6 | 2.28 | 2 | 0 engel, 1 öneri | 0 |
 | GV-093 | EP-007 6 | Yetenek ekranları: liste, yaz, yenile ve sil | alındı | 13.0 | 7.8 | 8.72 | 18 | 0 engel, 5 öneri | 0 |
 | GV-094 | EP-003 30 | Oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım ve kapatıp reddeden dallar | alındı | 11.4 | 5.3 | 7.26 | 12 | 0 engel, 4 öneri | 0 |
-| GV-095 | EP-007 7 | Oturumun sessiz yenilenmesi: ara katmanda yenileme ve çerezlerin döndürülmesi | bekliyor | — | — | — | 0 | — | 0 |
-| GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | bekliyor | — | — | — | 0 | — | 0 |
-| GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | bekliyor | — | — | — | 0 | — | 0 |
+| GV-095 | EP-007 7 | Oturumun sessiz yenilenmesi: ara katmanda yenileme ve çerezlerin döndürülmesi | alındı | 1.5 | 6.8 | 3.07 | 6 | 0 engel, 1 öneri | 1 |
+| GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | tamam | 3.8 | 8.3 | 4.83 | 23 | — | 0 |
+| GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | alındı | 2.3 | 5.8 | 3.28 | 3 | 0 engel, 1 öneri | 1 |
+| GV-098 | EP-007 9 | Lint sınırlarına ara katman dosyasının eklenmesi | alındı | 3.1 | 3.6 | 2.12 | 1 | 0 engel, 1 öneri | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -196,6 +197,9 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-087 | işçi soruyla durdu: iki kartım çelişiyor (grup listesinde ad bağlantısı) | bitiş kaydı | karar verildi, cevaplandı |
 | GV-085 | inceleme kaldı: sayı değerinde tam sayı ve aralık denetimi yok | inceleme kaydı | bulguyla yeniden koştu |
 | GV-089 | koşturulamadı: önkoşul task'ında ölü yaprak var (benim kart hatam) | araç çıktısı | aynı kart GV-090 olarak yeniden eklendi |
+| GV-095 | işçi soruyla durdu: lint ayar dosyası kartın dosya listesinde yok (benim kart hatam) | bitiş kaydı | 'iki lint hatası beklenir' diye cevaplandı; GV-098 düzeltti |
+| GV-097 | inceleme kaldı: kartın iki isteği çelişiyor (benim kart hatam) | inceleme kaydı | üst sınır 4 saniye diye cevaplandı |
+| GV-096 | inceleme kaldı: var olan hata iletisi bozulmuş | inceleme kaydı | bulgularla yeniden koştu |
 
 ## 6. Hatalarım
 
@@ -221,6 +225,8 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 - İki ön yüz kartım birbiriyle çelişti: liste görevinde grup adını alt grup süzgeci yaptırdım, sonraki görevde 'satırdaki ad kayıt sayfasına bağlantıdır' dedim. İşçi durup sordu.
 - Senaryo görevini ilk eklediğimde (GV-089) önkoşul olarak üyelik task'ını yazdım; o task'ın içinde eski tabanda takılı kalan ölü yaprak (GV-068) olduğu için görev hiç koşamadı. Aynı kartı o bağ olmadan yeniden ekledim (GV-090). GV-089 da atılacak ölü yapraklara eklendi.
 - Ön yüzdeki yetenek kartını backend kodunu okumadan, tasarımdan aklımda kalanla yazmıştım; koşturmadan önce koda bakınca dört yerde yanlış olduğunu gördüm ve düzelttim.
+- GV-095'in kartına lint ayar dosyasını yazmadım; yeni ara katman dosyası lint'in sınır listesinde yoktu ve işçi durup sordu. Ana dalda lint yedi dakika iki hatayla kırmızı kaldı (GV-098 düzeltti).
+- GV-097'nin kartında iki isteğim çelişiyordu (bekleme üst sınırı 10 saniye ve 'test başına süre sabiti olmasın'; varsayılan test süresi 5 saniye). İnceleme yakaladı; üst sınır 4 saniye oldu.
 
 ## 7. Araçta (harness) değişenler
 
@@ -279,6 +285,10 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Yetenek yenileme formu, kişinin göremediği içerik kolonunu boş sayıp üzerine yazabiliyordu ve virgül içeren liste değerini bozabiliyordu (GV-093 incelemesi); değiştirilmeden gönderilen form yeteneği daraltabilirdi. GV-096 bunu kapatıyor.
 - TEYİDİNİ BEKLEYEN OKUMALAR (AK-49 eki): yeniden kullanımda süresi geçmiş ama kapatılmamış oturumlar da 'yeniden kullanım' nedeniyle kapanıyor; gövdesi bozuk yenileme isteği 401 değil 400 dönüyor; oturum satırının kilidinin gerçekten alındığı ölçülmedi.
 - İşçiler üç görevde bir dosyayı düzenleme aracıyla değil kabuk betiğiyle yazdı (GV-087, GV-085, GV-094); araç bunu engellemiyor, kural gösteren hook atlanıyor.
+- Tarayıcı denemesinde görüldü: silinmiş ya da yenilenmiş kaydın sayfası (rol, grup, yetenek) kaydı canlı gibi gösteriyor ve iş düğmelerini çiziyor; backend işi 'Kayıt bulunamadı' diye reddediyor, yani açık değil, tutarsızlık. Sıradaki ön yüz görevine eklendi.
+- Tarayıcı denemesinde görüldü: değeri boş olan kolon da (sistem aktörünün kullanıcı adı, telefon) '—' ile gösteriliyor; TS-004'te '—' 'göremediğin kolon' demek. İki durum ayrı gösterilmeli.
+- Pasif kişinin sayfasında 'Üyelik ver' ve 'Parola kodu üret' hâlâ görünüyor; backend 409 ile reddeder.
+- Yerel deneme betiği Ctrl-C ile kapanınca temizliği yapıyor ama 1 koduyla çıkıyor.
 
 ## 9. PR'lar
 
@@ -368,3 +378,6 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 03:49 — Büyük eksik bulundu: oturum yenileme backend'de hiç yazılmamış; ön yüzde oturum 15 dakikada düşüyor. Tasarımdaki iki açık noktayı kapatıp (AK-49) backend görevini (GV-094) başlattım; ön yüz tasarımı TS-004'e yazıldı ('Oturumun yenilenmesi'). Ön yüzde yetenek ekranları (GV-093) koşuyor.
 - 04:07 — GV-094 (oturum yenileme: döndürme, hoşgörü penceresi, yeniden kullanım) ilk koşuda alındı: yenileme, giriş, guard ve senaryo testleri 80; belirteç birim testi 23; tip ve lint 0. İşleyiciyi kendim de okudum: ret dalları işlemi tamamlıyor, günlüğe değer yazılmıyor. GV-093 (ön yüzde yetenek ekranları) ilk koşuda alındı: dört test dosyasında 68 test; derlemede üç yeni rota.
 - 04:07 — Ön yüzde sessiz oturum yenileme (GV-095) ve yönetim formlarının sertleştirilmesi (GV-096) koşuyor. Backend'de 'kayıt yok' dalının uyarı günlüğü ve senaryo testindeki aktarım yarışı için GV-097 koşuyor.
+- 04:33 — GV-095 (ön yüzde sessiz oturum yenileme) iki koşuda alındı: dört test dosyasında 74 test. GV-098 (lint sınırlarına ara katman dosyası) alındı: lint yeniden 0. GV-097 (kayıt yok dalının uyarı günlüğü ve senaryo testindeki yarış) üç koşuda alındı: üç test dosyasında 51 test.
+- 04:33 — GERÇEK TARAYICIDA UÇTAN UCA DENEME (04:29-04:33; yerel deneme betiği, geçici veritabanları; form sertleştirme görevinden önceki derleme): ilk yönetici parolasını belirledi ve girdi; grup, rol ve kullanıcı açtı; kullanıcıya üyelik verdi; (Destek, Okuyucu) kümesine 'yeteneğin grubu ve altı' şartıyla Grup:oku yeteneği yazdı; yeteneği yeniledi (kolon sınırı yalnız ad; yeni satırın sayfasına gidildi); görünen adı değiştirdi; pasife aldı ve yeniden açtı (Destek üyeliği geri gelmedi, temel üyelik yeniden yazıldı); parola kodu üretti; üyesi olan rolü silmeyi denedi (backend'in 409 iletisi göründü). OTURUM YENİLEME: erişim çerezi silinip sayfa istenince liste 200 ile geldi, erişim ve yenileme çerezleri değişti (14 dakika ve 7 gün), üç çerez de betiğe kapalı, document.cookie boş. KISITLI KULLANICI: ikinci kişi girince menüde yalnız 'Gruplar' var, listede yalnız Destek görünüyor (Kök yok), kullanıcılar sayfası 'Bu sayfayı görme yetkin yok', yeni grup sayfası 'Bu iş için yetkin yok' diyor. Çıkışta üç çerez silindi. Görüntü: docs/rapor/gorsel/2026-11-25-kisitli-kullanici.png. Ortam kapatıldı: iki geçici veritabanı silindi, 3001 ve 3100 boş.
+- 04:33 — GV-096 (yönetim formlarının sertleştirilmesi) incelemede kaldı (bir hata iletisi İngilizce 'Invalid input'a dönmüş; yetenek formu betiksiz tarayıcıda adres çubuğuna düz gönderime düşüyordu); bulgularla yeniden koştu, incelemede.
