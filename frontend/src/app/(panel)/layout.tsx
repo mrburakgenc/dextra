@@ -27,6 +27,7 @@ const MENU = [
   { etiket: 'Roller', adres: '/roller', kaynak: 'Rol' },
   { etiket: 'Gruplar', adres: '/gruplar', kaynak: 'Grup' },
   { etiket: 'İzinler', adres: '/izinler', kaynak: 'Izin' },
+  { etiket: 'Yetenekler', adres: '/yetenekler', kaynak: 'Yetenek' },
 ] as const;
 
 // Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden giriş ekranına dönülür. Bu bir

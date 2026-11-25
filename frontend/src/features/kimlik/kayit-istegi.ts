@@ -15,7 +15,7 @@ export type KayitSonucu<K> =
 
 // uuid olmayan kimlik backend yoluna konmaz; böyle bir kayıt olamayacağı için bulunamadı sayılır.
 export async function kaydiGetir<K>(
-  kaynak: 'rol' | 'grup',
+  kaynak: 'rol' | 'grup' | 'yetenek',
   id: string,
   kayit: z.ZodType<K>,
 ): Promise<KayitSonucu<K>> {
