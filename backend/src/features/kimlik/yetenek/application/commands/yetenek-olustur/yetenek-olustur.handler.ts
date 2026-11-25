@@ -2,6 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../../../../../shared/database/infrastructure/unit-of-work.js';
 import { GenelSayac } from '../../../../_shared/application/genel-sayac.js';
+import { YAZILMAMIS_ETKI } from '../../../domain/entities/yetenek.entity.js';
 import {
   type IYetenekYazmaRepo,
   YETENEK_YAZMA_REPO,
@@ -29,6 +30,8 @@ export class YetenekOlusturHandler {
     grupId,
     rolId,
     izinId,
+    giremez = YAZILMAMIS_ETKI.giremez,
+    oncelik = YAZILMAMIS_ETKI.oncelik,
     icerik,
   }: YetenekOlusturKomutu): Promise<YetenekOlusturSonucu> {
     return this.uow.run(async (islem) => {
@@ -37,6 +40,7 @@ export class YetenekOlusturHandler {
         islem,
         { grupId, rolId, izinId },
         icerik,
+        { giremez, oncelik },
       );
       return { id: await this.yazma.olustur(islem, IS_ADI, yetenek) };
     });

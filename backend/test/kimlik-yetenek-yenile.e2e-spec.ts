@@ -9,6 +9,7 @@ import pg from 'pg';
 import request from 'supertest';
 import { type KimlikOrtami, kimlikOrtamiKur } from './kimlik-yardimci.js';
 import { localInfrastructure } from './local-infrastructure.js';
+import { yasakKisitiniBaglantiylaDusur } from './yardimci/yasak-kisiti.js';
 
 const YOL = '/kimlik/yetenek';
 
@@ -580,5 +581,128 @@ describe('ortak', () => {
         'dogrulama_hatasi',
       );
     }
+  });
+});
+
+describe('e) etki ve öncelik (TS-008; KU-020; yazım kapalı, kapanan AU-17)', () => {
+  // (GRUP_A, ROL_A) kümesine Kullanici:oku veren satırlar: etkisiz, öncelikli (7) ve yasak. Öncelikli ve
+  // yasak satır, eski satırdan taşınan değeri göstermek için kısıt düşürülerek SQL ile yazılır.
+  const Y_D = 'c4000000-0000-4000-8000-000000000006';
+  const Y_ONCELIKLI = 'c4000000-0000-4000-8000-000000000007';
+  const Y_YASAK = 'c4000000-0000-4000-8000-000000000008';
+  const ROL_ETKISIZ = 'c2000000-0000-4000-8000-000000000005';
+  const belirtec = (): string => ortam.superadmin.erisimBelirteci;
+  let etkisiz: { id: string; erisimBelirteci: string };
+  let yeniD: string;
+
+  async function etkisi(id: string): Promise<Kayit | undefined> {
+    const {
+      rows: [satir],
+    } = await ortam.db.query<Kayit>(
+      'select giremez, oncelik from yetenek where id = $1',
+      [id],
+    );
+    return satir;
+  }
+
+  async function ayrinti(id: string, govde: Govde): Promise<unknown> {
+    const cevap = await yenile(id, govde, belirtec());
+    expect(cevap.status).toBe(400);
+    return (cevap.body as { ayrinti: unknown }).ayrinti;
+  }
+
+  beforeAll(async () => {
+    await yasakKisitiniBaglantiylaDusur(ortam.db);
+    await ortam.db.query(
+      `insert into yetenek (id, grup_id, rol_id, izin_id, butun_kayitlar, butun_kolonlar, giremez,
+                            oncelik, koken)
+       values ($1, $4, $5, $6, true, true, false, 0, 'yonetici'),
+              ($2, $4, $5, $6, true, true, false, 7, 'yonetici'),
+              ($3, $4, $5, $6, true, true, true, 0, 'yonetici')`,
+      [Y_D, Y_ONCELIKLI, Y_YASAK, GRUP_A, ROL_A, kullaniciOku],
+    );
+    // İki kolonu göremeyen: yenileyip oluşturabilir, yetenekleri giremez ve oncelik dışındaki bütün
+    // kolonlarla okur.
+    await ortam.db.query(
+      "insert into rol (id, ad) values ($1, 'Etkiyi göremeyen')",
+      [ROL_ETKISIZ],
+    );
+    await yetenekVer(ROL_ETKISIZ, await izinKimligi('Yetenek', 'oku'), [
+      ...SISTEM_SATIRI_DISINDA,
+      'sistemSatiri',
+    ]);
+    await yetenekVer(ROL_ETKISIZ, await izinKimligi('Yetenek', 'yenile'));
+    await yetenekVer(ROL_ETKISIZ, await izinKimligi('Yetenek', 'olustur'));
+    await yetenekVer(ROL_ETKISIZ, await izinKimligi('Izin', 'oku'));
+    etkisiz = await ortam.kullaniciAc('etkisiz');
+    await uyeYap(etkisiz.id, ROL_ETKISIZ);
+  });
+
+  it('gövdede giremez 400 dogrulama_hatasi: etki çevrilemez', async () => {
+    for (const giremez of [true, false]) {
+      await reddedilir(
+        () => yenile(Y_D, icerik({ giremez }), belirtec()),
+        400,
+        'dogrulama_hatasi',
+      );
+    }
+  });
+
+  it('giremez ve oncelik kolonlarını göremeyen kişi karar kolonu kuralıyla 403 yetki_yok alır', async () => {
+    await reddedilir(
+      () => yenile(Y_D, icerik(), etkisiz.erisimBelirteci),
+      403,
+      'yetki_yok',
+    );
+  });
+
+  it('öncelik verilmeden yenilenen satırın etkisi ve önceliği eski satırınkidir (yeni satırda okunur)', async () => {
+    const cevap = await yenile(Y_D, icerik(), belirtec());
+    expect(cevap.status).toBe(201);
+    yeniD = (cevap.body as { id: string }).id;
+    expect(await etkisi(yeniD)).toEqual({ giremez: false, oncelik: 0 });
+  });
+
+  it('öncelik verilmezse eski satırın sıfırdan farklı önceliği taşınır ve yazım kapalı reddeder', async () => {
+    await reddedilir(
+      () => yenile(Y_ONCELIKLI, icerik(), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+    expect(await ayrinti(Y_ONCELIKLI, icerik())).toEqual([
+      { alan: 'oncelik', neden: 'sıfırdan farklı öncelik kapalı' },
+    ]);
+  });
+
+  it('verilen öncelik eskisinin yerine yazılır', async () => {
+    const cevap = await yenile(
+      Y_ONCELIKLI,
+      icerik({ oncelik: 0 }),
+      belirtec(),
+    );
+    expect(cevap.status).toBe(201);
+    expect(await etkisi((cevap.body as { id: string }).id)).toEqual({
+      giremez: false,
+      oncelik: 0,
+    });
+  });
+
+  it('etki eski satırdan gelir: yasak satırın yenilemesi yazım kapalıyla reddedilir', async () => {
+    await reddedilir(
+      () => yenile(Y_YASAK, icerik(), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+    expect(await ayrinti(Y_YASAK, icerik())).toEqual([
+      { alan: 'giremez', neden: 'yasak yazımı kapalı' },
+    ]);
+  });
+
+  it('oncelik 5 ile yenileme 400 dogrulama_hatasi; hiçbir satır değişmez', async () => {
+    await reddedilir(
+      () => yenile(yeniD, icerik({ oncelik: 5 }), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
   });
 });

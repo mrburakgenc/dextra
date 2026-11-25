@@ -517,6 +517,53 @@ describe('f) sistem satırı', () => {
   });
 });
 
+describe('g) etki ve öncelik: yazım kapalı (TS-008 kapanan AU-17)', () => {
+  const belirtec = (): string => ortam.superadmin.erisimBelirteci;
+
+  it('giremez evet olan istek 400 dogrulama_hatasi alır, açık iletiyle; satır yazılmaz', async () => {
+    await reddedilir(
+      () => yaz(govde({ giremez: true }), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+    const cevap = await yaz(govde({ giremez: true }), belirtec());
+    expect(cevap.body).toMatchObject({
+      ileti: 'Yasak ve sıfırdan farklı öncelik henüz yazılamaz',
+      ayrinti: [{ alan: 'giremez' }],
+    });
+  });
+
+  it('oncelik 5 olan istek 400 dogrulama_hatasi alır; satır yazılmaz', async () => {
+    await reddedilir(
+      () => yaz(govde({ oncelik: 5 }), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+  });
+
+  it('giremez hayır ve oncelik 0 açıkça verilen istek bugünkü gibi yazılır; not iki kolonu taşır', async () => {
+    const once = await sayac();
+    const cevap = await yaz(govde({ giremez: false, oncelik: 0 }), belirtec());
+    expect(cevap.status).toBe(201);
+    expect(Object.keys(cevap.body as Kayit)).toEqual(['id']);
+    const id = (cevap.body as { id: string }).id;
+    expect(await sayac()).toBe(once + 1);
+    const {
+      rows: [satir],
+    } = await ortam.db.query<Kayit>(
+      'select giremez, oncelik, koken from yetenek where id = $1',
+      [id],
+    );
+    expect(satir).toEqual({ giremez: false, oncelik: 0, koken: 'yonetici' });
+
+    const not = await yetenekNotu(id, 'olusturma');
+    expect(not.degisen).toMatchObject({
+      giremez: { yeni: false },
+      oncelik: { yeni: 0 },
+    });
+  });
+});
+
 describe('ortak', () => {
   it('belirteçsiz istek 401 kimlik_gerekli', async () => {
     await reddedilir(() => yaz(govde()), 401, 'kimlik_gerekli');
