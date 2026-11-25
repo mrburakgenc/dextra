@@ -246,6 +246,7 @@ describe('komut bağlamı', () => {
 
     expect(await tohumKomutu(DinleyenKokModul, true)).toEqual([
       '202611240000-kimlik-kurulum',
+      '202611260000-kimlik-yasak-izinleri',
     ]);
 
     await notlarDokunulmamis();
@@ -257,6 +258,7 @@ describe('komut bağlamı', () => {
   it('b) tohum komutunun gerçek koşusu açılıp kapanınca notlar aktarılmamış ve silinmemiştir, iz veritabanında satır yoktur, iş işlenmemiştir', async () => {
     expect(await tohumKomutu(DinleyenKokModul, false)).toEqual([
       '202611240000-kimlik-kurulum',
+      '202611260000-kimlik-yasak-izinleri',
     ]);
 
     await notlarDokunulmamis();
