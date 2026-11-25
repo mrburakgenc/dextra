@@ -163,14 +163,20 @@ describe('GrupSayfasi kayıt', () => {
     ]);
   });
 
-  it('kolonu gelmeyen alanlar boş işaretle görünür', async () => {
+  it('kolonu gelmeyen alanların satırı çizilmez', async () => {
     await goster({ id: ID });
 
+    expect(screen.queryAllByRole('term')).toHaveLength(0);
+  });
+
+  it('gelmiş ama boş alanın satırı boş işaretle kalır; gelmeyen alanın etiketi yoktur', async () => {
+    await goster({ id: ID, ad: 'Merkez', ustGrupId: null });
+
     expect(kayitSatirlari()).toEqual([
-      ['Ad', '—'],
+      ['Ad', 'Merkez'],
       ['Üst grup', '—'],
-      ['Oluşturma zamanı', '—'],
     ]);
+    expect(screen.queryByText('Oluşturma zamanı', { selector: 'dt' })).toBeNull();
   });
 
   it('404 bulunamadi dönünce Kayıt bulunamadı iletisi gösterilir ve liste istenmez', async () => {
@@ -249,10 +255,13 @@ describe('GrupSayfasi kayıt', () => {
     expect(kayitSatirlari()[1]).toEqual(['Üst grup', '…44444444']);
   });
 
-  it('ustGrupId kolonu kayıtta gelmediyse boş işaret görünür', async () => {
+  it('ustGrupId kolonu kayıtta gelmediyse Üst grup satırı çizilmez', async () => {
     await goster({ id: ID, ad: 'Muhasebe', olusturmaZamani: OLUSTURMA });
 
-    expect(kayitSatirlari()[1]).toEqual(['Üst grup', '—']);
+    expect(kayitSatirlari()).toEqual([
+      ['Ad', 'Muhasebe'],
+      ['Oluşturma zamanı', tarihSaat(OLUSTURMA)],
+    ]);
   });
 });
 

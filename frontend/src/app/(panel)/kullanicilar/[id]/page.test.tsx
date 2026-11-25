@@ -193,18 +193,21 @@ describe('KullaniciSayfasi kayıt', () => {
     expect(satirlar.get('Sistem aktörü')).toBe('Evet');
   });
 
-  it('kolonu gelmeyen alanlar boş işaretle görünür', async () => {
+  it('kolonu gelmeyen alanların satırı çizilmez', async () => {
     await goster({ id: ID, gorunenAd: 'Gizli' });
+
+    expect(kayitSatirlari()).toEqual([['Görünen ad', 'Gizli']]);
+  });
+
+  it('gelmiş ama boş alanın satırı boş işaretle kalır; gelmeyen alanın etiketi yoktur', async () => {
+    await goster({ id: ID, gorunenAd: 'Gizli', telefon: null, kullaniciAdi: null });
 
     expect(kayitSatirlari()).toEqual([
       ['Kullanıcı adı', '—'],
       ['Görünen ad', 'Gizli'],
       ['Telefon', '—'],
-      ['Sistem aktörü', '—'],
-      ['Durum', '—'],
-      ['Unutulma zamanı', '—'],
-      ['Oluşturma zamanı', '—'],
     ]);
+    expect(screen.queryByText('Sistem aktörü', { selector: 'dt' })).toBeNull();
   });
 
   it('durumu gelmeyen kayıtta ne pasife al ne yeniden aç görünür', async () => {
@@ -629,6 +632,65 @@ describe('KullaniciSayfasi üyelikler', () => {
     await expect(
       KullaniciSayfasi({ params: Promise.resolve({ id: ID }) }),
     ).rejects.toThrow('yonlendirildi:/oturum-bitti');
+  });
+});
+
+// Üyelikler tablosunun kolonları tür düzeyindeki okuma kuralına sorulur (TS-004 "Yönetim
+// ekranları").
+function uyelikBasliklari(): (string | null)[] {
+  return within(screen.getByRole('table'))
+    .getAllByRole('columnheader')
+    .map((h) => h.textContent);
+}
+
+function uyelikHucreSayilari(): number[] {
+  return uyelikSatirlari().map((satir) => within(satir).getAllByRole('cell').length);
+}
+
+const UYELIK_SIL: YetkiKurali = { action: 'sil', subject: 'Uyelik' };
+
+describe('KullaniciSayfasi üyelik kolonlarının yetkisi', () => {
+  it('verilme zamanını okuma kuralı olmayan kişide kolonun başlığı ve hücreleri yoktur', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER);
+
+    await goster(ETKIN_KAYIT, [
+      ...kurallar(...ISLER),
+      { action: 'oku', subject: 'Uyelik', fields: ['grupId', 'rolId'] },
+      UYELIK_SIL,
+    ]);
+
+    expect(uyelikBasliklari()).toEqual(['Grup', 'Rol', 'İşler']);
+    expect(screen.queryByText(tarihSaat(VERILME))).toBeNull();
+    expect(uyelikHucreSayilari()).toEqual([3, 3]);
+  });
+
+  it('verilme zamanını bir kuralla okuyabilen kişide kolon çizilir; alanı taşımayan kaydın hücresi boş işarettir', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER);
+
+    await goster(ETKIN_KAYIT, [
+      ...kurallar(...ISLER),
+      { action: 'oku', subject: 'Uyelik', fields: ['olusturmaZamani'] },
+      UYELIK_SIL,
+    ]);
+
+    expect(uyelikBasliklari()).toEqual(['Verilme zamanı', 'İşler']);
+    const [ilk, adsiz] = uyelikSatirlari();
+    expect(hucreler(ilk)[0]).toBe(tarihSaat(VERILME));
+    expect(hucreler(adsiz)[0]).toBe('—');
+    expect(uyelikHucreSayilari()).toEqual([2, 2]);
+  });
+
+  it('şartı ekrana gelmeyen bir kolona bakan kuralla okuyabilen kişide kolonlar yine çizilir', async () => {
+    listeler(UYELIKLER, GRUPLAR, ROLLER);
+
+    await goster(ETKIN_KAYIT, [
+      ...kurallar(...ISLER),
+      { action: 'oku', subject: 'Uyelik', conditions: { silinmeZamani: null } },
+      UYELIK_SIL,
+    ]);
+
+    expect(uyelikBasliklari()).toEqual(['Grup', 'Rol', 'Verilme zamanı', 'İşler']);
+    expect(uyelikHucreSayilari()).toEqual([4, 4]);
   });
 });
 

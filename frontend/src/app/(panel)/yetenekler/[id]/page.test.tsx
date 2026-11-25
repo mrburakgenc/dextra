@@ -228,12 +228,22 @@ describe('YetenekSayfasi kayıt', () => {
     ]);
   });
 
-  it('kolonu gelmeyen alanlar boş işaretle görünür ve iş gösterilmez', async () => {
+  it('kolonu gelmeyen alanların satırı çizilmez ve iş gösterilmez', async () => {
     await goster({ id: ID });
 
-    expect(kayitSatirlari().map(([, deger]) => deger)).toEqual([
-      '—', '—', '—', '—', '—', '—', '—', '—',
+    expect(screen.queryAllByRole('term')).toHaveLength(0);
+    expect(yenileFormu()).toBeNull();
+    expect(dugme('Sil')).toBeNull();
+  });
+
+  it('gelmiş ama boş alanın satırı boş işaretle kalır; gelmeyen alanın etiketi yoktur', async () => {
+    await goster({ id: ID, sart: null, tohumAnahtari: null });
+
+    expect(kayitSatirlari()).toEqual([
+      ['Kayıt sınırı', '—'],
+      ['Tür', '—'],
     ]);
+    expect(screen.queryByText('Grup', { selector: 'dt' })).toBeNull();
     expect(yenileFormu()).toBeNull();
     expect(dugme('Sil')).toBeNull();
   });

@@ -20,14 +20,26 @@ export function KayitBasligi({
   );
 }
 
-// Kayıt sayfasındaki kolonlar (TS-004 "Yönetim ekranları"); değer, gelmeyen kolon için boş
-// işareti çağıran tarafça verilir. Sunucu bileşenidir.
-export function KayitSatirlari({
+// Alan kayıtta var mı (TS-004 "Yönetim ekranları"): kişinin göremediği kolon kayıtta gelmez
+// (undefined); gelmiş ama boş kolon null'dır. Birden çok alandan türeyen satır, alanlarından biri
+// gelmişse vardır.
+export function alanGeldi<T extends object>(kayit: T, alanlar: readonly (keyof T)[]): boolean {
+  return alanlar.some((alan) => kayit[alan] !== undefined);
+}
+
+// Kayıt sayfasındaki kolonlar (TS-004 "Yönetim ekranları"): alanları kayıtta gelmeyen satır
+// (etiketi ve değeri) çizilmez; gelmiş boş alanın boş işaretini çağıran taraf verir. Sunucu
+// bileşenidir.
+export function KayitSatirlari<T extends object>({
+  kayit,
   satirlar,
-}: Readonly<{ satirlar: readonly { etiket: string; deger: string }[] }>) {
+}: Readonly<{
+  kayit: T;
+  satirlar: readonly { etiket: string; alanlar: readonly (keyof T)[]; deger: string }[];
+}>) {
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
-      {satirlar.map((satir) => (
+      {satirlar.filter((satir) => alanGeldi(kayit, satir.alanlar)).map((satir) => (
         <div key={satir.etiket} className="contents">
           <dt className="font-medium">{satir.etiket}</dt>
           <dd>{satir.deger}</dd>

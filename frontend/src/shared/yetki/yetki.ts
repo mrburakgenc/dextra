@@ -55,6 +55,13 @@ export function yetkiKur(kurallar: readonly YetkiKurali[]) {
 
 export type Yetki = ReturnType<typeof yetkiKur>;
 
+// Liste tablosunun kolonu çizilir mi (TS-004 "Yönetim ekranları"): kişi kaynağın kolonunu tür
+// düzeyinde okuyabiliyor mu; tür düzeyindeki soru şartı değerlendirmez. Birden çok alandan türeyen
+// kolon, alanlarından biri okunabiliyorsa çizilir.
+export function kolonCizilir(yetki: Yetki, kaynak: string, alanlar: readonly string[]): boolean {
+  return alanlar.some((alan) => yetki.can('oku', kaynak, alan));
+}
+
 // Kayıt düzeyindeki soru için kaydın bir kopyası türüyle etiketlenir; asıl kayıt değişmez.
 // Etiket sunucudan istemciye geçerken korunmaz: kayıt istemci bileşeninde etiketlenir.
 export function kaydiEtiketle<T extends object>(tur: string, kayit: T) {

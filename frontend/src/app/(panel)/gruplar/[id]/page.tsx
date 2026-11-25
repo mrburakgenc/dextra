@@ -43,11 +43,13 @@ export default async function GrupSayfasi({
     <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
       <KayitBasligi baslik={kayit.ad ?? 'Grup'} silinmeZamani={kayit.silinmeZamani} />
       <KayitSatirlari
+        kayit={kayit}
         satirlar={[
-          { etiket: 'Ad', deger: kayit.ad ?? BOS },
-          { etiket: 'Üst grup', deger: kimliginAdi(adlar, kayit.ustGrupId) },
+          { etiket: 'Ad', alanlar: ['ad'], deger: kayit.ad ?? BOS },
+          { etiket: 'Üst grup', alanlar: ['ustGrupId'], deger: kimliginAdi(adlar, kayit.ustGrupId) },
           {
             etiket: 'Oluşturma zamanı',
+            alanlar: ['olusturmaZamani'],
             deger:
               kayit.olusturmaZamani === undefined ? BOS : tarihSaat(kayit.olusturmaZamani),
           },

@@ -30,9 +30,10 @@ export default async function RolSayfasi({
     <main id="ana-icerik" className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
       <KayitBasligi baslik={kayit.ad ?? 'Rol'} silinmeZamani={kayit.silinmeZamani} />
       <KayitSatirlari
+        kayit={kayit}
         satirlar={[
-          { etiket: 'Ad', deger: kayit.ad ?? BOS },
-          { etiket: 'Kod', deger: kayit.kod ?? BOS },
+          { etiket: 'Ad', alanlar: ['ad'], deger: kayit.ad ?? BOS },
+          { etiket: 'Kod', alanlar: ['kod'], deger: kayit.kod ?? BOS },
         ]}
       />
       {typeof kayit.silinmeZamani !== 'string' && <RolIsleri kayit={kayit} />}
