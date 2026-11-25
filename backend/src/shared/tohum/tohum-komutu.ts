@@ -1,5 +1,6 @@
 import { Module, type Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { KomutBaglamiModule } from '../messaging/komut-baglami.js';
 import { TohumKosucusu } from './tohum-kosucusu.js';
 import { TohumModule } from './tohum.module.js';
 
@@ -13,7 +14,8 @@ const secenekler: Pick<BaglamSecenekleri, 'abortOnError'> = {
   abortOnError: false,
 };
 
-// Tohum komutunun işi: verilen kök modülü tohum modülüyle birlikte istek dinlemeden açar, koşucuyu
+// Tohum komutunun işi: verilen kök modülü tohum modülüyle birlikte istek dinlemeden, komut
+// bağlamında (aktarım döngüleri ve kuyruk dinleyicileri başlamaz; TS-002 AK-25) açar, koşucuyu
 // (kuru ise kuru koşuyu) çalıştırır ve bağlamı kapatır. Uygulanan ya da uygulanacak göçlerin
 // adlarını döner; hata çağırana ulaşır. Kök modül parametredir, çünkü ortak kod uygulamanın kök
 // modülünü içe aktaramaz (eslint.config.mjs).
@@ -21,7 +23,7 @@ export async function tohumKomutu(
   kokModul: Type,
   kuru: boolean,
 ): Promise<string[]> {
-  @Module({ imports: [kokModul, TohumModule] })
+  @Module({ imports: [kokModul, TohumModule, KomutBaglamiModule] })
   class TohumKomutuModulu {}
 
   const baglam = await NestFactory.createApplicationContext(

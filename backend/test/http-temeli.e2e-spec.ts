@@ -2,6 +2,7 @@
 //   pnpm -C backend test:e2e test/http-temeli.e2e-spec.ts --reporter=verbose
 // Uygulama AppModule ile, göçleri uygulanmış asıl ve iz geçici veritabanlarıyla açılır; temel,
 // burada tanımlanan sınama uçlarıyla denenir. Tekil kısıt ve süre aşımı gerçek Prisma hatasıdır.
+// Sınama uçları herkese açıktır: kimlik guard'ı onlardan bir şey istemez (TS-002 AK-12).
 import { setTimeout as uyu } from 'node:timers/promises';
 import {
   Body,
@@ -27,6 +28,7 @@ import {
 } from '../src/shared/database/generated/client.js';
 import { PRISMA_CLIENT } from '../src/shared/database/istemci-belirtecleri.js';
 import { yeniKimlik } from '../src/shared/database/kimlik.js';
+import { HerkeseAcik } from '../src/shared/guvenlik/isaretler.js';
 import {
   ISTEK_KIMLIGI_BASLIGI,
   istekBaglami,
@@ -48,11 +50,34 @@ const hataKoduSemasi = z.enum(
   Object.keys(HATA_DURUMLARI) as [HataKodu, ...HataKodu[]],
 );
 
+// TS-002 AK-11 tablosu, testte sabit yazılmıştır (AK-26): beklenen durumlar uygulamanın tablosundan
+// okunmaz; uygulamada bir kodun durumu değişirse test kırmızıya döner.
+const AK_11_TABLOSU = [
+  ['dogrulama_hatasi', 400],
+  ['kimlik_gerekli', 401],
+  ['yetki_yok', 403],
+  ['bulunamadi', 404],
+  ['cakisma', 409],
+  ['beklenmeyen_hata', 500],
+  ['yeniden_dene', 503],
+] as const;
+
+// Süzgecin günlüğü Nest Logger'ının örnek yöntemiyle yazılır; hata düzeyi Logger.prototype.error'dır.
+function hataGunluguGozle() {
+  return vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+}
+
+// Uyarı düzeyi Logger.prototype.warn'dır; "kayıt yok" dalı bu düzeyde yazar (AK-48 eki).
+function uyariGunluguGozle() {
+  return vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+}
+
 @Controller('sinama')
 class SinamaController {
   constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
 
   @Post('dogrulama/:id')
+  @HerkeseAcik()
   dogrulama(
     @Param('id', { schema: z.uuid() }) id: string,
     @Query({ schema: sorguSemasi }) sorgu: z.infer<typeof sorguSemasi>,
@@ -67,16 +92,19 @@ class SinamaController {
   }
 
   @Get('kodlu/:kod')
+  @HerkeseAcik()
   kodlu(@Param('kod', { schema: hataKoduSemasi }) kod: HataKodu): never {
     throw new KodluHata(kod, `sınama iletisi: ${kod}`, { ornek: kod });
   }
 
   @Get('ayrintisiz')
+  @HerkeseAcik()
   ayrintisiz(): never {
     throw new KodluHata('bulunamadi', 'Kayıt yok');
   }
 
   @Get('beklenmeyen')
+  @HerkeseAcik()
   beklenmeyen(): never {
     throw new Error(
       'gizli ileti: select * from kullanici; /Users/biri/proje/src/gizli.ts',
@@ -84,6 +112,7 @@ class SinamaController {
   }
 
   @Post('tekil')
+  @HerkeseAcik()
   async tekil(): Promise<void> {
     const id = yeniKimlik();
     for (let i = 0; i < 2; i++) {
@@ -93,7 +122,27 @@ class SinamaController {
     }
   }
 
+  @Post('yabanci-anahtar')
+  @HerkeseAcik()
+  async yabanciAnahtar(): Promise<void> {
+    // Var olmayan kişiye bağ veren gerçek ekleme; veritabanı yabancı anahtar kısıtına takılır.
+    await this.prisma.kullaniciSirri.create({
+      data: { kullaniciId: yeniKimlik(), parolaOzeti: 'ozet' },
+    });
+  }
+
+  @Post('kayit-yok')
+  @HerkeseAcik()
+  async kayitYok(): Promise<void> {
+    // Var olmayan satırı güncelleyen gerçek yazma; istemci "kayıt bulunamadı" hatası verir.
+    await this.prisma.outboxIz.update({
+      where: { id: yeniKimlik() },
+      data: { surum: 2 },
+    });
+  }
+
   @Get('sure-asimi')
+  @HerkeseAcik()
   async sureAsimi(): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
@@ -105,6 +154,7 @@ class SinamaController {
   }
 
   @Get('kilitlenme')
+  @HerkeseAcik()
   kilitlenme(): never {
     // Kilitlenme döngüsü kararlı üretilemediği için adaptörün verdiği kodla kurulur (40P01 → P2034).
     throw new Prisma.PrismaClientKnownRequestError(
@@ -114,6 +164,7 @@ class SinamaController {
   }
 
   @Get('kimlik')
+  @HerkeseAcik()
   async kimlik(): Promise<{ istekKimligi: string }> {
     // Bekleme, eşzamanlı isteklerin kendi bağlamlarını iç içe geçmiş sırayla okumasını sağlar.
     await uyu(Math.floor(Math.random() * 30));
@@ -221,7 +272,7 @@ describe('HTTP temeli', () => {
   });
 
   describe('b) kodlu hata', () => {
-    it.each(Object.entries(HATA_DURUMLARI))(
+    it.each(AK_11_TABLOSU)(
       '%s kodu %i durumunu ve { kod, ileti, ayrinti } gövdesini üretir',
       async (kod, durum) => {
         const cevap = await request(sunucu()).get(`/sinama/kodlu/${kod}`);
@@ -291,6 +342,85 @@ describe('HTTP temeli', () => {
         ayrinti: null,
       });
     });
+
+    it('yabancı anahtar ihlali 409 cakisma olur; gövde kısıt ya da tablo adı taşımaz, hata günlüğüne yazılmaz (AK-45)', async () => {
+      const gunluk = hataGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/yabanci-anahtar');
+
+        expect(cevap.status).toBe(409);
+        expect(cevap.body).toEqual({
+          kod: 'cakisma',
+          ileti: 'İlişkili kayıt nedeniyle işlem yapılamadı',
+          ayrinti: null,
+        });
+        expect(cevap.text).not.toMatch(
+          /kullanici|sirri|_ya\b|foreign|constraint/i,
+        );
+        expect(gunluk).not.toHaveBeenCalled();
+      } finally {
+        gunluk.mockRestore();
+      }
+    });
+
+    it('kayıt yok hatası 404 bulunamadi olur; gövde tablo ya da model adı taşımaz, hata günlüğüne yazılmaz (AK-48)', async () => {
+      const gunluk = hataGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/kayit-yok');
+
+        expect(cevap.status).toBe(404);
+        expect(cevap.body).toEqual({
+          kod: 'bulunamadi',
+          ileti: 'Kayıt bulunamadı',
+          ayrinti: null,
+        });
+        expect(cevap.text).not.toMatch(/outbox|_iz\b|OutboxIz|record|P2025/i);
+        expect(gunluk).not.toHaveBeenCalled();
+      } finally {
+        gunluk.mockRestore();
+      }
+    });
+
+    it('kayıt yok hatası uyarı düzeyinde tek satır yazar: istek kimliği, hatanın türü ve model adı; değer taşımaz (AK-48 eki)', async () => {
+      const hataGunlugu = hataGunluguGozle();
+      const uyariGunlugu = uyariGunluguGozle();
+      try {
+        const cevap = await request(sunucu()).post('/sinama/kayit-yok');
+
+        expect(cevap.status).toBe(404);
+        const istekKimligi = String(cevap.headers[ISTEK_KIMLIGI_BASLIGI]);
+        expect(istekKimligi).toMatch(UUID_V7);
+        expect(uyariGunlugu).toHaveBeenCalledTimes(1);
+        expect(uyariGunlugu).toHaveBeenCalledWith(
+          `istek ${istekKimligi}: kayıt yok (P2025), model OutboxIz`,
+        );
+        expect(hataGunlugu).not.toHaveBeenCalled();
+      } finally {
+        hataGunlugu.mockRestore();
+        uyariGunlugu.mockRestore();
+      }
+    });
+
+    it.each([
+      ['tekil kısıt', '/sinama/tekil'],
+      ['yabancı anahtar ihlali', '/sinama/yabanci-anahtar'],
+    ])(
+      '%s (%s) 409 döner ve ne uyarı ne hata düzeyinde günlüğe yazılır',
+      async (_dal, yol) => {
+        const hataGunlugu = hataGunluguGozle();
+        const uyariGunlugu = uyariGunluguGozle();
+        try {
+          const cevap = await request(sunucu()).post(yol);
+
+          expect(cevap.status).toBe(409);
+          expect(uyariGunlugu).not.toHaveBeenCalled();
+          expect(hataGunlugu).not.toHaveBeenCalled();
+        } finally {
+          hataGunlugu.mockRestore();
+          uyariGunlugu.mockRestore();
+        }
+      },
+    );
 
     it('işlem süre aşımı 503 yeniden_dene olur', async () => {
       const cevap = await request(sunucu()).get('/sinama/sure-asimi');
@@ -362,6 +492,93 @@ describe('HTTP temeli', () => {
 
     it('istek dışında bağlam okunursa hata verir', () => {
       expect(() => istekBaglami()).toThrow('İstek bağlamı yok');
+    });
+  });
+
+  describe('f) sertleştirme (AK-26)', () => {
+    let hataGunlugu: ReturnType<typeof hataGunluguGozle>;
+
+    beforeEach(() => {
+      hataGunlugu = hataGunluguGozle();
+    });
+
+    afterEach(() => {
+      hataGunlugu.mockRestore();
+    });
+
+    it("100 kB'tan büyük JSON gövdesi (413) 400 dogrulama_hatasi döner; ileti iç ayrıntı taşımaz, hata günlüğüne yazılmaz", async () => {
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .send({ ad: 'a'.repeat(101 * 1024) });
+
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toEqual({
+        kod: 'dogrulama_hatasi',
+        ileti: 'İstek doğrulanamadı',
+        ayrinti: null,
+      });
+      expect(cevap.text).not.toMatch(/large|entity|limit/i);
+      expect(hataGunlugu).not.toHaveBeenCalled();
+    });
+
+    it('desteklenmeyen içerik türüyle gönderilen gövde 400 dogrulama_hatasi döner; 500 dönmez', async () => {
+      // Ölçülen: hiçbir ayrıştırıcı eşleşmez, gövde tanımsız kalır ve hatayı doğrulama borusu
+      // verir (ayrıntıda alan ''); 415 üretilmez.
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .set('content-type', 'application/xml')
+        .send('<ad>Ada</ad>');
+
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toMatchObject({ kod: 'dogrulama_hatasi' });
+      expect(hataGunlugu).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['yeniden_dene', '/sinama/kilitlenme', 503],
+      ['kodla atılan beklenmeyen_hata', '/sinama/kodlu/beklenmeyen_hata', 500],
+      ['kodsuz hata', '/sinama/beklenmeyen', 500],
+    ])(
+      '%s (%s) %i döner ve günlüğe istek kimliğini taşıyan bir kayıt düşer',
+      async (_dal, yol, durum) => {
+        const cevap = await request(sunucu()).get(yol);
+
+        expect(cevap.status).toBe(durum);
+        const istekKimligi = cevap.headers[ISTEK_KIMLIGI_BASLIGI];
+        expect(istekKimligi).toMatch(UUID_V7);
+        expect(hataGunlugu).toHaveBeenCalledTimes(1);
+        expect(hataGunlugu).toHaveBeenCalledWith(
+          expect.stringContaining(String(istekKimligi)),
+        );
+      },
+    );
+
+    it.each([
+      ['kodlu dogrulama_hatasi', 'get', '/sinama/kodlu/dogrulama_hatasi', 400],
+      ['kodlu kimlik_gerekli', 'get', '/sinama/kodlu/kimlik_gerekli', 401],
+      ['kodlu yetki_yok', 'get', '/sinama/kodlu/yetki_yok', 403],
+      ['kodlu bulunamadi', 'get', '/sinama/kodlu/bulunamadi', 404],
+      ['kodlu cakisma', 'get', '/sinama/kodlu/cakisma', 409],
+      ['eşleşmeyen yol', 'get', '/yok', 404],
+      ['tekil kısıt', 'post', '/sinama/tekil', 409],
+    ] as const)(
+      '%s (%s %s) %i döner ve hata düzeyinde günlüğe yazılmaz',
+      async (_dal, yontem, yol, durum) => {
+        const cevap = await request(sunucu())[yontem](yol);
+
+        expect(cevap.status).toBe(durum);
+        expect(hataGunlugu).not.toHaveBeenCalled();
+      },
+    );
+
+    it('bozuk JSON gövdesi 400 döner ve hata düzeyinde günlüğe yazılmaz', async () => {
+      const cevap = await request(sunucu())
+        .post(`/sinama/dogrulama/${yeniKimlik()}?sayi=1`)
+        .set('content-type', 'application/json')
+        .send('{"ad":');
+
+      expect(cevap.status).toBe(400);
+      expect(hataGunlugu).not.toHaveBeenCalled();
     });
   });
 });

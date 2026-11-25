@@ -13,6 +13,7 @@
     "start:prod": "node dist/main",
     "tohum": "node dist/tohum.js",
     "tohum:kuru": "node dist/tohum.js --kuru",
+    "kurulum": "node dist/kurulum.js",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",

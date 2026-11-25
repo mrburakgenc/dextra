@@ -34,3 +34,4 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-24] taslak | KR-014 Frontend kanondaki kurallarla kurulur; doğrulama iki tarafta da Zod'dur ve form taslağı saklanmaz
 ## [2026-11-24] taslak | TS-002 Kimlik feature'ı: tablolar, alt özellikler ve ortak kodla arayüzler
 ## [2026-11-24] taslak | TS-003 Outbox, iz aktarımı ve olay yolu: tablolar, aktarıcı sözleşmesi ve kuyruğun yeri
+## [2026-11-24] taslak | TS-004 Web arayüzü: aracı katman, oturum çerezleri, ilk ekranlar ve dosya düzeni

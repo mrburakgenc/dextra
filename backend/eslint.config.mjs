@@ -6,6 +6,32 @@ import boundaries from 'eslint-plugin-boundaries';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+// Yetki kütüphanesinin kayıt üzerinde karar veren çağrıları backend'de yasaktır (KR-010 "Derleme
+// eşlemesi"; TS-002 AK-19): veri kararını sorgudaki şartla veritabanı verir. Yöntem çağrısı, köşeli
+// parantezle erişim, yalın adla çağrı ve adın içe aktarılması yakalanır.
+const YETKI_KARAR_CAGRISI =
+  '^(can|cannot|throwUnlessCan|permittedFieldsOf|relevantRuleFor|matchesConditions)$';
+const YETKI_KARAR_ILETISI =
+  "Kayıt üzerinde karar veren yetki çağrısı backend'de yazılmaz; yetki kapısını kullanın.";
+const YETKI_KARAR_YASAKLARI = [
+  {
+    selector: `MemberExpression[computed=false][property.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `MemberExpression[computed=true][property.value=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `CallExpression[callee.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+  {
+    selector: `ImportSpecifier[imported.name=/${YETKI_KARAR_CAGRISI}/]`,
+    message: YETKI_KARAR_ILETISI,
+  },
+];
+
 export default defineConfig(
   {
     ignores: [
@@ -86,6 +112,21 @@ export default defineConfig(
           ],
           category: 'olay-altyapisi',
         },
+        // Kimlik'in çekirdek repository belirteçleri ve onları içe aktaramayan yönetim alt
+        // özellikleri (TS-002 AK-27; KR-010 Seçim 48).
+        {
+          pattern: 'src/features/kimlik/_shared/cekirdek/**',
+          category: 'cekirdek-repo',
+        },
+        {
+          pattern: 'src/features/kimlik/{kullanici,grup,rol,uyelik,yetenek}/**',
+          category: 'yonetim',
+        },
+        // Feature içindeki katmanlar (TS-002 AK-36).
+        { pattern: 'src/features/**/presentation/**', category: 'sunum' },
+        { pattern: 'src/features/**/application/**', category: 'uygulama' },
+        { pattern: 'src/features/**/domain/**', category: 'alan' },
+        { pattern: 'src/features/**/infrastructure/**', category: 'altyapi' },
       ],
       'import/resolver': {
         typescript: { project: `${import.meta.dirname}/tsconfig.json` },
@@ -99,6 +140,9 @@ export default defineConfig(
         'error',
         {
           default: 'disallow',
+          // Aynı öğenin (feature) içindeki bağımlılıklar da politikalardan geçer; çekirdek sınırı ve
+          // katman yönü feature'ın içindedir.
+          checkInternals: true,
           policies: [
             {
               // Kök dosyalar her şeyi bağlar.
@@ -148,10 +192,32 @@ export default defineConfig(
               from: { element: { type: 'feature' } },
               disallow: { to: { file: { categories: 'olay-altyapisi' } } },
             },
+            {
+              // Yönetim alt özellikleri çekirdek repository'lere ulaşamaz; kaynaklara yetki kapısından
+              // erişir (AK-27). _shared, oturum ve parola ulaşabilir.
+              from: { file: { categories: 'yonetim' } },
+              disallow: { to: { file: { categories: 'cekirdek-repo' } } },
+            },
+            {
+              // Uygulama ve alan katmanı sunum katmanını içe aktarmaz (AK-36).
+              from: { file: { categories: ['uygulama', 'alan'] } },
+              disallow: { to: { file: { categories: 'sunum' } } },
+            },
+            {
+              // Alan katmanı uygulama ve altyapı katmanlarını içe aktarmaz (AK-36).
+              from: { file: { categories: 'alan' } },
+              disallow: {
+                to: { file: { categories: ['uygulama', 'altyapi'] } },
+              },
+            },
           ],
         },
       ],
     },
+  },
+  {
+    files: ['**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...YETKI_KARAR_YASAKLARI] },
   },
   {
     // Kuyruk paketi feature'a kapalıdır (KR-012 Yükümlülük 2). Sınır kuralı dış paketlere yalnız
@@ -178,9 +244,11 @@ export default defineConfig(
       ],
       // no-restricted-imports dinamik içe aktarmaya (import(...)) bakmaz; paket adı düz metin ya da
       // şablon metniyle verilen dinamik içe aktarma da yasaktır (TS-003 Onarım). \x2F, "/" demektir;
-      // seçici dili düzenli ifadede "/" kabul etmez.
+      // seçici dili düzenli ifadede "/" kabul etmez. Aynı kural adı üstteki bloğu ezdiğinden yetki
+      // çağrısı yasakları burada da verilir.
       'no-restricted-syntax': [
         'error',
+        ...YETKI_KARAR_YASAKLARI,
         {
           selector:
             "ImportExpression[source.type='Literal'][source.value=/^bullmq($|\\x2F)/]",

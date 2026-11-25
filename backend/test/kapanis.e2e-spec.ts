@@ -1,16 +1,19 @@
 // Düzenli kapanışın gerçek süreçle sınaması (TS-003 Onarım). Koşturma:
 //   pnpm -C backend test:e2e test/kapanis.e2e-spec.ts --reporter=verbose
-// Uygulama sınamanın başında derlenir (bayat dist sınanmasın diye) ve derlenmiş hâli, göçleri
+// Uygulama sınamanın başında bu sürece özgü geçici klasöre derlenir (bayat çıktı sınanmasın, yan
+// yana koşan testler birbirinin çıktısını silmesin diye; test/derleme.ts) ve derlenmiş hâli, göçleri
 // uygulanmış asıl ve iz geçici veritabanlarını gösteren ortam değişkenleriyle alt süreç olarak
 // başlatılır. Sağlık ucu cevap verince SIGTERM gönderilir. Kapanış kancaları açık değilse Node
 // süreci sinyalle öldürür ve çıkış kodu 0 olmaz.
-import { type ChildProcess, execFile, spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer, type AddressInfo } from 'node:net';
+import { join } from 'node:path';
 import { setTimeout as uyu } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 import pg from 'pg';
+import { baglantiSayisi, kalanBaglantiSayisi } from './baglanti-sayisi.js';
+import { type Derleme, derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -42,20 +45,6 @@ async function bosPort(): Promise<number> {
   return port;
 }
 
-// Verilen veritabanına gözlemcinin dışında açık istemci bağlantısı sayısı.
-async function baglantiSayisi(
-  gozlemci: pg.Client,
-  veritabani: string,
-  gozlemciPid: number,
-): Promise<number> {
-  const { rows } = await gozlemci.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> $2`,
-    [veritabani, gozlemciPid],
-  );
-  return rows[0]?.sayi ?? -1;
-}
-
 async function saglikCevapVerir(adres: string): Promise<boolean> {
   try {
     return (await fetch(`${adres}/health`)).status === 200;
@@ -82,6 +71,7 @@ async function kalanVeritabanlari(adlar: readonly string[]): Promise<string[]> {
 }
 
 describe('derlenmiş uygulamanın düzenli kapanışı', () => {
+  let derleme: Derleme;
   let databases: AppDatabases;
   let gozlemci: pg.Client;
   let gozlemciPid: number;
@@ -89,15 +79,14 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
   let cikti = '';
 
   beforeAll(async () => {
-    await promisify(execFile)(
-      `${backendDir}node_modules/.bin/nest`,
-      ['build'],
-      {
-        cwd: backendDir,
-      },
-    );
-    databases = await createAppDatabases({ migrations: true });
-    // Kurulum yarıda kalırsa geçici veritabanları sunucuda kalmaz.
+    derleme = await derle();
+    // Kurulum yarıda kalırsa geçici derleme klasörü ve veritabanları geride kalmaz.
+    try {
+      databases = await createAppDatabases({ migrations: true });
+    } catch (error) {
+      await derleme.sil();
+      throw error;
+    }
     try {
       gozlemci = new pg.Client({ connectionString: databases.asil.url });
       await gozlemci.connect();
@@ -107,6 +96,7 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
       gozlemciPid = rows[0]?.pid ?? -1;
     } catch (error) {
       await databases.drop();
+      await derleme.sil();
       throw error;
     }
   }, 120_000);
@@ -119,6 +109,7 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
     }
     await gozlemci.end();
     await databases.drop();
+    await derleme.sil();
     expect(
       await kalanVeritabanlari([databases.asil.name, databases.iz.name]),
     ).toEqual([]);
@@ -127,7 +118,7 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
   it(`SIGTERM'den sonra ${String(KAPANIS_SINIRI_MS)} ms içinde 0 ile çıkar; geçici veritabanlarında uygulamanın bağlantısı kalmaz`, async () => {
     const port = await bosPort();
     const adres = `http://127.0.0.1:${String(port)}`;
-    const calisan = spawn(process.execPath, ['dist/main.js'], {
+    const calisan = spawn(process.execPath, [join(derleme.klasor, 'main.js')], {
       cwd: backendDir,
       env: {
         ...process.env,
@@ -152,7 +143,8 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
       'uygulama asıl veritabanına bağlanır',
       5_000,
       async () =>
-        (await baglantiSayisi(gozlemci, databases.asil.name, gozlemciPid)) > 0,
+        (await baglantiSayisi(gozlemci, databases.asil.name, [gozlemciPid])) >
+        0,
     );
 
     const cikis = once(calisan, 'exit', {
@@ -169,11 +161,10 @@ describe('derlenmiş uygulamanın düzenli kapanışı', () => {
     expect({ kod, sinyal }, cikti).toEqual({ kod: 0, sinyal: null });
     expect(sure).toBeLessThan(KAPANIS_SINIRI_MS);
     for (const { name } of [databases.asil, databases.iz]) {
-      await bekle(
+      expect(
+        await kalanBaglantiSayisi(gozlemci, name, [gozlemciPid]),
         `${name} veritabanında uygulama bağlantısı kalmaz`,
-        5_000,
-        async () => (await baglantiSayisi(gozlemci, name, gozlemciPid)) === 0,
-      );
+      ).toBe(0);
     }
   }, 40_000);
 });

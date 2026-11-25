@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { istekteYazmaAcildi } from '../http/istek-baglami.js';
 import type { PrismaClient } from './generated/client.js';
 import type {
   RepoBelirteci,
@@ -54,6 +55,8 @@ export class UnitOfWork {
 
   async run<T>(is: (islem: Islem) => Promise<T>): Promise<T> {
     this.islemDisindaOl('run');
+    // İstekteysek istek bağlamına yazma işaretini koyar (TS-002 AK-40); işlem geri alınsa da kalır.
+    istekteYazmaAcildi();
     return this.istemci.$transaction(
       async (tx) => {
         const islem = new AcikIslem(tx, this.registrar);

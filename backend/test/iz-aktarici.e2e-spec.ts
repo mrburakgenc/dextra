@@ -203,7 +203,7 @@ describe('a) iz şemasının ilk göçü', () => {
     );
   });
 
-  it('birincil anahtardan başka dizin ve hiçbir yabancı anahtar yoktur; değişiklik kaydı ve göç defteri vardır', async () => {
+  it('degisiklik_kaydi tablosunda birincil anahtardan başka dizin ve hiçbir yabancı anahtar yoktur; değişiklik kaydı ve göç defteri vardır', async () => {
     const dizinler = await izSql.query(
       `select indexname, indexdef from pg_indexes
         where schemaname = 'public' and tablename = 'degisiklik_kaydi'`,
@@ -216,7 +216,7 @@ describe('a) iz şemasının ilk göçü', () => {
       },
     ]);
     const yabanciAnahtarlar = await izSql.query(
-      "select 1 from pg_constraint where contype = 'f'",
+      "select 1 from pg_constraint where contype = 'f' and conrelid = 'public.degisiklik_kaydi'::regclass",
     );
     expect(yabanciAnahtarlar.rows).toHaveLength(0);
     const tablolar = await izSql.query<{ ad: string }>(

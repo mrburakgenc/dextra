@@ -38,6 +38,7 @@ import {
   outboxRepo,
 } from '../src/shared/messaging/outbox/outbox-repo.js';
 import { OutboxYazici } from '../src/shared/messaging/outbox/outbox-yazici.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
 
@@ -202,14 +203,10 @@ afterAll(async () => {
   // Uygulamanın kapanışı: kuyruk bağdaştırıcısı açtığı kuyruk ve dinleyicileri kapatır.
   await kuyrukModulu.close();
   await prisma.$disconnect();
-  await bekle('geçici veritabanında açık bağlantı kalmaz', 5_000, async () => {
-    const { rows } = await gozlemci.query<{ sayi: number }>(
-      `select count(*)::int as sayi from pg_stat_activity
-        where datname = $1 and backend_type = 'client backend' and pid <> pg_backend_pid()`,
-      [db.name],
-    );
-    return rows[0]?.sayi === 0;
-  });
+  expect(
+    await kalanBaglantiSayisi(gozlemci, db.name, []),
+    'geçici veritabanında açık bağlantı kalmaz',
+  ).toBe(0);
   await gozlemci.end();
   await db.drop();
   const sunucu = new pg.Client({

@@ -28,6 +28,7 @@ const PRISMA_KODLARI: Readonly<Record<string, 'cakisma' | 'yeniden_dene'>> = {
 };
 
 const SABIT_ILETILER = {
+  dogrulama_hatasi: 'İstek doğrulanamadı',
   cakisma: 'Kayıt başka bir kayıtla çakışıyor',
   yeniden_dene: 'İşlem tamamlanamadı; yeniden deneyin',
   beklenmeyen_hata: 'Beklenmeyen bir hata oluştu',
@@ -41,8 +42,9 @@ const DURUM_KODLARI = new Map<number, HataKodu>(
   ]),
 );
 
-// Bütün uçların tek hata süzgeci (TS-002 AK-11). Kodlu olmayan hata beklenmeyen_hata olur;
-// cevap iç ayrıntı taşımaz, hata günlüğe yazılır.
+// Bütün uçların tek hata süzgeci (TS-002 AK-11, AK-26). Kodlu olmayan hata beklenmeyen_hata olur;
+// cevap iç ayrıntı taşımaz. 5xx üreten her hata istek kimliğiyle günlüğe yazılır; 4xx yazılmaz,
+// yalnız "kayıt yok" (P2025) uyarı düzeyinde yazılır (AK-48 eki).
 @Catch()
 export class HataSuzgeci implements ExceptionFilter {
   private readonly gunluk = new Logger(HataSuzgeci.name);
@@ -57,7 +59,23 @@ export class HataSuzgeci implements ExceptionFilter {
     if (!yanit.hasHeader(ISTEK_KIMLIGI_BASLIGI)) {
       yanit.setHeader(ISTEK_KIMLIGI_BASLIGI, yeniKimlik());
     }
-    this.adaptor.httpAdapter.reply(yanit, cevap, HATA_DURUMLARI[cevap.kod]);
+    const durum = HATA_DURUMLARI[cevap.kod];
+    const istekKimligi = String(yanit.getHeader(ISTEK_KIMLIGI_BASLIGI));
+    if (durum >= 500) {
+      this.gunluk.error(
+        `istek ${istekKimligi}: ${String(hata instanceof Error ? hata.stack : hata)}`,
+      );
+    } else if (
+      hata instanceof Prisma.PrismaClientKnownRequestError &&
+      hata.code === 'P2025'
+    ) {
+      // 404'e çevrilen "kayıt yok" sunucu içi bir aramanın boş dönmesinden de gelebilir; sessiz
+      // kalmaz (TS-002 AK-48 eki). Satır yalnız hatanın türünü ve modelin adını taşır, değer taşımaz.
+      this.gunluk.warn(
+        `istek ${istekKimligi}: kayıt yok (P2025), model ${String(hata.meta?.['modelName'])}`,
+      );
+    }
+    this.adaptor.httpAdapter.reply(yanit, cevap, durum);
   }
 
   private cevir(hata: unknown): HataCevabi {
@@ -69,18 +87,40 @@ export class HataSuzgeci implements ExceptionFilter {
       };
     }
     if (hata instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2003 yabancı anahtar kısıtı (TS-002 AK-45): ileti hangi kaydın ya da kısıtın söz konusu
+      // olduğunu söylemez.
+      if (hata.code === 'P2003') {
+        return {
+          kod: 'cakisma',
+          ileti: 'İlişkili kayıt nedeniyle işlem yapılamadı',
+          ayrinti: null,
+        };
+      }
+      // P2025 güncellenecek ya da silinecek kayıt yok (TS-002 AK-48): ileti hangi kaydın ya da
+      // modelin söz konusu olduğunu söylemez.
+      if (hata.code === 'P2025') {
+        return { kod: 'bulunamadi', ileti: 'Kayıt bulunamadı', ayrinti: null };
+      }
       const kod = PRISMA_KODLARI[hata.code];
       if (kod !== undefined) {
         return { kod, ileti: SABIT_ILETILER[kod], ayrinti: null };
       }
     }
     if (hata instanceof HttpException) {
-      const kod = DURUM_KODLARI.get(hata.getStatus());
+      const durum = hata.getStatus();
+      const kod = DURUM_KODLARI.get(durum);
       if (kod !== undefined && kod !== 'beklenmeyen_hata') {
         return { kod, ileti: hata.message, ayrinti: null };
       }
+      // Tabloda karşılığı olmayan istemci hatası (ör. gövde çok büyük, 413) 500 dönmez (AK-26).
+      if (durum >= 400 && durum < 500) {
+        return {
+          kod: 'dogrulama_hatasi',
+          ileti: SABIT_ILETILER.dogrulama_hatasi,
+          ayrinti: null,
+        };
+      }
     }
-    this.gunluk.error(hata instanceof Error ? hata.stack : String(hata));
     return {
       kod: 'beklenmeyen_hata',
       ileti: SABIT_ILETILER.beklenmeyen_hata,

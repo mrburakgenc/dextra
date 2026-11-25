@@ -6,6 +6,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { setTimeout as uyu } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -27,6 +28,8 @@ import { tohumGocuRepoKaydet } from '../src/shared/tohum/tohum-gocu.repository.j
 import { tohumKomutu } from '../src/shared/tohum/tohum-komutu.js';
 import { TohumKosucusu } from '../src/shared/tohum/tohum-kosucusu.js';
 import { TohumModule } from '../src/shared/tohum/tohum.module.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
+import { derle } from './derleme.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import {
   type AppDatabases,
@@ -53,8 +56,9 @@ const oncekiGocOzetleri: Record<string, string> = {
     'dbca07e47217c52a85db009a1f418189fe1ca73fa36a471ffc4a03ea926a84e1',
 };
 
-const BIR = '0001-sinama-bir';
-const IKI = '0002-sinama-iki';
+const BIR = '202611240001-sinama-bir';
+const IKI = '202611240002-sinama-iki';
+const UC = '202611240003-sinama-uc';
 
 interface SinamaRepo {
   ekle(ad: string): Promise<void>;
@@ -115,20 +119,6 @@ async function defterSatirlari(): Promise<string[]> {
   return rows.map((r) => r.ad);
 }
 
-// Verilen veritabanına, verilen pid dışında açık istemci bağlantısı sayısı.
-async function baglantiSayisi(
-  sorgulayan: pg.Client,
-  veritabani: string,
-  haricPid: number,
-): Promise<number> {
-  const { rows } = await sorgulayan.query<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> $2`,
-    [veritabani, haricPid],
-  );
-  return rows[0]?.sayi ?? -1;
-}
-
 async function sunucudaVarMi(veritabani: string): Promise<boolean> {
   const sunucu = new pg.Client({
     connectionString: localInfrastructure.databaseUrl,
@@ -160,7 +150,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await Promise.all(istemciler.map((istemci) => istemci.$disconnect()));
-  const acikKalan = await baglantiSayisi(gozlemci, db.name, gozlemciPid);
+  const acikKalan = await kalanBaglantiSayisi(gozlemci, db.name, [gozlemciPid]);
   await gozlemci.end();
   await db.drop();
   expect(acikKalan).toBe(0);
@@ -363,10 +353,45 @@ describe('b-g) koşucu ve defter', () => {
     }).toThrow(BIR);
     expect(defter.sirayla().map(([ad]) => ad)).toEqual([BIR]);
   });
+
+  it('i) sırasız bildirilen üç göç ada göre sırayla uygulanır ve deftere yazılır (GV-042; TS-002 AK-24)', async () => {
+    const defter = new TohumDefteri();
+    defter.bildir(UC, sinamaGocu());
+    defter.bildir(BIR, sinamaGocu());
+    defter.bildir(IKI, sinamaGocu());
+
+    expect(await new TohumKosucusu(yeniUow(), defter).kos()).toEqual([
+      BIR,
+      IKI,
+      UC,
+    ]);
+    expect(cagrilar).toEqual([BIR, IKI, UC]);
+    expect(await defterSatirlari()).toEqual([BIR, IKI, UC]);
+  });
+
+  it('i) adı YYYYAAGGSSDD-<feature>-<konu> biçimine uymayan göç bildirimde hata verir ve deftere girmez', () => {
+    const defter = new TohumDefteri();
+    for (const ad of [
+      '0001-sinama-bir',
+      '20261124000-sinama-bir',
+      '202611240000-sinama',
+      '202611240000-Sinama-bir',
+      '202611240000-sinama-bir2',
+      '202611240000-sinama--bir',
+      '202611240000-sinama-bir-',
+    ]) {
+      expect(() => {
+        defter.bildir(ad, sinamaGocu());
+      }).toThrow(
+        `${ad} tohum göçünün adı YYYYAAGGSSDD-<feature>-<konu> biçiminde değil`,
+      );
+    }
+    expect(defter.sirayla()).toEqual([]);
+  });
 });
 
 describe('h) komut', () => {
-  const KOMUT_GOCU = '0001-sinama-komut';
+  const KOMUT_GOCU = '202611240004-sinama-komut';
   let databases: AppDatabases | undefined;
 
   // Uygulamaya bir sınama göçü bildiren kök modül.
@@ -390,13 +415,14 @@ describe('h) komut', () => {
     }
   });
 
-  it('h) derleme dist/tohum.js dosyasını üretir; komutun işlevi geçici veritabanına karşı başarıyla döner ve bağlamı kapatır; derlenmiş komut başarıda 0, hatada 0 olmayan kodla çıkar', async ({
+  it('h) derleme tohum.js dosyasını üretir; komutun işlevi geçici veritabanına karşı başarıyla döner ve bağlamı kapatır; derlenmiş komut başarıda 0, hatada 0 olmayan kodla çıkar', async ({
     annotate,
   }) => {
-    await promisify(execFile)(`${backendDir}node_modules/.bin/nest`, ['build'], {
-      cwd: backendDir,
-    });
-    await access(`${backendDir}dist/tohum.js`);
+    // Derleme bu teste özgü geçici klasöre yapılır; test bitince klasör silinir.
+    const derleme = await derle();
+    onTestFinished(() => derleme.sil());
+    const tohumJs = join(derleme.klasor, 'tohum.js');
+    await access(tohumJs);
 
     databases = await createAppDatabases({ migrations: true });
     const asil = new pg.Client({ connectionString: databases.asil.url });
@@ -411,22 +437,26 @@ describe('h) komut', () => {
           (r) => r.ad,
         );
 
-      expect(await tohumKomutu(SinamaKokModulu, true)).toEqual([KOMUT_GOCU]);
+      expect(await tohumKomutu(SinamaKokModulu, true)).toContain(KOMUT_GOCU);
       expect(await defter()).toEqual([]);
-      expect(await tohumKomutu(SinamaKokModulu, false)).toEqual([KOMUT_GOCU]);
-      expect(await defter()).toEqual([KOMUT_GOCU]);
+      expect(await tohumKomutu(SinamaKokModulu, false)).toContain(KOMUT_GOCU);
+      expect(await defter()).toContain(KOMUT_GOCU);
       expect(await tohumKomutu(SinamaKokModulu, false)).toEqual([]);
       expect(cagrilar).toEqual([KOMUT_GOCU, KOMUT_GOCU]);
       // Bağlam kapanınca asıl ve iz veritabanlarında açık bağlantı kalmaz.
-      expect(await baglantiSayisi(asil, databases.asil.name, asilPid)).toBe(0);
-      expect(await baglantiSayisi(asil, databases.iz.name, asilPid)).toBe(0);
+      expect(
+        await kalanBaglantiSayisi(asil, databases.asil.name, [asilPid]),
+      ).toBe(0);
+      expect(
+        await kalanBaglantiSayisi(asil, databases.iz.name, [asilPid]),
+      ).toBe(0);
 
       // Derlenmiş komut, ortamı geçici veritabanlarını gösteren alt süreç olarak.
       const kos = promisify(execFile);
-      const kuru = await kos(process.execPath, ['dist/tohum.js', '--kuru'], {
+      const kuru = await kos(process.execPath, [tohumJs, '--kuru'], {
         cwd: backendDir,
       });
-      const gercek = await kos(process.execPath, ['dist/tohum.js'], {
+      const gercek = await kos(process.execPath, [tohumJs], {
         cwd: backendDir,
       });
       // Standart çıktıda Nest'in açılış günlüğü de vardır; komutun kendi satırı sondadır.
@@ -439,7 +469,7 @@ describe('h) komut', () => {
       const adresiz = Object.fromEntries(
         Object.entries(process.env).filter(([ad]) => ad !== 'DATABASE_URL'),
       );
-      const hatali = kos(process.execPath, ['dist/tohum.js'], {
+      const hatali = kos(process.execPath, [tohumJs], {
         cwd: backendDir,
         env: adresiz,
       });

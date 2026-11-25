@@ -1,46 +1,31 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '../../shared/database/database.module.js';
-import { Registrar } from '../../shared/database/registrar.js';
-import { MessagingModule } from '../../shared/messaging/messaging.module.js';
-import {
-  KULLANICI_CEKIRDEK_REPO,
-  kullaniciCekirdekRepo,
-} from './_shared/cekirdek/kullanici.repository.js';
-import {
-  OTURUM_CEKIRDEK_REPO,
-  oturumCekirdekRepo,
-} from './_shared/cekirdek/oturum.repository.js';
-import {
-  UYELIK_CEKIRDEK_REPO,
-  uyelikCekirdekRepo,
-} from './_shared/cekirdek/uyelik.repository.js';
-import {
-  YETKI_SURUMU_CEKIRDEK_REPO,
-  yetkiSurumuCekirdekRepo,
-} from './_shared/cekirdek/yetki-surumu.repository.js';
-import { GenelSayac } from './_shared/genel-sayac.js';
-import { KisiKilidi } from './_shared/kisi-kilidi.js';
-import { KisininSayisi } from './_shared/kisinin-sayisi.js';
-import { KokUyelik } from './_shared/kok-uyelik.js';
-import { TohumYardimcisi } from './_shared/tohum-yardimcisi.js';
+import { KimlikCekirdekModule } from './_shared/kimlik-cekirdek.module.js';
+import { KimlikYetkiVerisiModule } from './_shared/yetki-verisi/yetki-verisi.module.js';
+import { GrupModule } from './grup/grup.module.js';
+import { KullaniciModule } from './kullanici/kullanici.module.js';
+import { OturumModule } from './oturum/oturum.module.js';
+import { ParolaModule } from './parola/parola.module.js';
+import { RolModule } from './rol/rol.module.js';
+import { UyelikModule } from './uyelik/uyelik.module.js';
+import { YetenekModule } from './yetenek/yetenek.module.js';
 
-// Kimlik feature'ı. Çekirdek repository'ler Unit of Work'e Registrar ile tanıtılır; çekirdek
-// parçalar yalnız bu feature'ın içinde kullanılır, dışa verilmez.
+// Kimlik feature'ı. Her alt özellik kendi modülünü taşır; bu modül yalnız onları içe aktarır (TS-002
+// AK-30). Dışa yalnız kök modülün sözleşmelere bağladığı iki sınıf çıkar: OturumDenetimiHandler
+// (OturumModule'ün tek dışa verdiği) ve KimlikYetkiVerisi (KimlikYetkiVerisiModule'ün tek dışa
+// verdiği); sözleşmelere kök modülde bağlanır (TS-002 "Yapı"). Çekirdek parçalar yalnız alt
+// modüllere açıktır.
 @Module({
-  imports: [DatabaseModule, MessagingModule],
-  providers: [
-    GenelSayac,
-    KisininSayisi,
-    KisiKilidi,
-    KokUyelik,
-    TohumYardimcisi,
+  imports: [
+    KimlikCekirdekModule,
+    KimlikYetkiVerisiModule,
+    ParolaModule,
+    OturumModule,
+    KullaniciModule,
+    GrupModule,
+    RolModule,
+    UyelikModule,
+    YetenekModule,
   ],
+  exports: [OturumModule, KimlikYetkiVerisiModule],
 })
-export class KimlikModule {
-  constructor(registrar: Registrar) {
-    registrar.register(YETKI_SURUMU_CEKIRDEK_REPO, yetkiSurumuCekirdekRepo);
-    registrar.register(KULLANICI_CEKIRDEK_REPO, kullaniciCekirdekRepo);
-    registrar.register(OTURUM_CEKIRDEK_REPO, oturumCekirdekRepo);
-    registrar.register(UYELIK_CEKIRDEK_REPO, uyelikCekirdekRepo);
-  }
-}
+export class KimlikModule {}
