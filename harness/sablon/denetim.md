@@ -9,7 +9,7 @@ cesit: komut
 (Bu denetimin neyi yakaladığı, tek cümle.)
 
 ## Nasıl koşar
-(Komut ya da desen; hangi yollarda.)
+(Komut ya da desen; hangi yollarda. Koşturulacaksa baş bloğa `komut: <kabuk komutu>` eklenir; aracın kendi denetimiyse `cesit: yerlesik`.)
 
 ## Kırmızı örnek
 (Denetimin yakalaması gereken, bilerek bozuk örnek.)
