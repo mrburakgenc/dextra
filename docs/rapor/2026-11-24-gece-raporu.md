@@ -18,7 +18,7 @@ Denetlemek için:
 <!-- otomatik:basla -->
 Bu bölümü betik üretir (`rapor_uret.py`); sayılar aracın kayıtlarından okunur, elle yazılmaz. Süre ve maliyet her görevin SON işçi koşusunun ve SON incelemesinin kaydıdır: yeniden koşulan görevlerin önceki koşuları bu sayılara girmez (araç eski kaydın üzerine yazar); bilinenler "Duruşlar" bölümünde ayrıca yazılıdır.
 
-Kayıtlı 102 görevin 95 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1018 dakika, 403.23 dolar.
+Kayıtlı 102 görevin 97 tanesi alındı. Son koşuların ve incelemelerin toplamı: 1024 dakika, 403.90 dolar.
 
 | Görev | Plan | Başlık | Aşama | İşçi (dk) | İnceleme (dk) | Dolar | Dosya | İncelemenin bulguları | Cevaplanan soru |
 |---|---|---|---|---|---|---|---|---|---|
@@ -120,10 +120,10 @@ Kayıtlı 102 görevin 95 tanesi alındı. Son koşuların ve incelemelerin topl
 | GV-096 | EP-007 8 | Yönetim formları: yenileme formunun güvenliği, kayıpsız ön doldurma ve yazılanın korunması | alındı | 2.6 | 7.6 | 4.15 | 23 | 0 engel, 1 öneri | 0 |
 | GV-097 | EP-005 11 | Kayıt yok dalının uyarı günlüğü ve senaryo testinde aktarım yarışının giderilmesi | alındı | 2.3 | 5.8 | 3.28 | 3 | 0 engel, 1 öneri | 1 |
 | GV-098 | EP-007 9 | Lint sınırlarına ara katman dosyasının eklenmesi | alındı | 3.1 | 3.6 | 2.12 | 1 | 0 engel, 1 öneri | 0 |
-| GV-099 | EP-007 10 | Yönetim ekranları: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi ve düğme adları | sorunlu | 13.2 | — | 6.97 | 38 | — | 0 |
+| GV-099 | EP-007 10 | Yönetim ekranları: ad listesi alınamayınca ayakta kalma, tek hata eşlemesi ve düğme adları | incelemede kaldı | 4.3 | 8.2 | 5.35 | 39 | 1 engel, 3 öneri | 0 |
 | GV-100 | EP-003 31 | Parola değiştirme: eski parolayla doğrulama, kilit altında yeniden bakış, bütün oturumları | alındı | 6.2 | 6.9 | 4.77 | 10 | 0 engel, 1 öneri | 0 |
-| GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | soru | 11.4 | — | 4.86 | 10 | — | 1 |
-| GV-102 | EP-003 32 | Okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar | bekliyor | — | — | — | 0 | — | 0 |
+| GV-101 | EP-006 12 | Oturum: listele, tek kayıt ve kapat | alındı | 3.4 | 7.3 | 4.54 | 10 | 0 engel, 1 öneri | 1 |
+| GV-102 | EP-003 32 | Okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar | alındı | 2.7 | 4.1 | 2.61 | 2 | 0 engel, 0 öneri | 0 |
 <!-- otomatik:bitir -->
 
 ## 3. Senin verdiğin kararlar (2026-11-24)
@@ -207,6 +207,7 @@ Auth çekirdeği için on karar TS-002 "Aşamalar"da AK-1 … AK-10 olarak yazı
 | GV-096 | iki inceleme kaldı: bozulan hata iletisi; satır sonu içeren değerin sessizce değişmesi | inceleme kayıtları | bulgularla iki kez yeniden koştu |
 | GV-099 | işçi tur sınırına takıldı, bitiş kaydı yok (kart fazla büyük; benim hatam) | sonuç kaydı | kaldığı yerden yeniden koştu |
 | GV-101 | işçi soruyla durdu: okuma kapısında kartın dışında bir hata buldu | bitiş kaydı | karar AK-52; düzeltme ayrı görev (GV-102); cevaplandı |
+| GV-099 | inceleme kaldı: düzen iletiyi gösterirken sayfa backend'e belirteçsiz istek atıyor | inceleme kaydı | karar TS-004'e yazıldı; bulgularla yeniden koştu |
 
 ## 6. Hatalarım
 
@@ -300,6 +301,7 @@ Aracın bilinen açıkları: kabuk üzerinden dosya yazmayı yakalayan kapı her
 - Yetenek formunda değiştirilmiş (oynanmış) değer türü ya da işleç gönderilirse form ileti göstermeden hiçbir şey yapmıyor (GV-096 üçüncü incelemesi); yalnız elle oynanmış istekte olur.
 - Hâlâ yazılmayan auth işleri: giriş bilgisini değiştirme, unutma, deneme sınırı (yayın şartı), tek kullanımlık kodla giriş; ön yüzde parola değiştirme ve oturumlarım ekranları backend alınınca yazılacak.
 - Senaryo testi iki kişiye kaynak başına tek kural veriyordu; okuma kapısındaki hatayı bu yüzden yakalamadı. Senaryoya 'aynı kaynakta iki kurallı kişi' adımı eklenmeli (kapı testine GV-102 ekliyor).
+- Oturum listesinin 'geçmiş' görünümü derin sayfada parça başına çok satırı belleğe alıyor ve erişim kaydındaki kayıt sayısı cevaptakinden büyük çıkıyor (GV-101 incelemesi); kapalı oturumlar birikince yavaşlar. Kapıya 'veya' koşulu desteği gelince tek sorguya iner.
 
 ## 9. PR'lar
 
@@ -397,3 +399,5 @@ Bu oturumda birleşenler: #8 … #12 (https://github.com/mrburakgenc/dextra/pull
 - 05:05 — GV-100 (parola değiştirme) ilk koşuda alındı: dört test dosyasında 70 test; tip ve lint 0.
 - 05:05 — ÖNEMLİ HATA BULUNDU (GV-101'in işçisi buldu): okuma kapısı, aynı kaynakta hem 'bütün kayıtlar' hem şartlı okuma kuralı taşıyan kişiye yalnız şartlı kuralın satırlarını gösteriyordu. Neden: kapı kuralların koşullarını 'veya' ile birleştiriyor, koşulsuz kuralı boş koşul olarak koyuyordu; veritabanı istemcisi 'veya' içindeki boş koşulu yok sayıyor. Görünür sonuç: yönetici, temel üyelikten gelen 'kendi oturumlarım' kuralı yüzünden yalnız kendi oturumlarını görüyordu. Hata eksik gösterir, fazla göstermez; ama yetkiyi yanlış uygular ve bütün kaynakları etkiler. Bugüne kadar görünmedi, çünkü iki kural türünü aynı kaynakta taşıyan ilk kaynak Oturum; senaryo testindeki kişilerin de kaynak başına tek kuralı vardı. Karar AK-52; düzeltme GV-102 olarak koşuyor. GV-101 (oturum listesi ve kapatma) bu hataya bağlı testleri kendi ağacında kırmızı bırakacak biçimde cevaplandı; iki iş alınınca ana dalda ölçeceğim.
 - 05:05 — GV-099 (ön yüzde son sertleştirme) işçinin tur sınırına takıldı ve bitiş kaydı yazamadan kesildi; kaldığı yerden yeniden koşuyor.
+- 05:16 — GV-102 (okuma kapısı: koşulsuz kural satır süzgecini koşulsuz yapar) ilk koşuda alındı; incelemede bulgu yok; kapı, senaryo ve iki okuma testi 67. GV-101 (oturum: listele, tek kayıt ve kapat) alındı. İki iş birlikte ana dalda ölçüldü: oturum yönetimi, giriş, yenileme, guard ve senaryo testleri 96; tip, lint ve derleme 0. Yani GV-101'in kendi ağacında bilerek kırmızı bırakılan testleri (yöneticinin başkasının oturumlarını görmesi ve kapatması) kapı düzeltmesiyle yeşile döndü; hatanın kapandığı böyle doğrulandı.
+- 05:16 — GV-099 (ön yüzde son sertleştirme) ikinci koşuda incelemede kaldı: korumalı düzen 'ulaşılamıyor' iletisini gösterirken sayfanın kendisi backend'e belirteçsiz istek atıp 401 alıyor ve oturum bitti yoluna düşüyordu (çatı sayfayı düzenden bağımsız çiziyor). Karar TS-004'e yazıldı: erişim çerezi yokken oturumlu istek backend'e gitmez. Bulgularla yeniden koşuyor.
