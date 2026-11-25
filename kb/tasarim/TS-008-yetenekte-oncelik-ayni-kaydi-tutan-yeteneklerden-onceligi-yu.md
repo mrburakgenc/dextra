@@ -3,129 +3,115 @@ kimlik: TS-008
 tur: tasarim
 durum: taslak
 surum: 1
-baslik: Yetenekte öncelik: aynı kaydı tutan yeteneklerden önceliği yüksek olan tek başına geçerlidir
+baslik: Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır
 agirlik: tek-yonlu
 tarih: 2026-11-25
 ---
-Aynı izin bir kişiye birden çok yetenekten geliyor ve hepsi aynı kaydı tutuyorsa, önceliği en yüksek olan yetenek o kayıt için tek başına geçerlidir; eşit önceliktekiler bugünkü gibi birleşir.
+Yeteneğe etki (girebilir ya da giremez) ve öncelik eklenir: giremez kuralı, kendisinden yüksek öncelikli olmayan girebilir kurallarını tuttuğu kayıtlarda ve kolonlarda kapatır; girebilir kuralları kendi aralarında bugünkü gibi birleşir.
 
 ## Sorun
 Kullanıcı (2026-11-25, kendi sözü): "bak şimdi burada yetenekte yetenekler eğer eşitse yaptığımız bir hata var adamda 2 yeri aynı yeteneği varsa kazanma durumu vardı priority mevzusu ne oldu o iş kanondaki gibi sadeleştiğinde o yapı takır takır çalışıyordu". Sorulunca "şimdi tasarlansın" dedi.
 
 Ölçülenler (2026-11-25):
-- Bugün kazanan yoktur. Okumada aynı izni veren yeteneklerin satırları birleşir ve her kayıt, kendisini tutan yeteneklerin kolonlarının birleşimini taşır (`shared/yetki/infrastructure/okuma-kapisi.ts`). Yazmada adaylar oluşturulma sırasıyla denenir; koşulu tutan ama alanı kapsamayan yetenek atlanır ve satırı ilk kilitleyen yetenek kayda geçer (`yazma-kapisi.ts`; kurallar kimlik sırasıyla gelir).
-- Yetenek kararı (KR-008, taslak) Seçim 3: "satırlar birbirini ezmez ve birleştirilmez"; Seçim 9: "öncelik ve etki alanı (girebilir / giremez) ilk sürümde yoktur" ve bu, 2026-11-23'te kullanıcı teyidiyle ertelenenler arasındadır.
-- Kanon (`kb/_gelen/ARCHITECTURE.md` satır 429): kurallar "priority sırasına göre" derlenir (can ve cannot).
-- Örnek: kişi aynı birimde hem Müdür (bütün kolonlar) hem Stajyer (yalnız ad) rolünü taşıyorsa bugün bütün kolonları görür; dar yeteneğin geniş olanı kısıtlaması mümkün değildir.
+- Bugün yalnız izin veren kural vardır ve kazanan yoktur: okumada yeteneklerin satırları birleşir, her kayıt kendisini tutan yeteneklerin kolonlarının birleşimini taşır; yazmada adaylar oluşturulma sırasıyla denenir (`backend/src/shared/yetki/infrastructure/okuma-kapisi.ts`, `yazma-kapisi.ts`).
+- Yetenek kararı (KR-008, taslak) Seçim 9: "öncelik ve etki alanı (girebilir / giremez) ilk sürümde yoktur; kapatma özelliği yazılırken birlikte eklenir"; 2026-11-23'te kullanıcı teyidiyle ertelenmişti. Seçim 3: "satırlar birbirini ezmez".
+- Kanon (`kb/_gelen/ARCHITECTURE.md` satır 429): kurallar "can()/cannot() rule'ları priority sırasına göre" derlenir. Ekrandaki yetki kitaplığının doğal davranışı da budur: kurallar sırayla değerlendirilir, son eşleşen kazanır; yalnız izin veren kurallar arasında sıranın etkisi yoktur (çürütme turunda kurulu sürümle ölçüldü).
+- Örnek: kişi aynı birimde hem Müdür (bütün kolonlar) hem Stajyer rolünü taşıyorsa bugün Stajyer rolüyle hiçbir şey kısıtlanamaz.
 
-- Amaç: yöneticinin bir yeteneği öbürünün önüne koyabilmesi; kazanan tek ve öngörülebilir olsun.
-- Kapsam dışı: "giremez" türünde kural (kullanıcı ayrı seçenek olarak sunulduğunda onu seçmedi); kapatma özelliği (KR-008 Seçim 9'un öbür yarısı); kayıt katmanının yeri (TS-007; ondan bağımsızdır: öncelik yalnız yetki motorunun içini değiştirir, repository'lerin biçimini değiştirmez).
-- Başarının ölçüsü: var olan bütün veri ve testler değişmeden bugünkü gibi çalışır (hepsi öncelik 0); önceliği farklı yazılmış iki yetenekle örnekteki kişi yalnız yüksek öncelikli yeteneğin kolonlarını görür ve yalnız onun alanlarını yazabilir.
+Yön (kullanıcı, 2026-11-25): ilk taslak "önceliği yüksek olan yetenek tek başına geçerli" anlamını taşıyordu; bağımsız çürütme turu onu imzalamadı (aşağıda "Çürütme") ve kullanıcı bedelleri görünce yönü değiştirdi: "Kanondaki gibi: giremez kuralı ve öncelik".
+
+- Amaç: yöneticinin bir eylemi, bir kaydı ya da bir kolonu açıkça yasaklayabilmesi ve yasağın hangi izinlerin önüne geçeceğini öncelikle belirleyebilmesi.
+- Kapsam dışı: kayıt katmanının yeri (TS-007; ondan bağımsızdır: etki ve öncelik yalnız yetki motorunun içini ve derlemeyi değiştirir, repository'lerin biçimini değiştirmez).
+- Başarının ölçüsü: var olan bütün veri ve testler değişmeden bugünkü gibi çalışır (hepsi girebilir, öncelik 0); Stajyer rolüne yazılan bir giremez kuralıyla örnekteki kişi yasaklanan kolonu göremez ve yazamaz; ekran aynı kararı gösterir.
 
 ## Kısıtlar
-- Kullanıcının dört kararı (2026-11-25) bağlayıcıdır ve "Seçenekler"de yazılıdır.
-- Var olan davranış korunur: önceliği yazılmamış yetenek 0'dır ve eşit önceliktekiler birleşir; göç var olan satırlara 0 yazar.
-- Veri kararını sunucuda veritabanı verir (KR-010); öncelik de sorguya çevrilir, bellekte kayıt süzülmez.
-- Süzme ve sıralama görünmeyen kolonu ele vermez (bugünkü kural) ve bu kural öncelikle birlikte de geçerlidir.
-- Yetenek değişmez satırdır (KR-008 Seçim 7): öncelik yazılırken ve yenilenirken verilir, yerinde değiştirilmez.
-- Şema değişikliği göçle yapılır; yerel veritabanı kum havuzudur (TS-001), başka ortam yoktur.
+- Kullanıcının kararları (2026-11-25) bağlayıcıdır: yön (giremez kuralı ve öncelik); girebilir kuralları eşit öncelikte bugünkü gibi birleşir; yazmada yasak alanı kapsıyorsa cevap "yetki yok"tur; öncelik sayıdır, varsayılan 0, büyük sayı kazanır.
+- Var olan davranış korunur: etkisi yazılmamış yetenek girebilirdir, önceliği yazılmamış yetenek 0'dır; göç var olan satırlara bunları yazar.
+- Veri kararını sunucuda veritabanı verir (KR-010): yasak da sorguya çevrilir, bellekte kayıt süzülmez.
+- Süzme ve sıralama görünmeyen kolonu ele vermez (bugünkü kural).
+- Yetenek değişmez satırdır (KR-008 Seçim 7): etki ve öncelik yazılırken ve yenilenirken verilir.
+- Kullanıcının ilkesi (KR-008; 2026-11-23): önce kapatılır, sonra açılır; tanım yanlış ya da eksikse erişim kapalı kalır.
 
-## Değişmezler
-1. Kayıt, onu tutan herhangi bir yetenek varsa görünür; öncelik bir kaydı görünmez yapmaz, yalnız hangi yeteneğin kolonlarının ve yazma sınırının geçerli olduğunu belirler.
-2. Bir kayıt için "kazanan düzey", o kaydı tutan yeteneklerin en yüksek önceliğidir; yalnız o düzeydeki yetenekler uygulanır.
-3. Bütün yeteneklerin önceliği eşitken her uç bugünkü cevabı verir.
-
-## Yapı
+## Yapı (taslak; açık uçlar kapanmadan kesinleşmez)
 ### Veri
-Yetenek satırına `oncelik` kolonu eklenir: tam sayı, boş olamaz, varsayılan 0; büyük sayı kazanır. Kaynak kataloğunda Yetenek'in bir kolonudur (kolon sınırlarına ve değişiklik kaydına bugünkü kurallarla girer).
+Yetenek satırına iki kolon eklenir: `etki` (girebilir ya da giremez; varsayılan girebilir) ve `oncelik` (tam sayı; varsayılan 0; büyük kazanır). İkisi de kaynak kataloğunda Yetenek'in kolonudur.
 
 ### Tanım
-Aynı izin (eylem ve kaynak) için bir kaydı tutan yetenekler önceliğe göre düzeylere ayrılır. En yüksek düzey kazanır: o düzeydeki yetenekler kendi aralarında bugünkü gibi birleşir (satırlar "veya", kolonlar kayıt başına birleşim); daha düşük düzeydeki yetenekler o kayıt için yok sayılır. Öncelik yalnız aynı iznin yetenekleri arasında karşılaştırılır.
+Bir kişi, bir eylem, bir kayıt ve bir kolon için: kaydı tutan ve o kolonu kapsayan kurallar arasında önceliği en yüksek olan karar verir; girebilir ise izin vardır, giremez ise yoktur. Kolon listesi olmayan giremez kuralı kaydın bütününü kapatır. Hiç girebilir kuralı tutmayan kayıt bugünkü gibi görünmez. Girebilir kuralları birbirini kapatmaz: aynı kaydı tutanların kolonları birleşir.
 
 ### Okuma
-- Satırlar: bir kayıt, onu tutan en yüksek düzeyde okumaya katılan bir yetenek varsa gelir. Sorgu koşulu düzey düzey kurulur: "bu düzeyin okumaya katılan yeteneklerinden biri tutuyor VE daha yüksek düzeydeki hiçbir yetenek tutmuyor", düzeyler "veya" ile birleşir. Tek düzey varken koşul bugünkü koşulla aynıdır.
-- Okumaya katılma: çağıranın süzdüğü ya da sıraladığı kolonu göremeyen yetenek katılmaz (bugünkü kural). Kazanan düzeyde o kolonu gören yetenek yoksa kayıt o okumada gelmez: düşük düzeydeki bir yetenek kolonu görse de kayıt onun üzerinden sızmaz.
-- Kolonlar: her kayıt, kazanan düzeyde kendisini tutan yeteneklerin kolonlarının birleşimini taşır (kimlik her zaman).
-- Erişim kaydı birikimine yalnız kazanan düzeyde katılan yetenekler girer.
+- Satırlar: bir kayıt, onu tutan bir girebilir kuralı varsa ve o kuraldan düşük öncelikli olmayan, kaydın bütününü kapatan bir giremez kuralı onu tutmuyorsa gelir.
+- Kolonlar: kayıt, kendisini tutan girebilir kurallarının kolonlarından, onlardan düşük öncelikli olmayan giremez kurallarının kapattıkları çıkarılmış hâlini taşır.
+- Süzme ve sıralamada bakılan kolon kayıtta görünür olmalıdır (bugünkü kural); kapatılmış kolona göre süzülen ya da sıralanan okumaya o kayıt girmez.
 
 ### Yazma
-- Güncelleme, silme ve niyet eylemi: satırı tutan en yüksek düzey bulunur (yeteneğin alanı kapsayıp kapsamadığına bakılmadan). Yazmanın yeteneği o düzeyden seçilir: alanı kapsayan ve satırı kilitleyen ilk yetenek. O düzeyde alanı kapsayan yetenek yoksa cevap "yetki yok"tur; daha düşük düzeye inilmez. İki hâl kuralı aynı yetenekle sürer.
-- Oluşturma: satır yazıldıktan sonra yeni satırı tutan en yüksek düzey bulunur; yazmanın yeteneği o düzeyde, alanları kapsayan ve satırı gören bir yetenek olmalıdır, yoksa "yetki yok" (iş geri alınır).
-- Değişiklik kaydı notu bugünkü gibi yazmanın yeteneğini ve üyeliğini taşır.
+Şartlı yazmanın bugünkü sırası korunur; adaylar belirlenirken satırı tutan giremez kuralları da okunur ve yazmanın yeteneği, yazılan alanlarda kendisinden düşük öncelikli olmayan bir giremez kuralıyla kapatılmamış olmalıdır; değilse "yetki yok". Bu karar satır kilitlendikten sonra, kilit altında verilir (çürütme 4).
 
 ### Derleme ve ekran
-- Derleyici her kurala önceliğini yazar; kuralların sırası artan önceliktir.
-- Ekranın yetki soruları (kayıt düzeyi ve kolon düzeyi) aynı sonucu vermelidir. Öneri: `kimlik/oturum/yetkilerim` cevabı, alt düzeyi olan her düzey için önce o düzeyin koşullarını taşıyan ters (inverted) kuralları, sonra izin kurallarını verir; CASL son eşleşen kuralı uyguladığı için yüksek düzeyin tuttuğu kayıtta alt düzeyin kolonları "hayır" olur. Tür düzeyi sorular (menü, kolon başlığı) şartlı ters kuraldan etkilenmez. Bu öneri AU-5 ile karara bağlanır.
-- Uç guard'ı (kaba karar) değişmez: o izin için herhangi bir kuralı olan kişi uca girer.
+Derleyici kuralları artan öncelikle sıralar ve giremez kuralını ters (inverted) kural olarak üretir; aynı öncelikte giremez kuralı girebilir kuralından sonra gelir. Ekran aynı kuralları yetki kitaplığıyla değerlendirir (KR-010). Uç guard'ı değişmez.
 
 ### Yönetim
-Yetenek yazma ve yenileme uçlarının gövdesi isteğe bağlı `oncelik` alır (verilmezse 0); yetenek listesi ve kayıt sayfası önceliği gösterir; formlara "Öncelik" alanı eklenir.
+Yetenek yazma ve yenileme uçları isteğe bağlı `etki` ve `oncelik` alır; liste ve kayıt sayfası ikisini gösterir; formlara iki alan eklenir.
 
 ## Seçenekler
-### 1. Kazanan (kullanıcı, 2026-11-25)
-- A (seçildi: "Önceliği yüksek olan tek başına geçerli") — Dar bir yetenek geniş olanı kısıtlayabilir; kazanan tektir.
-- B — "Giremez" kuralı (kanondaki can ve cannot): daha anlatımlı; iki tür kural ve iki ayrı okuma biçimi ister.
-- C — Bugünkü birleşim, öncelik yalnız yazmada kayda geçen yeteneği belirler: en ucuz; kısıtlama sağlamaz.
+### 1. Yön (kullanıcı, 2026-11-25)
+- A (seçildi: "Kanondaki gibi: giremez kuralı ve öncelik") — Açık yasak yazılabilir; ekrandaki kitaplığın doğal davranışıdır; KR-008 Seçim 9'un ertelediği "kapatma" budur.
+- B (ilk seçim; çürütme turundan sonra kullanıcı bıraktı) — Önceliği yüksek olan yetenek tek başına geçerli: emsali yoktu; veritabanında olumsuzlama ve ekranda yapay ters kural istiyor, bir eylemi yasaklayamıyordu.
+- C — Önceliği ertelemek: bugünkü birleşim kalırdı.
 
-### 2. Eşitlik (kullanıcı, 2026-11-25)
-- A (seçildi: "Eşit olanlar birleşsin") — Var olan veri değişmeden çalışır; kazanan yalnız öncelik bilerek farklı yazılınca devreye girer.
-- B — İlk oluşturulan kazanır. C — Son oluşturulan kazanır. İkisi de var olan verinin davranışını değiştirir (örnek: SuperAdmin'in "bütün oturumlar" yeteneği ile herkese verilen "yalnız kendi oturumu" yeteneği).
+### 2. Girebilir kurallarının eşit öncelikte birleşmesi (kullanıcı, 2026-11-25: "Eşit olanlar birleşsin")
+Yeni yönde girebilir kuralları her öncelikte birleşir; kullanıcının seçimi bunun içindedir.
 
-### 3. Yazmada kazananın alanı kapsamaması (kullanıcı, 2026-11-25)
-- A (seçildi: "Yetki yok") — Okumayla aynı kural; dar ve yüksek öncelikli yetenek yazmayı da kısıtlar.
-- B — Sıradaki önceliğe düşmek: yazma daha az kısıtlanır; okuma ile yazmanın kuralı ayrışır.
+### 3. Yazmada (kullanıcı, 2026-11-25: "Yetki yok")
+Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 
-### 4. Değer (kullanıcı, 2026-11-25)
-- A (seçildi: "Sayı, varsayılan 0, büyük kazanır") — Yönetici yalnız gerektiğinde sayı verir.
-- B — Zorunlu alan: hiçbir yetenek farkında olmadan eşit kalmaz; her yazmada bir karar daha ister.
+### 4. Değer (kullanıcı, 2026-11-25: "Sayı, varsayılan 0, büyük kazanır")
 
 ## Açık uçlar
-- AU-1: SuperAdmin'in sistem yetenekleri öncelikle kısıtlanabilir mi? Bugünkü kararlarla, SuperAdmin'e (ya da herkesin taşıdığı temel role) yüksek öncelikli dar bir yetenek düşerse yönetici de o kayıtta kısıtlanır ve kendini kilitleyebilir. Seçenek adayları: sistem yetenekleri her zaman en üst düzey sayılır; ya da öncelik yalnız aynı (grup, rol) kümesinin yetenekleri arasında karşılaştırılır; ya da kısıtlanabilir kalır ve kilitlenme tohum göçüyle çözülür (KR-008 "Kilitlenme").
-- AU-2: Önceliğin aralığı: alt ve üst sınır var mı (örnek 0–100), negatif yazılabilir mi?
-- AU-3: Önceliği kim yazabilir: yetenek yazabilen herkes mi, ayrı bir izin mi; kişi kendi yeteneğinden yüksek öncelik yazabilir mi?
-- AU-4: Öncelik karşılaştırması bütün üyelikler arasında mı yapılır (bir birimdeki yüksek öncelikli yetenek, başka birimdeki rolün yeteneğini aynı kayıtta ezer), yoksa yalnız aynı birimin yetenekleri arasında mı? KR-008 "Rol karışması" güvencesiyle birlikte düşünülmelidir.
-- AU-5: Ekranın kayıt ve kolon düzeyi soruları önceliği nasıl öğrenir: ters kurallarla derlenmiş CASL kuralları mı (öneri), yoksa ekran bu soruları kazanan düzeyi bilmeden mi sorar (ekran fazladan düğme gösterebilir, kararı yine backend verir)?
-- AU-6: Öncelik değiştirmek için yenileme yeterli mi (yeni satır, eskisi pasif), yoksa yalnız önceliği değiştiren ayrı bir eylem mi istenir?
-- AU-7: Derlenemeyen ya da şartı çözülemeyen yüksek öncelikli dar yetenek ne yapar: düşer mi (o zaman geniş yetenek yeniden geçerli olur ve erişim GENİŞLER), yoksa o izinde kişiyi kapatır mı? Bugünkü ilke "eksik ya da yanlış tanım erişimi açmaz, kapatır"dır (KR-008); öncelik bu ilkeyi tersine çevirebilir (çürütme 3). Aynı soru üyelik ya da yetenek silmek için de geçerlidir: dar satırı silmek erişimi genişletir.
-- AU-8: Üst düzeyin şartı bir kayıtta boş değer yüzünden "bilinmiyor" çıkarsa üst düzey o kaydı tutmuyor mu sayılır (öneri: evet; kayıt alt düzeye düşer)? Bunun için katalogda kolonun boş olabilirliği gerekir (çürütme 1).
-- AU-9: Güncellemede yeni hâlin kazanan düzeyine bakılır mı? Bakılmazsa kişi, doğrudan yazamayacağı içeriği bir kaydı kısıtlı birime taşıyarak yazabilir (çürütme 8).
-- AU-10: Öncelik izin başınadır: okumayı kısıtlayan yüksek öncelikli satır yazmayı, silmeyi ve niyet eylemlerini kısıtlamaz; onlar için ayrı satır gerekir, silme ve niyet eylemlerinde kolon sınırı olmadığı için öncelikle hiç kısıtlanamazlar (çürütme 7). Kullanıcı bunu teyit ediyor mu, yoksa bir iznin önceliği aynı kaynağın öbür izinlerini de mi etkilesin?
-- AU-11: Süzme ya da sıralamada kazanan düzey o kolonu görmüyorsa kayıt o okumada gelmez; varsayılan sıralaması olan liste (örnek: oturumlar, başlangıç zamanına göre) boşalabilir. Bu, Değişmez 1 ile çelişir (çürütme 6): hangisi geçerli?
-- AU-12: Yenilemede öncelik verilmezse 0 mı yazılır, eski satırın önceliği mi korunur? 0 yazılırsa dar yetenek sessizce geniş olanla birleşir (çürütme 10).
-- AU-13: Kişisiz işlerin sistem aktörü öncelikten etkilenir mi?
-- AU-14: Erişim kaydına sayfa için ne yazılır: ek sorguyla gerçekten kazanan yetenekler mi, okumaya katılan bütün yetenekler mi (çürütme 11)?
-- AU-15: Aşamalar arası tutarsızlık olmasın diye, yazma motoru bitene dek sıfırdan farklı öncelik reddedilsin mi (çürütme 14)?
-- AU-16: Bir kişide aynı izin için düzey sayısına üst sınır konur mu (sorgu büyüklüğü düzey sayısıyla karesel büyüyebilir; ölçülmedi; çürütme 12)?
-- AU-17: Yönetici "bu kişi bu kayıtta neden şunu göremiyor" sorusunu nereden cevaplar (öncelik yüzünden gelen ret iz bırakmaz)?
-- AU-18: Bu tasarım yetenek kararını değiştirir (KR-008 Seçim 3, 9 ve 30; KR-010 derleme eşlemesi). Seçim 9 önceliği "kapatma özelliğiyle birlikte" eklenmeye kullanıcı teyidiyle bağlamıştı: bağ bilerek mi çözülüyor ve değişikliği hangi karar taslağı taşıyacak?
+- AU-1: Aynı öncelikte bir girebilir ve bir giremez kuralı aynı kaydı ve kolonu tutuyorsa hangisi geçerli? Kullanıcının ilkesi ("önce kapatılır") giremezin kazanmasını gösterir; karar kullanıcınındır.
+- AU-2: SuperAdmin'in sistem yetenekleri bir giremez kuralıyla kapatılabilir mi? Kapatılabilirse yönetici kendini kilitleyebilir (çürütme: herkesin taşıdığı temel üyeliğe düşen bir yasak yetenek ekranını kör eder; ikinci bir hatayla tek çıkış göçtür). Adaylar: sistem satırları her yasağın üstündedir; ya da korunan kaynaklarda ve kök kümelerde giremez yazılamaz; ya da kapatılabilir kalır ve kilit göçle çözülür.
+- AU-3: Giremez kuralı kişinin bütün üyeliklerindeki izinleri mi kapatır, yalnız aynı birimin izinlerini mi? Birim şartı olan kaynakta yasak zaten o birimin kayıtlarıyla sınırlıdır; birim kolonu olmayan kaynaklarda (kullanıcı, oturum, rol, izin) bir birimden gelen yasak kişiyi her yerde kısıtlar. KR-008 "Rol karışması" güvencesiyle birlikte düşünülmelidir.
+- AU-4: Derlenemeyen ya da şartı çözülemeyen giremez kuralı ne yapar: düşer mi (yasak kalkar, erişim genişler), yoksa o izni o kişide tümden kapatır mı? Kullanıcının ilkesi kapatmayı gösterir.
+- AU-5: Giremez kuralının şartı bir kayıtta boş değer yüzünden "bilinmiyor" çıkarsa yasak o kaydı tutuyor mu sayılır? (Veritabanında olumsuzlanan koşul boş değerde satır kaybeder; çürütme 1. Tutmuyor sayılırsa katalogda kolonun boş olabilirliği gerekir.)
+- AU-6: Ekran, şartı ekrana gelmeyen bir kolona bakan giremez kuralını değerlendiremez ve bugünkü kitaplıkla "izin var" der (çürütme turunda ölçüldü): kısıtlı kişi yazamayacağı formu görür, backend reddeder. Değerlendirilemeyen yasak ekranda "yasak" mı sayılsın (özel eşleyici ister; bazı düğmeler gereksiz gizlenir), yoksa bugünkü sınır mı geçerli olsun (ekran gösterebilir, kararı backend verir)?
+- AU-7: Önceliğin aralığı: alt ve üst sınır var mı, negatif yazılabilir mi?
+- AU-8: Etkiyi ve önceliği kim yazabilir: yetenek yazabilen herkes mi, ayrı bir izin mi?
+- AU-9: Yenilemede etki ve öncelik verilmezse eski satırın değerleri mi korunur, varsayılan mı yazılır? (Varsayılan yazılırsa yasak sessizce izne döner; çürütme 10.)
+- AU-10: Giremez kuralı hangi eylemlerde yazılabilir: yalnız okuma ve güncellemede mi, oluşturma, silme ve niyet eylemlerinde de mi? Silme ve niyet eylemlerinde kolon sınırı olmadığı için yasak kaydın bütünü içindir.
+- AU-11: Güncellemede yeni hâl bir yasağın içine giriyorsa yazma reddedilir mi (iki hâl kuralının yasak karşılığı)?
+- AU-12: Sistem satırlarının (tohumla gelen yetenekler) etkisi ve önceliği çalışma anında değiştirilemez; yalnız göçle değişir. Bu kabul mü?
+- AU-13: Kişisiz işlerin sistem aktörü yasaklardan etkilenir mi?
+- AU-14: Erişim kaydına ve değişiklik kaydına yasaklar yazılır mı (hangi yasak hangi kolonu kapattı)? Yönetici "bu kişi bu kayıtta neden şunu göremiyor" sorusunu nereden cevaplar?
+- AU-15: Bir kişide aynı izin için kural ve öncelik düzeyi sayısına üst sınır konur mu (sorgu büyüklüğü; ölçülmedi)?
+- AU-16: Bu tasarım yetenek kararını değiştirir (KR-008 Seçim 3, 9 ve 30; KR-010 derleme eşlemesi): değişikliği hangi karar taslağı taşıyacak?
+- AU-17: Geçiş boyunca tutarsız ara durum olmasın diye, okuma ve yazma motoru ile ekran bitene dek giremez kuralı ve sıfırdan farklı öncelik yazılması reddedilsin mi?
 
-## Aşamalar
-1. Veri ve taşıma: kolon, göç, katalog, derleyici, yönetim uçlarının gövdesi; motor önceliği taşır ama henüz kullanmaz (davranış değişmez).
-2. Okuma motoru: düzeyli satır koşulu ve kazanan düzeyin kolonları.
-3. Yazma motoru: kazanan düzeyin bulunması, alt düzeye inmeme, oluşturma.
-4. Ekran: yetkilerim cevabı (AU-5'in kararına göre), yetenek formu, liste ve kayıt sayfası.
-5. Bütün: örnek senaryonun uçtan uca testi ve tarayıcı denemesi.
-Sıra bağlayıcıdır; açık uçlar kapanmadan ilgili aşama başlamaz (AU-1 ve AU-4 ikinci aşamadan, AU-2, AU-3 ve AU-6 birinci aşamadan, AU-5 dördüncü aşamadan önce).
+## Aşamalar (açık uçlar kapanınca kesinleşir)
+1. Veri ve taşıma: iki kolon, göç, katalog, derleyici, yönetim uçlarının gövdesi; motor etkiyi ve önceliği taşır ama henüz kullanmaz, giremez yazılamaz (davranış değişmez).
+2. Okuma motoru: yasaklı satır koşulu ve kolonların çıkarılması.
+3. Yazma motoru: yasağın kilit altında sınanması.
+4. Ekran: yetkilerim cevabı ve yetki kuralları, yetenek formu, liste ve kayıt sayfası.
+5. Bütün: örnek senaryonun uçtan uca testi ve tarayıcı denemesi; giremez yazımının açılması.
+Sıra bağlayıcıdır; ilgili açık uç kapanmadan aşama başlamaz.
 
 ## Doğrulama
-- Var olan uçtan uca testlerin hepsi beklentileri değişmeden geçer (bütün öncelikler 0).
-- Yeni testler: Müdür ve Stajyer örneği (okuma, kolonlar, yazma); eşit öncelikte birleşim; yüksek düzeyin görmediği kolona göre sıralamada kaydın gelmemesi; yazmada alt düzeye inilmemesi; oluşturmada kazanan düzey; erişim kaydı ve değişiklik kaydı notu.
-- Ekran: kısıtlanan kişide kayıt düzeyi soruların backend'le aynı cevabı vermesi (AU-5'e göre).
+- Var olan uçtan uca testlerin hepsi beklentileri değişmeden geçer (hepsi girebilir, öncelik 0).
+- Yeni testler: Müdür ve Stajyer örneği (okuma, kolonlar, yazma); kaydın bütününü kapatan yasak; yüksek öncelikli iznin düşük öncelikli yasağı aşması; eşit öncelik (AU-1'in kararına göre); boş değerli kayıt (AU-5); koşulsuz yasak ve koşulsuz izin; yasaklı kolona göre süzme ve sıralama; yarış (yazmada kilit altında karar).
+- Ekran: aynı kurallarla aynı karar (AU-6'nın kararına göre); backend ile ekranın sekiz işleçte aynı sonucu verdiğini gösteren eşlik testi.
+- Tek yönlü kaydın istediği bölümler (senaryolar, kapasite, hata modları, performans) açık uçlar kapandıktan sonra yazılır; ardından ikinci bir bağımsız çürütme turu koşar.
 
 ## Çürütme
-Bağımsız çürütme turu 2026-11-25'te koştu (ayrı bir oturum; dosya değiştirmedi; CASL davranışını kurulu sürümlerle ölçtü, Prisma ve veritabanı davranışını belgeden okudu, ölçmedi). İnceleyicinin hükmü: "bu hâliyle imzalamam". Kullanıcının dört kararını değiştirmeyi önermedi; kararların kayda geçmemiş bedellerini saydı.
+İlk taslak ("önceliği yüksek olan tek başına geçerli") için bağımsız çürütme turu 2026-11-25'te koştu (ayrı bir oturum; dosya değiştirmedi; ekrandaki kitaplığın davranışını kurulu sürümlerle ölçtü, Prisma ve veritabanı davranışını belgeden okudu, ölçmedi). İnceleyicinin hükmü: "bu hâliyle imzalamam". Kullanıcı bulguları görünce yönü değiştirdi; bu kayıt yeni yöne göre yeniden yazıldı ve yeni yön için çürütme turu HENÜZ KOŞMADI.
 
-Engel sayılan bulgular:
-1. Okumadaki "üst düzey tutmuyor" koşulu boş değerde satır kaybeder: şartı boş bir kolona bakan üst düzey, kayıt için "bilinmiyor" çıkar; kayıt ne üst dala ne alt dala girer ve listeden sessizce kaybolur (örnek: üst grubu boş olan kök grup). Cevap: AU-8.
-2. Koşulsuz ("bütün kayıtlar") yetenek düzeyli koşulda eski hatayı (TS-002 AK-52) iki yöne de açar: üstteyken alt düzey canlı kalıp fazla kolon gösterebilir, alttayken satır kaybedebilir. Cevap: koşulsuz yeteneğin üç durumu (üstte, altta, üstte ama okumaya katılmıyor) "Yapı"ya kural ve test olarak yazılacak; henüz yazılmadı.
-3. Derlenemeyen dar ve yüksek öncelikli yetenek düşünce geniş yetenek yeniden geçerli olur: bugünkü "yanlış tanım erişimi kapatır" güvencesi tersine döner. Cevap: AU-7.
-4. Yazmada kazanan düzeyi bulmakla satırı kilitlemek arasında yarış vardır; araya giren bir işlem üst düzeyin kısıtını atlatır. Cevap: düzey, satır kilitlendikten sonra kilit altında belirlenmelidir; "Yapı"ya yazılacak.
-5. Ekran için önerilen ters kurallar, şartın baktığı kolon kayıtta yokken "evet" der (ölçüldü): kısıtlı kişi yazamayacağı formu görür; veri sızmaz, backend reddeder. Öncelikli kayıt yalnız kazanan düzeyin kolonlarını taşıdığı için bu olağan durumdur. Cevap: AU-5.
+İlk taslağın engel bulguları ve yeni yöndeki karşılıkları:
+1. Olumsuzlanan koşul boş değerde satır kaybeder (örnek: üst grubu boş olan kök grup). Yeni yönde de geçerlidir: yasak, satır koşulunda olumsuzlanır. Karşılığı AU-5.
+2. Koşulsuz kural düzeyli koşulda eski hatayı (TS-002 AK-52) iki yöne de açar. Yeni yönde koşulsuz yasak ve koşulsuz izin için kural ve test gerekir ("Doğrulama").
+3. Derlenemeyen kısıtlayıcı kural düşünce erişim genişler. Karşılığı AU-4.
+4. Yazmada kararı vermekle satırı kilitlemek arasında yarış. Karşılığı "Yazma": karar kilit altında verilir.
+5. Ekran, şartı kayıtta olmayan kolona bakan ters kuralda "izin var" der (ölçüldü). Karşılığı AU-6.
 
-Önemli bulgular: Değişmez 1 ile okumaya katılma kuralı çelişir (AU-11); öncelik izin başına olduğu için okumayı kısıtlamak yazmayı kısıtlamaz (AU-10); güncellemede yeni hâlin düzeyi tanımsız (AU-9); sistem satırları çalışma anında yenilenemediği için öncelikleri yalnız göçle değişir (AU-1, AU-6); yenilemede varsayılan 0 kısıtı sessizce kaldırır (AU-12); erişim kaydı tanımı sayfa için hesaplanamıyor (AU-14); sorgu büyüklüğü (AU-16); aşamalar arası tutarsız ara durum (AU-15); tek yönlü kaydın istediği dört bölüm (senaryolar, kapasite, hata modları, performans) eksik.
+İlk taslağa özgü olup yeni yönde düşen bulgular: okumayı kısıtlayan satırın yazmayı kısıtlamaması (yeni yönde her eylem için yasak ayrıca yazılır; AU-10); "tek başına geçerli" düzeyin kaydı görünmez yapması; karesel sorgu büyüklüğü (yeni yönde büyüklük yasak sayısıyla artar; AU-15).
 
-Düşünülmemiş hata kipleri: kendini kilitleme (SuperAdmin herkesin taşıdığı temel üyeliği de taşır; ona düşen "yetenekleri oku, yalnız kimlik, yüksek öncelik" satırı yetenek ekranını kör eder; ikinci bir hatayla tek çıkış göçtür; AU-1); kısıt niyetiyle yazılıp önceliği unutulan satır sessizce genişletmeye döner; öncelik bütün birimler için tek ölçektir ve araya düzey sokmak üstteki satırların yenilenmesini ister; öncelik yüzünden gelen ret iz bırakmaz (AU-17).
+En güçlü karşı görüş ilk taslağa karşıydı ve yönü değiştirdi: seçilen anlam adı konmamış bir "giremez" kuralıydı; onun bedelini ödüyor, kazancını almıyordu. Kalan bedel yeni yönde de sürer: "satır eklemek yalnız erişim açar" özelliği gider (yasak silinirse ya da bozulursa erişim genişler); karşılığı AU-4.
 
-En güçlü karşı görüş: seçilen anlam adı konmamış bir "giremez" kuralıdır; onun bedelini öder (veritabanında olumsuzlama, ekranda ters kural), kazancını almaz (bir eylemi yasaklamak, izin vermeden kısıtlamak). Kanondaki öncelik, girebilir ve giremez kurallarını sıralamak içindir ve ekrandaki kitaplığın doğal davranışı da odur; yalnız izin veren kurallar arasında sıranın kitaplıkta hiçbir etkisi yoktur. Ayrıca "satır eklemek yalnız erişim açar" özelliği gider; yetenek kararının kapalı düşme güvenceleri buna dayanıyordu. Bu karşı görüş "Seçenekler 1"de tek satırla elenmişti; kullanıcıya açıkça sunulacak.
-
-Doğrulanamayanlar: Prisma'nın olumsuzlama ile boş değer ve boş koşul davranışı bu depoda ölçülmedi; kilit beklerken koşulun yeniden değerlendirilmesi çıkarımdır; sorgu büyüklüğü aritmetiktir, ölçüm yoktur.
+Doğrulanamayanlar: Prisma'nın olumsuzlama ile boş değer ve boş koşul davranışı bu depoda ölçülmedi; kilit beklerken koşulun yeniden değerlendirilmesi çıkarımdır; sorgu büyüklüğü ölçülmedi.
