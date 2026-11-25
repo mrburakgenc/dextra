@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import type { Liste } from '../../../shared/liste/liste-istegi';
 import {
+  BAGLANTI,
   BOS,
   ListeTablosu,
   Sayfalama,
@@ -7,7 +9,8 @@ import {
 } from '../../../shared/liste/liste-parcalari';
 import type { RolKaydi, RolListesiSorgusu } from './rol-listesi';
 
-// Rol listesinin tablosu ve sayfalaması (TS-004 "Yönetim ekranları").
+// Rol listesinin tablosu ve sayfalaması (TS-004 "Yönetim ekranları"). Rolün adı kayıt sayfasına
+// bağlantıdır.
 
 const ADRES = '/roller';
 
@@ -55,7 +58,15 @@ export function RolTablosu({
       >
         {liste.kayitlar.map((kayit) => (
           <tr key={kayit.id} className="border-b border-gray-200">
-            <td className="px-3 py-2">{kayit.ad ?? BOS}</td>
+            <td className="px-3 py-2">
+              {kayit.ad === undefined ? (
+                BOS
+              ) : (
+                <Link href={`${ADRES}/${kayit.id}`} className={BAGLANTI}>
+                  {kayit.ad}
+                </Link>
+              )}
+            </td>
             <td className="px-3 py-2">{kodHucresi(kayit.kod)}</td>
           </tr>
         ))}

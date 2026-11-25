@@ -68,6 +68,26 @@ export const GorunenAdSemasi = z.object({ gorunenAd });
 // Kullanıcının kimliği backend'de uuid'dir; backend yoluna girdiği için başka biçim reddedilir.
 export const KullaniciKimligi = z.uuid();
 
+// Rol ve grup işleri (TS-004 "Yönetim ekranları"); kurallar backend'in kimlik/rol ve kimlik/grup
+// gövdelerindeki gibidir: adın baştaki ve sondaki boşluğu atılır, sonra 1-100 karakter olur; üst
+// grup zorunludur. Rol ve grubun kimliği de uuid'dir; backend yoluna girdiği için başka biçim
+// reddedilir.
+const ad = z
+  .string({ error: 'Ad boş olamaz' })
+  .trim()
+  .min(1, 'Ad boş olamaz')
+  .max(100, 'Ad en çok 100 karakter olabilir');
+
+const ustGrupId = z.uuid({ error: 'Üst grup seçilmeli' });
+
+export const AdSemasi = z.object({ ad });
+
+export const GrupOlusturSemasi = z.object({ ad, ustGrupId });
+
+export const GrupTasiSemasi = z.object({ ustGrupId });
+
+export const KayitKimligi = z.uuid();
+
 // Zod hatasından her alanın ilk iletisi.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {
   const alanlar: Record<string, string> = {};

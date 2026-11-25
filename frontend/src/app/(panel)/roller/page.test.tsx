@@ -1,6 +1,8 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { YetkiKurali } from '../../../shared/yetki/yetki';
+import { YetkiSaglayici } from '../../../shared/yetki/yetki-saglayici';
 import RollerSayfasi from './page';
 
 vi.mock('server-only', () => ({}));
@@ -40,8 +42,16 @@ function listeCevabi(
   );
 }
 
-async function goster(sorgu: Record<string, string | string[]> = {}) {
-  render(await RollerSayfasi({ searchParams: Promise.resolve(sorgu) }));
+// Sayfa korumalı düzenin yetki sağlayıcısı içinde çizilir; kural verilmezse kişinin kuralı yoktur.
+async function goster(
+  sorgu: Record<string, string | string[]> = {},
+  kurallar: YetkiKurali[] = [],
+) {
+  render(
+    <YetkiSaglayici kurallar={kurallar}>
+      {await RollerSayfasi({ searchParams: Promise.resolve(sorgu) })}
+    </YetkiSaglayici>,
+  );
 }
 
 function istekAdresi(): URL {
@@ -117,6 +127,33 @@ describe('RollerSayfasi liste', () => {
     expect(new Headers(init?.headers).get('authorization')).toBe(
       'Bearer erisim',
     );
+  });
+});
+
+describe('RollerSayfasi bağlantılar', () => {
+  it('her satırın adı kayıt sayfasına bağlantıdır', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster();
+
+    expect(baglanti('Yönetici')).toBe('/roller/r1');
+    expect(baglanti('Muhasebe')).toBe('/roller/r2');
+  });
+
+  it('Rol olustur kuralı olan kişi Yeni rol bağlantısını görür', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'olustur', subject: 'Rol' }]);
+
+    expect(baglanti('Yeni rol')).toBe('/roller/yeni');
+  });
+
+  it('Rol olustur kuralı olmayan kişi Yeni rol bağlantısını görmez', async () => {
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [{ action: 'oku', subject: 'Rol' }]);
+
+    expect(screen.queryByRole('link', { name: 'Yeni rol' })).toBeNull();
   });
 });
 
