@@ -72,9 +72,9 @@ export class YetenekYenileHandler {
         kararKolonlariGorunurMu: KARAR_KOLONLARI.every(
           (kolon) => kolon in eski,
         ),
-        silinmisMi: eski['silinmeZamani'] !== null,
-        sistemSatiriMi: eski['sistemSatiri'] !== false,
-        tohumSatiriMi: eski['tohumAnahtari'] !== null,
+        silinmisMi: eski.silinmeZamani !== null,
+        sistemSatiriMi: eski.sistemSatiri !== false,
+        tohumSatiriMi: eski.tohumAnahtari !== null,
       });
       if (karar.tur === 'ret') {
         const { kod, ileti } = RET_HATASI[karar.neden];

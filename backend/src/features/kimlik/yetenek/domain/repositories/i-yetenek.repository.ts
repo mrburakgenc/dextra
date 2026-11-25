@@ -4,11 +4,33 @@
 // kolonları ve her zaman kimliği taşır (AK-38); şart ve kolon listesi saklandığı biçimde gelir.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import type {
-  Kayit,
-  Siralama,
-} from '../../../../../shared/yetki/domain/okuma-tipleri.js';
+import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
 import type { YeniYetenek } from '../entities/yetenek.entity.js';
+
+// Okunan yetenek ve izin kayıtları: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
+export interface YetenekGorunumu {
+  readonly id: string;
+  readonly grupId?: string;
+  readonly rolId?: string;
+  readonly izinId?: string;
+  readonly sart?: unknown;
+  readonly butunKayitlar?: boolean;
+  readonly butunBirimler?: boolean;
+  readonly kolonlar?: readonly string[];
+  readonly butunKolonlar?: boolean;
+  readonly sistemSatiri?: boolean;
+  readonly silinmeZamani?: Date | null;
+  readonly tohumAnahtari?: string | null;
+  readonly yerineGectigiId?: string | null;
+  readonly koken?: string;
+  readonly olusturmaZamani?: Date;
+}
+
+export interface IzinGorunumu {
+  readonly id: string;
+  readonly kaynak?: string;
+  readonly eylem?: string;
+}
 
 export interface YetenekListeIstegi {
   // Verilen her süzgeç listeyi o kimliğe eşit kayıtlara daraltır.
@@ -22,15 +44,15 @@ export interface YetenekListeIstegi {
 
 export interface IYetenekOkumaRepo {
   // Yalnız silinmemiş yetenekler (TS-002 AK-39, AK-42).
-  liste(istek: YetenekListeIstegi): Promise<Kayit[]>;
+  liste(istek: YetenekListeIstegi): Promise<YetenekGorunumu[]>;
   // Görülemeyen ya da var olmayan kayıt için bulunamadi.
-  tek(id: string): Promise<Kayit>;
+  tek(id: string): Promise<YetenekGorunumu>;
 }
 
 // Yazma işinin run içindeki okumaları; ikisi de yetki kapısından, isteyenin okuma yeteneğiyle.
 export interface IYetenekRepo extends IYetenekOkumaRepo {
   // İzin kaynağından o kimlikteki kayıt; görülemiyor ya da yoksa undefined.
-  izin(id: string): Promise<Kayit | undefined>;
+  izin(id: string): Promise<IzinGorunumu | undefined>;
 }
 
 export const YETENEK_REPO = new RepoBelirteci<IYetenekOkumaRepo, IYetenekRepo>(

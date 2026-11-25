@@ -16,11 +16,12 @@ import {
   YETENEK_YAZMA_REPO,
 } from './domain/repositories/i-yetenek.repository.js';
 import { yetenekOkumaPrismaRepository } from './infrastructure/repositories/yetenek-okuma.prisma-repository.js';
-import { KapiYetenekYazmaRepo } from './infrastructure/repositories/yetenek-yazma.kapi-repository.js';
+import { PrismaYetenekYazmaRepo } from './infrastructure/repositories/yetenek-yazma.prisma-repository.js';
 import { YetenekController } from './presentation/yetenek.controller.js';
 
-// Kaynağa yetki kapısından erişir; kapıyı kök modülde bir kez kurulan genel YetkiModule verir (TS-002
-// AK-42). Genel sayaç ve bütünlük sorusu çekirdek modülden gelir.
+// Yetenek ve izin kaynaklarını kendi sorgularıyla okur, yeteneği kendi deyimleriyle yazar; süzgeci ve
+// yazmanın sırasını yetki kapısının okuma ve yazma yüzü verir (TS-007); kapıları kök modülde bir kez
+// kurulan genel YetkiModule verir (TS-002 AK-42). Genel sayaç ve bütünlük sorusu çekirdek modülden gelir.
 @Module({
   imports: [DatabaseModule, KimlikCekirdekModule],
   controllers: [YetenekController],
@@ -31,7 +32,7 @@ import { YetenekController } from './presentation/yetenek.controller.js';
     YetenekSilHandler,
     YetenekYenileHandler,
     YetenekYazimi,
-    { provide: YETENEK_YAZMA_REPO, useClass: KapiYetenekYazmaRepo },
+    { provide: YETENEK_YAZMA_REPO, useClass: PrismaYetenekYazmaRepo },
   ],
 })
 export class YetenekModule {
