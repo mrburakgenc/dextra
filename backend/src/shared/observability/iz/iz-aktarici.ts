@@ -14,7 +14,7 @@ import { Dongu } from '../../messaging/infrastructure/aktarim/dongu.js';
 import {
   OUTBOX_IZ_REPO,
   type OutboxIzOlculeri,
-} from './outbox-iz.repository.js';
+} from './i-outbox-iz.repository.js';
 
 // Bir geçişte en çok alınan not sayısı.
 export const PARTI_BOYU = 100;

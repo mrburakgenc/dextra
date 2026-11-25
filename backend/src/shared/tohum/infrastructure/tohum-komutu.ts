@@ -1,6 +1,6 @@
 import { Module, type Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { KomutBaglamiModule } from '../../messaging/komut-baglami.js';
+import { KomutBaglamiModule } from '../../messaging/komut-baglami.module.js';
 import { TohumKosucusu } from './tohum-kosucusu.js';
 import { TohumModule } from '../tohum.module.js';
 

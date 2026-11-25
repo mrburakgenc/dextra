@@ -8,7 +8,7 @@ import {
 import { DatabaseModule } from '../database/database.module.js';
 import { Registrar } from '../database/infrastructure/registrar.js';
 import { UnitOfWork } from '../database/infrastructure/unit-of-work.js';
-import { KOMUT_BAGLAMI } from './komut-baglami.js';
+import { KOMUT_BAGLAMI } from './komut-baglami.module.js';
 import { IS_KUYRUGU, type IsKuyrugu } from './domain/kuyruk/is-kuyrugu.js';
 import { KuyrukModule } from './kuyruk.module.js';
 import { islenenOlayRepoKaydet } from './infrastructure/tuketici/islenen-olay.prisma-repository.js';
@@ -18,7 +18,7 @@ import { outboxOlayRepoKaydet } from './infrastructure/olay/outbox-olay.prisma-r
 
 // Olay yolu: abone defteri, olay aktarıcısı ve kuyruk kapısı. Dışa abone defteri ve kuyruk kapısı
 // verilir; tüketici tabanı (tuketiciBaslat) Unit of Work ile kuyruk kapısını bunlardan alır.
-// Aktarıcının döngüsü uygulama açılınca başlar (komut bağlamında başlamaz; komut-baglami.ts),
+// Aktarıcının döngüsü uygulama açılınca başlar (komut bağlamında başlamaz; komut-baglami.module.ts),
 // kapanırken veritabanı ve kuyruk bağlantıları kapanmadan (onApplicationShutdown) önce durur.
 // Kuyruk göçü burada koşmaz.
 @Module({
