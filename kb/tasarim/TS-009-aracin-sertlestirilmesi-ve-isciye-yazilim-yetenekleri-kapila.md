@@ -1,7 +1,7 @@
 ---
 kimlik: TS-009
 tur: tasarim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
 agirlik: cift-yonlu

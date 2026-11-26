@@ -70,3 +70,4 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-26] kabul | KU-020@1 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
 ## [2026-11-26] kabul | TS-008@1 Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır
 ## [2026-11-26] taslak | TS-009 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
+## [2026-11-26] kabul | TS-009@1 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
