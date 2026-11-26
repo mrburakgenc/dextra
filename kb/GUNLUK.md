@@ -74,3 +74,11 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-26] taslak | DN-003 Lint denetimi: arka yüz ve ön yüz lint'i uyarısız geçer
 ## [2026-11-26] taslak | DN-004 Tip denetimi: arka yüz ve ön yüz derleyiciden hatasız geçer
 ## [2026-11-26] taslak | KU-021 Lint uyarısı ya da derleyici hatası bırakan dal gönderilmez
+## [2026-11-26] taslak | KV-001 Yetenek
+## [2026-11-26] taslak | KV-002 İzin
+## [2026-11-26] taslak | KV-003 Kaynak
+## [2026-11-26] taslak | KV-004 Rol
+## [2026-11-26] taslak | KV-005 Grup
+## [2026-11-26] taslak | KV-006 Üyelik
+## [2026-11-26] taslak | KV-007 Yasak
+## [2026-11-26] taslak | KV-008 Öncelik
