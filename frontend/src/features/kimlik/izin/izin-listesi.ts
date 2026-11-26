@@ -13,7 +13,7 @@ export const IzinListesiSorgusu = z.object({
 export type IzinListesiSorgusu = z.infer<typeof IzinListesiSorgusu>;
 
 // Kişinin göremediği kolon gelmez (undefined).
-const IzinKaydi = z.object({
+export const IzinKaydi = z.object({
   id: z.string(),
   kaynak: z.string().optional(),
   eylem: z.string().optional(),

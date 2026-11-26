@@ -253,6 +253,27 @@ describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {
     expect(screen.queryByRole('link', { name: 'Oturumlar' })).toBeNull();
   });
 
+  it('Yetenek:teshis kuralı varken menüde Teşhis bağlantısı görünür', async () => {
+    kurallarla([{ action: 'teshis', subject: 'Yetenek', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    const menu = screen.getByRole('navigation', { name: 'Ana menü' });
+    expect(
+      within(menu).getByRole('link', { name: 'Teşhis' }).getAttribute('href'),
+    ).toBe('/teshis');
+    expect(within(menu).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('Yetenek:teshis kuralı yokken (Yetenek:oku olsa da) Teşhis bağlantısı görünmez', async () => {
+    kurallarla([{ action: 'oku', subject: 'Yetenek', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('link', { name: 'Yetenekler' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Teşhis' })).toBeNull();
+  });
+
   it('kuralı olmayan oturumlu kişi de Parolamı değiştir bağlantısını görür', async () => {
     kurallarla([]);
 
