@@ -40,6 +40,13 @@ describe('okuma kapısı: yeni yüz (yetki)', () => {
   ): Promise<T> {
     const yetki = {
       kurallar,
+      // Derleyici izinleri bütün kurallarda da taşır; yasak yoktur.
+      butunKurallar: kurallar.map((k) => ({
+        ...k,
+        giremez: false,
+        oncelik: 0,
+        yasaktanMuaf: false,
+      })),
       derlenmeyenler: [],
       uyelikler: { y1: 'u1' },
     } as unknown as DerlemeSonucu;
