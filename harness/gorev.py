@@ -1184,9 +1184,10 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None, tas
                   % (kimlik, len(taslaklar), ", ".join(t["kimlik"] for t in taslaklar)), flush=True)
         eski = h.PAKET.search(kart)
         if eski:
-            taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak ve açık uç blokları da yenilenir
+            taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak, açık uç ve sözlük blokları da yenilenir
             uclar = h.ACIK_UC_BLOGU.match(kart, (taslak or eski).end())
-            eski_metin = kart[eski.start():(uclar or taslak or eski).end()]
+            sozluk = h.SOZLUK_BLOGU.match(kart, (uclar or taslak or eski).end())
+            eski_metin = kart[eski.start():(sozluk or uclar or taslak or eski).end()]
             if eski_metin != p["tam"]:   # kurallar kart yazıldıktan sonra değişmiş
                 kart = kart.replace(eski_metin, p["tam"])
                 (kayit / "kart.md").write_text(kart, encoding="utf-8")

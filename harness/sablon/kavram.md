@@ -4,15 +4,7 @@ tur: kavram
 durum: taslak
 surum: 1
 baslik: {BASLIK}
+kacin: []
+konu: []
 ---
-(Kavramın tek cümlelik tanımı.)
-
-## Ne zaman gerekir
-
-## Ne zaman gerekmez
-
-## Nasıl sağlanır
-
-## Kendini sına
-1.
-2.
+(Terimin bir ya da iki cümlelik tanımı; uygulama ayrıntısı yazılmaz, en çok 400 karakter. baslik terimin kendisidir; kacin kullanılmayacak eş anlamlılardır; konu boşsa terim her işin paketine girer.)
