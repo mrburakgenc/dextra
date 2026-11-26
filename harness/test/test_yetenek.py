@@ -19,6 +19,14 @@ k) Tasarım protokolü iki yeni konuşma kuralını ve dokuz bakış açısını
 l) Yeni görev kartı ve inceleme istemi kod-tasarimi adını anar; AGENTS.md skill tablosu iki yeni satırı taşır.
 m) İki yeni skill kaynak ve lisans satırıyla biter.
 
+GV-166 (TS-009 Yapı 11): ön yüz tasarımı proje skill'idir.
+
+n) on-yuz-tasarimi vardır, ön blok ve altı bölümü taşır, 120 satırı geçmez; tasarım sistemi belgesinin yolunu ve belge
+   yokken yeni görsel karar alınmayacağını söyler.
+o) Metin dört kalite tabanı maddesini ve üç durumu (boş, yükleniyor, hata) taşır.
+p) Yeni görev kartı on-yuz-tasarimi adını anar; inceleme istemi üç durumu anar; AGENTS.md skill tablosu satırı taşır.
+q) Skill kaynak (anthropics/skills, frontend-design) ve lisans (Apache-2.0) satırıyla biter.
+
 Her test geçici bir git deposu kurar; gerçek görev kayıtlarına ve gerçek bilgi tabanına dokunmaz.
 
 Koşum: python3 harness/test/test_yetenek.py
@@ -271,6 +279,55 @@ class KodTasarimiGondermeleri(unittest.TestCase):
         tablo = metin.split("## İş akışları (skill)")[1].split("\n\n")[2]
         self.assertIn("| `kod-tasarimi` |", tablo)
         self.assertIn("| `mimari-tara` |", tablo)
+
+
+class OnYuzTasarimi(unittest.TestCase):
+    """n), o), p) ve q)"""
+
+    def test_on_blok_alti_bolum_ve_en_cok_120_satir(self):
+        metin = skill("on-yuz-tasarimi")
+        on_blok = metin.split("---")[1]
+        self.assertIn("\nname: on-yuz-tasarimi\n", on_blok)
+        self.assertIn("\ndescription: ", on_blok)
+        basliklar = [s[3:].strip() for s in metin.split("\n") if s.startswith("## ")]
+        for b in BOLUMLER:
+            self.assertIn(b, basliklar)
+        self.assertLessEqual(len(metin.splitlines()), 120)
+
+    def test_tasarim_sistemi_belgesi_yoksa_yeni_gorsel_karar_alinmaz(self):
+        metin = skill("on-yuz-tasarimi")
+        self.assertIn("docs/tasarim-sistemi.md", metin)
+        self.assertIn("yeni görsel karar alma", metin)
+
+    def test_dort_kalite_tabani_ve_uc_durum(self):
+        metin = skill("on-yuz-tasarimi")
+        for parca in ("dar ekranda", "klavye odağı", "azaltılmış hareket", "karşıtlık", "boş", "yükleniyor", "hata"):
+            self.assertIn(parca, metin)
+
+    def test_kaynak_ve_lisans_satiriyla_biter(self):
+        son = [s for s in skill("on-yuz-tasarimi").splitlines() if s.strip()][-1]
+        for parca in ("Kaynak", "anthropics/skills", "frontend-design", "Apache-2.0"):
+            self.assertIn(parca, son)
+
+    def test_yeni_kart_on_yuz_tasarimi_skillini_anar(self):
+        metin = gorev.yeni(gorev_deposu(), "İş", "uygulayici", ["src/siparis/**"], []).read_text(encoding="utf-8")
+        self.assertIn("`on-yuz-tasarimi`", metin)
+
+    def test_inceleme_istemi_on_yuz_isinde_uc_durumu_ve_klavye_odagini_anar(self):
+        os.environ.pop("KAYIT_MOD", None)
+        kok = kayit_deposu()
+        kimlik = dolu_kart(kok)
+        gorev.kos(kok, kimlik)
+        gorev.incele(kok, kimlik)
+        istem = (kayit(kok, kimlik) / "inceleme-istem.md").read_text(encoding="utf-8")
+        madde = next(s for s in istem.split("\n- ") if "frontend" in s)
+        for parca in ("boş", "yükleniyor", "hata", "klavye odağı", "bulgu"):
+            self.assertIn(parca, madde)
+
+    def test_agents_skill_tablosu_satiri_tasir(self):
+        metin = (KOK / "AGENTS.md").read_text(encoding="utf-8")
+        tablo = metin.split("## İş akışları (skill)")[1].split("\n\n")[2]
+        self.assertIn("| `on-yuz-tasarimi` |", tablo)
 
 
 if __name__ == "__main__":

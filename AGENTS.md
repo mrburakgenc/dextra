@@ -66,6 +66,7 @@ Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 | `kb-tara` | Kurallar arası çelişki, bayat karar ve boşluk aranacakken |
 | `kod-tasarimi` | Yeni parça ya da soyutlama eklenirken, bir arayüz biçimlenirken ya da karmaşıklık incelenirken; ortak sözlük ve silme testi |
 | `mimari-tara` | Kodda mimari sürtünme ve derinleştirme adayları aranacakken; ana oturum elle çağırır, salt okur |
+| `on-yuz-tasarimi` | Ekran ya da arayüz parçası yazılırken ya da görünümü değişirken; tasarım sistemi belgesi, kalite tabanı, boş/yükleniyor/hata durumları |
 
 Bilgi tabanının günlüğü (`kb/GUNLUK.md`) elle yazılmaz; taslak açılınca ve kabul verilince araç ekler.
 
