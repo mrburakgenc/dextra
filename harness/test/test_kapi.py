@@ -181,7 +181,7 @@ if os.environ.get("HARNESS_ROL") == "inceleyici":
     (gd / "inceleme.json").write_text(json.dumps({{
         "gorev": gv, "hukum": "gecti", "ozet": "incelendi", "olcut": {{"karsilandi": True, "kanit": "-"}},
         "kurallar": [{{"kimlik": k, "hukum": "uyuyor", "kanit": "-"}} for k in re.findall(r"^\[ \] (KU-\d+@\d+) ", istem, re.M)],
-        "bulgular": [], "kosulan": []}}), encoding="utf-8")
+        "bulgular": [], "kosulan": ["python3 -c pass"], "bakilmayan": []}}), encoding="utf-8")
     sys.exit(0)
 
 def kapidan(goreli, icerik):

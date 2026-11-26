@@ -46,7 +46,7 @@ if rol == "inceleyici":
     if mod == "dokunur":
         (kok / "src/siparis/iptal.ts").write_text("export const x = 3\n", encoding="utf-8")
     kayit = {"gorev": gv, "hukum": "kaldi" if mod in ("kaldi", "kanitsiz") else "gecti", "ozet": "incelendi",
-             "kosulan": [] if mod == "kosulansiz" else ["python3 -c 'import iptal'"],
+             "kosulan": [] if mod == "kosulansiz" else ["python3 -c 'import iptal'"], "bakilmayan": [],
              "olcut": {"karsilandi": mod != "kaldi", "kanit": "src/siparis/iptal.ts:1"},
              "kurallar": [{"kimlik": k, "hukum": "uymuyor" if mod == "celiski" else "uyuyor",
                            "kanit": "src/siparis/iptal.ts:1"} for k in kurallar],
