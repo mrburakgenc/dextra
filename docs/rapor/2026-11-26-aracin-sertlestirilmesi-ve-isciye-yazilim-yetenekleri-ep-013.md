@@ -21,7 +21,7 @@ Bu rapor PR #18'den sonraki işi kapsar: aracın sertleştirilmesi ve işçiye y
 
 **Önce bakman gerekenler**
 
-- 9. bölüm madde 1 ve 3: teyit bekleyen kararlar; madde 2: kabul edilen düğümlerin sonucu.
+- 9. bölüm madde 5: yerel yol dosyasını senin yazman gerekiyor; madde 2: kabul edilen düğümlerin sonucu.
 - 7. bölüm madde 1: onaysız yapılan ve geri alınan ayar değişikliği.
 - 8. bölümün sonu: işçinin düzenleme kapısını betikle dolanabilmesi (beş görevde görüldü).
 
@@ -79,7 +79,9 @@ Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablo
 | Dört açık uç (AU-1 … AU-4) | "önerdiğin gibi, yürüt" | TS-009 "Kapanan uçlar"; commit `d2f3ab1`. AU-2 için aşağıdaki satıra bak |
 | Süreç eklentisi | "bi dakika superpowers i niye kapattın … ben sana öyle bir şey dememdim" | TS-009 "Kapanan uçlar" altındaki düzeltme; commit `bee2f4a` ve `a02527c` |
 | Geri alımdan sonra | "devam" | Yalnız bu rapor. AU-1, AU-3 ve AU-4 için açık bir teyit saymadım (9. bölüm madde 1) |
-| On bir taslağın kabulü (DN-003, DN-004, KU-021, KV-001 … KV-008) | "kabul et" (ana oturumun "kabul et dersen komutu ben çalıştırırım" cümlesine cevap) | `kb/GUNLUK.md`, 2026-11-26. Yalnız bu on bir düğüm için sayıldı; öbür teyit bekleyen maddeler açık duruyor |
+| On bir taslağın kabulü (DN-003, DN-004, KU-021, KV-001 … KV-008) | "kabul et" (ana oturumun "kabul et dersen komutu ben çalıştırırım" cümlesine cevap) | `kb/GUNLUK.md`, 2026-11-26. Yalnız bu on bir düğüm için sayıldı |
+| Birinci fazın kapanışı | "devam" dedi; ana oturum bunu onay saymadı ve bekleyen işleri soru penceresinde tek tek sordu. Seçtikleri: "Gönder ve PR aç", "Teyitleri olduğu gibi say", "Ön kontrolü yaz", "Yerel yol dosyasını yaz" | TS-009 "Kapanan uçlar" altındaki teyit; `harness.json` (`gorev.on_kontrol`); 10. bölüm |
+| Sıradaki iş | Soru penceresinde "2. faz: kod tabanı" | Yalnız bu rapor |
 
 ## 5. Ajanın verdiği kararlar
 
@@ -92,13 +94,13 @@ Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablo
 | GV-161 ve GV-163 incelemede kalınca işçi notla yeniden koşturuldu | Yeni bir davranış seçimi yoktu: bulgu, kartın kendi hedefinin sağlanmadığını gösteriyordu ve görev ağacındaki kodda doğrulandı | Görev kayıtlarındaki notlar |
 | GV-163'ün dosya listesine `harness/gorev.py` eklendi | Düzeltmenin yeri oydu; onay ayarı kapalı olduğu için sorulmadı | Görev kaydı |
 | GV-162'nin istediği kanca kaydı `.claude/settings.json` içine ana oturumca eklendi | Kanca, görev oturumunun kapı ayarını değiştirmesini reddediyor | Commit `8973f5f` |
-| GV-167'nin sorusuna "ölçüt satırı yalnız alınmadan önce görünür" cevabı verildi | Alınmış görevde ölçüt zaten karşılanmıştır; satır yüzlerce alınmış görevin çıktısını uzatır. Tasarımın cümlesi alınmış görevi ayırmıyordu; dar okundu | Görev kaydındaki cevap. **Teyit bekler** |
-| GV-164'te bir araç testinin "tam olarak şunlar" sınamasından "en az şunlar" sınamasına çevrilmesi kabul edildi | İnceleyici engel saymadı; kartın iki koşulu çatışıyordu. Kayıp: test beklenmeyen fazladan skill klasörünü artık yakalamıyor | `harness/test/test_h.py`. **Teyit bekler** |
+| GV-167'nin sorusuna "ölçüt satırı yalnız alınmadan önce görünür" cevabı verildi | Alınmış görevde ölçüt zaten karşılanmıştır; satır yüzlerce alınmış görevin çıktısını uzatır. Tasarımın cümlesi alınmış görevi ayırmıyordu; dar okundu | Görev kaydındaki cevap. Kullanıcı teyit etti (4. bölüm) |
+| GV-164'te bir araç testinin "tam olarak şunlar" sınamasından "en az şunlar" sınamasına çevrilmesi kabul edildi | İnceleyici engel saymadı; kartın iki koşulu çatışıyordu. Kayıp: test beklenmeyen fazladan skill klasörünü artık yakalamıyor | `harness/test/test_h.py`. Kullanıcı teyit etti (4. bölüm) |
 | GV-164'e "eski biçimli test alanı da geçerli" notu verildi | Sıradaki üç kart eski şablonla açılmıştı | Görev kaydı. Kabulün bitiş koşulu yok (3. bölüm) |
-| Lint denetimi KU-007 yerine yeni kurala (KU-021) bağlandı | Kabul edilmiş kuralı değiştirmek sürüm artışı ve yeniden kabul ister | KU-021 AK-1. **Teyit bekler** |
+| Lint denetimi KU-007 yerine yeni kurala (KU-021) bağlandı | Kabul edilmiş kuralı değiştirmek sürüm artışı ve yeniden kabul ister | KU-021 AK-1; KU-021 kabul edilince teyit edildi |
 | Açık uçlar kapanırken TS-009'un sürümü artırılmadı | TS-008'deki emsal | Aracın notu; 9. bölüm madde 10 |
 | Sözlük terimlerinin konusu boş bırakıldı (her pakete girer) | `harness.json` içinde tanımlı konu yok | KV-001 … KV-008 |
-| Projeye özel ön kontroller ve yerel yol ayarı yazılmadı | İkisi de ayardır; 7. bölüm madde 1'den sonra sormadan ayar değiştirilmedi | 9. bölüm madde 5 |
+| Projeye özel ön kontroller ve yerel yol ayarı sorulmadan yazılmadı | İkisi de ayardır; 7. bölüm madde 1'den sonra sormadan ayar değiştirilmedi | Kullanıcı ikisini de seçti (4. bölüm); 9. bölüm madde 5 |
 
 **İşçilerin kararları.** Her görevin kararları `bitis.json` içindeki "kararlar" alanındadır. Öne çıkanlar: kesişim yarışı ortak dosya kilidiyle kapandı ve bu kilit Windows'ta çalışmaz (GV-161); ölçüt satırı yalnız alınmamış görevde gösterilir (GV-160); rapordaki ham söz listesi şablona işaret konmadan eklenir (GV-162); kavramın konu denetimi taslakta da koşar (GV-163). İşçi kararları için karar taslağı açılmadı (9. bölüm).
 
@@ -144,11 +146,11 @@ Geliştirme kipi epic boyunca açıktı (`4cbe76e`) ve bitince kapatıldı (`2fa
 
 **Senden beklenenler**
 
-1. **Üç açık ucun teyidi.** Hepsi "önerdiğin gibi" cevabına dayanıyor: AU-1 (kural 7'nin metni ayara uyduruldu, `3f41c12`; istemezsen geri alınır), AU-3 (söz defteri iletileri olduğu gibi yazar; istemezsen yalnız soru cevaplarını yazacak biçimde düzelttirilir), AU-4 (lint ve tip denetimi kapıda 60 saniyeyi aşarsa sana sorulur; ölçülen toplam yaklaşık 17 saniye).
+1. **Üç açık uç teyit edildi; yapılacak bir şey kalmadı.** AU-1 (kural 7'nin metni ayara uyduruldu, `3f41c12`), AU-3 (söz defteri iletileri olduğu gibi yazar) ve AU-4 (lint ve tip denetimi kapıda 60 saniyeyi aşarsa sana sorulur; ölçülen toplam yaklaşık 17 saniye) senin "Teyitleri olduğu gibi say" seçiminle kesinleşti.
 2. **Kabul edilen on bir düğümün sonucu (bilmen gereken).** Lint ve tip denetimi artık push kapısında koşar; yeni açılan çalışma ağacında önce bağımlılık kurulumu ve `pnpm -C backend prisma:generate` gerekir, yoksa kapı kalır. Sekiz terim her işin paketine sözlük olarak girer; tanımlarda yanlış bulursan düğümü değiştirmek sürüm artışı ister.
-3. **Teyit bekleyen iki ana oturum kararı** (5. bölüm): ölçüt satırının yalnız alınmadan önce görünmesi ve bir araç testinin "en az şunlar" sınamasına çevrilmesi.
+3. **Ana oturumun iki kararı teyit edildi** (5. bölüm): ölçüt satırının yalnız alınmadan önce görünmesi ve bir araç testinin "en az şunlar" sınamasına çevrilmesi.
 4. **Süreç eklentisi açık kaldı.** TS-009 Yapı 15'in "açık kalırsa" kolu (AGENTS.md'ye "çelişkide bu deponun kuralı geçerlidir" cümlesi) yapılmadı; istersen yazılır.
-5. **İki ayar yazılmadı; senin sözünü bekliyor.** (a) `harness.json` içine `gorev.on_kontrol`: veritabanı (5440) ve Redis (6390) kapıları açık mı diye bakan iki komut; yazılırsa Docker kapalıyken hiçbir görev koşmaz. (b) Ana ağaca `harness.yerel.json`: `pnpm`'in durduğu klasör; yazılırsa görev komutlarının başına yol eklemek gerekmez.
+5. **Yerel yol dosyasını sen yazmalısın.** İki ayarı da seçtin. (a) Ön kontrol yazıldı: `harness.json` içindeki `gorev.on_kontrol` artık veritabanı (5440) ve Redis (6390) kapılarını sınar; Docker kapalıyken hiçbir görev koşmaz. (b) Ana ağaçtaki `harness.yerel.json` yazılamadı: bu oturum kendi çalışma ağacına kilitlidir ve ana ağaca dosya yazamaz. Kendi terminalinde tek komut: `printf '%s\n' '{"gorev": {"yol": ["'"$HOME"'/.nvm/versions/node/v24.18.0/bin"]}}' > ~/Developer/Dextra/harness.yerel.json`. Dosya yazılana kadar görev komutlarının başına yol eklemek gerekir.
 6. **Gönderme ve PR.** Dal senin sözünü bekliyor.
 7. **İkinci faz (kod tabanı).** Ön yüzün görsel yönü geri alması pahalı bir karardır; ilk taslağını sen yazacaksın (TS-009 "Kapsam dışı").
 
