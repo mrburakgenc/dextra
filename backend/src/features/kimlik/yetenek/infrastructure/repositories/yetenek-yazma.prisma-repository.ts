@@ -3,7 +3,10 @@
 // veriyle koşturur (TS-007 "Yapı").
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
+import {
+  type EkIzin,
+  YazmaKapisi,
+} from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
 import type {
   YeniYetenek,
   YetenekEtkisi,
@@ -14,6 +17,15 @@ import type { IYetenekYazmaRepo } from '../../domain/repositories/i-yetenek.repo
 const YONETICI_KOKENI = 'yonetici';
 
 const YENILEME_EYLEMI = 'yenile';
+
+// Yasak ya da sıfırdan farklı öncelik taşıyan satırı yazmak, yenilemek ve silmek işin kendi iznine ek
+// olarak Yetenek:yasakla iznini ister (TS-008 kapanan AU-8 ve AU-18, AK-4). Oluşturmada yazılan satıra,
+// yenilemede eski satıra (kapatma) ve yeni satıra (oluşturma), silmede silinen satıra bakılır; düz satırda
+// izin aranmaz ve sorgu gitmez.
+const YASAKLAMA: EkIzin = {
+  eylem: 'yasakla',
+  gerekirMi: (satir) => satir['giremez'] === true || satir['oncelik'] !== 0,
+};
 
 // Silme yumuşaktır: veri silinme zamanıdır.
 @Injectable()
@@ -48,6 +60,7 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
         koken: YONETICI_KOKENI,
       },
       (vt, veri) => vt.yetenek.create({ data: veri }),
+      YASAKLAMA,
     );
   }
 
@@ -60,6 +73,7 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
       id,
       { silinmeZamani: new Date() },
       (vt, where, veri) => vt.yetenek.updateMany({ where, data: veri }),
+      YASAKLAMA,
     );
   }
 
@@ -70,6 +84,7 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
       'Yetenek',
       id,
       (vt, where, veri) => vt.yetenek.updateMany({ where, data: veri }),
+      YASAKLAMA,
     );
   }
 }
