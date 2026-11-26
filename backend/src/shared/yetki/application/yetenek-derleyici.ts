@@ -68,6 +68,26 @@ export interface DerlemeSonucu {
   readonly uyelikler: Readonly<Record<string, string>>;
 }
 
+// Bir kaynak ve eylemde izin kuralına uygulanan yasaklar (TS-008 "Tanım" ve "Muafiyetler"; KU-018): muaf
+// izne hiçbiri, öbürüne ondan düşük öncelikli olmayanlar (eşitlikte yasak kazanır). Yasaklar derlendikleri
+// sırayla (eskiden yeniye) döner. Okuma ve yazma kapısı bunu kullanır.
+export function uygulananYasaklar(
+  yetki: Pick<DerlemeSonucu, 'butunKurallar'>,
+  kaynak: string,
+  eylem: string,
+): (kural: YetenekKurali) => readonly DerlenmisKural[] {
+  const yasaklar = yetki.butunKurallar.filter(
+    (k) => k.giremez && k.subject === kaynak && k.action === eylem,
+  );
+  const izinler = new Map(yetki.butunKurallar.map((k) => [k.yetenekId, k]));
+  return (kural) => {
+    const izin = izinler.get(kural.yetenekId);
+    return izin?.yasaktanMuaf === true
+      ? []
+      : yasaklar.filter((y) => y.oncelik >= (izin?.oncelik ?? 0));
+  };
+}
+
 // Kural, yer tutucuları çözülmüş şartıyla birlikte döner.
 interface SatirKurali {
   readonly kural: YetenekKurali;
