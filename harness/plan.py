@@ -489,7 +489,10 @@ def _kos_incele(kok: pathlib.Path, ep: str, y: dict, zorunlu: bool, bildir, tasl
         return "kosum", ", ".join(adlar) or "işçi işi bitirmedi (%s)" % rapor["durum"]
     if zorunlu:
         bildir("%s %s (%s): inceleniyor" % (ep, y["no"], kimlik))
-        inc = gorev.incele(kok, kimlik)
+        try:
+            inc = gorev.incele(kok, kimlik)
+        except h.HarnessHata as e:   # örnek: ön kontrol kaldı (TS-009 Yapı 4)
+            return "inceleme", str(e)
         if inc["sonuc"] != "gecti":
             ayrinti = sorted({s["ad"] for s in inc["sorunlar"]}) + [
                 "%s:%s %s" % (b.get("dosya"), b.get("satir"), b.get("aciklama")) for b in inc["bulgular"]
