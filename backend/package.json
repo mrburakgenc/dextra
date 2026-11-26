@@ -14,6 +14,7 @@
     "tohum": "node dist/tohum.js",
     "tohum:kuru": "node dist/tohum.js --kuru",
     "kurulum": "node dist/kurulum.js",
+    "yasak-tarama": "node dist/yasak-tarama.js",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",

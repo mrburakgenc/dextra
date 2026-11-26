@@ -55,9 +55,9 @@ export const KIMLIK_SISTEM_ALANLARI: SistemAlanlari = {
 const KOK_YONETICI_ROL_KODU = 'superadmin';
 
 // Saklanan şartın biçimi (TS-002 "Veri modeli"): öğelerin düz dizisi; her öğe tam olarak alan,
-// işleç ve değer taşır.
+// işleç ve değer taşır. Göçten önceki yasak taraması da bunu kullanır (yasak-taramasi.ts).
 const sabitDeger = z.union([z.string(), z.number(), z.boolean()]);
-const sartSemasi = z.array(
+export const sartSemasi = z.array(
   z.strictObject({
     alan: z.string(),
     islec: z.enum([
