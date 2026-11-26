@@ -156,6 +156,9 @@ Yasak alanı kapsıyorsa daha düşük öncelikli bir izne düşülmez.
 
 ### 4. Değer (kullanıcı, 2026-11-25: "Sayı, varsayılan 0, büyük kazanır")
 
+## Açık uçlar
+- AU-38: Göçten önce tarama, yetenek tablosu hiç yokken (boş veritabanı; ilk kurulum) ne yapar: 'taranacak yasak yok' sayıp 0 ile mi çıkar, hata verip 1 ile mi? Tasarım söylemiyor. 1 ile çıkarsa yerel başlatma betiğinin kalıcı kipi boş veritabanında göçleri uygulamadan durur (GV-159 ikinci incelemesi, 2026-11-26).
+
 ## Kapanan uçlar
 AU-16 (bu değişikliği hangi karar taslağının taşıyacağı) usul adımıdır ve "Aşamalar"ın 0. adımına yazıldı; kullanıcı kararı gerektirmez.
 - AU-1 (kullanıcı, 2026-11-25): "Yasak kazanır": aynı öncelikte giremez kuralı girebilir kuralını kapatır; izin yasağı aşmak için daha yüksek öncelikle yazılır. Soru: Aynı öncelikte bir girebilir ve bir giremez kuralı aynı kaydı ve kolonu tutuyorsa hangisi geçerli? Kullanıcının ilkesi ("önce kapatılır") giremezin kazanmasını gösterir; karar kullanıcınındır.
