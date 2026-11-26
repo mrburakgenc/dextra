@@ -56,3 +56,36 @@ export class RetKaydiYazici implements NestInterceptor {
     );
   }
 }
+
+// Okunan ret kaydı: zaman, retin oluştuğu andır.
+export interface RetKaydi {
+  readonly zaman: Date;
+  readonly eylem: string;
+  readonly kaynak: string;
+  readonly kayitId: string | null;
+  readonly kararVerenYasakId: string;
+}
+
+// Ret kaydının okuması (TS-008 "Yönetim, izinler ve teşhis"): bir kişinin en yeni ret kayıtları, yeniden
+// eskiye, en çok adet kadar. Yazıcıyla aynı istemciyi kullanır.
+@Injectable()
+export class RetKaydiOkuyucu {
+  constructor(@Inject(IZ_PRISMA_CLIENT) private readonly iz: IzPrismaClient) {}
+
+  async sonRetler(kullaniciId: string, adet: number): Promise<RetKaydi[]> {
+    return (
+      await this.iz.retKaydi.findMany({
+        where: { kullaniciId },
+        orderBy: [{ olusmaZamani: 'desc' }, { id: 'desc' }],
+        take: adet,
+        select: {
+          olusmaZamani: true,
+          eylem: true,
+          kaynak: true,
+          kayitId: true,
+          kararVerenYasakId: true,
+        },
+      })
+    ).map(({ olusmaZamani, ...ret }) => ({ zaman: olusmaZamani, ...ret }));
+  }
+}

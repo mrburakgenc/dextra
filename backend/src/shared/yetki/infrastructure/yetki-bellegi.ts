@@ -87,4 +87,10 @@ export class YetkiBellegi {
     }
     return yetki;
   }
+
+  // İsteği yapandan başka bir kişinin derlenmiş yetkisi (teşhis; TS-008 "Yönetim, izinler ve teşhis"):
+  // sürümler yetki verisinden okunur, gerisi al ile aynıdır.
+  async kisininYetkisi(kullaniciId: string): Promise<DerlemeSonucu> {
+    return this.al(kullaniciId, await this.veri.surumler(kullaniciId));
+  }
 }
