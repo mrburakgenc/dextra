@@ -68,3 +68,20 @@ model ErisimKaydiUyelik {
   @@id([erisimKaydiId, uyelikId], map: "erisim_kaydi_uyelik_ba")
   @@map("erisim_kaydi_uyelik")
 }
+
+// Ret kaydı (TS-008 "Veri modeli" ve "Yazma"; kapanan AU-23 ve AU-31): reddi bir yasağın verdiği yazma
+// başına bir satır; retler birleştirilmez, saklama süresi yoktur. Kimlik uygulamada üretilir. Kayıt
+// oluşturmada boştur. Kayıt ve karar veren yasak asıl veritabanındadır; onlara yabancı anahtar yoktur.
+model RetKaydi {
+  id                String   @id(map: "ret_kaydi_ba") @db.Uuid
+  istekId           String   @map("istek_id") @db.Uuid
+  kullaniciId       String   @map("kullanici_id") @db.Uuid
+  eylem             String
+  kaynak            String
+  kayitId           String?  @map("kayit_id") @db.Uuid
+  kararVerenYasakId String   @map("karar_veren_yasak_id") @db.Uuid
+  olusmaZamani      DateTime @map("olusma_zamani") @db.Timestamptz
+  yazilmaZamani     DateTime @default(dbgenerated("clock_timestamp()")) @map("yazilma_zamani") @db.Timestamptz
+
+  @@map("ret_kaydi")
+}
