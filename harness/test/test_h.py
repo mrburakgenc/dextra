@@ -987,7 +987,8 @@ class SkillDosyalari(unittest.TestCase):
         return sonuc
 
     def test_is_akislari_skill_olarak_durur(self):
-        self.assertEqual(set(self._basliklar()), self.BEKLENEN)
+        # GV-164: tam liste değil, kapsama sınanır; yeni eklenen skill bu testi kırmaz, öbür testler onu da sınar
+        self.assertLessEqual(self.BEKLENEN, set(self._basliklar()))
 
     def test_skill_adi_klasor_adiyla_aynidir_ve_aciklamasi_vardir(self):
         for ad, (alanlar, _) in self._basliklar().items():

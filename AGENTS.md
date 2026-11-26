@@ -61,6 +61,7 @@ Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 | `plan` | Çok adımlı iş space → epic → task → subtask ağacına dökülecek ve yürütülecekken |
 | `gorev` | Tek adımlık iş ayrı oturumda koşturulacakken |
 | `hata-ayikla` | Bir test ya da komut beklenmedik biçimde başarısız olduğunda |
+| `test-yaz` | Yeni davranış eklenirken ya da bir hata düzeltilmeden önce test yazılacakken |
 | `kb-ice-al` | Var olan bir belge taslak düğümlere dökülecekken |
 | `kb-tara` | Kurallar arası çelişki, bayat karar ve boşluk aranacakken |
 
