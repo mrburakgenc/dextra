@@ -1,7 +1,7 @@
 ---
 kimlik: KV-003
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Kaynak
 kacin: []

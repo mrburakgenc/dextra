@@ -1,7 +1,7 @@
 ---
 kimlik: KU-021
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Lint uyarısı ya da derleyici hatası bırakan dal gönderilmez
 dayanak: [KR-001@1]

@@ -1,7 +1,7 @@
 ---
 kimlik: KV-004
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Rol
 kacin: []

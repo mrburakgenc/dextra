@@ -1,7 +1,7 @@
 ---
 kimlik: DN-003
 tur: denetim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Lint denetimi: arka yüz ve ön yüz lint'i uyarısız geçer
 cesit: komut

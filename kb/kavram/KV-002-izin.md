@@ -1,7 +1,7 @@
 ---
 kimlik: KV-002
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: İzin
 kacin: [yetki]

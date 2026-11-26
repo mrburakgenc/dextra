@@ -1,7 +1,7 @@
 ---
 kimlik: DN-004
 tur: denetim
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Tip denetimi: arka yüz ve ön yüz derleyiciden hatasız geçer
 cesit: komut

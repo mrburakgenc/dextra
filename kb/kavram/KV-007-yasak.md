@@ -1,7 +1,7 @@
 ---
 kimlik: KV-007
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yasak
 kacin: [engel, ret kuralı]

@@ -1,7 +1,7 @@
 ---
 kimlik: KV-008
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Öncelik
 kacin: []

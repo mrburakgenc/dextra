@@ -1,7 +1,7 @@
 ---
 kimlik: KV-001
 tur: kavram
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetenek
 kacin: [yetki kuralı, politika]
