@@ -1,6 +1,6 @@
 // Çekirdek repository: ilk kurulum göçünün genel sayaç, grup, rol, izin ve yetenek satırlarını yetki
 // kapısından geçmeden yazar (KR-010 Seçim 48'in adıyla istisnası; "tohum" çekirdek parçası).
-// Kullanıcı ve üyelik yazmaz; onları tohum yardımcısı yazar. Yalnız kurulum göçü kullanır.
+// Kullanıcı ve üyelik yazmaz; onları tohum yardımcısı yazar. Yalnız kimlik tohum göçleri kullanır.
 // Gerçeklemesi infrastructure/repositories altındadır.
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { SartOgesi } from '../../../../../shared/kimlik/domain/i-yetki-verisi.contract.js';
@@ -32,6 +32,10 @@ export interface KurulumRepo {
   izinEkle(izin: { id: string; kaynak: string; eylem: string }): Promise<void>;
   // Kolon dizisi yazılmaz, boş kalır (bütün kolonlar işaretiyle birlikte yazılamaz).
   yetenekEkle(yetenek: YeniYetenek): Promise<{ olusturmaZamani: Date }>;
+  // Kök grubun (üstü olmayan, silinmemiş tek grup) ve kök yönetici rolünün kimlikleri; biri yoksa
+  // Prisma'nın "kayıt yok" hatası atılır.
+  kokYoneticiKumesi(): Promise<{ grupId: string; rolId: string }>;
+  kimlikSistemAktoru(): Promise<string>;
 }
 
 // Okuma görünümü boştur: kurulum göçü işlem dışında okumaz.

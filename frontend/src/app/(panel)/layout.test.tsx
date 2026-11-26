@@ -253,6 +253,27 @@ describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {
     expect(screen.queryByRole('link', { name: 'Oturumlar' })).toBeNull();
   });
 
+  it('Yetenek:teshis kuralı varken menüde Teşhis bağlantısı görünür', async () => {
+    kurallarla([{ action: 'teshis', subject: 'Yetenek', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    const menu = screen.getByRole('navigation', { name: 'Ana menü' });
+    expect(
+      within(menu).getByRole('link', { name: 'Teşhis' }).getAttribute('href'),
+    ).toBe('/teshis');
+    expect(within(menu).getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('Yetenek:teshis kuralı yokken (Yetenek:oku olsa da) Teşhis bağlantısı görünmez', async () => {
+    kurallarla([{ action: 'oku', subject: 'Yetenek', yetenekId: 'y1' }]);
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('link', { name: 'Yetenekler' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Teşhis' })).toBeNull();
+  });
+
   it('kuralı olmayan oturumlu kişi de Parolamı değiştir bağlantısını görür', async () => {
     kurallarla([]);
 
@@ -272,6 +293,66 @@ describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {
     render(await PanelDuzeni({ children: icerik }));
 
     expect(screen.getByRole('link', { name: 'Parolamı değiştir' })).toBeDefined();
+  });
+});
+
+// Yasağı olan kişinin cevabı (TS-008 "Ekran"): yasak ters kuraldır ve sunucunun sırasıyla gelir.
+describe('PanelDuzeni ters kural', () => {
+  const IZIN = { action: 'oku', subject: 'Kullanici', yetenekId: 'y1' };
+
+  it('şartsız ters kuralı olan cevapta menü sorusu hayır verir; yasak izin olarak okunmaz', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        { kurallar: [IZIN, { ...IZIN, yetenekId: 'y2', inverted: true }] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kullanıcılar' })).toBeNull();
+  });
+
+  it('şartlı ters kural menü sorusunu etkilemez', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        {
+          kurallar: [
+            IZIN,
+            {
+              ...IZIN,
+              yetenekId: 'y2',
+              conditions: { AND: [{ telefon: { equals: '5551001' } }] },
+              inverted: true,
+            },
+          ],
+        },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(
+      screen.getByRole('link', { name: 'Kullanıcılar' }).getAttribute('href'),
+    ).toBe('/kullanicilar');
+  });
+
+  it('yasaktan sonra gelen izin kazanır: kurallar verildiği sırayla kurulur', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        { kurallar: [{ ...IZIN, yetenekId: 'y2', inverted: true }, IZIN] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('link', { name: 'Kullanıcılar' })).toBeDefined();
   });
 });
 

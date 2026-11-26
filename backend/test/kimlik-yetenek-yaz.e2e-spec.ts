@@ -55,6 +55,7 @@ let kokGrup: string;
 let superadminRol: string;
 let kullaniciOku: string;
 let grupOlustur: string;
+let oturumKapat: string;
 let okuyucu: { id: string; erisimBelirteci: string };
 let sartliYetenek: string;
 
@@ -188,6 +189,7 @@ beforeAll(async () => {
   superadminRol = rol?.id ?? '';
   kullaniciOku = await izinKimligi('Kullanici', 'oku');
   grupOlustur = await izinKimligi('Grup', 'olustur');
+  oturumKapat = await izinKimligi('Oturum', 'kapat');
 
   await ortam.db.query(
     `insert into grup (id, ust_grup_id, ad, silinme_zamani)
@@ -515,6 +517,259 @@ describe('f) sistem satırı', () => {
       'cakisma',
     );
   });
+});
+
+describe('g) etki ve öncelik: yazım kapalı (TS-008 kapanan AU-17)', () => {
+  const belirtec = (): string => ortam.superadmin.erisimBelirteci;
+
+  it('giremez evet olan istek 400 dogrulama_hatasi alır, açık iletiyle; satır yazılmaz', async () => {
+    await reddedilir(
+      () => yaz(govde({ giremez: true }), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+    const cevap = await yaz(govde({ giremez: true }), belirtec());
+    expect(cevap.body).toMatchObject({
+      ileti: 'Yasak ve sıfırdan farklı öncelik henüz yazılamaz',
+      ayrinti: [{ alan: 'giremez' }],
+    });
+  });
+
+  it('oncelik 5 olan istek 400 dogrulama_hatasi alır; satır yazılmaz', async () => {
+    await reddedilir(
+      () => yaz(govde({ oncelik: 5 }), belirtec()),
+      400,
+      'dogrulama_hatasi',
+    );
+  });
+
+  it('giremez hayır ve oncelik 0 açıkça verilen istek bugünkü gibi yazılır; not iki kolonu taşır', async () => {
+    const once = await sayac();
+    const cevap = await yaz(govde({ giremez: false, oncelik: 0 }), belirtec());
+    expect(cevap.status).toBe(201);
+    expect(Object.keys(cevap.body as Kayit)).toEqual(['id']);
+    const id = (cevap.body as { id: string }).id;
+    expect(await sayac()).toBe(once + 1);
+    const {
+      rows: [satir],
+    } = await ortam.db.query<Kayit>(
+      'select giremez, oncelik, koken from yetenek where id = $1',
+      [id],
+    );
+    expect(satir).toEqual({ giremez: false, oncelik: 0, koken: 'yonetici' });
+
+    const not = await yetenekNotu(id, 'olusturma');
+    expect(not.degisen).toMatchObject({
+      giremez: { yeni: false },
+      oncelik: { yeni: 0 },
+    });
+  });
+});
+
+// Yasağın biçimi (TS-008 "Yapı" › "Yasağın biçimi"; KU-020; GV-147): biçim denetimi yazım kapalı
+// reddinden önce koşar. Her ret alanı ve nedeniyle çevrilir; korunan kaynağın yazma eylemine yasak 409
+// çakışmadır. Hepsinde satır yazılmaz.
+describe('h) yasağın biçimi: retlerin HTTP çevirisi', () => {
+  const belirtec = (): string => ortam.superadmin.erisimBelirteci;
+
+  // İstek reddedilir (sayaç, satırlar ve notlar değişmez); cevabın gövdesi beklenenle aynıdır.
+  async function cevapla(
+    istek: Govde,
+    status: number,
+    beklenen: Record<string, unknown>,
+  ): Promise<void> {
+    const once = await durum();
+    const cevap = await yaz(istek, belirtec());
+    expect(cevap.status).toBe(status);
+    expect(cevap.body).toEqual(beklenen);
+    expect(await durum()).toEqual(once);
+  }
+
+  const bicimHatasi = (alan: string, neden: string) => ({
+    kod: 'dogrulama_hatasi',
+    ileti: 'Yetenek doğrulanamadı',
+    ayrinti: [{ alan, neden }],
+  });
+
+  it.each<[string, () => Govde, string, string]>([
+    [
+      'ne bütün kolonlar işareti ne kolon listesi olan yasak',
+      () => govde({ giremez: true, butunKolonlar: false }),
+      'kolonlar',
+      'yasak ya bütün kolonlar işaretiyle ya kolon listesiyle yazılır',
+    ],
+    [
+      'ne bütün kayıtlar işareti ne şartı olan yasak',
+      () => govde({ giremez: true, butunKayitlar: false }),
+      'sart',
+      'yasak ya bütün kayıtlar işaretiyle ya şartla yazılır',
+    ],
+    [
+      'kolon listesinde kimlik olan yasak',
+      () =>
+        govde({
+          giremez: true,
+          butunKolonlar: false,
+          kolonlar: ['id', 'gorunenAd'],
+        }),
+      'kolonlar',
+      'yasağın kolon listesinde kimlik kolonu olamaz',
+    ],
+    [
+      'niyet eylemine (Oturum:kapat) kolon listeli yasak',
+      () =>
+        govde({
+          izinId: oturumKapat,
+          giremez: true,
+          butunKolonlar: false,
+          kolonlar: ['ipAdresi'],
+        }),
+      'kolonlar',
+      'oluşturma, silme ve niyet eylemlerine yasak kolon listesiyle yazılamaz',
+    ],
+    [
+      'aralık dışındaki öncelik',
+      () => govde({ oncelik: 101 }),
+      'oncelik',
+      'öncelik 0 ile 100 arasında bir tam sayıdır',
+    ],
+  ])(
+    '%s 400 dogrulama_hatasi alır; satır yazılmaz',
+    async (_ad, istek, alan, neden) => {
+      await cevapla(istek(), 400, bicimHatasi(alan, neden));
+    },
+  );
+
+  it('korunan kaynağın yazma eylemine yasak, (Kök, SuperAdmin) kümesine de, 409 cakisma alır; satır yazılmaz', async () => {
+    await cevapla(
+      govde({
+        grupId: kokGrup,
+        rolId: superadminRol,
+        izinId: grupOlustur,
+        giremez: true,
+      }),
+      409,
+      {
+        kod: 'cakisma',
+        ileti: 'Korunan kaynağın yazma eylemine yasak yazılamaz',
+        ayrinti: null,
+      },
+    );
+  });
+
+  // KU-017 "Bozuk derlenecek yasak yazılırken reddedilir": derleyicinin bozuk saydığı her türün
+  // (yetenek-derleyici.spec.ts › "bozuk yasak") yazımda reddi; biçim türü yukarıdadır. Yazımda
+  // ulaşılamayan üç tür burada yoktur: bilinmeyen kaynak (izin katalogdan gelir), şartın biçimi bozuk
+  // (gövde şeması reddeder) ve çözülemeyen ya da boş listeye çözülen yer tutucu (yazımda yeteneğin
+  // grubuna çözülür).
+  it.each<[string, () => Govde, unknown]>([
+    [
+      'şartında şemada olmayan alan olan',
+      () =>
+        govde({
+          giremez: true,
+          butunKayitlar: false,
+          sart: [{ alan: 'yokAlan', islec: 'esit', deger: 'x' }],
+        }),
+      [{ alan: 'sart', neden: 'bilinmeyen alan: yokAlan' }],
+    ],
+    [
+      'şartının değer tipi bozuk',
+      () =>
+        govde({
+          giremez: true,
+          butunKayitlar: false,
+          sart: [{ alan: 'kullaniciAdi', islec: 'esit', deger: 5 }],
+        }),
+      [{ alan: 'sart', neden: 'değer alanın tipine uymuyor: kullaniciAdi' }],
+    ],
+    [
+      'şartının işleci alanın tipine uymayan',
+      () =>
+        govde({
+          giremez: true,
+          butunKayitlar: false,
+          sart: [{ alan: 'kullaniciAdi', islec: 'buyuk', deger: 'a' }],
+        }),
+      [{ alan: 'sart', neden: 'işleç alanın tipine uymuyor: kullaniciAdi' }],
+    ],
+    [
+      'şartında liste işlecine tek değer olan',
+      () =>
+        govde({
+          giremez: true,
+          butunKayitlar: false,
+          sart: [{ alan: 'kullaniciAdi', islec: 'listede', deger: 'ali' }],
+        }),
+      [
+        {
+          alan: 'sart',
+          neden: 'değerin biçimi işlece uymuyor: kullaniciAdi',
+        },
+      ],
+    ],
+    [
+      'şartında boş liste olan',
+      () =>
+        govde({
+          giremez: true,
+          butunKayitlar: false,
+          sart: [{ alan: 'kullaniciAdi', islec: 'listede_degil', deger: [] }],
+        }),
+      // Gövde şeması derleyiciden önce reddeder.
+      [
+        {
+          alan: 'sart.0.deger',
+          neden: 'Too small: expected array to have >=1 items',
+        },
+      ],
+    ],
+    [
+      'bütün kayıtlar işaretini şartla taşıyan',
+      () =>
+        govde({
+          giremez: true,
+          sart: [{ alan: 'kullaniciAdi', islec: 'esit', deger: 'ali' }],
+        }),
+      // Yetenek içeriği değer nesnesi derleyiciden önce reddeder.
+      [
+        {
+          alan: 'sart',
+          neden: 'bütün kayıtlar işareti şartla birlikte yazılamaz',
+        },
+      ],
+    ],
+    [
+      'bütün kolonlar işaretini kolon listesiyle taşıyan',
+      () => govde({ giremez: true, kolonlar: ['gorunenAd'] }),
+      // Yetenek içeriği değer nesnesi derleyiciden önce reddeder.
+      [
+        {
+          alan: 'kolonlar',
+          neden: 'bütün kolonlar işareti kolon listesiyle birlikte yazılamaz',
+        },
+      ],
+    ],
+    [
+      'kolon listesinden tek ad düşen (liste boşalmasa da)',
+      () =>
+        govde({
+          giremez: true,
+          butunKolonlar: false,
+          kolonlar: ['gorunenAd', 'yokKolon'],
+        }),
+      [{ alan: 'kolonlar', neden: 'bilinmeyen kolon: yokKolon' }],
+    ],
+  ])(
+    'derleyicinin bozuk saydığı yasak (%s) 400 dogrulama_hatasi alır; satır yazılmaz',
+    async (_ad, istek, ayrinti) => {
+      const once = await durum();
+      const cevap = await yaz(istek(), belirtec());
+      expect(cevap.status).toBe(400);
+      expect(cevap.body).toMatchObject({ kod: 'dogrulama_hatasi', ayrinti });
+      expect(await durum()).toEqual(once);
+    },
+  );
 });
 
 describe('ortak', () => {

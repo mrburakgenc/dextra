@@ -169,6 +169,63 @@ describe('yetenek varlığı: oluşturma', () => {
   });
 });
 
+describe('yetenek varlığı: oluşturmada yasağın biçimi (TS-008; KU-020)', () => {
+  const YASAK = { giremez: true, oncelik: 10 };
+
+  it('biçime uyan yasak yazılır; etki ve öncelik yazılacak hâle girmez', () => {
+    expect(yetenekOlustur(BAGLANTI, icerik(), GECEN, YASAK)).toEqual({
+      tur: 'tamam',
+      deger: {
+        grupId: 'g',
+        rolId: 'r',
+        izinId: 'i',
+        sart: null,
+        butunKayitlar: true,
+        butunBirimler: false,
+        kolonlar: null,
+        butunKolonlar: true,
+      },
+    });
+  });
+
+  it.each<
+    [string, YetenekYazmaOlgulari, Partial<YetenekIcerigiAlanlari>, unknown]
+  >([
+    [
+      'kimlik kolonu listeli yasak',
+      izinli({ kaynakAlanlari: ['id', 'ad'] }),
+      { butunKolonlar: false, kolonlar: liste(['id']) },
+      'kimlik_kolonu',
+    ],
+    [
+      'korunan kaynağın yazma eylemine yasak, (Kök, SuperAdmin) kümesine de',
+      {
+        ...izinli({ kaynak: 'Grup', eylem: 'sil' }),
+        kokSuperAdminKumesiMi: true,
+      },
+      {},
+      'korunan_kaynak',
+    ],
+  ])('%s reddedilir', (_ad, olgular, ek, neden) => {
+    expect(yetenekOlustur(BAGLANTI, icerik(ek), olgular, YASAK)).toEqual({
+      tur: 'ret',
+      neden: { kod: 'yasak_bicimi', neden },
+    });
+  });
+
+  it('aralık dışındaki öncelik izinde de reddedilir', () => {
+    expect(
+      yetenekOlustur(BAGLANTI, icerik(), GECEN, {
+        giremez: false,
+        oncelik: 101,
+      }),
+    ).toEqual({
+      tur: 'ret',
+      neden: { kod: 'yasak_bicimi', neden: 'oncelik_araligi' },
+    });
+  });
+});
+
 describe('yetenek varlığı: silme kararı', () => {
   it.each([
     [{ sistemSatiri: false }, { tur: 'tamam' }],

@@ -8,7 +8,8 @@
 // Kalıcı kip (GV-105, TS-001 "Yerel veritabanı kum havuzudur"): geçici veritabanı açmaz, hiçbir
 // veritabanını silmez; yerel asıl ve iz veritabanlarının bekleyen göçlerini uygular, kurulum
 // komutunu yalnız --kurulum ile koşturur. Kapılar YEREL_BACKEND_KAPISI ve YEREL_ONYUZ_KAPISI ile
-// değiştirilebilir.
+// değiştirilebilir. Kalıcı kipte göçlerden önce yasak taraması koşar; bozulacak yasak varsa göçler
+// uygulanmadan betik durur (TS-008 kapanan AU-36).
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { setTimeout as bekle } from 'node:timers/promises';
@@ -89,9 +90,41 @@ async function kos(ad, komut, args, { cwd, env, girdi = '' }) {
   cocuk.stdin.end(girdi);
   const sonuc = await bitti;
   if (sonuc.hata !== undefined || sonuc.kod !== 0) {
-    throw new Error(`${ad} başarısız (${neden(sonuc)}):\n${cikti}${hataCiktisi}`);
+    throw Object.assign(
+      new Error(`${ad} başarısız (${neden(sonuc)}):\n${cikti}${hataCiktisi}`),
+      { kod: sonuc.kod, cikti },
+    );
   }
   return cikti;
+}
+
+// Göçten önce yasak taraması (TS-008 kapanan AU-36): derlenmiş tarama komutu
+// (backend/src/yasak-tarama.ts) bozulacak yasak bulursa 2 ile çıkar; o zaman göçler uygulanmaz,
+// liste ve yapılacak yazılır ve betik durur. Taramanın kendi satırları döner; uygulamanın açılış
+// günlüğü ([Nest] satırları) atılır.
+const BOZULACAK_YASAK_VAR = 2;
+function taramaSatirlari(cikti) {
+  return cikti
+    .split('\n')
+    .filter((satir) => satir !== '' && !satir.includes('[Nest]'))
+    .join('\n');
+}
+async function yasakTaramasi(env) {
+  try {
+    return taramaSatirlari(
+      await kos('Yasak taraması', process.execPath, ['dist/yasak-tarama.js'], {
+        cwd: backendDir,
+        env,
+      }),
+    );
+  } catch (hata) {
+    if (hata.kod !== BOZULACAK_YASAK_VAR) throw hata;
+    throw new Error(
+      'Göçten önce yasak taraması bozulacak yasak buldu; göçler uygulanmadı:\n' +
+        `${taramaSatirlari(hata.cikti)}\n` +
+        'Yapılacak: listedeki her yasağı düzeltin ya da silin, sonra betiği yeniden başlatın.',
+    );
+  }
 }
 
 // Yönetim bağlantısı testlerinki gibi asıl veritabanının adresiyle kurulur ve yalnız sunucu
@@ -210,7 +243,10 @@ async function ac() {
     });
   }
 
-  await adim('2. Asıl ve iz şemalarının göçleri uygulandı', () =>
+  // Kalıcı kipte göçler, göçten önceki yasak taramasından sonra uygulanır (aşağıda, 4a'dan sonra):
+  // tarama derlenmiş komuttur ve uygulamayı açtığı için anahtar çiftini (3) ve derlemeyi (4a) ister.
+  // Geçici kipte (boş veritabanı) tarama koşmaz ve sıra değişmez.
+  const gocleriUygula = () => adim('2. Asıl ve iz şemalarının göçleri uygulandı', () =>
     Promise.all([
       kos('Asıl göçler', prisma, ['migrate', 'deploy'], {
         cwd: backendDir,
@@ -224,6 +260,7 @@ async function ac() {
       ),
     ]),
   );
+  if (!KALICI) await gocleriUygula();
 
   // Değişken adları: backend/src/shared/guvenlik/belirtec.ts ve istemci-adresi-imzasi.ts.
   const sir = await adim('3. Anahtar çifti ve aracı katman sırrı üretildi (yalnız bellekte)', () => {
@@ -251,6 +288,13 @@ async function ac() {
     });
     await kos('Backend derlemesi', 'pnpm', ['run', 'build'], { cwd: backendDir });
   });
+  if (KALICI) {
+    const tarama = await adim('1b. Göçten önce yasak taraması koştu', () =>
+      yasakTaramasi(backendOrtami),
+    );
+    yaz(`Yasak taraması: ${tarama}`);
+    await gocleriUygula();
+  }
   await adim('4b. Tohum komutu koştu', () =>
     kos('Tohum komutu', 'pnpm', ['run', 'tohum'], {
       cwd: backendDir,

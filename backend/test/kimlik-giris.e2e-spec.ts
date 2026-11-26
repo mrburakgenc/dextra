@@ -233,6 +233,7 @@ async function kalanVeritabanlari(adlar: readonly string[]): Promise<string[]> {
 async function baslangicKur(): Promise<void> {
   expect(await al(TohumKosucusu).kos()).toEqual([
     '202611240000-kimlik-kurulum',
+    '202611260000-kimlik-yasak-izinleri',
   ]);
   const kod = await al(KurulumBaglantisiHandler).calistir();
   expect((await bagla(kod, PAROLA)).status).toBe(204);

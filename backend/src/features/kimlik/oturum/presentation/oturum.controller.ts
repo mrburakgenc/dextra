@@ -17,6 +17,7 @@ import {
 } from '../../../../shared/guvenlik/application/isaretler.js';
 import { IstemciAdresiDogrulayici } from '../../../../shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { istekBaglami } from '../../../../shared/observability/istek-baglami/istek-baglami.js';
+import { ekranKurallari } from '../../../../shared/yetki/application/ekran-kurallari.js';
 import type { YetenekKurali } from '../../../../shared/yetki/application/yetenek-derleyici.js';
 import {
   type ParolaGirisGovdesi,
@@ -126,7 +127,8 @@ export class OturumController {
   // Yetkilerim (TS-002 AK-18; KR-008 Seçim 46): isteği yapanın derlenmiş kuralları, yetki guard'ının
   // istek bağlamına yazdığı hâliyle. Her kural CASL kuralıdır: kaynak (subject), eylem (action),
   // koşul (conditions; bütün kayıtlarda yok), kolonlar (fields; bütün kolonlarda yok) ve yetenek
-  // kimliği (yetenekId).
+  // kimliği (yetenekId). Yasağı olan kişide sıra ve ters kural (inverted) ekranKurallari'ndadır
+  // (TS-008 "Ekran").
   @Get('yetkilerim')
   @YalnizKendisi()
   yetkilerim(): { kurallar: readonly YetenekKurali[] } {
@@ -135,7 +137,7 @@ export class OturumController {
     if (yetki === undefined) {
       throw new Error('İstek bağlamında yetki yok');
     }
-    return { kurallar: yetki.kurallar };
+    return { kurallar: ekranKurallari(yetki) };
   }
 
   // Oturum yönetiminin uçları (TS-002 AK-39, AK-51). Kişinin kendi oturumları da bu uçlardan, temel

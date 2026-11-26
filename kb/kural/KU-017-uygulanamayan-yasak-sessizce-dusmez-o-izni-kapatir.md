@@ -1,7 +1,7 @@
 ---
 kimlik: KU-017
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Uygulanamayan yasak sessizce düşmez; o izni kapatır
 dayanak: [KR-016@1]
@@ -10,7 +10,7 @@ baglama: kapsam
 bicim: kural
 kesinlik: olagan
 denetim_duzey: gozden-gecirme
-bakis: 2026-11-25
+bakis: 2026-12-26
 ---
 Yazıldığı hâliyle eksiksiz kural üretmeyen yasak (şartı çözülemeyen, biçimi bozuk, kolon listesinden ad düşen, yer tutucusu boş çözülen) derlenirken atılmaz ve daraltılmaz: o eylem ve kaynak için kişide izni tümden kapatan yasağa çevrilir ve günlüğe hata yazılır. Bozuk derlenecek yasak yazılırken reddedilir.
 

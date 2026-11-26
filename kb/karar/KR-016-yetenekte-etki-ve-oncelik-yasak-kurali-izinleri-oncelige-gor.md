@@ -1,7 +1,7 @@
 ---
 kimlik: KR-016
 tur: karar
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yetenekte etki ve öncelik: yasak kuralı izinleri önceliğe göre kapatır
 agirlik: tek-yonlu

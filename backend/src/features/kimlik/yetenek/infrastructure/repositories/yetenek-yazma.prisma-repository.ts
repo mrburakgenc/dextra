@@ -3,8 +3,14 @@
 // veriyle koşturur (TS-007 "Yapı").
 import { Injectable } from '@nestjs/common';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
-import { YazmaKapisi } from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
-import type { YeniYetenek } from '../../domain/entities/yetenek.entity.js';
+import {
+  type EkIzin,
+  YazmaKapisi,
+} from '../../../../../shared/yetki/infrastructure/yazma-kapisi.js';
+import type {
+  YeniYetenek,
+  YetenekEtkisi,
+} from '../../domain/entities/yetenek.entity.js';
 import type { IYetenekYazmaRepo } from '../../domain/repositories/i-yetenek.repository.js';
 
 // Yönetim uçlarının yazdığı satırın kökeni (TS-002 "Veri modeli").
@@ -12,17 +18,34 @@ const YONETICI_KOKENI = 'yonetici';
 
 const YENILEME_EYLEMI = 'yenile';
 
+// Yasak ya da sıfırdan farklı öncelik taşıyan satırı yazmak, yenilemek ve silmek işin kendi iznine ek
+// olarak Yetenek:yasakla iznini ister (TS-008 kapanan AU-8 ve AU-18, AK-4). Oluşturmada yazılan satıra,
+// yenilemede eski satıra (kapatma) ve yeni satıra (oluşturma), silmede silinen satıra bakılır; düz satırda
+// izin aranmaz ve sorgu gitmez.
+const YASAKLAMA: EkIzin = {
+  eylem: 'yasakla',
+  gerekirMi: (satir) => satir['giremez'] === true || satir['oncelik'] !== 0,
+};
+
 // Silme yumuşaktır: veri silinme zamanıdır.
 @Injectable()
 export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
   constructor(private readonly kapi: YazmaKapisi) {}
 
   // Boş şart ve boş kolon listesi yazılmaz; kolon NULL kalır (yetenek_kayit_siniri_denetim ve
-  // yetenek_kolon_siniri_denetim kısıtları NULL'a bakar).
+  // yetenek_kolon_siniri_denetim kısıtları NULL'a bakar). Varsayılan değerdeki etki ve öncelik de
+  // yazılmaz, kolon varsayılanı aynı değeri verir: yazma, oluşturma yeteneğinin kolon listesinde iki
+  // kolonu yalnız onlar yazılırken arar (TS-008 Değişmez 1).
   olustur(
     islem: Islem,
     isAdi: string,
-    { sart, kolonlar, ...yetenek }: YeniYetenek,
+    {
+      sart,
+      kolonlar,
+      giremez,
+      oncelik,
+      ...yetenek
+    }: YeniYetenek & YetenekEtkisi,
   ): Promise<string> {
     return this.kapi.deyimleOlustur(
       islem,
@@ -32,9 +55,12 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
         ...yetenek,
         sart: sart ?? undefined,
         kolonlar: kolonlar ?? undefined,
+        giremez: giremez || undefined,
+        oncelik: oncelik || undefined,
         koken: YONETICI_KOKENI,
       },
       (vt, veri) => vt.yetenek.create({ data: veri }),
+      YASAKLAMA,
     );
   }
 
@@ -47,6 +73,7 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
       id,
       { silinmeZamani: new Date() },
       (vt, where, veri) => vt.yetenek.updateMany({ where, data: veri }),
+      YASAKLAMA,
     );
   }
 
@@ -57,6 +84,7 @@ export class PrismaYetenekYazmaRepo implements IYetenekYazmaRepo {
       'Yetenek',
       id,
       (vt, where, veri) => vt.yetenek.updateMany({ where, data: veri }),
+      YASAKLAMA,
     );
   }
 }

@@ -21,6 +21,7 @@ const TALEP_TIPLERI: Record<string, AlanTipi> = {
 const KATALOG: KaynakKatalogu = {
   alanlar: (tur) => (tur === 'Talep' ? Object.keys(TALEP_TIPLERI) : undefined),
   alanTipleri: (tur) => (tur === 'Talep' ? TALEP_TIPLERI : undefined),
+  bosOlabilirlik: () => undefined,
 };
 
 const KIMLIK = '60000000-0000-4000-8000-000000000001';
@@ -39,6 +40,9 @@ function satir(degisen: Partial<YetenekSatiri>): YetenekSatiri {
     butunBirimler: false,
     kolonlar: [],
     butunKolonlar: true,
+    giremez: false,
+    oncelik: 0,
+    yasaktanMuaf: false,
     ...degisen,
   };
 }
@@ -531,6 +535,381 @@ describe('yetenek derleyici', () => {
         OR: expect.arrayContaining([kosul1, kosul2]) as unknown,
       });
       expect((kosul as { OR: unknown[] }).OR).toHaveLength(2);
+    });
+  });
+
+  // TS-008 "Derleme": kural önceliğini, etkisini ve muafiyetini taşır; yasak izin sayılmaz (KU-019).
+  describe('etki, öncelik ve muafiyet', () => {
+    it('satırın önceliği, etkisi ve muafiyeti bütün kurallardaki kurala geçer; izin kuralları bugünkü biçimde kalır', () => {
+      const sonuc = derle([
+        satir({ yetenekId: 'izin', butunKayitlar: true, oncelik: 20 }),
+        satir({
+          yetenekId: 'muaf',
+          butunKayitlar: true,
+          yasaktanMuaf: true,
+        }),
+        satir({
+          yetenekId: 'yasak',
+          sart: [{ alan: 'durum', islec: 'esit', deger: 'acik' }],
+          kolonlar: ['tutar'],
+          butunKolonlar: false,
+          giremez: true,
+          oncelik: 10,
+        }),
+      ]);
+
+      expect(sonuc.butunKurallar).toEqual([
+        {
+          yetenekId: 'izin',
+          action: 'oku',
+          subject: 'Talep',
+          giremez: false,
+          oncelik: 20,
+          yasaktanMuaf: false,
+        },
+        {
+          yetenekId: 'muaf',
+          action: 'oku',
+          subject: 'Talep',
+          giremez: false,
+          oncelik: 0,
+          yasaktanMuaf: true,
+        },
+        {
+          yetenekId: 'yasak',
+          action: 'oku',
+          subject: 'Talep',
+          fields: ['tutar'],
+          conditions: { AND: [{ durum: { equals: 'acik' } }] },
+          giremez: true,
+          oncelik: 10,
+          yasaktanMuaf: false,
+          kesinTutmuyor: { OR: [{ durum: { not: 'acik' } }] },
+        },
+      ]);
+      expect(sonuc.kurallar).toEqual([
+        { yetenekId: 'izin', action: 'oku', subject: 'Talep' },
+        { yetenekId: 'muaf', action: 'oku', subject: 'Talep' },
+      ]);
+      expect(sonuc.yetenek.rules).toEqual(sonuc.kurallar);
+    });
+
+    it('yalnız yasağı olan kişide kurallar ve yetenek nesnesi boştur: yasak izin sayılmaz', () => {
+      const sonuc = derle([
+        satir({ yetenekId: 'yasak', butunKayitlar: true, giremez: true }),
+      ]);
+
+      expect(sonuc.butunKurallar.map((k) => k.yetenekId)).toEqual(['yasak']);
+      expect(sonuc.kurallar).toEqual([]);
+      expect(sonuc.yetenek.possibleRulesFor('oku', 'Talep')).toEqual([]);
+      expect(accessibleBy(sonuc.yetenek, 'oku').ofType('Talep')).toEqual({
+        OR: [],
+      });
+    });
+  });
+
+  // TS-008 "Derleme"; KU-017; AK-2: yazıldığı hâliyle eksiksiz kural üretmeyen her yasak bozuktur ve o
+  // eylem ve kaynak için koşulsuz, bütün kolonlu, öncelik 100 yasak olarak derlenir. Aynı bozukluk izin
+  // satırında bugünkü sonucu verir.
+  describe('bozuk yasak', () => {
+    const GRUPLU: KaynakKatalogu = {
+      alanlar: (tur) =>
+        tur === 'Talep' || tur === 'Grup'
+          ? Object.keys(TALEP_TIPLERI)
+          : undefined,
+      alanTipleri: (tur) =>
+        tur === 'Talep' || tur === 'Grup' ? TALEP_TIPLERI : undefined,
+      bosOlabilirlik: () => undefined,
+    };
+    const grupVeAlti = {
+      alan: 'grupId',
+      islec: 'listede' as const,
+      deger: { yerTutucu: 'yetenek_grubu_ve_alti' as const },
+    };
+    const kural = (degisen: Record<string, unknown> = {}) => ({
+      yetenekId: 'y1',
+      action: 'oku',
+      subject: 'Talep',
+      ...degisen,
+    });
+    const derlenmez = (neden: string) => ({
+      kurallar: [],
+      derlenmeyenler: [{ yetenekId: 'y1', neden }],
+    });
+    const kuralYok = { kurallar: [], derlenmeyenler: [] };
+    // Koşulsuz yasağın "kesin tutmuyor" koşulu hiçbir kaydı tutmaz (sart-cevirici.ts).
+    const HICBIR_KAYIT = { id: { in: [] } };
+
+    // [ad, satır, alt gruplar, bozukluğun türü ve nedeni, aynı satırın izin olarak bugünkü sonucu]
+    it.each<
+      [
+        string,
+        Partial<YetenekSatiri>,
+        Record<string, string[]>,
+        { tur: string; neden: string },
+        { kurallar: unknown[]; derlenmeyenler: unknown[] },
+      ]
+    >([
+      [
+        'şartı çözülemeyen (yer tutucunun alt grup listesi yok)',
+        { sart: [grupVeAlti] },
+        {},
+        { tur: 'derleme', neden: 'yer tutucu çözülemedi: grupId' },
+        derlenmez('yer tutucu çözülemedi: grupId'),
+      ],
+      [
+        'yer tutucusu boş listeye çözülen',
+        { sart: [grupVeAlti] },
+        { g1: [] },
+        { tur: 'derleme', neden: 'yer tutucu çözülemedi: grupId' },
+        derlenmez('yer tutucu çözülemedi: grupId'),
+      ],
+      [
+        'şartının değer tipi bozuk',
+        { sart: [{ alan: 'durum', islec: 'esit', deger: 5 }] },
+        {},
+        { tur: 'derleme', neden: 'değer alanın tipine uymuyor: durum' },
+        derlenmez('değer alanın tipine uymuyor: durum'),
+      ],
+      [
+        'şartının işleci alanın tipine uymayan',
+        { sart: [{ alan: 'durum', islec: 'buyuk', deger: 'a' }] },
+        {},
+        { tur: 'derleme', neden: 'işleç alanın tipine uymuyor: durum' },
+        derlenmez('işleç alanın tipine uymuyor: durum'),
+      ],
+      [
+        'şartında boş liste olan',
+        { sart: [{ alan: 'durum', islec: 'listede', deger: [] }] },
+        {},
+        { tur: 'derleme', neden: 'boş liste: durum' },
+        derlenmez('boş liste: durum'),
+      ],
+      [
+        'şartında şemada olmayan alan olan',
+        { sart: [{ alan: 'yok', islec: 'esit', deger: 'x' }] },
+        {},
+        { tur: 'derleme', neden: 'bilinmeyen alan: yok' },
+        derlenmez('bilinmeyen alan: yok'),
+      ],
+      [
+        'bütün kayıtlar işaretini şartla taşıyan',
+        {
+          butunKayitlar: true,
+          sart: [{ alan: 'durum', islec: 'esit', deger: 'acik' }],
+        },
+        {},
+        { tur: 'derleme', neden: 'bütün kayıtlar işareti şartla birlikte' },
+        derlenmez('bütün kayıtlar işareti şartla birlikte'),
+      ],
+      [
+        'bütün kolonlar işaretini kolon listesiyle taşıyan',
+        { butunKayitlar: true, kolonlar: ['durum'] },
+        {},
+        {
+          tur: 'derleme',
+          neden: 'bütün kolonlar işareti kolon listesiyle birlikte',
+        },
+        derlenmez('bütün kolonlar işareti kolon listesiyle birlikte'),
+      ],
+      [
+        'kaynağı bilinmeyen',
+        { kaynak: 'Yok', butunKayitlar: true },
+        {},
+        { tur: 'derleme', neden: 'bilinmeyen kaynak: Yok' },
+        derlenmez('bilinmeyen kaynak: Yok'),
+      ],
+      [
+        'ne bütün kayıtlar işareti ne şartı olan',
+        {},
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: kayit_siniri_yok' },
+        kuralYok,
+      ],
+      [
+        'ne bütün kolonlar işareti ne kolon listesi olan',
+        { butunKayitlar: true, butunKolonlar: false },
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: kolon_siniri_yok' },
+        kuralYok,
+      ],
+      [
+        'kolon listesinden tek ad düşen (liste boşalmasa da)',
+        {
+          butunKayitlar: true,
+          butunKolonlar: false,
+          kolonlar: ['durum', 'yok'],
+        },
+        {},
+        { tur: 'kolon', neden: 'şemada olmayan kolon: yok' },
+        { kurallar: [kural({ fields: ['durum'] })], derlenmeyenler: [] },
+      ],
+      [
+        'kolon listesinin bütün adları düşen',
+        { butunKayitlar: true, butunKolonlar: false, kolonlar: ['yok'] },
+        {},
+        { tur: 'kolon', neden: 'şemada olmayan kolon: yok' },
+        kuralYok,
+      ],
+      [
+        'kolon listesinde kimlik kolonu olan',
+        {
+          butunKayitlar: true,
+          butunKolonlar: false,
+          kolonlar: ['id', 'durum'],
+        },
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: kimlik_kolonu' },
+        {
+          kurallar: [kural({ fields: ['id', 'durum'] })],
+          derlenmeyenler: [],
+        },
+      ],
+      [
+        'silme eylemine kolon listesiyle yazılmış',
+        {
+          eylem: 'sil',
+          butunKayitlar: true,
+          butunKolonlar: false,
+          kolonlar: ['durum'],
+        },
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: kayit_duzeyi_eylemde_kolon' },
+        {
+          kurallar: [kural({ action: 'sil', fields: ['durum'] })],
+          derlenmeyenler: [],
+        },
+      ],
+      [
+        'korunan kaynağın yazma eylemine yazılmış',
+        { kaynak: 'Grup', eylem: 'sil', butunKayitlar: true },
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: korunan_kaynak' },
+        {
+          kurallar: [kural({ action: 'sil', subject: 'Grup' })],
+          derlenmeyenler: [],
+        },
+      ],
+      [
+        'önceliği 0–100 dışında olan',
+        { butunKayitlar: true, oncelik: 101 },
+        {},
+        { tur: 'bicim', neden: 'yasağın biçimi: oncelik_araligi' },
+        { kurallar: [kural()], derlenmeyenler: [] },
+      ],
+    ])('%s yasak', (_ad, degisen, altGruplar, bozukluk, izinSonucu) => {
+      const ham = satir(degisen);
+      const yasak = yetenekleriDerle(
+        { yetenekler: [{ ...ham, giremez: true }], altGruplar },
+        ISTEYEN,
+        GRUPLU,
+      );
+      const izin = yetenekleriDerle(
+        { yetenekler: [ham], altGruplar },
+        ISTEYEN,
+        GRUPLU,
+      );
+
+      expect(yasak.bozukYasaklar).toEqual([{ yetenekId: 'y1', ...bozukluk }]);
+      expect(yasak.butunKurallar).toEqual([
+        {
+          yetenekId: 'y1',
+          action: ham.eylem,
+          subject: ham.kaynak,
+          giremez: true,
+          oncelik: 100,
+          yasaktanMuaf: false,
+          kesinTutmuyor: HICBIR_KAYIT,
+        },
+      ]);
+      expect(yasak.kurallar).toEqual([]);
+      expect(yasak.derlenmeyenler).toEqual([]);
+      expect({
+        kurallar: izin.kurallar,
+        derlenmeyenler: izin.derlenmeyenler,
+      }).toEqual(izinSonucu);
+      expect(izin.bozukYasaklar).toEqual([]);
+    });
+
+    it('şartının biçimi bozuk gelen yasak atılmaz, bozuk yasak olarak derlenir', () => {
+      const sonuc = derle([
+        satir({ giremez: true, oncelik: 10, sartBicimiBozuk: true }),
+      ]);
+
+      expect(sonuc.bozukYasaklar).toEqual([
+        { yetenekId: 'y1', tur: 'derleme', neden: 'şartın biçimi bozuk' },
+      ]);
+      expect(sonuc.butunKurallar).toEqual([
+        {
+          yetenekId: 'y1',
+          action: 'oku',
+          subject: 'Talep',
+          giremez: true,
+          oncelik: 100,
+          yasaktanMuaf: false,
+          kesinTutmuyor: HICBIR_KAYIT,
+        },
+      ]);
+    });
+
+    it('bozuk yasak muaflık bilgisini taşır; sağlam yasak ve izin bozuk sayılmaz, izin kurallarda kalır', () => {
+      const sonuc = derle([
+        satir({ yetenekId: 'izin', butunKayitlar: true }),
+        satir({
+          yetenekId: 'saglam',
+          butunKayitlar: true,
+          giremez: true,
+          oncelik: 10,
+        }),
+        satir({
+          yetenekId: 'bozuk',
+          giremez: true,
+          yasaktanMuaf: true,
+          sart: [{ alan: 'yok', islec: 'esit', deger: 'x' }],
+        }),
+      ]);
+
+      expect(sonuc.bozukYasaklar.map((y) => y.yetenekId)).toEqual(['bozuk']);
+      expect(sonuc.butunKurallar.map((k) => [k.yetenekId, k.oncelik])).toEqual([
+        ['izin', 0],
+        ['saglam', 10],
+        ['bozuk', 100],
+      ]);
+      expect(sonuc.butunKurallar[2]).toMatchObject({ yasaktanMuaf: true });
+      expect(sonuc.butunKurallar[2]).not.toHaveProperty('conditions');
+      expect(sonuc.butunKurallar[2]).not.toHaveProperty('fields');
+      expect(sonuc.kurallar.map((k) => k.yetenekId)).toEqual(['izin']);
+    });
+
+    // Okuma, Prisma koşulunu geri ayrıştırmaz: koşul derlenirken çözülmüş şarttan üretilir.
+    it('sağlam yasak "kesin tutmuyor" koşulunu çözülmüş şarttan hazır taşır; izin taşımaz', () => {
+      const sonuc = yetenekleriDerle(
+        {
+          yetenekler: [
+            satir({ yetenekId: 'izin', butunKayitlar: true }),
+            satir({ yetenekId: 'butun', butunKayitlar: true, giremez: true }),
+            satir({
+              yetenekId: 'sartli',
+              giremez: true,
+              sart: [grupVeAlti, { alan: 'tutar', islec: 'buyuk', deger: 5 }],
+            }),
+          ],
+          altGruplar: { g1: ['g1', 'g2'] },
+        },
+        ISTEYEN,
+        { ...GRUPLU, bosOlabilirlik: () => ({ grupId: false, tutar: true }) },
+      );
+
+      expect(sonuc.bozukYasaklar).toEqual([]);
+      expect(sonuc.butunKurallar[0]).not.toHaveProperty('kesinTutmuyor');
+      expect(sonuc.butunKurallar[1]?.kesinTutmuyor).toEqual(HICBIR_KAYIT);
+      expect(sonuc.butunKurallar[2]?.kesinTutmuyor).toEqual({
+        OR: [
+          { grupId: { notIn: ['g1', 'g2'] } },
+          { tutar: { lte: 5 } },
+          { tutar: { equals: null } },
+        ],
+      });
     });
   });
 

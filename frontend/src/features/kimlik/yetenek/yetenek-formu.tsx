@@ -2,6 +2,7 @@
 
 import { startTransition, type SubmitEvent, useActionState, useRef, useState } from 'react';
 import { GonderDugmesi } from '../../../shared/ui/gonder-dugmesi';
+import { Can } from '../../../shared/yetki/yetki-saglayici';
 import { BOS_FORM_DURUMU } from '../form-durumu';
 import { GenelHata } from '../is-parcalari';
 import { SecimAlani } from '../uyelik/uyelik-isleri';
@@ -401,7 +402,106 @@ function IcerikAlanlari({
   );
 }
 
-// Başarıda Server Action yeni yeteneğin kayıt sayfasına yönlendirir.
+// Öncelik metin olarak gider; boşsa gövdeye girmez.
+function OncelikAlani({
+  baslangic,
+  hata,
+}: Readonly<{ baslangic: string; hata: string | undefined }>) {
+  const [oncelik, oncelikYap] = useState(baslangic);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor="oncelik" className="font-medium">
+        Öncelik
+      </label>
+      <input
+        id="oncelik"
+        name="oncelik"
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        value={oncelik}
+        onChange={(olay) => {
+          oncelikYap(olay.target.value);
+        }}
+        aria-invalid={hata !== undefined}
+        aria-describedby={hata === undefined ? undefined : 'oncelik-hata'}
+        className={GIRDI}
+      />
+      <p className="text-sm">
+        0 ile 100 arasında bir tam sayı; büyük olan kazanır
+      </p>
+      <HataIletisi kimlik="oncelik-hata" ileti={hata} />
+    </div>
+  );
+}
+
+// Yazılırken seçilen etki ve öncelik (TS-008 "Yönetim, izinler ve teşhis"); yasak seçilince yasağın
+// sınırlarını anlatan yardım metni görünür (TS-008 "Hata modları").
+function EtkiAlanlari({
+  alanHatalari,
+}: Readonly<{ alanHatalari: Readonly<Record<string, string>> }>) {
+  const [etki, etkiYap] = useState('izin');
+  const hata = alanHatalari['giremez'];
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="giremez" className="font-medium">
+          Etki
+        </label>
+        <select
+          id="giremez"
+          name="giremez"
+          value={etki}
+          onChange={(olay) => {
+            etkiYap(olay.target.value);
+          }}
+          aria-invalid={hata !== undefined}
+          aria-describedby={hata === undefined ? undefined : 'giremez-hata'}
+          className={GIRDI}
+        >
+          <option value="izin">İzin</option>
+          <option value="yasak">Yasak</option>
+        </select>
+        <HataIletisi kimlik="giremez-hata" ileti={hata} />
+      </div>
+      {etki === 'yasak' && (
+        <div
+          role="note"
+          aria-label="Yasağın sınırları"
+          className="flex flex-col gap-1 text-sm"
+        >
+          <p>
+            Yasak bir kara listedir: modele sonradan eklenen kolonu kapsamaz.
+          </p>
+          <p>
+            Her zaman kapalı kalması gereken yerde kaydın bütününü kapatan bir
+            yasak yaz, açılacak dar izni bir üst öncelikte ver.
+          </p>
+          <p>
+            Öncelik 0 ile yazılan yasak öncelik 0&apos;daki izinleri kapatır;
+            yasağı aşacak izin daha yüksek öncelikle yazılır.
+          </p>
+          <p>
+            Yasak her eylem için ayrıca yazılır: okuma yasağı yazmayı
+            kısıtlamaz.
+          </p>
+          <p>
+            Okuma yasağı bir işin baktığı kolona denk gelirse o iş de dolaylı
+            olarak kapanır.
+          </p>
+          <p>
+            Şartı kişinin göremediği bir kolona bakan yazma yasağı, o kolonun
+            değerini ret cevabından ele verebilir.
+          </p>
+        </div>
+      )}
+      <OncelikAlani baslangic="" hata={alanHatalari['oncelik']} />
+    </>
+  );
+}
+
+// Başarıda Server Action yeni yeteneğin kayıt sayfasına yönlendirir. Etki ve öncelik yalnız yasakla
+// izni olan kişiye çizilir; öbür kişinin formu ve gövdesi bu alanları taşımaz.
 export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSecenekleri }>) {
   const [durum, eylem] = useActionState(yetenekYaz, BOS_FORM_DURUMU);
   return (
@@ -431,6 +531,9 @@ export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSe
         hata={durum.alanHatalari['izinId']}
         varsayilan={durum.degerler?.['izinId']}
       />
+      <Can I="yasakla" a="Yetenek">
+        <EtkiAlanlari alanHatalari={durum.alanHatalari} />
+      </Can>
       <IcerikAlanlari baslangic={BOS_ICERIK} alanHatalari={durum.alanHatalari} />
       <GonderDugmesi>Yeteneği yaz</GonderDugmesi>
     </form>
@@ -438,11 +541,20 @@ export function YetenekYazFormu({ secenekler }: Readonly<{ secenekler: YetenekSe
 }
 
 // Grup, rol ve izin değişmez; form var olan içerikle dolu gelir. Başarıda Server Action yeni satırın
-// kayıt sayfasına yönlendirir.
+// kayıt sayfasına yönlendirir. Yasakla izni olan kişi önceliği değiştirebilir; etki çevrilemez
+// (KU-020), salt okunur görünür ve gövdeye girmez. Kayıtta gelmeyen etki gösterilmez; gelmeyen öncelik
+// boş açılır ve boş öncelik gönderilmediği için backend eskisini korur.
 export function YetenekYenileFormu({
   id,
   baslangic,
-}: Readonly<{ id: string; baslangic: YetenekIcerigi }>) {
+  giremez,
+  oncelik,
+}: Readonly<{
+  id: string;
+  baslangic: YetenekIcerigi;
+  giremez: boolean | undefined;
+  oncelik: number | undefined;
+}>) {
   const [durum, eylem] = useActionState(yetenekYenile, BOS_FORM_DURUMU);
   return (
     <form
@@ -454,6 +566,15 @@ export function YetenekYenileFormu({
       <h2 className="text-2xl font-bold">Yenile</h2>
       <GenelHata ileti={durum.genelHata} />
       <input type="hidden" name="id" value={id} />
+      <Can I="yasakla" a="Yetenek">
+        {giremez !== undefined && (
+          <p>{`Etki: ${giremez ? 'Yasak' : 'İzin'} (değiştirilemez)`}</p>
+        )}
+        <OncelikAlani
+          baslangic={oncelik === undefined ? '' : String(oncelik)}
+          hata={durum.alanHatalari['oncelik']}
+        />
+      </Can>
       <IcerikAlanlari baslangic={baslangic} alanHatalari={durum.alanHatalari} />
       <GonderDugmesi>Yenile</GonderDugmesi>
     </form>

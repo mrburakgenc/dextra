@@ -69,6 +69,11 @@ export class YetkiBellegi {
         `Yetenek derlenmedi: yetenek=${yetenekId} neden=${neden}`,
       );
     }
+    // Bozuk yasak o eylem ve kaynağı kişide kapatır; derleme başına satır kimliğiyle bir hata satırı
+    // (TS-008 "Derleme"; KU-017).
+    for (const { yetenekId, neden } of yetki.bozukYasaklar) {
+      this.gunluk.error(`Bozuk yasak: yetenek=${yetenekId} neden=${neden}`);
+    }
     this.kayitlar.set(kullaniciId, {
       kisiSurumu: satirlar.kisiSurumu,
       genelSurum: satirlar.genelSurum,
@@ -81,5 +86,11 @@ export class YetkiBellegi {
       }
     }
     return yetki;
+  }
+
+  // İsteği yapandan başka bir kişinin derlenmiş yetkisi (teşhis; TS-008 "Yönetim, izinler ve teşhis"):
+  // sürümler yetki verisinden okunur, gerisi al ile aynıdır.
+  async kisininYetkisi(kullaniciId: string): Promise<DerlemeSonucu> {
+    return this.al(kullaniciId, await this.veri.surumler(kullaniciId));
   }
 }

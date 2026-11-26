@@ -1,7 +1,7 @@
 ---
 kimlik: KU-020
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
 dayanak: [KR-016@1]
@@ -10,7 +10,7 @@ baglama: kapsam
 bicim: kural
 kesinlik: olagan
 denetim_duzey: gozden-gecirme
-bakis: 2026-11-25
+bakis: 2026-12-26
 ---
 Bir yeteneğin etkisi yazıldıktan sonra değişmez: yenileme yasağı izne, izni yasağa çeviremez. Yasak yalnız iki biçimde yazılır: kaydın bütünü (kolon listesi yok) ya da kolon listesi. Belirsiz biçim, kimlik kolonlu liste, oluşturma, silme ve niyet eylemine kolon listeli yasak ile korunan kaynağın yazma eylemine yasak yazımda reddedilir.
 

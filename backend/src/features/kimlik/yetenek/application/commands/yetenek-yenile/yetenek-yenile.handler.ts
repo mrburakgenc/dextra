@@ -24,7 +24,8 @@ import type { YetenekYenileSonucu } from './yetenek-yenile.result.js';
 const IS_ADI = 'kimlik:yetenek-yenile';
 
 // Kararın baktığı kolonlar; olgular bunlardan okunur, biri görülemiyorsa satırın korunan olup olmadığı
-// bilinemez (TS-002 AK-46 eki).
+// bilinemez (TS-002 AK-46 eki). Etki ve öncelik yeni satıra eski satırdan geçtiği için onlar da karar
+// kolonudur (TS-008 "Yönetim, izinler ve teşhis").
 const KARAR_KOLONLARI = [
   'sistemSatiri',
   'tohumAnahtari',
@@ -32,6 +33,8 @@ const KARAR_KOLONLARI = [
   'rolId',
   'izinId',
   'silinmeZamani',
+  'giremez',
+  'oncelik',
 ];
 
 // Varlığın reddi bugünkü HTTP cevabına çevrilir.
@@ -64,7 +67,11 @@ export class YetenekYenileHandler {
     @Inject(YETENEK_YAZMA_REPO) private readonly yazma: IYetenekYazmaRepo,
   ) {}
 
-  calistir({ id, icerik }: YetenekYenileKomutu): Promise<YetenekYenileSonucu> {
+  calistir({
+    id,
+    icerik,
+    oncelik,
+  }: YetenekYenileKomutu): Promise<YetenekYenileSonucu> {
     return this.uow.run(async (islem) => {
       await this.genelSayac.kilitle(islem, { artir: true });
       const eski = await islem.repo(YETENEK_REPO).tek(id);
@@ -85,10 +92,13 @@ export class YetenekYenileHandler {
         'grupId' | 'rolId' | 'izinId',
         string
       >;
+      // Etki eski satırdan gelir; öncelik verilmezse eskisi korunur (TS-008 kapanan AU-9 ve AU-25).
+      const etki = eski as { giremez: boolean; oncelik: number };
       const yeni = await this.yazim.kur(
         islem,
         { grupId, rolId, izinId },
         icerik,
+        { giremez: etki.giremez, oncelik: oncelik ?? etki.oncelik },
       );
       return {
         id: await this.yazma.olustur(islem, IS_ADI, {

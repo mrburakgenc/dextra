@@ -19,18 +19,31 @@ const YetkilerimCevabi = z.object({
       subject: z.string(),
       conditions: z.record(z.string(), z.unknown()).optional(),
       fields: z.array(z.string()).optional(),
+      inverted: z.boolean().optional(),
     }),
   ),
 });
 
-// Menü bağlantıları; her biri o kaynağı okuyabilen kişiye görünür.
+// Menü bağlantıları; her biri o kaynakta o eylemi yapabilen kişiye görünür. Teşhis yalnız
+// Yetenek:teshis izni olana görünür (TS-008 "Yönetim, izinler ve teşhis").
 const MENU = [
-  { etiket: 'Kullanıcılar', adres: '/kullanicilar', kaynak: 'Kullanici' },
-  { etiket: 'Roller', adres: '/roller', kaynak: 'Rol' },
-  { etiket: 'Gruplar', adres: '/gruplar', kaynak: 'Grup' },
-  { etiket: 'İzinler', adres: '/izinler', kaynak: 'Izin' },
-  { etiket: 'Yetenekler', adres: '/yetenekler', kaynak: 'Yetenek' },
-  { etiket: 'Oturumlar', adres: '/oturumlar', kaynak: 'Oturum' },
+  {
+    etiket: 'Kullanıcılar',
+    adres: '/kullanicilar',
+    kaynak: 'Kullanici',
+    eylem: 'oku',
+  },
+  { etiket: 'Roller', adres: '/roller', kaynak: 'Rol', eylem: 'oku' },
+  { etiket: 'Gruplar', adres: '/gruplar', kaynak: 'Grup', eylem: 'oku' },
+  { etiket: 'İzinler', adres: '/izinler', kaynak: 'Izin', eylem: 'oku' },
+  {
+    etiket: 'Yetenekler',
+    adres: '/yetenekler',
+    kaynak: 'Yetenek',
+    eylem: 'oku',
+  },
+  { etiket: 'Oturumlar', adres: '/oturumlar', kaynak: 'Oturum', eylem: 'oku' },
+  { etiket: 'Teşhis', adres: '/teshis', kaynak: 'Yetenek', eylem: 'teshis' },
 ] as const;
 
 // Korumalı düzen: erişim çerezi yoksa backend'e gidilmeden giriş ekranına dönülür. Bu bir
@@ -84,7 +97,7 @@ export default async function PanelDuzeni({
         <nav aria-label="Ana menü">
           <ul className="flex gap-4">
             {MENU.map((oge) => (
-              <Can key={oge.adres} I="oku" a={oge.kaynak}>
+              <Can key={oge.adres} I={oge.eylem} a={oge.kaynak}>
                 <li>
                   <Link
                     href={oge.adres}

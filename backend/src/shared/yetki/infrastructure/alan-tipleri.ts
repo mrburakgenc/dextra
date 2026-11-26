@@ -1,4 +1,5 @@
 import type { Prisma } from '../../database/generated/client.js';
+import type { AlanTipi } from '../domain/alan-tipi.js';
 import type { AlanAdi } from './prisma-kaynak-katalogu.js';
 
 // Prisma 7'nin üretilmiş istemcisi çalışma anında kimlik (@db.Uuid) ile metni, dizi ile tekil alanı
@@ -20,26 +21,37 @@ type SorguKosulu<M extends Prisma.ModelName> = NonNullable<
   Prisma.TypeMap['model'][M]['operations']['findMany']['args']['where']
 >;
 
-// Üretilmiş istemcinin süzgeç tipinden alan tipine. Burada olmayan süzgeç (örnek: şemaya ilk Float
-// alanı eklenince FloatFilter) never'a düşer ve tablo, eşleme genişletilmeden derlenmez.
+// Üretilmiş istemcinin süzgeç tipinden alan tipine ve kolonun boş olabilirliğine. Burada olmayan
+// süzgeç (örnek: şemaya ilk Float alanı eklenince FloatFilter) never'a düşer ve iki tablo, eşleme
+// genişletilmeden derlenmez. Şartta kullanılamayan ('obur') kolonun boş olabilirliği yoktur (never):
+// Json ile Json? kolonun süzgeç tipleri yapıca aynıdır, tipten ayırt edilemez.
 type SuzgecTipleri<M> =
-  | [Prisma.UuidFilter<M>, 'kimlik']
-  | [Prisma.UuidNullableFilter<M>, 'kimlik']
-  | [Prisma.StringFilter<M>, 'metin']
-  | [Prisma.StringNullableFilter<M>, 'metin']
-  | [Prisma.IntFilter<M>, 'sayi']
-  | [Prisma.BoolFilter<M>, 'mantiksal']
-  | [Prisma.DateTimeFilter<M>, 'zaman']
-  | [Prisma.DateTimeNullableFilter<M>, 'zaman']
-  | [Prisma.JsonFilter<M>, 'obur']
-  | [Prisma.JsonNullableFilter<M>, 'obur']
-  | [Prisma.StringNullableListFilter<M>, 'obur'];
+  | [Prisma.UuidFilter<M>, 'kimlik', false]
+  | [Prisma.UuidNullableFilter<M>, 'kimlik', true]
+  | [Prisma.StringFilter<M>, 'metin', false]
+  | [Prisma.StringNullableFilter<M>, 'metin', true]
+  | [Prisma.IntFilter<M>, 'sayi', false]
+  | [Prisma.BoolFilter<M>, 'mantiksal', false]
+  | [Prisma.DateTimeFilter<M>, 'zaman', false]
+  | [Prisma.DateTimeNullableFilter<M>, 'zaman', true]
+  | [Prisma.JsonFilter<M>, 'obur', never]
+  | [Prisma.JsonNullableFilter<M>, 'obur', never]
+  | [Prisma.StringNullableListFilter<M>, 'obur', never];
 
 type SuzgectenTip<S, M> =
   SuzgecTipleri<M> extends infer E
-    ? E extends [infer Suzgec, infer Tip]
+    ? E extends [infer Suzgec, infer Tip, boolean]
       ? Ozdes<S, Suzgec> extends true
         ? Tip
+        : never
+      : never
+    : never;
+
+type SuzgectenBosOlabilirlik<S, M> =
+  SuzgecTipleri<M> extends infer E
+    ? E extends [infer Suzgec, AlanTipi, infer Bos]
+      ? Ozdes<S, Suzgec> extends true
+        ? Bos
         : never
       : never
     : never;
@@ -53,9 +65,29 @@ type AlaninTipi<M extends Prisma.ModelName, A> = SuzgectenTip<
   M
 >;
 
+type AlaninBosOlabilirligi<
+  M extends Prisma.ModelName,
+  A,
+> = SuzgectenBosOlabilirlik<
+  Exclude<
+    SorguKosulu<M>[A & keyof SorguKosulu<M>],
+    string | number | boolean | Date | null | undefined
+  >,
+  M
+>;
+
 type AlanTipleri = {
   readonly [M in Prisma.ModelName]: {
     readonly [A in AlanAdi<M> & string]: AlaninTipi<M, A>;
+  };
+};
+
+// Yalnız şartta kullanılabilen kolonlar: 'obur' kolon tabloya yazılırsa tip denetimi kırılır.
+type BosOlabilirlik = {
+  readonly [M in Prisma.ModelName]: {
+    readonly [A in AlanAdi<M> & string as AlaninTipi<M, A> extends 'obur'
+      ? never
+      : A]: AlaninBosOlabilirligi<M, A>;
   };
 };
 
@@ -181,9 +213,140 @@ export const ALAN_TIPLERI = {
     yerineGectigiId: 'kimlik',
     koken: 'metin',
     olusturmaZamani: 'zaman',
+    giremez: 'mantiksal',
+    oncelik: 'sayi',
   },
   YetkiSurumu: {
     id: 'sayi',
     sayac: 'sayi',
   },
 } as const satisfies AlanTipleri;
+
+// Şartta kullanılabilen her kolonun boş değer alıp alamadığı (TS-008 "Veri modeli"; kapanan AU-5):
+// alan tipleri gibi elle yazılır ve şemadan hesaplanan tipe birebir uydurulur; yanlış, eksik ya da
+// fazla yazılan kolon tip denetimini kırar. 'obur' kolonlar (Json, dizi) şarta giremediği için yoktur.
+export const BOS_OLABILIRLIK = {
+  OutboxIz: {
+    id: false,
+    surum: false,
+    olusturmaZamani: false,
+    aktarimZamani: true,
+    denemeSayisi: false,
+    sonrakiDenemeZamani: true,
+    sonHata: true,
+  },
+  OutboxOlay: {
+    id: false,
+    ad: false,
+    surum: false,
+    olusturmaZamani: false,
+    aktarimZamani: true,
+    denemeSayisi: false,
+    sonrakiDenemeZamani: true,
+    sonHata: true,
+  },
+  IslenenOlay: {
+    tuketici: false,
+    olayId: false,
+    durum: false,
+    sahiplenmeBitisZamani: false,
+    tamamlanmaZamani: true,
+    olusturmaZamani: false,
+    sahipId: false,
+  },
+  TohumGocu: {
+    ad: false,
+    uygulanmaZamani: false,
+  },
+  Kullanici: {
+    id: false,
+    kullaniciAdi: true,
+    telefon: true,
+    gorunenAd: false,
+    sistemAktoru: false,
+    yetkiSurumu: false,
+    pasifZamani: true,
+    unutulmaZamani: true,
+    olusturmaZamani: false,
+  },
+  KullaniciSirri: {
+    kullaniciId: false,
+    parolaOzeti: false,
+    guncellemeZamani: false,
+  },
+  Oturum: {
+    id: false,
+    kullaniciId: false,
+    girisYontemi: false,
+    baslangicZamani: false,
+    mutlakBitisZamani: false,
+    sonDondurmeZamani: false,
+    ipAdresi: false,
+    tarayiciBilgisi: false,
+    kapatilmaZamani: true,
+    kapatilmaNedeni: true,
+  },
+  OturumSirri: {
+    oturumId: false,
+    nesil: false,
+    gecerliYenilemeOzeti: false,
+    oncekiYenilemeOzeti: true,
+    cihazSirriOzeti: false,
+  },
+  ParolaBaglantisi: {
+    id: false,
+    kullaniciId: false,
+    kodOzeti: false,
+    sonGecerlilikZamani: false,
+    kullanilmaZamani: true,
+    olusturanId: true,
+    olusturmaZamani: false,
+  },
+  Grup: {
+    id: false,
+    ustGrupId: true,
+    ad: false,
+    silinmeZamani: true,
+    olusturmaZamani: false,
+  },
+  Rol: {
+    id: false,
+    kod: true,
+    ad: false,
+    silinmeZamani: true,
+  },
+  Izin: {
+    id: false,
+    kaynak: false,
+    eylem: false,
+  },
+  Uyelik: {
+    id: false,
+    kullaniciId: false,
+    grupId: false,
+    rolId: false,
+    silinmeZamani: true,
+    olusturmaZamani: false,
+  },
+  Yetenek: {
+    id: false,
+    grupId: false,
+    rolId: false,
+    izinId: false,
+    butunKayitlar: false,
+    butunBirimler: false,
+    butunKolonlar: false,
+    sistemSatiri: false,
+    silinmeZamani: true,
+    tohumAnahtari: true,
+    yerineGectigiId: true,
+    koken: false,
+    olusturmaZamani: false,
+    giremez: false,
+    oncelik: false,
+  },
+  YetkiSurumu: {
+    id: false,
+    sayac: false,
+  },
+} as const satisfies BosOlabilirlik;

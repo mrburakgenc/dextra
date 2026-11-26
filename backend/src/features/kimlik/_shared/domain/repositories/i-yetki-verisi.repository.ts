@@ -13,10 +13,17 @@ export interface GrupDugumu {
   readonly ustGrupId: string | null;
 }
 
-// Saklandığı gibi okunan yetenek: şartın biçimi henüz doğrulanmamıştır (TS-002 AK-37).
-export type SaklananYetenek = Omit<YetenekSatiri, 'sart'> & {
+// Saklandığı gibi okunan yetenek: şartın biçimi henüz doğrulanmamıştır (TS-002 AK-37). Muafiyet
+// burada yoktur; uygulama katmanı onu sistem satırı işaretinden, rolün kodundan ve kök gruptan türetir.
+export type SaklananYetenek = Omit<YetenekSatiri, 'sart' | 'yasaktanMuaf'> & {
   readonly sart: unknown;
+  readonly sistemSatiri: boolean;
 };
+
+export interface RolKodu {
+  readonly id: string;
+  readonly kod: string | null;
+}
 
 export interface YetkiVerisiOkumaRepo {
   // Kişi ya da genel sayaç satırı yoksa Prisma'nın "kayıt yok" hatası atılır.
@@ -30,6 +37,8 @@ export interface YetkiVerisiOkumaRepo {
   ): Promise<SaklananYetenek[]>;
   // Silinmişler dahil grupların tamamı (KR-008 Seçim 41); alt gruplar bellekte hesaplanır.
   gruplar(): Promise<GrupDugumu[]>;
+  // Verilen rollerin kodları (silinmişler dahil).
+  rolKodlari(rolIdleri: readonly string[]): Promise<RolKodu[]>;
 }
 
 export const YETKI_VERISI_REPO = new RepoBelirteci<

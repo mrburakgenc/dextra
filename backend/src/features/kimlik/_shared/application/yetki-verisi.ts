@@ -51,10 +51,13 @@ export const KIMLIK_SISTEM_ALANLARI: SistemAlanlari = {
   ],
 };
 
+// Kök yönetici rolünün saklanan kodu (TS-002 AK-3).
+const KOK_YONETICI_ROL_KODU = 'superadmin';
+
 // Saklanan şartın biçimi (TS-002 "Veri modeli"): öğelerin düz dizisi; her öğe tam olarak alan,
-// işleç ve değer taşır.
+// işleç ve değer taşır. Göçten önceki yasak taraması da bunu kullanır (yasak-taramasi.ts).
 const sabitDeger = z.union([z.string(), z.number(), z.boolean()]);
-const sartSemasi = z.array(
+export const sartSemasi = z.array(
   z.strictObject({
     alan: z.string(),
     islec: z.enum([
@@ -83,8 +86,9 @@ const sartSemasi = z.array(
 
 // YetkiVerisi sözleşmesinin uygulaması (TS-002 AK-16, AK-37): bir çekirdek yoldur. Önce sürümler,
 // sonra canlı üyelikler, onların (grup, rol) çiftlerine bağlı canlı yetenekler ve silinmişler dahil
-// grupların tamamı okunur. Şartının biçimi bozuk yetenek derlemeye verilmez ve günlüğe bildirilir;
-// öbür yetenekler verilir (KR-010 yükümlülük 4). Okuma tek anlık görüntü değildir: sürümler önce
+// grupların tamamı okunur. Şartının biçimi bozuk izin derlemeye verilmez ve günlüğe bildirilir; şartının
+// biçimi bozuk yasak atılmaz, şartı boş ve bozuk işaretiyle verilir, derleyici onu bozuk yasak olarak
+// derler (TS-008 "Derleme"; KU-017). Öbür yetenekler verilir (KR-010 yükümlülük 4). Okuma tek anlık görüntü değildir: sürümler önce
 // okunduğu için arada yazılan yetki eski damgayla saklanır ve sonraki istekte yenilenir.
 @Injectable()
 export class KimlikYetkiVerisi implements YetkiVerisi {
@@ -103,8 +107,22 @@ export class KimlikYetkiVerisi implements YetkiVerisi {
     if (uyelikler.length === 0) {
       return { ...surumler, uyelikler, yetenekler: [], altGruplar: {} };
     }
-    const yetenekler = this.biciminiDogrula(await repo.yetenekler(uyelikler));
+    const saklananlar = await repo.yetenekler(uyelikler);
     const gruplar = await repo.gruplar();
+    // Rol kodları yalnız satırlar arasında yasak varken okunur: yasağı olmayan kişi bugünkü sorguları
+    // atar (TS-008 Değişmez 1) ve onda muafiyetin kapatacağı yasak yoktur.
+    const kokYoneticiRolleri = new Set(
+      saklananlar.some((satir) => satir.giremez)
+        ? (await repo.rolKodlari(saklananlar.map((satir) => satir.rolId)))
+            .filter((rol) => rol.kod === KOK_YONETICI_ROL_KODU)
+            .map((rol) => rol.id)
+        : [],
+    );
+    const yetenekler = this.biciminiDogrula(
+      saklananlar,
+      gruplar,
+      kokYoneticiRolleri,
+    );
     const altGruplar: Record<string, string[]> = {};
     for (const { grupId } of uyelikler) {
       altGruplar[grupId] ??= grupVeAltindakiler(grupId, gruplar);
@@ -112,15 +130,35 @@ export class KimlikYetkiVerisi implements YetkiVerisi {
     return { ...surumler, uyelikler, yetenekler, altGruplar };
   }
 
-  // Boş şart null saklanır.
+  // Boş şart null saklanır. Yasaktan muaf olan yalnız kök yönetici rolünün sistem satırlarıdır
+  // (TS-008 "Muafiyetler"; kapanan AU-27): kök grupta (üst grubu olmayan grup), kök yönetici rolünde
+  // ve sistem satırı. Temel rolün ve öbür rollerin sistem satırları muaf değildir.
   private biciminiDogrula(
     satirlar: readonly SaklananYetenek[],
+    gruplar: readonly GrupDugumu[],
+    kokYoneticiRolleri: ReadonlySet<string>,
   ): YetenekSatiri[] {
+    const kokGruplar = new Set(
+      gruplar.filter((grup) => grup.ustGrupId === null).map((grup) => grup.id),
+    );
     const gecerliler: YetenekSatiri[] = [];
-    for (const satir of satirlar) {
+    for (const { sistemSatiri, ...satir } of satirlar) {
       const sart = sartSemasi.safeParse(satir.sart ?? []);
+      const yasaktanMuaf =
+        sistemSatiri &&
+        kokYoneticiRolleri.has(satir.rolId) &&
+        kokGruplar.has(satir.grupId);
       if (sart.success) {
-        gecerliler.push({ ...satir, sart: sart.data });
+        gecerliler.push({ ...satir, sart: sart.data, yasaktanMuaf });
+      } else if (satir.giremez) {
+        // Bozuk yasak atılmaz (TS-008 "Derleme"; KU-017): derleyici onu bozuk yasak olarak derler ve
+        // günlüğe kendisi yazar.
+        gecerliler.push({
+          ...satir,
+          sart: [],
+          yasaktanMuaf,
+          sartBicimiBozuk: true,
+        });
       } else {
         this.gunluk.warn(
           `Yetenek derlenmedi: yetenek=${satir.yetenekId} neden=şartın biçimi bozuk`,

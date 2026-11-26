@@ -63,3 +63,9 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-25] taslak | KU-018 Kök yöneticinin sistem izinleri yasakla kapatılmaz
 ## [2026-11-25] taslak | KU-019 Uç guard'ı yalnız izin kurallarını sayar
 ## [2026-11-25] taslak | KU-020 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
+## [2026-11-26] kabul | KR-016@1 Yetenekte etki ve öncelik: yasak kuralı izinleri önceliğe göre kapatır
+## [2026-11-26] kabul | KU-017@1 Uygulanamayan yasak sessizce düşmez; o izni kapatır
+## [2026-11-26] kabul | KU-018@1 Kök yöneticinin sistem izinleri yasakla kapatılmaz
+## [2026-11-26] kabul | KU-019@1 Uç guard'ı yalnız izin kurallarını sayar
+## [2026-11-26] kabul | KU-020@1 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
+## [2026-11-26] kabul | TS-008@1 Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır

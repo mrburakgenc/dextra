@@ -1,7 +1,7 @@
 ---
 kimlik: KU-018
 tur: kural
-durum: taslak
+durum: kabul
 surum: 1
 baslik: Kök yöneticinin sistem izinleri yasakla kapatılmaz
 dayanak: [KR-016@1]
@@ -10,7 +10,7 @@ baglama: kapsam
 bicim: kural
 kesinlik: olagan
 denetim_duzey: gozden-gecirme
-bakis: 2026-11-25
+bakis: 2026-12-26
 ---
 Kök yönetici rolünün sistem satırı olan izinleri hiçbir yasakla kapatılmaz: yasak bu izinlerin satır koşuluna, kolonlarına ve yazma adaylığına uygulanmaz; ekrana verilen kural sırası da aynı sonucu verir. Başka hiçbir satır muaf değildir.
 

@@ -225,6 +225,10 @@ model Yetenek {
   yerineGectigiId String?   @map("yerine_gectigi_id") @db.Uuid
   koken           String
   olusturmaZamani DateTime  @default(dbgenerated("clock_timestamp()")) @map("olusturma_zamani") @db.Timestamptz
+  // Etki ve öncelik (TS-008): öncelik 0–100; yazım açılana kadar giremez hayır ve öncelik 0 (iki denetim
+  // kısıtı göçte elle yazılıdır).
+  giremez         Boolean   @default(false)
+  oncelik         Int       @default(0)
 
   grup           Grup      @relation(fields: [grupId], references: [id], onDelete: Restrict, map: "yetenek_grup_id_ya")
   rol            Rol       @relation(fields: [rolId], references: [id], onDelete: Restrict, map: "yetenek_rol_id_ya")

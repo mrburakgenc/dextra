@@ -9,11 +9,14 @@
 import { execFile } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { fileURLToPath } from 'node:url';
+import type { ExecutionContext } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../src/shared/database/generated/client.js';
+import { Izin } from '../src/shared/guvenlik/application/isaretler.js';
 import {
   istekBaglamiAraKatmani,
+  istekOturumunuYaz,
   istekYetkisiniYaz,
 } from '../src/shared/observability/istek-baglami/istek-baglami.js';
 import { KodluHata } from '../src/shared/http/domain/kodlu-hata.js';
@@ -25,9 +28,13 @@ import type {
 } from '../src/shared/kimlik/domain/i-yetki-verisi.contract.js';
 import type { DerlemeSonucu } from '../src/shared/yetki/application/yetenek-derleyici.js';
 import type { Kayit } from '../src/shared/yetki/domain/okuma-tipleri.js';
-import { okumaBirikimi } from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
+import {
+  OkumaKapisi,
+  okumaBirikimi,
+} from '../src/shared/yetki/infrastructure/okuma-kapisi.js';
 import { prismaKaynakKatalogu } from '../src/shared/yetki/infrastructure/prisma-kaynak-katalogu.js';
 import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
+import { YetkiGuard } from '../src/shared/yetki/infrastructure/yetki.guard.js';
 import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { EskiOkumaKapisi } from './yardimci/eski-yuz.js';
 import { createTestDatabase, type TestDatabase } from './test-database.js';
@@ -94,6 +101,9 @@ function yetenek(degisen: Partial<YetenekSatiri>): YetenekSatiri {
     butunBirimler: false,
     kolonlar: [],
     butunKolonlar: false,
+    giremez: false,
+    oncelik: 0,
+    yasaktanMuaf: false,
     ...degisen,
   };
 }
@@ -942,6 +952,64 @@ describe('yetki kapısı - okuma', () => {
         expect(await kapi.liste(prisma, 'Kullanici')).toEqual([]);
       });
     });
+  });
+
+  // TS-008 "Derleme" ve Değişmez 5; KU-019. Yetki verisi doğrudan verilir: veritabanı kısıtı bugün
+  // yasak satırını reddeder.
+  it('n) yasak izin sayılmaz: yalnız yasağı olan kişide guard ve okuma kapısının izin kümesi boştur', async () => {
+    const yasak = yetenek({
+      butunKayitlar: true,
+      butunKolonlar: true,
+      giremez: true,
+    });
+    const izin = yetenek({ butunKayitlar: true, butunKolonlar: true });
+    const yetki = await yetkiAl(AYSE, [AYSE_A], [yasak]);
+
+    expect(yetki.butunKurallar.map((k) => k.giremez)).toEqual([true]);
+    expect(yetki.kurallar).toEqual([]);
+
+    // İzin işaretli bir uç işleyicisi: işaret, dekoratörün yazdığı gibi işleyiciye yazılır.
+    const isleyici = (): void => undefined;
+    Izin('Kullanici', 'oku')({}, 'oku', { value: isleyici });
+    const baglam = {
+      getHandler: () => isleyici,
+    } as unknown as ExecutionContext;
+    const surumler = { kisiSurumu: 0, genelSurum: 0 };
+    const guardla = (yetenekler: readonly YetenekSatiri[]): Promise<boolean> =>
+      istekte(yetki, () => {
+        istekOturumunuYaz({ kullaniciId: AYSE, oturumId: 'o', ...surumler });
+        const guard = new YetkiGuard(
+          new YetkiBellegi(
+            {
+              surumler: () => Promise.resolve(surumler),
+              kisininSatirlari: () =>
+                Promise.resolve({
+                  ...surumler,
+                  uyelikler: [AYSE_A],
+                  yetenekler,
+                  altGruplar: ALT_GRUPLAR,
+                }),
+            },
+            KATALOG,
+          ),
+        );
+        return guard.canActivate(baglam);
+      });
+    // Aynı satır izin olunca guard geçirir; yasak olunca uç kapalıdır.
+    expect(await guardla([izin])).toBe(true);
+    await expect(guardla([yasak])).rejects.toMatchObject({ kod: 'yetki_yok' });
+
+    const satirSuzgeci = await istekte(yetki, () =>
+      Promise.resolve(
+        new OkumaKapisi(KATALOG).yetki('Kullanici', { bakilan: [] }).satirlar,
+      ),
+    );
+    expect(satirSuzgeci).toEqual({ id: { in: [] } });
+    expect(await istekte(yetki, () => kapi.liste(prisma, 'Kullanici'))).toEqual(
+      [],
+    );
+    expect(sorgular).toHaveLength(1);
+    expect(sorgular[0]).toContain('WHERE 1=0');
   });
 
   it('kapı yalnız katalogdaki kaynak ve kolonlarla çalışır', async () => {

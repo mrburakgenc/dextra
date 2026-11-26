@@ -134,6 +134,9 @@ function yetenek(degisen: Partial<YetenekSatiri>): YetenekSatiri {
     butunBirimler: false,
     kolonlar: [],
     butunKolonlar: false,
+    giremez: false,
+    oncelik: 0,
+    yasaktanMuaf: false,
     ...degisen,
   };
 }

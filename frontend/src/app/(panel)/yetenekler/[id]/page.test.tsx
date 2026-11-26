@@ -670,6 +670,128 @@ describe('YetenekSayfasi yetki', () => {
   });
 });
 
+// Etki ve öncelik (TS-008 "Yönetim, izinler ve teşhis"): kayıtta gelirse satırları görünür;
+// yenilemede yalnız yasakla izni olan kişi önceliği değiştirir, etki çevrilemez ve gövdeye girmez.
+const YASAK = { ...YETENEK, giremez: true, oncelik: 5 };
+const YASAKLAR = kurallar(...ISLER, 'yasakla');
+const ICERIK = {
+  sart: SART,
+  butunKayitlar: false,
+  butunBirimler: true,
+  kolonlar: ['ad', 'kod'],
+  butunKolonlar: false,
+};
+
+describe('YetenekSayfasi etki ve öncelik', () => {
+  it('kayıtta gelen etki ve öncelik kayıt satırlarında görünür', async () => {
+    await goster(YASAK);
+
+    expect(kayitSatirlari()).toEqual([
+      ['Grup', 'Merkez'],
+      ['Rol', 'Yönetici'],
+      ['İzin', 'Kullanici:oku'],
+      [
+        'Kayıt sınırı',
+        'kullaniciId esit {isteyen} ve yas buyuk 18 ve aktif esit_degil false ve durum listede [a, b] ve puan listede_degil [1, 2.5]',
+      ],
+      ['Bütün birimler', 'Evet'],
+      ['Kolon sınırı', 'ad, kod'],
+      ['Etki', 'Yasak'],
+      ['Öncelik', '5'],
+      ['Tür', ''],
+      ['Oluşturma zamanı', tarihSaat(OLUSTURMA)],
+    ]);
+  });
+
+  it('izin olan etki İzin yazılır; gelmeyen öncelik satırı çizilmez', async () => {
+    await goster({ id: ID, giremez: false });
+
+    expect(kayitSatirlari()).toEqual([['Etki', 'İzin']]);
+  });
+
+  it('yasakla izni olmayan kişinin yenile formunda öncelik ve etki yoktur; gövde bugünküyle aynıdır', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(YASAK, kurallar(...ISLER), jsonCevap({ id: YENI_ID }, 201));
+
+    const form = yenileFormu() ?? document.body;
+    expect(within(form).queryByLabelText('Öncelik')).toBeNull();
+    expect(within(form).queryByText(/^Etki/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    expect(istekler()[1]?.govde).toEqual(ICERIK);
+  });
+
+  it('yasakla izni olan kişide etki salt okunurdur, öncelik dolu gelir; gövde oncelik taşır, giremez taşımaz', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(YASAK, YASAKLAR, jsonCevap({ id: YENI_ID }, 201));
+
+    const form = within(yenileFormu() ?? document.body);
+    expect(form.getByText('Etki: Yasak (değiştirilemez)')).toBeDefined();
+    expect(form.queryByLabelText('Etki')).toBeNull();
+    expect(form.getByLabelText('Öncelik')).toHaveProperty('value', '5');
+    await userEvent.clear(form.getByLabelText('Öncelik'));
+    await userEvent.type(form.getByLabelText('Öncelik'), '7');
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    const govde = istekler()[1]?.govde;
+    expect(govde).toEqual({ ...ICERIK, oncelik: 7 });
+    expect(govde).not.toHaveProperty('giremez');
+  });
+
+  it('kayıtta gelmeyen etki gösterilmez; boş öncelik gövdeye girmez', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(YETENEK, YASAKLAR, jsonCevap({ id: YENI_ID }, 201));
+
+    const form = within(yenileFormu() ?? document.body);
+    expect(form.queryByText(/^Etki/)).toBeNull();
+    expect(form.getByLabelText('Öncelik')).toHaveProperty('value', '');
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    expect(istekler()[1]?.govde).toEqual(ICERIK);
+  });
+
+  it('sunucunun öncelik hatası önceliğin yanında görünür; yazılan öncelik durur', async () => {
+    await goster(
+      YASAK,
+      YASAKLAR,
+      jsonCevap(
+        {
+          kod: 'dogrulama_hatasi',
+          ileti: 'Yasak ve sıfırdan farklı öncelik henüz yazılamaz',
+          ayrinti: [
+            { alan: 'oncelik', neden: 'sıfırdan farklı öncelik kapalı' },
+          ],
+        },
+        400,
+      ),
+    );
+
+    await userEvent.clear(screen.getByLabelText('Öncelik'));
+    await userEvent.type(screen.getByLabelText('Öncelik'), '9');
+    await userEvent.click(screen.getByRole('button', { name: 'Yenile' }));
+
+    const oncelik = screen.getByLabelText('Öncelik');
+    await vi.waitFor(() => {
+      expect(oncelik.getAttribute('aria-invalid')).toBe('true');
+    });
+    expect(
+      document.getElementById(oncelik.getAttribute('aria-describedby') ?? '')
+        ?.textContent,
+    ).toBe('sıfırdan farklı öncelik kapalı');
+    expect(oncelik).toHaveProperty('value', '9');
+    expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
 // Ad listesi alınamayınca kayıt sayfası ayakta kalır (GV-099). Verilen ad listesi bu cevabı alır;
 // öbür istekler backend()'in kurduğu gibi cevaplanır.
 function adListesiCevabi(yol: string, cevap: () => Response) {
