@@ -86,8 +86,9 @@ const sartSemasi = z.array(
 
 // YetkiVerisi sözleşmesinin uygulaması (TS-002 AK-16, AK-37): bir çekirdek yoldur. Önce sürümler,
 // sonra canlı üyelikler, onların (grup, rol) çiftlerine bağlı canlı yetenekler ve silinmişler dahil
-// grupların tamamı okunur. Şartının biçimi bozuk yetenek derlemeye verilmez ve günlüğe bildirilir;
-// öbür yetenekler verilir (KR-010 yükümlülük 4). Okuma tek anlık görüntü değildir: sürümler önce
+// grupların tamamı okunur. Şartının biçimi bozuk izin derlemeye verilmez ve günlüğe bildirilir; şartının
+// biçimi bozuk yasak atılmaz, şartı boş ve bozuk işaretiyle verilir, derleyici onu bozuk yasak olarak
+// derler (TS-008 "Derleme"; KU-017). Öbür yetenekler verilir (KR-010 yükümlülük 4). Okuma tek anlık görüntü değildir: sürümler önce
 // okunduğu için arada yazılan yetki eski damgayla saklanır ve sonraki istekte yenilenir.
 @Injectable()
 export class KimlikYetkiVerisi implements YetkiVerisi {
@@ -143,14 +144,20 @@ export class KimlikYetkiVerisi implements YetkiVerisi {
     const gecerliler: YetenekSatiri[] = [];
     for (const { sistemSatiri, ...satir } of satirlar) {
       const sart = sartSemasi.safeParse(satir.sart ?? []);
+      const yasaktanMuaf =
+        sistemSatiri &&
+        kokYoneticiRolleri.has(satir.rolId) &&
+        kokGruplar.has(satir.grupId);
       if (sart.success) {
+        gecerliler.push({ ...satir, sart: sart.data, yasaktanMuaf });
+      } else if (satir.giremez) {
+        // Bozuk yasak atılmaz (TS-008 "Derleme"; KU-017): derleyici onu bozuk yasak olarak derler ve
+        // günlüğe kendisi yazar.
         gecerliler.push({
           ...satir,
-          sart: sart.data,
-          yasaktanMuaf:
-            sistemSatiri &&
-            kokYoneticiRolleri.has(satir.rolId) &&
-            kokGruplar.has(satir.grupId),
+          sart: [],
+          yasaktanMuaf,
+          sartBicimiBozuk: true,
         });
       } else {
         this.gunluk.warn(

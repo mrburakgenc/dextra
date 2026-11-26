@@ -35,7 +35,8 @@ export class YetkiGuard implements CanActivate {
     if (isaret?.tur !== 'izin') {
       return true;
     }
-    // Koşula ve kolona bakmadan o eylem ve tür için kural var mı (kayıt üzerinde karar verilmez).
+    // Koşula ve kolona bakmadan o eylem ve tür için kural var mı (kayıt üzerinde karar verilmez). Yetenek
+    // nesnesi yalnız izin kurallarıdır: yasak sayılmaz, yalnız yasağı olan kişi giremez (KU-019).
     if (
       yetki.yetenek.possibleRulesFor(isaret.eylem, isaret.kaynak).length > 0
     ) {

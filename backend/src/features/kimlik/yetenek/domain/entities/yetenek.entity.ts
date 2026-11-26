@@ -90,7 +90,10 @@ export function yetenekOlustur(
   if (izin.derlemeHatasi !== undefined) {
     return ret({ kod: 'derlenemedi', derlemeHatasi: izin.derlemeHatasi });
   }
-  if (korunanYazmaMi(izin.kaynak, izin.eylem) && !olgular.kokSuperAdminKumesiMi) {
+  if (
+    korunanYazmaMi(izin.kaynak, izin.eylem) &&
+    !olgular.kokSuperAdminKumesiMi
+  ) {
     return ret({ kod: 'korunan_kaynak' });
   }
   const bicim = yasakBicimi({

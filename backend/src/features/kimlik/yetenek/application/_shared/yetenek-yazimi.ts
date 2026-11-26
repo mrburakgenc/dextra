@@ -160,7 +160,7 @@ export class YetenekYazimi {
     if (oturum === undefined) {
       throw new Error('İstek bağlamında oturum yok');
     }
-    const { derlenmeyenler } = yetenekleriDerle(
+    const { derlenmeyenler, bozukYasaklar } = yetenekleriDerle(
       {
         yetenekler: [
           {
@@ -185,7 +185,15 @@ export class YetenekYazimi {
       kaynak,
       eylem,
       kaynakAlanlari: this.katalog.alanlar(kaynak) ?? [],
-      derlemeHatasi: derlenmeyenler[0]?.neden,
+      // Yasak, derleyicinin bozuk yasak tanımıyla sınanır: derlenemeyen yasak burada reddedilir; listeden
+      // düşen kolon ve biçim reddi varlıkta aynı sırada, kendi kodlarıyla (bilinmeyen kolon, yasağın
+      // biçimi) karşılanır. Kolon kuralı iki yerde yazılıdır, çünkü sonucu farklıdır: varlık izinde de
+      // bilinmeyen kolonu reddeder, derleyici ise izinde onu sessizce atar ve yalnız yasağı bozuk sayar
+      // (yazımdan sonra şemadan kolon düşebilir). İkisi aynı kataloğa bakar; her bozukluk türünün yazımda
+      // reddi test/kimlik-yetenek-yaz.e2e-spec.ts içinde sınanır.
+      derlemeHatasi:
+        derlenmeyenler[0]?.neden ??
+        bozukYasaklar.find((yasak) => yasak.tur === 'derleme')?.neden,
     };
   }
 }
