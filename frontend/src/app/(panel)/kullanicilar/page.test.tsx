@@ -470,3 +470,59 @@ describe('KullanicilarSayfasi kolonların yetkisi', () => {
     expect(hucreSayilari()).toEqual([4]);
   });
 });
+
+// Yasaklar (TS-008 Senaryo 1 ve 8): kurallar yetkilerim cevabının sırasıyladır, yasak ters kuraldır.
+// Listede telefon kolonu olmadığı için kolon yasağı kullanıcı adına yazılır; sunucu yasaklanan kolonu
+// kayıtta göndermez.
+describe('KullanicilarSayfasi kolon yasakları', () => {
+  const YASAK: YetkiKurali = {
+    action: 'oku',
+    subject: 'Kullanici',
+    fields: ['kullaniciAdi'],
+    inverted: true,
+  };
+
+  it('Senaryo 1: şartsız kolon yasağında kolonun başlığı, sıralama bağlantısı ve hücreleri çizilmez', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({
+        kayitlar: IKI_KAYIT.map((kayit) => ({
+          ...kayit,
+          kullaniciAdi: undefined,
+        })),
+      }),
+    );
+
+    await goster({}, [...OKU, YASAK]);
+
+    expect(basliklar()).toEqual(['Görünen ad', 'Durum', 'Oluşturma zamanı']);
+    expect(screen.queryByRole('link', { name: 'Kullanıcı adı' })).toBeNull();
+    expect(hucreSayilari()).toEqual([3, 3]);
+  });
+
+  it('Senaryo 8: şartlı kolon yasağında başlık çizilir; yasağın tuttuğu kaydın hücresi boştur', async () => {
+    // İkinci kaydın kullaniciAdi kolonu gelmez: yasak o kaydı tutar.
+    sahteFetch.mockResolvedValue(listeCevabi());
+
+    await goster({}, [
+      ...OKU,
+      {
+        ...YASAK,
+        conditions: { AND: [{ gorunenAd: { equals: 'Can Demir' } }] },
+      },
+    ]);
+
+    expect(basliklar()).toEqual([
+      'Görünen ad',
+      'Kullanıcı adı',
+      'Durum',
+      'Oluşturma zamanı',
+    ]);
+    const [, ilk, ikinci] = screen.getAllByRole('row');
+    expect(
+      within(ilk ?? document.body).getAllByRole('cell')[1]?.textContent,
+    ).toBe('ada');
+    expect(
+      within(ikinci ?? document.body).getAllByRole('cell')[1]?.textContent,
+    ).toBe('—');
+  });
+});

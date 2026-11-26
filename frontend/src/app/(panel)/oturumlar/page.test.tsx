@@ -577,6 +577,31 @@ describe('OturumlarSayfasi yetki', () => {
       screen.getAllByRole('button', { name: /^Kapat: / }).map((d) => d.getAttribute('aria-label')),
     ).toEqual([`Kapat: ${OBUR_ADI}`]);
   });
+
+  it('Senaryo 8: oturumun sahibi isteği yapan değilse kapatma yasağı tutar; Kapat yalnız kendi satırında görünür', async () => {
+    // Kurallar yetkilerim cevabının sırasıyladır; yasağın yer tutucusu kişinin kimliğine çözülmüştür.
+    await goster(
+      {},
+      [
+        ...BUTUN_KURALLAR,
+        {
+          action: 'kapat',
+          subject: 'Oturum',
+          conditions: { AND: [{ kullaniciId: { not: KISI } }] },
+          inverted: true,
+        },
+      ],
+      listeCevabi({
+        kayitlar: [BU_OTURUM, { ...OBUR_OTURUM, kullaniciId: OBUR_KISI }],
+      }),
+    );
+
+    expect(
+      screen
+        .getAllByRole('button', { name: /^Kapat: / })
+        .map((d) => d.getAttribute('aria-label')),
+    ).toEqual([`Kapat: ${BU_ADI}`]);
+  });
 });
 
 describe('OturumlarSayfasi hatalar', () => {

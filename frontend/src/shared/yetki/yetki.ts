@@ -17,11 +17,13 @@ export interface YetkiKurali {
   readonly subject: string;
   readonly conditions?: Record<string, unknown> | undefined;
   readonly fields?: readonly string[] | undefined;
+  // Ters kural yasaktır (TS-008 "Ekran"); yalnız yasağı olan kişinin cevabında gelir.
+  readonly inverted?: boolean | undefined;
 }
 
 // Güvenli taraf (TS-004 "Yönetim ekranları"): yorumlayıcının çözümleyemediği koşul (tanımadığı
 // işleç gibi) ya da kayıtta değerlendirilirken hata veren koşul fırlatmaz, "tutmadı" sayılır.
-// Kurallarda ters kural (inverted) olmadığı için "tutmadı" her zaman "hayır"a çıkar.
+// Bu eşleyici yalnız izin kurallarınındır: izinde "tutmadı" her zaman "hayır"a çıkar.
 function guvenliKosul(kosul: Record<string, unknown>): MatchConditions {
   let eslestir: ReturnType<typeof prismaQuery>;
   try {
@@ -38,18 +40,73 @@ function guvenliKosul(kosul: Record<string, unknown>): MatchConditions {
   };
 }
 
+// Şartın baktığı kolonlar: "ve" listesinin öğelerine inilir, öbür anahtarlar kolondur. Sunucunun
+// yasak şartı kolon öğelerinin "ve"sidir (TS-008 "Derleme"); başka bir biçimin anahtarı kayıtta
+// kolon olarak bulunmadığı için o yasak tutuyor sayılır.
+function sartKolonlari(kosul: Record<string, unknown>): string[] {
+  return Object.entries(kosul).flatMap(([anahtar, deger]) =>
+    anahtar === 'AND' && Array.isArray(deger)
+      ? (deger as Record<string, unknown>[]).flatMap(sartKolonlari)
+      : [anahtar],
+  );
+}
+
+// Yasakların (ters kuralların) eşleyicisi (TS-008 "Ekran"; kapanan AU-6 ve AU-28): ekran emin
+// olamadığını gizler. Yorumlayıcının çözümleyemediği koşul, şartın baktığı bir kolonu kayıtta
+// olmayan kayıt ve kayıtta değerlendirilirken hata veren koşul "tutuyor" sayılır. Şartın baktığı
+// bir kolonu gelmiş ama boş olan kayıt sunucudaki gibi "tutmuyor" sayılır: sunucuda boş değerli
+// öğe yasağı kesin tutmaz; kurulu yorumlayıcı ise not, notIn, lt ve lte işleçlerinde boş değeri
+// "tutuyor" sayar.
+function yasakKosulu(kosul: Record<string, unknown>): MatchConditions {
+  let eslestir: ReturnType<typeof prismaQuery>;
+  try {
+    eslestir = prismaQuery(kosul);
+  } catch {
+    return () => true;
+  }
+  const kolonlar = sartKolonlari(kosul);
+  return (kayit) => {
+    if (kolonlar.some((kolon) => kayit[kolon] === undefined)) {
+      return true;
+    }
+    if (kolonlar.some((kolon) => kayit[kolon] === null)) {
+      return false;
+    }
+    try {
+      return Boolean(eslestir(kayit));
+    } catch {
+      return true;
+    }
+  };
+}
+
 // createPrismaAbility'nin kurduğu nesnenin aynısıdır (aynı yorumlayıcı ve kolon eşleyici);
 // yalnız koşul eşleyicisi güvenli sarmalayıcıdan geçer. createPrismaAbility eşleyicinin
 // değiştirilmesine izin vermediği için yetki doğrudan kurulur.
+// Kurallar verildiği sırayla kurulur: sıra sunucunun kararıdır, son eşleşen kural kazanır (TS-008
+// "Ekran"). Kitaplık eşleyiciye yalnız koşulu verdiği için yasakların koşulu kopyalanıp işaretlenir.
 export function yetkiKur(kurallar: readonly YetkiKurali[]) {
+  const yasakKosullari = new WeakSet<object>();
   return new Ability(
-    kurallar.map((kural) => ({
-      action: kural.action,
-      subject: kural.subject,
-      ...(kural.conditions === undefined ? {} : { conditions: kural.conditions }),
-      ...(kural.fields === undefined ? {} : { fields: [...kural.fields] }),
-    })),
-    { conditionsMatcher: guvenliKosul, fieldMatcher: fieldPatternMatcher },
+    kurallar.map((kural) => {
+      let conditions = kural.conditions;
+      if (kural.inverted === true && conditions !== undefined) {
+        conditions = { ...conditions };
+        yasakKosullari.add(conditions);
+      }
+      return {
+        action: kural.action,
+        subject: kural.subject,
+        ...(conditions === undefined ? {} : { conditions }),
+        ...(kural.fields === undefined ? {} : { fields: [...kural.fields] }),
+        ...(kural.inverted === true ? { inverted: true } : {}),
+      };
+    }),
+    {
+      conditionsMatcher: (kosul: Record<string, unknown>) =>
+        yasakKosullari.has(kosul) ? yasakKosulu(kosul) : guvenliKosul(kosul),
+      fieldMatcher: fieldPatternMatcher,
+    },
   );
 }
 
