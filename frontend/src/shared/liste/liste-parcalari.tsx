@@ -27,7 +27,7 @@ export function kimliginAdi(
 export const BAGLANTI =
   'text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700';
 
-const YETKI_YOK = 'Bu sayfayı görme yetkin yok';
+export const YETKI_YOK = 'Bu sayfayı görme yetkin yok';
 
 // Liste isteğinin hatası: 401 oturum bitti yoluna yönlendirir (fırlatır); 403 ve öbür hatalar
 // ileti olur. Yönlendirme sayfa çizilmeden olsun diye bileşen değil, sayfanın çağırdığı işlevdir.

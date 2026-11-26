@@ -241,6 +241,29 @@ export const YetenekYenileSemasi = sinirlariDenetle(
   z.object({ oncelik, ...yetenekIcerigi }),
 );
 
+// Yetenek teşhisi (TS-008 "Yönetim, izinler ve teşhis"; kapanan AU-32); sorgu backend'in GET
+// kimlik/yetenek/teshis sorgusudur: kişi ve kayıt kimlikleri uuid'dir, kaynak ve eylem izin
+// seçiminden ('Kaynak:eylem') ayrılır. Seçimin katalogda olup olmadığını backend sınar.
+function teshisKimligi(etiket: string) {
+  return z
+    .string({ error: `${etiket} boş olamaz` })
+    .min(1, `${etiket} boş olamaz`)
+    .pipe(z.uuid({ error: `${etiket} geçerli bir kimlik değil` }));
+}
+
+export const TeshisSemasi = z
+  .object({
+    kullaniciId: teshisKimligi('Kullanıcı kimliği'),
+    izin: z
+      .string({ error: 'İzin seçilmeli' })
+      .regex(/^[^:]+:[^:]+$/, 'İzin seçilmeli'),
+    kayitId: teshisKimligi('Kayıt kimliği'),
+  })
+  .transform(({ kullaniciId, izin, kayitId }) => {
+    const [kaynak = '', eylem = ''] = izin.split(':');
+    return { kullaniciId, kaynak, eylem, kayitId };
+  });
+
 // Zod hatasından her alanın ilk iletisi. İç içe alanın anahtarı yolun noktayla birleşimidir; şart
 // satırının hatası 'sart.<sıra>.<girdi>' anahtarıyla o satırın altında gösterilir.
 export function semaAlanHatalari(hata: z.ZodError): Record<string, string> {
