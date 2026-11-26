@@ -12,7 +12,7 @@ Tasarımın tamamı: `docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md` (bu d
 4. Bir dosyayı düzenlerken hook o dosyaya düşen kuralları gösterip ilk denemeyi reddeder; kuralları oku, sonra yeniden dene.
 5. Alt ajan başlatırken görev metninin başına `[gorev] rol=<rol>` satırı ve `python3 harness/h.py paket --rol <rol>` çıktısı konur; eksikse hook reddeder ve doğru paketi verir.
 6. **Her oturum kendi çalışma ağacında (worktree) çalışır.** Bu projede worktree kullanmak zorunludur: ana çalışma ağacındaysan düzenlemeden önce `EnterWorktree` aracıyla kendi ağacına geç; ana ağaçta düzenlemeyi hook reddeder.
-7. Ayrı oturumda koşacak iş görev kartıyla verilir; her görev kendi çalışma ağacında ve kendi dalında, kum havuzunda koşar. Kullanıcıya epic başına bir kez sorulur (`plan yurut`); tek başına koşturulan görevde koşturma, alma ve atma sorulur. Onayı atlatmak için komutu bir betiğe sarmak yasaktır.
+7. Ayrı oturumda koşacak iş görev kartıyla verilir; her görev kendi çalışma ağacında ve kendi dalında, kum havuzunda koşar. Onay ayarı (`harness.json`, `gorev.onay`) açıkken kullanıcıya epic başına bir kez (`plan yurut`), tek başına koşturulan görevde de koşturma, alma ve atmada sorulur; bu depoda ayar kapalıdır (kullanıcının seçimi) ve bu komutlar sorulmadan koşar. Kabul, açık uç kapatma, açık uca dayanan sorunun cevabı ve taslağa rağmen koşturma ayardan bağımsız olarak her zaman sorulur. Onayı atlatmak için komutu bir betiğe sarmak yasaktır.
 8. Bir iş, onu yapmayan ikinci bir oturum incelemeden alınmaz; işçinin "bitti" demesi kanıt değildir, ölçüm ve inceleme raporu okunur.
 9. İş planı dört düzeylidir: **space** (özellik) → **epic** (geliştirilecek konu) → **task** → **subtask**. Koşturulan birim yapraktır (subtask ya da bölünmemiş task). İşaret elle konmaz: yaprak, görevi alınınca işaretlenir; task, epic ve space ondan türer. Görevin ölçüm kayıtları da elle yazılmaz.
 
@@ -38,14 +38,15 @@ Tasarımın tamamı: `docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md` (bu d
 | `python3 harness/h.py plan yurut EP-NNN [--en-cok N]` | Epic'i tek onayla yürüt: hazır yapraklar sırayla koşar, incelenir, alınır; ilk sorunda durur |
 | `python3 harness/h.py plan durum [<space> \| EP-NNN]` | Ağaç, türetilmiş işaretler, şimdi ne koşturulabilir |
 | `python3 harness/h.py gorev yeni "<başlık>" --rol <rol> --yol <desen> --hedef "..." --olcut "..."` | Plansız tek görev kartı |
-| `python3 harness/h.py gorev kos GV-NNN` | Görevi kendi çalışma ağacında `claude -p` ile koştur; kullanıcıya sorulur |
+| `python3 harness/h.py gorev kos GV-NNN` | Görevi kendi çalışma ağacında `claude -p` ile koştur; kullanıcıya sorulur. Ortam ön kontrolü (`gorev.on_kontrol`; yola eklenecek klasörler depoya girmeyen `harness.yerel.json` dosyasında) kalırsa oturum başlamaz; bitiş kaydında `testler` alanı zorunludur |
 | `python3 harness/h.py gorev incele GV-NNN` | İşi yapmayan ikinci bir oturuma incelet |
-| `python3 harness/h.py gorev al GV-NNN` | Temiz ve incelenmiş işi bu oturumun dalına birleştir; kullanıcıya sorulur |
+| `python3 harness/h.py gorev al GV-NNN` | Temiz ve incelenmiş işi bu oturumun dalına birleştir; kullanıcıya sorulur. İnceleme kaydı ölçüt hükmü (`olcut`) taşımalı, "geçti" hükmü koşturulmuş komut (`kosulan`) istemeli; ölçüt karşılanmadıysa alınmaz |
 | `python3 harness/h.py gorev at GV-NNN` | Görevin ağacını ve dalını sil; kullanıcıya sorulur |
 | `python3 harness/h.py gorev durum` | Bütün görevler ve aşamaları |
 | `python3 harness/h.py rapor yeni "<konu>"` | İşin raporunu şablondan aç; görev tablosunu araç üretir, kısa özet ve kullanıcıdan beklenenler elle yazılır |
 | `python3 harness/h.py rapor uret <dosya>` | Raporun görev tablosunu kayıtlardan yenile |
 | `python3 harness/h.py rapor durum` | Raporsuz görevler ve boş bölümler; push kapısı aynı şeyi arar ve raporsuz dalı göndermez |
+| `python3 harness/h.py soz [--gun YYYY-AA-GG] [--agac AD]` | Söz defteri: kullanıcının iletileri ve soru cevapları, zaman sırasıyla; `rapor yeni` bu ağacın sözlerini raporun 4. bölümüne koyar |
 
 Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 
@@ -61,8 +62,12 @@ Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 | `plan` | Çok adımlı iş space → epic → task → subtask ağacına dökülecek ve yürütülecekken |
 | `gorev` | Tek adımlık iş ayrı oturumda koşturulacakken |
 | `hata-ayikla` | Bir test ya da komut beklenmedik biçimde başarısız olduğunda |
+| `test-yaz` | Yeni davranış eklenirken ya da bir hata düzeltilmeden önce test yazılacakken |
 | `kb-ice-al` | Var olan bir belge taslak düğümlere dökülecekken |
 | `kb-tara` | Kurallar arası çelişki, bayat karar ve boşluk aranacakken |
+| `kod-tasarimi` | Yeni parça ya da soyutlama eklenirken, bir arayüz biçimlenirken ya da karmaşıklık incelenirken; ortak sözlük ve silme testi |
+| `mimari-tara` | Kodda mimari sürtünme ve derinleştirme adayları aranacakken; ana oturum elle çağırır, salt okur |
+| `on-yuz-tasarimi` | Ekran ya da arayüz parçası yazılırken ya da görünümü değişirken; tasarım sistemi belgesi, kalite tabanı, boş/yükleniyor/hata durumları |
 
 Bilgi tabanının günlüğü (`kb/GUNLUK.md`) elle yazılmaz; taslak açılınca ve kabul verilince araç ekler.
 

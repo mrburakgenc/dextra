@@ -34,6 +34,21 @@ Plan ve mimari konuşulurken uygulanan sabit sıra. Amaç, tasarımın akla ilk 
 
 Tek yönlü karar içeren işte on iki adımın hepsi, diğerlerinde 1, 3, 7 ve 11 uygulanır.
 
+### Seçenek üretirken bakış açıları
+
+7. adımda akla ilk gelen seçenekten uzaklaşmak için şu açılardan bakılır. Liste kontrol listesidir: her açı için ayrı
+alt ajan, puanlama ya da çok çağrılı düzenek kurulmaz; işe yaramayan açı geçilir.
+
+- Tersine çevir: soruyu tersinden sor, sonra cevabı olumsuzla.
+- Yük taşıyan varsayımı kaldır: çerçeve, veritabanı ya da ağ olmasaydı ne mümkün olurdu?
+- Sıfır bütçe ve bir saat.
+- Sınırsız bütçe ve on yıl.
+- Gece üçte nöbetçi: hangi tasarım onu uyandırmaz?
+- Denetçi: neyin kanıtlanabilir, izlenebilir, reddedilebilir olması gerekir?
+- Sistemi kırmaya çalışan rakip.
+- On yaşında bir çocuk: alışkanlığı bırak, en saf yolu dene.
+- Başka bir alandan bak: lojistik (kuyruk, toplu iş, tam zamanında), biyoloji, oyun tasarımı, piyasa.
+
 ## Konuşma kuralları
 
 1. Sayı uydurulmaz; bilinmeyen sayı sorulur ya da "varsayım" diye işaretlenir.
@@ -42,6 +57,8 @@ Tek yönlü karar içeren işte on iki adımın hepsi, diğerlerinde 1, 3, 7 ve 
 4. Kesin kuralla çelişen seçenek sunulmaz; çelişki gerekiyorsa önce o kuralın kararını değiştirme taslağı açılır.
 5. Ajanın kapasite hesabı aritmetiktir, ölçüm değildir; kayda öyle geçer.
 6. Çıktı konuşmada kalmaz; tasarım kaydına yazılır.
+7. Her soru önerilen cevabı ve gerekçesiyle sorulur; tek soru kuralı (2) aynen geçerlidir.
+8. Ortamdan öğrenilebilecek olgu kullanıcıya sorulmaz, ajan onu kendisi bulur (dosya, komut, git geçmişi); karar kullanıcıya sorulur.
 
 ## Çıktı
 

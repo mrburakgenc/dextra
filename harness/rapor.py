@@ -26,6 +26,9 @@ ONERI_BASLA = "<!-- oneriler:basla -->"
 ONERI_BITIR = "<!-- oneriler:bitir -->"
 ONERI_SINIRI = 200
 ONERI_YOK = "Tablodaki görevlerin son incelemelerinde öneri yok."
+SOZ_BOLUMU = "Kullanıcının verdiği kararlar"
+SOZ_BASLIGI = "### Söz defteri: ham liste; ayıkla"
+SOZ_SINIRI = 300
 # Şablondaki her elle yazılan bölüm bu biçimde tek satırlık yer tutucu taşır; denetim onu boş sayar.
 YER_TUTUCU = re.compile(r"^_\(doldurulacak:.*\)_$")
 ZORUNLU_BOLUMLER = ("Kısa özet", "Kullanıcıdan beklenenler")
@@ -279,9 +282,27 @@ def yeni(kok: pathlib.Path, konu: str, tarih: str | None = None) -> pathlib.Path
         raise h.HarnessHata("%s zaten var; üzerine yazılmaz. Tablosunu yenilemek için: python3 harness/h.py rapor "
                             "uret %s" % (hedef.relative_to(kok), hedef.relative_to(kok)))
     hedef.parent.mkdir(parents=True, exist_ok=True)
-    hedef.write_text(sablon.read_text(encoding="utf-8").replace("{KONU}", konu).replace("{TARIH}", tarih),
-                     encoding="utf-8")
+    hedef.write_text(_soz_ekle(kok, sablon.read_text(encoding="utf-8").replace("{KONU}", konu)
+                               .replace("{TARIH}", tarih)), encoding="utf-8")
     return uret(kok, hedef)
+
+
+def _soz_ekle(kok: pathlib.Path, metin: str) -> str:
+    """Söz defterinde bu çalışma ağacında yazılmış sözler, 'Kullanıcının verdiği kararlar' bölümünün sonuna ham liste
+    olarak girer (TS-009 Yapı 13); söz yoksa ya da bölüm yoksa metin değişmez. Bölüm otomatik bloğun dışındadır,
+    `rapor uret` onu yenilemez: elle ayıklanan metin ezilmez."""
+    sozler = h.sozler(kok, agac=kok.name)
+    satirlar = metin.split("\n")
+    i = next((n for n, s in enumerate(satirlar) if s.startswith("## ") and SOZ_BOLUMU in s), None)
+    if not sozler or i is None:
+        return metin
+    j = next((n for n in range(i + 1, len(satirlar)) if satirlar[n].startswith("## ")), len(satirlar))
+    while j > i + 1 and not satirlar[j - 1].strip():
+        j -= 1
+    satirlar[j:j] = ["", SOZ_BASLIGI, ""] + ["- %s · %s — %s" % (k.get("zaman"), k.get("tur"),
+                                                                 h.kisalt(k.get("metin", ""), SOZ_SINIRI))
+                                             for k in sozler]
+    return "\n".join(satirlar)
 
 
 # ── Denetim (Z19) ────────────────────────────────────────────────────────────────────

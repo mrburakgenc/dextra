@@ -30,6 +30,10 @@
     "ag_izinli": [],
     "yerel_ag": true,
     "hazirlik": ["pnpm", "install", "--offline", "--frozen-lockfile"],
+    "on_kontrol": [
+      ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 5440), 2)"],
+      ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 6390), 2)"]
+    ],
     "orkestrasyon": true,
     "paralel": 3,
     "efor": "high",

@@ -78,6 +78,9 @@ VARSAYILAN_AYAR = {
               # yerel_ag: kum havuzundaki komutlar yerel adresteki kapılara bağlanabilir (macOS); dinleyen bütün
               # yerel servisleri kapsar · hazirlik: ağaç açılınca, kum havuzunun dışında koşan komut (argüman listesi)
               "yerel_ag": False, "hazirlik": [],
+              # on_kontrol: gorev kos ve gorev incele oturumdan önce bu komutları (her biri argüman listesi) sırayla,
+              # kum havuzunun dışında, görev ağacında koşturur; biri sıfırdan farklı kodla çıkarsa oturum başlamaz
+              "on_kontrol": [],
               # orkestrasyon: işçi alt ajan ve iş akışı başlatabilir (inceleyici başlatamaz) · efor, inceleme_efor:
               # oturuma --effort ile verilen düzey; boşsa bayrak komuta girmez
               "orkestrasyon": False, "efor": "", "inceleme_efor": "",
@@ -823,11 +826,15 @@ def _butce_denetle(dz: Dizin) -> list:
     if agents.is_file() and len(agents.read_bytes()) > butce["agents_bayt"]:
         s.append(B("Z14", "agents-sisti", "AGENTS.md", "%d bayt; sınır %d"
                    % (len(agents.read_bytes()), butce["agents_bayt"])))
+    # Sözlük de bütçeye girer: konulu kavramın hangi işe düşeceği işe bağlıdır; en kötü durum bütün kabul edilmiş
+    # kavramların pakete girmesidir (TS-009 Yapı 12)
+    sozluk = len("\n\n" + _sozluk_blogu(dz.tur("kavram"))) if dz.tur("kavram") else 0
     for rol in dz.ayar["roller"]:
         p = _paket(dz, rol, (), ())
-        if len(p["metin"]) > butce["paket_karakter"]:
-            s.append(B("Z14", "paket-sisti", rol, "kesin paket %d karakter; sınır %d — küme küçültülmeli"
-                       % (len(p["metin"]), butce["paket_karakter"])))
+        if len(p["metin"]) + sozluk > butce["paket_karakter"]:
+            s.append(B("Z14", "paket-sisti", rol, "kesin paket %d karakter%s; sınır %d — küme küçültülmeli"
+                       % (len(p["metin"]) + sozluk, " (sözlük %d dahil)" % sozluk if sozluk else "",
+                          butce["paket_karakter"])))
     return s
 
 
@@ -918,6 +925,13 @@ def _cekirdek_denetle(kok: pathlib.Path, bugun: datetime.date, taban: bool,
     dosyalar = dosyalari_listele(kok, dz.ayar)
     for d in dz.dugumler:
         s += _acik_uc_denetle(d)   # taslakta da: açık uç çoğu zaman taslak düğümdedir
+        # taslakta da: kavramın tanımı sözlük satırıdır; boş tanımı Z1 (zorunlu-alan) zaten yakalar
+        if d["tur"] == "kavram" and len(d["_ifade"]) > dz.ayar["butce"]["ifade_karakter"]:
+            s.append(B("Z14", "uzun-tanim", d["kimlik"], "kavramın tanımı %d karakter; sınır %d"
+                       % (len(d["_ifade"]), dz.ayar["butce"]["ifade_karakter"])))
+        if d["tur"] == "kavram":   # yazım hatalı konu kavramı hiçbir pakete sokmaz: kuraldaki Z16 denetiminin aynısı
+            s += [B("Z16", "tanimsiz-deger", d["kimlik"], "konu '%s' harness.json konular listesinde yok" % deger)
+                  for deger in liste(d, "konu") if deger not in dz.ayar["konular"]]
         if d["tur"] == "denetim" and komut_hatasi(d):   # taslakta da: elle `denetim kos` taslağı da koşturur
             s.append(B("Z1", "gecersiz-komut", d["kimlik"], komut_hatasi(d)))
         if d["durum"] != "kabul":
@@ -1084,6 +1098,9 @@ def kanarya() -> list:
 PAKET = re.compile(r"\[\[KB-PAKET rol=(\S+) ozet=([0-9a-f]{8})\]\]\n(.*?)\n\[\[/KB-PAKET\]\]", re.S)
 TASLAK = re.compile(r"\n\n\[\[KB-TASLAK\]\]\n.*?\n\[\[/KB-TASLAK\]\]", re.S)
 ACIK_UC_BLOGU = re.compile(r"\n\n\[\[KB-ACIK-UC\]\]\n.*?\n\[\[/KB-ACIK-UC\]\]", re.S)
+SOZLUK_BLOGU = re.compile(r"\n\n\[\[KB-SOZLUK\]\]\n.*?\n\[\[/KB-SOZLUK\]\]", re.S)
+SOZLUK_YONERGESI = ("Sözlük (bilgi; bağlayıcı değil): bu işte terimleri bu anlamda kullan; ayraçtaki eş anlamlıları "
+                    "kullanma.")
 ACIK_UC_YONERGESI = ("Açık uçlar (karara bağlanmamış noktalar): bu noktalardan birinde seçim yapman gerekirse seçme: "
                      "soruyla dur ve sorunda açık ucun kimliğini yaz (örnek KR-010/AU-1). Cevabı kullanıcı verir.")
 
@@ -1094,6 +1111,13 @@ def _kural_satiri(k: dict, inceleme: bool = False) -> str:
     dayanak = ", ".join(_dayanak_coz(o)[0] for o in liste(k, "dayanak"))
     satir = "%s@%s [%s%s] %s (%s)" % (k["kimlik"], k["surum"], duzey, ref, k["_ifade"], dayanak)
     return "[ ] " + satir + " → uyuyor / uymuyor / uygulanmaz" if inceleme else satir
+
+
+def _sozluk_blogu(kavramlar: list) -> str:
+    satirlar = ["- %s: %s%s" % (kv["baslik"], " ".join(kv["_ifade"].split()),
+                                " (kullanma: %s)" % ", ".join(liste(kv, "kacin")) if liste(kv, "kacin") else "")
+                for kv in kavramlar]
+    return "\n".join(["[[KB-SOZLUK]]", SOZLUK_YONERGESI, ""] + satirlar + ["[[/KB-SOZLUK]]"])
 
 
 def _paket(dz: Dizin, rol: str, yollar, konular, dayanak=()) -> dict:
@@ -1157,9 +1181,14 @@ def _paket(dz: Dizin, rol: str, yollar, konular, dayanak=()) -> dict:
     uclar = ["- %s/AU-%d: %s" % (k, no, m) for k, d in dugumler.items() if d for no, m in acik_uclar(d)]
     if uclar:
         tam += "\n\n" + "\n".join(["[[KB-ACIK-UC]]", ACIK_UC_YONERGESI, ""] + uclar + ["[[/KB-ACIK-UC]]"])
+    # Sözlük bloğu (TS-009 Yapı 12): kabul edilmiş kavramlardan konusuz olan her pakete, konulu olan yalnız işin
+    # konularından biriyle kesişiyorsa girer. Bilgidir; özetin (damganın) dışındadır; kavram yoksa yazılmaz.
+    kavramlar = [kv for kv in dz.tur("kavram") if not liste(kv, "konu") or konular & set(liste(kv, "konu"))]
+    if kavramlar:
+        tam += "\n\n" + _sozluk_blogu(kavramlar)
     return {"metin": metin, "tam": tam,
             "ozet": ozet, "kurallar": ["%s@%s" % (k["kimlik"], k["surum"]) for k in kesin + yoldan],
-            "bos": not (kesin or yoldan),
+            "bos": not (kesin or yoldan), "sozluk": [kv["kimlik"] for kv in kavramlar],
             "taslaklar": [k["kimlik"] for k in taslak] + [kr["kimlik"] for kr in taslak_kararlar]}
 
 
@@ -1481,6 +1510,12 @@ def _komut_sor(kok: pathlib.Path, arg: list) -> int:
                 liste(d, "olay")), sum(any(desen_eslesir(x, f) for x in desenler) for f in dosyalar)))
             print("  denetim: %s %s" % (DUZEY_ADI.get(d.get("denetim_duzey"), "?"),
                                         ", ".join(liste(d, "denetim_ref"))))
+        if d["tur"] == "kavram":
+            konular = liste(d, "konu")
+            roller = [r for r in dz.ayar["roller"] if hedef in _paket(dz, r, (), konular)["sozluk"]]
+            print("  kaçın : %s" % (", ".join(liste(d, "kacin")) or "(yok)"))
+            print("  sözlük: %s" % (("%s paketinde, %s" % (", ".join(roller), "konusu %s olan işlerde" % ", ".join(
+                konular) if konular else "her işte")) if roller else "hiçbir pakete girmez (durum: %s)" % d["durum"]))
         return 0
     yol = pathlib.Path(hedef)
     goreli = (yol.resolve().relative_to(kok).as_posix() if yol.is_absolute() else yol.as_posix())
@@ -1521,6 +1556,55 @@ def yavas_hooklar(kok: pathlib.Path) -> dict:
                 sureler.append(int(kayit.get("ms", 0)))
     return {"sayi": len(sureler), "en_uzun": max(sureler, default=0),
             "esik": ayar_oku(kok)["butce"].get("hook_ms", 300)}
+
+
+def soz_dizini(kok: pathlib.Path) -> pathlib.Path:
+    """Söz defteri (TS-009 Yapı 13): ana çalışma ağacında durur; çalışma ağacı silinince defter kaybolmaz."""
+    return ortak_kok(kok) / ".harness" / "soz"
+
+
+def sozler(kok: pathlib.Path, gun: str | None = None, agac: str | None = None, sonra: str | None = None) -> list:
+    """Söz defterinin kayıtları zaman sırasıyla; her kayda dosyasının adı `oturum` olarak eklenir. `gun`: zamanı o
+    günde (YYYY-AA-GG) olanlar; `agac`: o çalışma ağacında yazılanlar; `sonra`: zamanı bu andan (ISO) yeni olanlar
+    (o andan beri değişmemiş dosya okunmaz)."""
+    esik = datetime.datetime.fromisoformat(sonra).timestamp() if sonra else None
+    kayitlar = []
+    for p in sorted(soz_dizini(kok).glob("*.jsonl")):
+        if esik is not None and p.stat().st_mtime < esik:
+            continue
+        for satir in p.read_text(encoding="utf-8").split("\n"):
+            try:
+                k = json.loads(satir) if satir.strip() else None
+            except ValueError:
+                continue
+            if not isinstance(k, dict):
+                continue
+            zaman = str(k.get("zaman", ""))
+            if (gun and not zaman.startswith(gun)) or (agac and k.get("agac") != agac) or (sonra and zaman < sonra):
+                continue
+            kayitlar.append(dict(k, oturum=p.stem))
+    return sorted(kayitlar, key=lambda k: str(k.get("zaman", "")))
+
+
+def kisalt(metin, sinir: int) -> str:
+    """Boşlukları teke indirir; `sinir` karakteri aşan metni sonuna '…' koyarak o sınıra keser."""
+    metin = " ".join(str(metin).split())
+    return metin if len(metin) <= sinir else metin[:sinir - 1] + "…"
+
+
+def _komut_soz(kok: pathlib.Path, arg: list) -> int:
+    gun, agac = (_secenek(arg, "--gun") or [None])[0], (_secenek(arg, "--agac") or [None])[0]
+    if gun:
+        try:
+            datetime.date.fromisoformat(gun)
+        except ValueError:
+            raise HarnessHata("kullanım: h.py soz [--gun YYYY-AA-GG] [--agac AD]")
+    kayitlar = sozler(kok, gun, agac)
+    for k in kayitlar:
+        print("%s · %s · %s · %s\n  %s" % (k.get("zaman"), k.get("agac"), k.get("tur"), k["oturum"],
+                                          str(k.get("metin", "")).replace("\n", "\n  ")))
+    print("soz: %d kayıt" % len(kayitlar))
+    return 0
 
 
 def _komut_durum(kok: pathlib.Path, arg: list) -> int:
@@ -1816,7 +1900,7 @@ KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
             "rapor": _komut_rapor, "denetim": _komut_denetim, "acik-uc": _komut_acik_uc,
-            "ajan-karari": _komut_ajan_karari,
+            "ajan-karari": _komut_ajan_karari, "soz": _komut_soz,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}

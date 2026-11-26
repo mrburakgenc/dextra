@@ -55,6 +55,12 @@
         "hooks": [
           { "type": "command", "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/harness/hook/hook.sh\" duzenleme-sonrasi", "timeout": 10 }
         ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          { "type": "command", "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/harness/hook/hook.sh\" soru-sonrasi", "timeout": 10 }
+        ]
       }
     ],
     "SubagentStart": [

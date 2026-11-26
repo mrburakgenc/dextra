@@ -69,3 +69,27 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-26] kabul | KU-019@1 Uç guard'ı yalnız izin kurallarını sayar
 ## [2026-11-26] kabul | KU-020@1 Yeteneğin etkisi değişmez ve yasak yalnız iki biçimde yazılır
 ## [2026-11-26] kabul | TS-008@1 Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır
+## [2026-11-26] taslak | TS-009 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
+## [2026-11-26] kabul | TS-009@1 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
+## [2026-11-26] taslak | DN-003 Lint denetimi: arka yüz ve ön yüz lint'i uyarısız geçer
+## [2026-11-26] taslak | DN-004 Tip denetimi: arka yüz ve ön yüz derleyiciden hatasız geçer
+## [2026-11-26] taslak | KU-021 Lint uyarısı ya da derleyici hatası bırakan dal gönderilmez
+## [2026-11-26] taslak | KV-001 Yetenek
+## [2026-11-26] taslak | KV-002 İzin
+## [2026-11-26] taslak | KV-003 Kaynak
+## [2026-11-26] taslak | KV-004 Rol
+## [2026-11-26] taslak | KV-005 Grup
+## [2026-11-26] taslak | KV-006 Üyelik
+## [2026-11-26] taslak | KV-007 Yasak
+## [2026-11-26] taslak | KV-008 Öncelik
+## [2026-11-26] kabul | DN-003@1 Lint denetimi: arka yüz ve ön yüz lint'i uyarısız geçer
+## [2026-11-26] kabul | DN-004@1 Tip denetimi: arka yüz ve ön yüz derleyiciden hatasız geçer
+## [2026-11-26] kabul | KU-021@1 Lint uyarısı ya da derleyici hatası bırakan dal gönderilmez
+## [2026-11-26] kabul | KV-001@1 Yetenek
+## [2026-11-26] kabul | KV-002@1 İzin
+## [2026-11-26] kabul | KV-003@1 Kaynak
+## [2026-11-26] kabul | KV-004@1 Rol
+## [2026-11-26] kabul | KV-005@1 Grup
+## [2026-11-26] kabul | KV-006@1 Üyelik
+## [2026-11-26] kabul | KV-007@1 Yasak
+## [2026-11-26] kabul | KV-008@1 Öncelik

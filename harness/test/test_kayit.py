@@ -52,7 +52,7 @@ if rol == "inceleyici":
     istem = sys.argv[sys.argv.index("-p") + 1]
     kurallar = re.findall(r"^\[ \] ((?:KU)-\d{3,}@\d+) ", istem, re.M)
     (gd / "inceleme.json").write_text(json.dumps({
-        "gorev": gv, "hukum": "gecti", "ozet": "incelendi", "kosulan": ["python3 -c pass"], "bulgular": [],
+        "gorev": gv, "hukum": "gecti", "ozet": "incelendi", "kosulan": ["python3 -c pass"], "bulgular": [], "bakilmayan": [],
         "olcut": {"karsilandi": True, "kanit": "src/siparis/iptal.ts:1"},
         "kurallar": [{"kimlik": k, "hukum": "uyuyor", "kanit": "src/siparis/iptal.ts:1"} for k in kurallar]}),
         encoding="utf-8")
@@ -157,7 +157,7 @@ class Beyan(Ortam):
         kimlik = dolu_kart(kok)
         (kayit(kok, kimlik) / "bitis.json").write_text(json.dumps({
             "gorev": kimlik, "durum": "tamam", "ozet": "x", "kararlar": [], "reddedilenler": [], "denenmedi": [],
-            "kurallar": [{"kimlik": "KU-001@1", "hukum": "uyuyor", "not": ""}]}), encoding="utf-8")
+            "testler": [], "kurallar": [{"kimlik": "KU-001@1", "hukum": "uyuyor", "not": ""}]}), encoding="utf-8")
         self.assertEqual(gorev.bitis_dogrula(kok, kimlik, kayit(kok, kimlik)), [])
 
     def test_isci_karti_liste_istemez_olcumu_soyler(self):

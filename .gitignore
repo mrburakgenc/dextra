@@ -24,3 +24,5 @@ generated/
 .claude/worktrees/
 # Kişisel Claude Code ayarı (izin kuralları); depoya girmez
 .claude/settings.local.json
+# Kişisel harness ayarı (görev komutlarının PATH'ine eklenecek klasörler); depoya girmez
+harness.yerel.json
