@@ -2,6 +2,9 @@
   "worktree": {
     "baseRef": "head"
   },
+  "enabledPlugins": {
+    "superpowers@superpowers-dev": false
+  },
   "permissions": {
     "allow": [
       "Bash",

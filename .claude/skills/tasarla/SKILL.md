@@ -37,7 +37,6 @@ argument-hint: <tasarlanacak iş>
 
 ## İlgili skill'ler
 
-- Süreç eklentisinin beyin fırtınası skill'i varsa soru-cevap kısmı onunla yürütülebilir; çıktı onun belge yoluna değil tasarım kaydına (`kb/tasarim/`) yazılır.
 - `karar`, `kural`: tasarımın bağlayıcı çıktıları.
 - `plan`: tasarım kabul edildikten sonra.
 

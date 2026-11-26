@@ -42,7 +42,6 @@ Kural tek cümledir: **başarısız olduğunu görmediğin test hiçbir şey kan
 ## İlgili skill'ler
 
 - `hata-ayikla`: test beklenmedik biçimde başarısız olursa ya da bir hatayı düzeltmeden önce onu yakalayan testi arıyorsan.
-- Etkileşimli oturumda süreç eklentisinin kendi test skill'i varsa o da kullanılabilir; bu skill aynı disiplini eklentileri yüklemeyen görev oturumları için projenin içinde tutar.
 
 ## Sınırlar
 

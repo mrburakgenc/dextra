@@ -64,7 +64,6 @@ Koşturulan birim **yapraktır**: her yaprağın bir görev kartı vardır ve ke
 ## İlgili skill'ler
 
 - `tasarla`: plandan önce. `gorev`: tek yaprağı elle yürütmek için.
-- Süreç eklentisinin plan yazma skill'i varsa adımları düşünmek için kullanılabilir; çıktı onun plan belgesine değil bu ağaca yazılır ve yürütmeyi bu skill yapar.
 
 ## Sınırlar
 

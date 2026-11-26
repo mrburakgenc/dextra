@@ -41,7 +41,6 @@ argument-hint: <karar konusu>
 
 - `tasarla`: tek yönlü kararın öncesi.
 - `kural`: kararın yükümlülüklerini bağlayıcı hâle getirir.
-- Süreç eklentisinin beyin fırtınası skill'i varsa konuşma onunla yürütülebilir; çıktı yine karar düğümüne yazılır.
 
 ## Sınırlar
 
