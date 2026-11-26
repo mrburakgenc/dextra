@@ -124,8 +124,9 @@ interface GenelOkumaYetkisi {
 // Yasaklar (TS-008 "Okuma"; KU-017, KU-018): izin kuralına, muaf değilse, ondan düşük öncelikli olmayan
 // okuma yasakları uygulanır (eşitlikte yasak kazanır; bozuk yasak koşulsuz, öncelik 100 kayıt yasağı
 // olarak derlenmiştir). Kuralın dalı yasakların "kesin tutmuyor" koşullarıyla daralır (katilimi);
-// şartsız yasakla bakılan ya da kimlikten başka bütün kolonunu kaybeden kural katılmaz. Yasağı olan
-// kişide kolonlar her zaman kural başına yeniden okunur; şartlı kolon yasaklarının kapattığı kolonlar,
+// şartsız yasakla bakılan ya da kimlikten başka bütün kolonunu kaybeden kural katılmaz. Okumaya
+// katılan bir izne yasak uygulanıyorsa kolonlar her zaman kural başına yeniden okunur (TS-008 AU-34);
+// şartlı kolon yasaklarının kapattığı kolonlar,
 // onları kapatan yasak kümesi başına bir deyimde o yasakların "kesin tutmuyor" koşullarıyla okunur.
 // Yasağı olmayan kişide koşul ve sorgular yasaklardan önceki hâliyle aynıdır (TS-008 Değişmez 1).
 @Injectable()
@@ -164,7 +165,9 @@ export class OkumaKapisi {
         const katilan = katilimi(kural, alanlar, bakilan, uygulanan);
         return katilan === undefined ? [] : [katilan];
       });
-    // Yasağı olan kişide kısa yol kapanır (TS-008 "Kapasite").
+    // Kısa yol yalnız yasak bu okumaya katılan bir izne gerçekten uygulanıyorsa kapanır (TS-008 AU-34,
+    // kullanıcının kararı); yasakların hepsi muaf ya da daha yüksek öncelikli izinlere denk geliyorsa
+    // açık kalır.
     const yasakli = katilanlar.some((k) => k.yasakli);
     const ilkKume = kumeAnahtari(katilanlar[0]?.kolonlar ?? []);
     const ortakKolonlar =
@@ -197,7 +200,12 @@ export class OkumaKapisi {
           const birlesik = new Map<unknown, Record<string, unknown>>(
             idler.map((id) => [id, {}]),
           );
-          for (const { kosul, kolonlar, sartliYasaklar } of katilanlar) {
+          for (const {
+            kosul,
+            kolonlar,
+            sartliYasaklar,
+            yasakli: yasakUygulandi,
+          } of katilanlar) {
             const kosulla = (ek: readonly PrismaKosulu[]) => ({
               AND: [{ id: { in: idler } }, kosul ?? {}, ...ek],
             });
@@ -251,14 +259,23 @@ export class OkumaKapisi {
                   Object.assign(gorunen, sec(okunan, okuma.kolonlar));
                 }
               }
+              // Kolon yasaklarından sonra kimlikten başka kolonu kalmayan izin kuralı o kaydı vermez
+              // (TS-008 "Tanım"); bu yalnız yasak uygulanan kuralda olur, yasak uygulanmayan kuralın
+              // kayıtları değişmez.
+              if (
+                yasakUygulandi &&
+                Object.keys(gorunen).every((kolon) => kolon === 'id')
+              ) {
+                continue;
+              }
               Object.assign(birlesik.get(satir['id']) ?? {}, gorunen);
             }
           }
-          // İki sorgu arasında görünmez olan kayıt hiçbir kuraldan kolon almaz ve atılır; kolonsuz
-          // kural derlenmediği için görünen kayıt en az bir kolon taşır. Yasağı olan kişide kayıt
-          // kimlikten başka bir kolon taşımalıdır (TS-008 "Tanım").
+          // İki sorgu arasında görünmez olan ya da kendisini veren kuralların hepsinde yasakla kimlikten
+          // başka kolonu kalmayan kayıt hiçbir kuraldan kolon almaz ve atılır; kolonsuz kural
+          // derlenmediği için görünen kayıt en az bir kolon taşır.
           kayitlar = [...birlesik.values()].filter(
-            (kayit) => Object.keys(kayit).length > (yasakli ? 1 : 0),
+            (kayit) => Object.keys(kayit).length > 0,
           );
         }
 

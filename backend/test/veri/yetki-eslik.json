@@ -1,0 +1,749 @@
+{
+  "aciklama": "Sunucu ile ekranın eşlik verisi (TS-008 'Ekran' ve 'Doğrulama'; GV-151). Her durumda: yetenekler (sunucu testinin veritabanına yazdığı satırlar; giremez verilmezse izin, oncelik verilmezse 0, sart verilmezse bütün kayıtlar, kolonlar verilmezse bütün kolonlar; muaf olan satır kök grupta kök yönetici rolünün sistem satırı olarak yazılır), kurallar ('yetkilerim' cevabının bu kişideki kuralları, cevabın biçiminde ve sırasıyla) ve beklenen (kayıt kimliği başına, 'kolonlar'daki her kolon için kişinin o kolonu okuyup okuyamadığı: sunucuda kolon cevaptaki kayıtta var mı; kayıt hiç gelmezse bütün kolonlar false). Kayıtların kaynağı 'kaynak', eylemi 'eylem'dir; zaman değerleri ISO 8601 UTC yazımıdır.",
+  "kaynak": "Kullanici",
+  "eylem": "oku",
+  "kolonlar": [
+    "kullaniciAdi",
+    "gorunenAd",
+    "telefon",
+    "yetkiSurumu",
+    "pasifZamani"
+  ],
+  "kayitlar": [
+    {
+      "id": "98000000-0000-4000-8000-000000000001",
+      "kullaniciAdi": "eslik1",
+      "gorunenAd": "Eşlik Bir",
+      "telefon": "5551001",
+      "yetkiSurumu": 1,
+      "pasifZamani": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "98000000-0000-4000-8000-000000000002",
+      "kullaniciAdi": "eslik2",
+      "gorunenAd": "Eşlik İki",
+      "telefon": "5551002",
+      "yetkiSurumu": 2,
+      "pasifZamani": "2026-06-01T00:00:00.000Z"
+    },
+    {
+      "id": "98000000-0000-4000-8000-000000000003",
+      "kullaniciAdi": "eslik3",
+      "gorunenAd": "Eşlik Üç",
+      "telefon": null,
+      "yetkiSurumu": 3,
+      "pasifZamani": null
+    }
+  ],
+  "durumlar": [
+    {
+      "ad": "işleç esit: şartlı kayıt yasağı",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000101" },
+        {
+          "id": "99000000-0000-4000-8000-000000000102",
+          "giremez": true,
+          "sart": [{ "alan": "telefon", "islec": "esit", "deger": "5551001" }]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000101",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000102",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": { "AND": [{ "telefon": { "equals": "5551001" } }] },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç esit_degil: boş değerli kayıt yasaklı sayılmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000201" },
+        {
+          "id": "99000000-0000-4000-8000-000000000202",
+          "giremez": true,
+          "sart": [
+            { "alan": "telefon", "islec": "esit_degil", "deger": "5551001" }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000201",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000202",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": { "AND": [{ "telefon": { "not": "5551001" } }] },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç listede",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000301" },
+        {
+          "id": "99000000-0000-4000-8000-000000000302",
+          "giremez": true,
+          "sart": [
+            {
+              "alan": "telefon",
+              "islec": "listede",
+              "deger": ["5551001", "5551002"]
+            }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000301",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000302",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": {
+            "AND": [{ "telefon": { "in": ["5551001", "5551002"] } }]
+          },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç listede_degil: boş değerli kayıt yasaklı sayılmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000401" },
+        {
+          "id": "99000000-0000-4000-8000-000000000402",
+          "giremez": true,
+          "sart": [
+            {
+              "alan": "telefon",
+              "islec": "listede_degil",
+              "deger": ["5551001"]
+            }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000401",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000402",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": { "AND": [{ "telefon": { "notIn": ["5551001"] } }] },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç kucuk: boş değerli kayıt yasaklı sayılmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000501" },
+        {
+          "id": "99000000-0000-4000-8000-000000000502",
+          "giremez": true,
+          "sart": [
+            {
+              "alan": "pasifZamani",
+              "islec": "kucuk",
+              "deger": "2026-03-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000501",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000502",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": {
+            "AND": [{ "pasifZamani": { "lt": "2026-03-01T00:00:00.000Z" } }]
+          },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç kucuk_esit: boş değerli kayıt yasaklı sayılmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000601" },
+        {
+          "id": "99000000-0000-4000-8000-000000000602",
+          "giremez": true,
+          "sart": [
+            {
+              "alan": "pasifZamani",
+              "islec": "kucuk_esit",
+              "deger": "2026-06-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000601",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000602",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": {
+            "AND": [{ "pasifZamani": { "lte": "2026-06-01T00:00:00.000Z" } }]
+          },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç buyuk: boş değerli kayıt yasaklı sayılmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000701" },
+        {
+          "id": "99000000-0000-4000-8000-000000000702",
+          "giremez": true,
+          "sart": [
+            {
+              "alan": "pasifZamani",
+              "islec": "buyuk",
+              "deger": "2026-03-01T00:00:00.000Z"
+            }
+          ]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000701",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000702",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": {
+            "AND": [{ "pasifZamani": { "gt": "2026-03-01T00:00:00.000Z" } }]
+          },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "işleç buyuk_esit",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000801" },
+        {
+          "id": "99000000-0000-4000-8000-000000000802",
+          "giremez": true,
+          "sart": [{ "alan": "yetkiSurumu", "islec": "buyuk_esit", "deger": 2 }]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000801",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000802",
+          "action": "oku",
+          "subject": "Kullanici",
+          "conditions": { "AND": [{ "yetkiSurumu": { "gte": 2 } }] },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        }
+      }
+    },
+    {
+      "ad": "şartsız kolon yasağı (ters kural, öncelik 10): kolon hiçbir kayıtta gelmez",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000000901" },
+        {
+          "id": "99000000-0000-4000-8000-000000000902",
+          "giremez": true,
+          "oncelik": 10,
+          "kolonlar": ["telefon"]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000901",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000000902",
+          "action": "oku",
+          "subject": "Kullanici",
+          "fields": ["telefon"],
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": false,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": false,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": false,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "şartlı kolon yasağı: kolon yalnız yasağın tuttuğu kayıtta gelmez",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000001001" },
+        {
+          "id": "99000000-0000-4000-8000-000000001002",
+          "giremez": true,
+          "sart": [
+            { "alan": "gorunenAd", "islec": "esit", "deger": "Eşlik Bir" }
+          ],
+          "kolonlar": ["telefon"]
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001001",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001002",
+          "action": "oku",
+          "subject": "Kullanici",
+          "fields": ["telefon"],
+          "conditions": { "AND": [{ "gorunenAd": { "equals": "Eşlik Bir" } }] },
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": false,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "kaydın bütününü kapatan koşulsuz yasak: hiçbir kayıt gelmez",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000001101" },
+        { "id": "99000000-0000-4000-8000-000000001102", "giremez": true }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001101",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001102",
+          "action": "oku",
+          "subject": "Kullanici",
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        }
+      }
+    },
+    {
+      "ad": "öncelik: yasak 10 ve izin 20 ise izin geçerlidir",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000001201", "oncelik": 20 },
+        {
+          "id": "99000000-0000-4000-8000-000000001202",
+          "giremez": true,
+          "oncelik": 10
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001202",
+          "action": "oku",
+          "subject": "Kullanici",
+          "inverted": true
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001201",
+          "action": "oku",
+          "subject": "Kullanici"
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    },
+    {
+      "ad": "öncelik: yasak ve izin 10 ise yasak kazanır",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000001301", "oncelik": 10 },
+        {
+          "id": "99000000-0000-4000-8000-000000001302",
+          "giremez": true,
+          "oncelik": 10
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001301",
+          "action": "oku",
+          "subject": "Kullanici"
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001302",
+          "action": "oku",
+          "subject": "Kullanici",
+          "inverted": true
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": false,
+          "gorunenAd": false,
+          "telefon": false,
+          "yetkiSurumu": false,
+          "pasifZamani": false
+        }
+      }
+    },
+    {
+      "ad": "muaf izin: kök yöneticinin sistem satırı öncelik 100 yasakla da kapanmaz",
+      "yetenekler": [
+        { "id": "99000000-0000-4000-8000-000000001401", "muaf": true },
+        {
+          "id": "99000000-0000-4000-8000-000000001402",
+          "giremez": true,
+          "oncelik": 100
+        }
+      ],
+      "kurallar": [
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001402",
+          "action": "oku",
+          "subject": "Kullanici",
+          "inverted": true
+        },
+        {
+          "yetenekId": "99000000-0000-4000-8000-000000001401",
+          "action": "oku",
+          "subject": "Kullanici"
+        }
+      ],
+      "beklenen": {
+        "98000000-0000-4000-8000-000000000001": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000002": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        },
+        "98000000-0000-4000-8000-000000000003": {
+          "kullaniciAdi": true,
+          "gorunenAd": true,
+          "telefon": true,
+          "yetkiSurumu": true,
+          "pasifZamani": true
+        }
+      }
+    }
+  ]
+}

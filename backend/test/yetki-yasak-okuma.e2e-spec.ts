@@ -813,6 +813,53 @@ describe('e) kimlikten başka kolonu kalmayan kayıt verilmez', () => {
       { id: H3, telefon: null },
     ]);
   });
+
+  it('yasak uygulanmayan, yalnız kimlik veren iznin kayıtları başka izne uygulanan şartlı kolon yasağından etkilenmez; sayfalar tutarlıdır', async () => {
+    const kisi = await kisiKur(20);
+    // Öncelik 20: yasağın üstünde, bütün kayıtlar, yalnız kimlik.
+    await yetenekEkle({
+      grup: kisi.grup,
+      rol: MUDUR,
+      oncelik: 20,
+      kolonlar: ['id'],
+    });
+    // Öncelik 0: yasağın altında, yalnız Hedef Bir, bütün kolonlar.
+    await yetenekEkle({
+      grup: kisi.grup,
+      rol: STAJYER,
+      sart: [{ alan: 'gorunenAd', islec: 'esit', deger: 'Hedef Bir' }],
+    });
+    const sayfalar = async () => [
+      await oku(kisi.id, { sayfa: { atla: 0, al: 2 } }),
+      await oku(kisi.id, { sayfa: { atla: 2, al: 2 } }),
+    ];
+    const yasaksiz = await oku(kisi.id);
+    const yasaksizSayfalar = await sayfalar();
+    expect(yasaksiz).toEqual([
+      expect.objectContaining({ id: H1, ...TAM[H1] }),
+      { id: H2 },
+      { id: H3 },
+    ]);
+
+    await yetenekEkle({
+      grup: kisi.grup,
+      rol: STAJYER,
+      giremez: true,
+      oncelik: 10,
+      sart: [{ alan: 'gorunenAd', islec: 'esit', deger: 'Hedef İki' }],
+      kolonlar: ['telefon'],
+    });
+    await gozlemci.query(
+      'update kullanici set yetki_surumu = yetki_surumu + 1 where id = $1',
+      [kisi.id],
+    );
+
+    expect(await oku(kisi.id)).toEqual(yasaksiz);
+    const yasakliSayfalar = await sayfalar();
+    expect(yasakliSayfalar.map((sayfa) => sayfa.length)).toEqual([2, 1]);
+    expect(yasakliSayfalar).toEqual(yasaksizSayfalar);
+    expect(yasakliSayfalar.flat()).toEqual(yasaksiz);
+  });
 });
 
 describe('f) sorgu sayısı', () => {
