@@ -42,6 +42,7 @@ Sen orchestrator'sın: işi sen yapmazsın; kartı yazar, koşumu ve incelemeyi 
 ## İlgili skill'ler
 
 - `plan`: çok adımlı iş. `hata-ayikla`: işçi başarısız bir testte bunu kullanır.
+- Süreç eklentisinin alt ajanla geliştirme skill'i aynı oturumun içinde alt ajan başlatır; bu skill ayrı oturum, ayrı çalışma ağacı ve ölçülen bir teslim ister.
 
 ## Sınırlar
 

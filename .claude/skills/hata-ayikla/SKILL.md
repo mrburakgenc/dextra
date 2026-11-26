@@ -44,6 +44,7 @@ Kural tek cümledir: **nedeni göstermeden düzeltme yazma.** Tahminle yapılan 
 
 ## İlgili skill'ler
 
+- Etkileşimli oturumda süreç eklentisinin kendi hata ayıklama skill'i varsa o da kullanılabilir; bu skill, eklentileri yüklemeyen görev oturumları için aynı disiplini projenin içinde tutar.
 - Kök neden bir kuralın ya da kararın yanlışlığına işaret ediyorsa: `karar` ya da `kural`.
 - Hatayı yakalayan testi yazarken: `test-yaz`.
 
