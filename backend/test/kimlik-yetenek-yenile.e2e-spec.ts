@@ -89,9 +89,7 @@ function yenile(
   govde: Govde,
   erisimBelirteci?: string,
 ): request.Test {
-  const istek = request(ortam.app.getHttpServer()).post(
-    `${YOL}/${id}/yenile`,
-  );
+  const istek = request(ortam.app.getHttpServer()).post(`${YOL}/${id}/yenile`);
   return (
     erisimBelirteci === undefined
       ? istek
@@ -675,11 +673,7 @@ describe('e) etki ve öncelik (TS-008; KU-020; yazım kapalı, kapanan AU-17)', 
   });
 
   it('verilen öncelik eskisinin yerine yazılır', async () => {
-    const cevap = await yenile(
-      Y_ONCELIKLI,
-      icerik({ oncelik: 0 }),
-      belirtec(),
-    );
+    const cevap = await yenile(Y_ONCELIKLI, icerik({ oncelik: 0 }), belirtec());
     expect(cevap.status).toBe(201);
     expect(await etkisi((cevap.body as { id: string }).id)).toEqual({
       giremez: false,

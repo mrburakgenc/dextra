@@ -5,10 +5,7 @@
 import { RepoBelirteci } from '../../../../../shared/database/domain/repo-belirteci.js';
 import type { Islem } from '../../../../../shared/database/domain/islem.js';
 import type { Siralama } from '../../../../../shared/yetki/domain/okuma-tipleri.js';
-import type {
-  YeniYetenek,
-  YetenekEtkisi,
-} from '../entities/yetenek.entity.js';
+import type { YeniYetenek, YetenekEtkisi } from '../entities/yetenek.entity.js';
 
 // Okunan yetenek ve izin kayıtları: kimlik her zaman vardır; isteyenin göremediği kolon kayıtta yoktur.
 export interface YetenekGorunumu {
