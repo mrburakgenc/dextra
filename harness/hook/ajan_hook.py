@@ -4,9 +4,10 @@
 Çağrı: hook.sh <olay>   (girdi: hook JSON'u stdin'de; çıktı: karar JSON'u stdout'ta)
 
   oturum-basi        SessionStart      durum özeti; sıkıştırma sonrası "gösterildi" kaydını sıfırlar
-  istem              UserPromptSubmit  plan modunda tasarımcı paketini bir kez ekler
+  istem              UserPromptSubmit  iletiyi söz defterine yazar; plan modunda tasarımcı paketini bir kez ekler
   duzenleme-oncesi   PreToolUse Edit|Write   korunan yollar, kabul yasağı, okundu kapısı; işçide geçen yolun kaydı
   duzenleme-sonrasi  PostToolUse Edit|Write  bilgi tabanı düğümü değiştiyse bulguları söyler
+  soru-sonrasi       PostToolUse AskUserQuestion  soruyu ve seçilen cevabı söz defterine yazar
   komut-oncesi       PreToolUse Bash   yasak bayraklar, kabul, görev koşturma onayı, push kapısı
   ajan-dogarken      SubagentStart     rolün kesin paketini alt ajanın bağlamına ekler
   ajan-baslatma      PreToolUse Agent  görev başlığı ve güncel paket olmadan başlatmayı reddeder
@@ -136,6 +137,26 @@ def _deftere(kok: pathlib.Path, sid: str, kayit: dict) -> None:
     kayit = dict({"zaman": datetime.datetime.now().isoformat(timespec="seconds")}, **kayit)
     with yol.open("a", encoding="utf-8") as f:
         f.write(json.dumps(kayit, ensure_ascii=False) + "\n")
+
+
+def _soz_dosyasi(sid: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", sid or "oturumsuz") + ".jsonl"
+
+
+def _soze(kok: pathlib.Path, girdi: dict, ortam: dict, tur: str, metin: str) -> None:
+    """Söz defterine bir satır ekler (TS-009 Yapı 13): ana çalışma ağacında, oturum başına bir dosya. Yalnız ana
+    oturum yazar (görev işçisi, inceleyici ve alt ajan yazmaz). Yazılamazsa sessiz geçer: defter iletiyi engellemez."""
+    if ortam.get("HARNESS_GOREV") or girdi.get("agent_id"):
+        return
+    kayit = {"zaman": datetime.datetime.now().isoformat(timespec="seconds"), "agac": kok.name, "tur": tur,
+             "metin": metin}
+    try:
+        yol = h.soz_dizini(kok) / _soz_dosyasi(girdi.get("session_id", ""))
+        yol.parent.mkdir(parents=True, exist_ok=True)
+        with yol.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(kayit, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 
 def _komut_dizini(metin: str, cwd: str | None) -> str | None:
@@ -395,6 +416,17 @@ def oturum_basi(girdi: dict, ortam: dict) -> dict | None:
             kosanlar.append("%s %s" % (p.name, gorev.kosu_metni(isaret)))
     if kosanlar:
         satirlar.append("Koşan görev: %s." % ", ".join(kosanlar))
+    gun_once = (datetime.datetime.now() - datetime.timedelta(hours=24)).isoformat(timespec="seconds")
+    try:   # okunamayan defter oturum özetini düşürmez
+        sozler = [k for k in h.sozler(kok, agac=kok.name, sonra=gun_once)
+                  if k["oturum"] + ".jsonl" != _soz_dosyasi(girdi.get("session_id", ""))][-5:]
+    except (OSError, ValueError):
+        sozler = []
+    if sozler:
+        satirlar.append("Bu çalışma ağacında başka bir oturumun son 24 saatteki sözleri (söz defteri; tamamı: "
+                        "`python3 harness/h.py soz --agac %s`):" % kok.name)
+        satirlar += ["- %s · %s — %s" % (k.get("zaman"), k.get("tur"), h.kisalt(k.get("metin", ""), 200))
+                     for k in sozler]
     if taslak:
         satirlar.append("Kabul bekleyen %d taslak: %s. Kabulü yalnız kullanıcı verir: kullanıcı isterse "
                         "`python3 harness/h.py kabul <KİMLİK>` çalıştırılır ve hook ona sorar."
@@ -417,7 +449,10 @@ def oturum_basi(girdi: dict, ortam: dict) -> dict | None:
 
 def istem(girdi: dict, ortam: dict) -> dict | None:
     kok = _kok(girdi.get("cwd"))
-    if kok is None or girdi.get("permission_mode") != "plan":
+    if kok is None:
+        return None
+    _soze(kok, girdi, ortam, "ileti", str(girdi.get("prompt", "")))
+    if girdi.get("permission_mode") != "plan":
         return None
     yol, o = _oturum(kok, girdi.get("session_id", ""))
     if o.get("plan_paketi"):
@@ -430,6 +465,26 @@ def istem(girdi: dict, ortam: dict) -> dict | None:
     _deftere(kok, girdi.get("session_id", ""), {"olay": "paket-verildi", "ajan": "ana", "rol": "tasarimci",
                                                 "ozet": p["ozet"], "kurallar": p["kurallar"]})
     return _baglam("UserPromptSubmit", "Plan modu: tasarım protokolü harness/protokol/tasarim.md.\n\n" + p["metin"])
+
+
+def soru_sonrasi(girdi: dict, ortam: dict) -> None:
+    """Soru aracı (AskUserQuestion) bitince sorular ve seçilen cevaplar söz defterine 'cevap' türüyle yazılır. Cevap
+    tool_input.answers ya da tool_response.answers içinde (soru → cevap) beklenir; tanınmayan biçimde sonuç ham
+    metin olarak yazılır."""
+    kok = _kok(girdi.get("cwd"))
+    if kok is None:
+        return None
+    arac, sonuc = girdi.get("tool_input") or {}, girdi.get("tool_response")
+    cevaplar = next((c for c in (arac.get("answers"), sonuc.get("answers") if isinstance(sonuc, dict) else None)
+                     if isinstance(c, dict) and c), None)
+    if cevaplar:
+        metin = "\n".join("%s → %s" % (s, c) for s, c in cevaplar.items())
+    else:
+        sorular = [str(s.get("question", "")) for s in arac.get("questions") or [] if isinstance(s, dict)]
+        metin = "\n".join(sorular + ["cevap (ham): " + (sonuc if isinstance(sonuc, str)
+                                                        else json.dumps(sonuc, ensure_ascii=False))])
+    _soze(kok, girdi, ortam, "cevap", metin)
+    return None
 
 
 def _yeni_metinler(arac_girdisi: dict) -> str:
@@ -951,7 +1006,7 @@ def durus(girdi: dict, ortam: dict) -> dict | None:
 OLAYLAR = {"oturum-basi": oturum_basi, "istem": istem, "duzenleme-oncesi": duzenleme_kapisi,
            "duzenleme-sonrasi": duzenleme_sonrasi, "komut-oncesi": komut_oncesi,
            "ajan-dogarken": ajan_dogarken, "ajan-baslatma": ajan_baslatma,
-           "workflow-baslatma": workflow_baslatma, "durus": durus}
+           "workflow-baslatma": workflow_baslatma, "durus": durus, "soru-sonrasi": soru_sonrasi}
 
 
 def isle(olay: str, girdi: dict, ortam: dict) -> dict | None:

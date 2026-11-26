@@ -1526,6 +1526,55 @@ def yavas_hooklar(kok: pathlib.Path) -> dict:
             "esik": ayar_oku(kok)["butce"].get("hook_ms", 300)}
 
 
+def soz_dizini(kok: pathlib.Path) -> pathlib.Path:
+    """Söz defteri (TS-009 Yapı 13): ana çalışma ağacında durur; çalışma ağacı silinince defter kaybolmaz."""
+    return ortak_kok(kok) / ".harness" / "soz"
+
+
+def sozler(kok: pathlib.Path, gun: str | None = None, agac: str | None = None, sonra: str | None = None) -> list:
+    """Söz defterinin kayıtları zaman sırasıyla; her kayda dosyasının adı `oturum` olarak eklenir. `gun`: zamanı o
+    günde (YYYY-AA-GG) olanlar; `agac`: o çalışma ağacında yazılanlar; `sonra`: zamanı bu andan (ISO) yeni olanlar
+    (o andan beri değişmemiş dosya okunmaz)."""
+    esik = datetime.datetime.fromisoformat(sonra).timestamp() if sonra else None
+    kayitlar = []
+    for p in sorted(soz_dizini(kok).glob("*.jsonl")):
+        if esik is not None and p.stat().st_mtime < esik:
+            continue
+        for satir in p.read_text(encoding="utf-8").split("\n"):
+            try:
+                k = json.loads(satir) if satir.strip() else None
+            except ValueError:
+                continue
+            if not isinstance(k, dict):
+                continue
+            zaman = str(k.get("zaman", ""))
+            if (gun and not zaman.startswith(gun)) or (agac and k.get("agac") != agac) or (sonra and zaman < sonra):
+                continue
+            kayitlar.append(dict(k, oturum=p.stem))
+    return sorted(kayitlar, key=lambda k: str(k.get("zaman", "")))
+
+
+def kisalt(metin, sinir: int) -> str:
+    """Boşlukları teke indirir; `sinir` karakteri aşan metni sonuna '…' koyarak o sınıra keser."""
+    metin = " ".join(str(metin).split())
+    return metin if len(metin) <= sinir else metin[:sinir - 1] + "…"
+
+
+def _komut_soz(kok: pathlib.Path, arg: list) -> int:
+    gun, agac = (_secenek(arg, "--gun") or [None])[0], (_secenek(arg, "--agac") or [None])[0]
+    if gun:
+        try:
+            datetime.date.fromisoformat(gun)
+        except ValueError:
+            raise HarnessHata("kullanım: h.py soz [--gun YYYY-AA-GG] [--agac AD]")
+    kayitlar = sozler(kok, gun, agac)
+    for k in kayitlar:
+        print("%s · %s · %s · %s\n  %s" % (k.get("zaman"), k.get("agac"), k.get("tur"), k["oturum"],
+                                          str(k.get("metin", "")).replace("\n", "\n  ")))
+    print("soz: %d kayıt" % len(kayitlar))
+    return 0
+
+
 def _komut_durum(kok: pathlib.Path, arg: list) -> int:
     dz = Dizin(kok)
     sayim: dict = {}
@@ -1819,7 +1868,7 @@ KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
             "rapor": _komut_rapor, "denetim": _komut_denetim, "acik-uc": _komut_acik_uc,
-            "ajan-karari": _komut_ajan_karari,
+            "ajan-karari": _komut_ajan_karari, "soz": _komut_soz,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}
