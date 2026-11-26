@@ -44,6 +44,12 @@ import {
   yetenekOkuSorgusuSemasi,
 } from '../application/queries/yetenek-oku/yetenek-oku.query.js';
 import type { YetenekOkuSonucu } from '../application/queries/yetenek-oku/yetenek-oku.result.js';
+import { YetenekTeshisHandler } from '../application/queries/yetenek-teshis/yetenek-teshis.handler.js';
+import {
+  type YetenekTeshisSorgusu,
+  yetenekTeshisSorgusuSemasi,
+} from '../application/queries/yetenek-teshis/yetenek-teshis.query.js';
+import type { YetenekTeshisSonucu } from '../application/queries/yetenek-teshis/yetenek-teshis.result.js';
 
 // Liste yalnız silinmemiş yetenekleri verir; kayıt şartı ve kolon listesini saklandığı biçimde taşır.
 // Yaz ve yenile 201 ile yeni satırın { id }'sini, sil gövdesiz 204 döner. Güncelleme ucu yoktur: satır
@@ -56,6 +62,7 @@ export class YetenekController {
     private readonly yetenekOlustur: YetenekOlusturHandler,
     private readonly yetenekSil: YetenekSilHandler,
     private readonly yetenekYenile: YetenekYenileHandler,
+    private readonly yetenekTeshis: YetenekTeshisHandler,
   ) {}
 
   @Post()
@@ -92,6 +99,15 @@ export class YetenekController {
     sorgu: YetenekListeleSorgusu,
   ): Promise<YetenekListeleSonucu> {
     return this.yetenekListele.calistir(sorgu);
+  }
+
+  // Teşhis (Yetenek:teshis; TS-008 kapanan AU-32). Yol, ":id" ucundan önce bağlanır.
+  @Get('teshis')
+  @Izin('Yetenek', 'teshis')
+  teshis(
+    @Query({ schema: yetenekTeshisSorgusuSemasi }) sorgu: YetenekTeshisSorgusu,
+  ): Promise<YetenekTeshisSonucu> {
+    return this.yetenekTeshis.calistir(sorgu);
   }
 
   @Get(':id')

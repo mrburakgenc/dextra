@@ -6,6 +6,7 @@ import {
   type YazmaKatalogu,
 } from './domain/kaynak-katalogu.js';
 import { OkumaKapisi } from './infrastructure/okuma-kapisi.js';
+import { TeshisKapisi } from './infrastructure/teshis-kapisi.js';
 import { YazmaKapisi } from './infrastructure/yazma-kapisi.js';
 
 // Yetki kapılarının tek modülü (TS-002 AK-42): okuma ve yazma kapısını ve kaynak kataloğunu sağlar
@@ -24,8 +25,9 @@ export class YetkiModule {
         { provide: KAYNAK_KATALOGU, useValue: katalog },
         OkumaKapisi,
         YazmaKapisi,
+        TeshisKapisi,
       ],
-      exports: [KAYNAK_KATALOGU, OkumaKapisi, YazmaKapisi],
+      exports: [KAYNAK_KATALOGU, OkumaKapisi, YazmaKapisi, TeshisKapisi],
     };
   }
 }
