@@ -92,9 +92,14 @@ interface YazmaVekili {
 
 // Yasağın reddettiği yazma (TS-008 "Yazma"): cevabı yetki_yok'tur. Karar veren yasak, son adayı kapatan
 // en yüksek öncelikli yasaktır (eşitlikte en eski); yalnız iç bilgidir, hata süzgeci cevaba kod, ileti
-// ve ayrıntıdan başkasını yazmaz.
+// ve ayrıntıdan başkasını yazmaz. Eylem, kaynak ve kayıt ret kaydı içindir; kayıt oluşturmada boştur.
 export class YasakReddi extends KodluHata {
-  constructor(readonly kararVerenYasakId: string) {
+  constructor(
+    readonly kararVerenYasakId: string,
+    readonly eylem: string,
+    readonly kaynak: string,
+    readonly kayitId: string | null,
+  ) {
     super('yetki_yok', 'Bu işlem için yetki yok');
   }
 }
@@ -203,7 +208,7 @@ export class YazmaKapisi {
           karar = kapatan;
           continue;
         }
-        await ekIzniSina(vekil, kaynak, id, yeni, ekIzin);
+        await ekIzniSina(vekil, kaynak, id, yeni, ekIzin, null);
         await this.yazici.degisiklikKaydi(islem, {
           ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
           eylem: 'olusturma',
@@ -212,7 +217,8 @@ export class YazmaKapisi {
         return id;
       }
     }
-    throw yetkiYok(karar);
+    // Yazılan satır işle birlikte geri alınır; ret kaydının kaydı boştur.
+    throw yetkiYok(karar, OLUSTURMA_EYLEMI, kaynak, null);
   }
 
   async deyimleGuncelle<M extends Prisma.ModelName>(
@@ -304,7 +310,7 @@ export class YazmaKapisi {
         continue;
       }
       const eski = await vekil.findUniqueOrThrow({ where: { id } });
-      await ekIzniSina(vekil, kaynak, id, eski, ekIzin);
+      await ekIzniSina(vekil, kaynak, id, eski, ekIzin, id);
       await yaz(vt, kosul, yumusak ? { [SILINME_ALANI]: new Date() } : {});
       await this.yazici.degisiklikKaydi(islem, {
         ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
@@ -315,7 +321,7 @@ export class YazmaKapisi {
     }
     // Satırı kilitleyen her aday yasakla elendiyse yetki_yok; hiçbiri kilitleyemediyse bulunamadi.
     if (karar !== undefined) {
-      throw yetkiYok(karar);
+      throw yetkiYok(karar, SILME_EYLEMI, kaynak, id);
     }
     throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
   }
@@ -392,9 +398,9 @@ export class YazmaKapisi {
       throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
     }
     if (ilk === undefined) {
-      throw yetkiYok(karar);
+      throw yetkiYok(karar, eylem, kaynak, id);
     }
-    await ekIzniSina(vekil, kaynak, id, onceki, ekIzin);
+    await ekIzniSina(vekil, kaynak, id, onceki, ekIzin, id);
     // Değişen alan yoksa yeni hâl önceki hâldir ve ilk aday iki hâli de tutar. Düz güncellemede
     // yazmanın yeteneği yeni hâli de tutan ilk adaydır (KR-008 Seçim 10 ve 18); hiçbiri tutmazsa
     // yetki_yok atılır ve run'dan çıkan hata yazmayı işin bütünüyle geri alır.
@@ -422,7 +428,7 @@ export class YazmaKapisi {
       }
     }
     if (yazan === undefined) {
-      throw yetkiYok(karar);
+      throw yetkiYok(karar, eylem, kaynak, id);
     }
     await this.yazici.degisiklikKaydi(islem, {
       ...notunOrtakAlanlari(isAdi, kaynak, id, yazan),
@@ -574,22 +580,29 @@ async function kapatanYasak(
 
 // Aday kalmayan yazmanın reddi: karar, yasakla elenen son adayı kapatan yasaktır; yasakla elenen aday
 // yoksa ret yasaklardan önceki hâliyledir.
-function yetkiYok(karar: DerlenmisKural | undefined): KodluHata {
+function yetkiYok(
+  karar: DerlenmisKural | undefined,
+  eylem: string,
+  kaynak: string,
+  kayitId: string | null,
+): KodluHata {
   return karar === undefined
     ? new KodluHata('yetki_yok', 'Bu işlem için yetki yok')
-    : new YasakReddi(karar.yetenekId);
+    : new YasakReddi(karar.yetenekId, eylem, kaynak, kayitId);
 }
 
 // Ek iznin sınanması (TS-008 AK-4): satır bu işlemde kilitlenmiş ya da yazılmıştır; satır ek izni
 // gerektiriyorsa ek eylemin yetenekleri sırayla denenir ve satırı tutan, ek eylemin yasaklarınca
 // kapatılmayan ilk yetenekte sınama geçer (kayıt düzeyinde, niyet eylemi gibi). Hiçbiri geçmezse
 // yetki_yok: satır işin kendi izniyle bulunduğu için bulunamadi değildir. Sınama yazmaz, not bırakmaz.
+// Reddin kaydı ret kaydı içindir; oluşturmada boştur.
 async function ekIzniSina(
   vekil: YazmaVekili,
   kaynak: string,
   id: string,
   satir: Readonly<Record<string, unknown>>,
   ekIzin: EkIzin | undefined,
+  reddinKaydi: string | null,
 ): Promise<void> {
   if (ekIzin?.gerekirMi(satir) !== true) {
     return;
@@ -610,7 +623,7 @@ async function ekIzniSina(
       karar = kapatan;
     }
   }
-  throw yetkiYok(karar);
+  throw yetkiYok(karar, ekIzin.eylem, kaynak, reddinKaydi);
 }
 
 // Satırı koşul tutuyorsa anahtar dışı güncelleme kilidiyle kilitler. PostgreSQL değeri değişmeyen
