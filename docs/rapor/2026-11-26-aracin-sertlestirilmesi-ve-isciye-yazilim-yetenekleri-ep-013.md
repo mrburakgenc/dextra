@@ -15,13 +15,13 @@ Bu rapor PR #18'den sonraki işi kapsar: aracın sertleştirilmesi ve işçiye y
 3. **Kendi ölçümüm** (son alımdan sonra, `e70e7a9`): `python3 harness/test/test_butun_ts009.py` 1/1; skill dosyalarına dokunduktan sonra `test_yetenek.py` 32/32 ve `test_h.py` 123/123; DN-003 ve DN-004 aracın komutuyla geçti. Araç testlerinin tamamını (23 dosya) ben koşturmadım: son görevin işçisi ve inceleyicisi tek tek koşturdu, hepsi geçti (GV-167 kayıtları).
 4. **Dört görev ilk turda bitmedi**; ikisinde neden ana oturumun kartındaki eksikti (6. ve 7. bölüm).
 5. **Ana oturumun bir işlemi kullanıcının itirazıyla geri alındı**: süreç eklentisinin bu depoda kapatılması (7. bölüm madde 1).
-6. **Kabul bekleyen 11 yeni taslak var**: DN-003, DN-004, KU-021 ve KV-001 … KV-008 (9. bölüm).
+6. **On bir yeni düğüm kabul edildi** (kullanıcı, 2026-11-26: "kabul et"): DN-003, DN-004, KU-021 ve KV-001 … KV-008. Lint ve tip denetimi artık push kapısında koşar; sekiz terim her işin paketine sözlük olarak girer (9. bölüm madde 2).
 7. **Hiçbir şey gönderilmedi**; bu iş için PR açılmadı (10. bölüm).
 8. **Dalın büyüklüğü** (`git diff --shortstat main...HEAD`, rapor yazılmadan önce): 67 dosya, 5213 satır eklendi, 137 satır silindi; bunun 26 dosyası dış kaynak kopyasıdır (`kb/_gelen/skills/`). Araç kayıtlarına göre: 8 görev, 12 işçi koşusu ve 10 inceleme, 136,6 dakika, 36,22 dolar (2. bölümdeki tablonun toplamı).
 
 **Önce bakman gerekenler**
 
-- 9. bölüm madde 1, 2 ve 3: teyit bekleyen kararlar ve 11 taslak.
+- 9. bölüm madde 1 ve 3: teyit bekleyen kararlar; madde 2: kabul edilen düğümlerin sonucu.
 - 7. bölüm madde 1: onaysız yapılan ve geri alınan ayar değişikliği.
 - 8. bölümün sonu: işçinin düzenleme kapısını betikle dolanabilmesi (beş görevde görüldü).
 
@@ -79,6 +79,7 @@ Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablo
 | Dört açık uç (AU-1 … AU-4) | "önerdiğin gibi, yürüt" | TS-009 "Kapanan uçlar"; commit `d2f3ab1`. AU-2 için aşağıdaki satıra bak |
 | Süreç eklentisi | "bi dakika superpowers i niye kapattın … ben sana öyle bir şey dememdim" | TS-009 "Kapanan uçlar" altındaki düzeltme; commit `bee2f4a` ve `a02527c` |
 | Geri alımdan sonra | "devam" | Yalnız bu rapor. AU-1, AU-3 ve AU-4 için açık bir teyit saymadım (9. bölüm madde 1) |
+| On bir taslağın kabulü (DN-003, DN-004, KU-021, KV-001 … KV-008) | "kabul et" (ana oturumun "kabul et dersen komutu ben çalıştırırım" cümlesine cevap) | `kb/GUNLUK.md`, 2026-11-26. Yalnız bu on bir düğüm için sayıldı; öbür teyit bekleyen maddeler açık duruyor |
 
 ## 5. Ajanın verdiği kararlar
 
@@ -144,7 +145,7 @@ Geliştirme kipi epic boyunca açıktı (`4cbe76e`) ve bitince kapatıldı (`2fa
 **Senden beklenenler**
 
 1. **Üç açık ucun teyidi.** Hepsi "önerdiğin gibi" cevabına dayanıyor: AU-1 (kural 7'nin metni ayara uyduruldu, `3f41c12`; istemezsen geri alınır), AU-3 (söz defteri iletileri olduğu gibi yazar; istemezsen yalnız soru cevaplarını yazacak biçimde düzelttirilir), AU-4 (lint ve tip denetimi kapıda 60 saniyeyi aşarsa sana sorulur; ölçülen toplam yaklaşık 17 saniye).
-2. **Kabul bekleyen 11 taslak.** DN-003, DN-004 ve KU-021 kabul edilince lint ve tip denetimi push kapısında koşar; yeni açılan çalışma ağacında önce bağımlılık kurulumu ve `pnpm -C backend prisma:generate` gerekir, yoksa kapı kalır. KV-001 … KV-008 kabul edilince sekiz terim her işin paketine sözlük olarak girer.
+2. **Kabul edilen on bir düğümün sonucu (bilmen gereken).** Lint ve tip denetimi artık push kapısında koşar; yeni açılan çalışma ağacında önce bağımlılık kurulumu ve `pnpm -C backend prisma:generate` gerekir, yoksa kapı kalır. Sekiz terim her işin paketine sözlük olarak girer; tanımlarda yanlış bulursan düğümü değiştirmek sürüm artışı ister.
 3. **Teyit bekleyen iki ana oturum kararı** (5. bölüm): ölçüt satırının yalnız alınmadan önce görünmesi ve bir araç testinin "en az şunlar" sınamasına çevrilmesi.
 4. **Süreç eklentisi açık kaldı.** TS-009 Yapı 15'in "açık kalırsa" kolu (AGENTS.md'ye "çelişkide bu deponun kuralı geçerlidir" cümlesi) yapılmadı; istersen yazılır.
 5. **İki ayar yazılmadı; senin sözünü bekliyor.** (a) `harness.json` içine `gorev.on_kontrol`: veritabanı (5440) ve Redis (6390) kapıları açık mı diye bakan iki komut; yazılırsa Docker kapalıyken hiçbir görev koşmaz. (b) Ana ağaca `harness.yerel.json`: `pnpm`'in durduğu klasör; yazılırsa görev komutlarının başına yol eklemek gerekmez.
