@@ -46,6 +46,8 @@ export const YetenekKaydi = z.object({
   butunBirimler: z.boolean().optional(),
   kolonlar: z.array(z.string()).optional(),
   butunKolonlar: z.boolean().optional(),
+  giremez: z.boolean().optional(),
+  oncelik: z.number().optional(),
   sistemSatiri: z.boolean().optional(),
   tohumAnahtari: z.string().nullable().optional(),
   olusturmaZamani: z.string().optional(),

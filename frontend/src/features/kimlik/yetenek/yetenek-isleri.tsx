@@ -35,6 +35,8 @@ export function YetenekIsleri({ kayit }: Readonly<{ kayit: YetenekKaydi }>) {
             ) : (
               <YetenekYenileFormu
                 id={kayit.id}
+                giremez={kayit.giremez}
+                oncelik={kayit.oncelik}
                 baslangic={{
                   sart: sartSatirlari(sart),
                   butunKayitlar,

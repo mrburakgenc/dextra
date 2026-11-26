@@ -639,6 +639,209 @@ describe('YeniYetenekSayfasi ad listesi alınamayınca', () => {
   });
 });
 
+// Etki, öncelik ve yardım metni (TS-008 "Yönetim, izinler ve teşhis" ve "Hata modları"): iki alan
+// yalnız Yetenek kaynağında yasakla izni olan kişiye çizilir.
+const YASAKLAR: YetkiKurali[] = [
+  ...OLUSTURUR,
+  { action: 'yasakla', subject: 'Yetenek' },
+];
+
+const ICERIK_GOVDESI = {
+  grupId: GRUP,
+  rolId: ROL,
+  izinId: IZIN,
+  sart: null,
+  butunKayitlar: true,
+  butunBirimler: false,
+  kolonlar: null,
+  butunKolonlar: true,
+};
+
+async function icerikSec() {
+  await sec();
+  await userEvent.click(screen.getByLabelText('Bütün kayıtlar'));
+  await userEvent.click(screen.getByLabelText('Bütün kolonlar'));
+}
+
+function yardim() {
+  return screen.queryByRole('note', { name: 'Yasağın sınırları' });
+}
+
+describe('YeniYetenekSayfasi etki ve öncelik', () => {
+  it('yasakla izni olmayan kişide etki, öncelik ve yardım metni çizilmez; gövde bugünküyle aynıdır', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(OLUSTURUR, jsonCevap({ id: YENI_ID }, 201));
+
+    expect(screen.queryByLabelText('Etki')).toBeNull();
+    expect(screen.queryByLabelText('Öncelik')).toBeNull();
+    expect(yardim()).toBeNull();
+    await icerikSec();
+    await gonder();
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    expect(istekler()[0]?.govde).toEqual(ICERIK_GOVDESI);
+  });
+
+  it('yasakla izni olan kişide iki alan çizilir; gövde giremez ve oncelik taşır', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(YASAKLAR, jsonCevap({ id: YENI_ID }, 201));
+
+    await icerikSec();
+    await userEvent.selectOptions(screen.getByLabelText('Etki'), 'Yasak');
+    await userEvent.type(screen.getByLabelText('Öncelik'), '10');
+    await gonder();
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    expect(istekler()[0]?.govde).toEqual({
+      ...ICERIK_GOVDESI,
+      giremez: true,
+      oncelik: 10,
+    });
+  });
+
+  it('öncelik boşken gövdede oncelik yoktur; etki izin olarak gider', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await goster(YASAKLAR, jsonCevap({ id: YENI_ID }, 201));
+
+    await icerikSec();
+    await gonder();
+
+    expect(
+      await screen.findByText(`yonlendirildi:/yetenekler/${YENI_ID}`),
+    ).toBeDefined();
+    const govde = istekler()[0]?.govde;
+    expect(govde).toEqual({ ...ICERIK_GOVDESI, giremez: false });
+    expect(govde).not.toHaveProperty('oncelik');
+  });
+
+  it('tam sayı olmayan öncelik backend çağrılmadan alanın yanında hata verir', async () => {
+    await goster(YASAKLAR);
+
+    await icerikSec();
+    await userEvent.type(screen.getByLabelText('Öncelik'), '1.5');
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Öncelik')).toBe('Öncelik tam sayı olmalı');
+    });
+    expect(istekler()).toEqual([]);
+  });
+
+  it('yazım kapalıyken sunucunun alan hataları etki ve önceliğin yanında görünür; yazılanlar durur', async () => {
+    await goster(
+      YASAKLAR,
+      jsonCevap(
+        {
+          kod: 'dogrulama_hatasi',
+          ileti: 'Yasak ve sıfırdan farklı öncelik henüz yazılamaz',
+          ayrinti: [
+            { alan: 'giremez', neden: 'yasak yazımı kapalı' },
+            { alan: 'oncelik', neden: 'sıfırdan farklı öncelik kapalı' },
+          ],
+        },
+        400,
+      ),
+    );
+
+    await icerikSec();
+    await userEvent.selectOptions(screen.getByLabelText('Etki'), 'Yasak');
+    await userEvent.type(screen.getByLabelText('Öncelik'), '10');
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Etki')).toBe('yasak yazımı kapalı');
+    });
+    expect(alanHatasi('Öncelik')).toBe('sıfırdan farklı öncelik kapalı');
+    expect(screen.getByLabelText('Etki')).toHaveProperty('value', 'yasak');
+    expect(screen.getByLabelText('Öncelik')).toHaveProperty('value', '10');
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('0–100 dışındaki önceliğin sunucu reddi önceliğin yanında görünür', async () => {
+    await goster(
+      YASAKLAR,
+      jsonCevap(
+        {
+          kod: 'dogrulama_hatasi',
+          ileti: 'Yetenek doğrulanamadı',
+          ayrinti: [
+            {
+              alan: 'oncelik',
+              neden: 'öncelik 0 ile 100 arasında bir tam sayıdır',
+            },
+          ],
+        },
+        400,
+      ),
+    );
+
+    await icerikSec();
+    await userEvent.type(screen.getByLabelText('Öncelik'), '150');
+    await gonder();
+
+    await vi.waitFor(() => {
+      expect(alanHatasi('Öncelik')).toBe(
+        'öncelik 0 ile 100 arasında bir tam sayıdır',
+      );
+    });
+    expect(istekler()[0]?.govde).toMatchObject({
+      giremez: false,
+      oncelik: 150,
+    });
+    expect(screen.getByLabelText('Öncelik')).toHaveProperty('value', '150');
+  });
+
+  it('korunan kaynağa yasağın çakışma iletisi formun üstünde görünür; yazılanlar durur', async () => {
+    await goster(
+      YASAKLAR,
+      hataCevabi(
+        'cakisma',
+        'Korunan kaynağın yazma eylemine yasak yazılamaz',
+        409,
+      ),
+    );
+
+    await icerikSec();
+    await userEvent.selectOptions(screen.getByLabelText('Etki'), 'Yasak');
+    await userEvent.type(screen.getByLabelText('Öncelik'), '10');
+    await gonder();
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Korunan kaynağın yazma eylemine yasak yazılamaz',
+    );
+    expect(screen.getByLabelText('Etki')).toHaveProperty('value', 'yasak');
+    expect(screen.getByLabelText('Öncelik')).toHaveProperty('value', '10');
+    expect(yardim()).not.toBeNull();
+  });
+
+  it('yardım metni yasak seçilmeden görünmez; seçilince altı cümlesiyle görünür, izne dönülünce kalkar', async () => {
+    await goster(YASAKLAR);
+
+    expect(yardim()).toBeNull();
+    await userEvent.selectOptions(screen.getByLabelText('Etki'), 'Yasak');
+
+    const not = yardim();
+    expect(
+      within(not ?? document.body)
+        .getAllByRole('paragraph')
+        .map((p) => p.textContent.replace(/\s+/g, ' ')),
+    ).toEqual([
+      'Yasak bir kara listedir: modele sonradan eklenen kolonu kapsamaz.',
+      'Her zaman kapalı kalması gereken yerde kaydın bütününü kapatan bir yasak yaz, açılacak dar izni bir üst öncelikte ver.',
+      "Öncelik 0 ile yazılan yasak öncelik 0'daki izinleri kapatır; yasağı aşacak izin daha yüksek öncelikle yazılır.",
+      'Yasak her eylem için ayrıca yazılır: okuma yasağı yazmayı kısıtlamaz.',
+      'Okuma yasağı bir işin baktığı kolona denk gelirse o iş de dolaylı olarak kapanır.',
+      'Şartı kişinin göremediği bir kolona bakan yazma yasağı, o kolonun değerini ret cevabından ele verebilir.',
+    ]);
+    await userEvent.selectOptions(screen.getByLabelText('Etki'), 'İzin');
+    expect(yardim()).toBeNull();
+  });
+});
+
 describe('YeniYetenekSayfasi yetki', () => {
   it('Yetenek olustur kuralı olmayan kişi formu görmez', async () => {
     await goster([{ action: 'oku', subject: 'Yetenek' }]);

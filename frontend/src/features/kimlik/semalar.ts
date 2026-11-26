@@ -210,16 +210,36 @@ function sinirlariDenetle<
     });
 }
 
+// Etki ve öncelik (TS-008 "Yönetim, izinler ve teşhis"): ikisi de isteğe bağlıdır; formda yoksa
+// gövdeye girmez. Öncelik tam sayıya çevrilir; aralığını ve yazımın açık olup olmadığını backend
+// sınar.
+const giremez = z
+  .enum(['izin', 'yasak'])
+  .transform((etki) => etki === 'yasak')
+  .optional();
+
+const oncelik = z
+  .string()
+  .trim()
+  .regex(/^-?\d+$/, 'Öncelik tam sayı olmalı')
+  .transform(Number)
+  .optional();
+
 export const YetenekYazSemasi = sinirlariDenetle(
   z.object({
     grupId: z.uuid({ error: 'Grup seçilmeli' }),
     rolId: z.uuid({ error: 'Rol seçilmeli' }),
     izinId: z.uuid({ error: 'İzin seçilmeli' }),
+    giremez,
+    oncelik,
     ...yetenekIcerigi,
   }),
 );
 
-export const YetenekYenileSemasi = sinirlariDenetle(z.object(yetenekIcerigi));
+// Yenileme etkiyi taşımaz: etki çevrilemez (KU-020).
+export const YetenekYenileSemasi = sinirlariDenetle(
+  z.object({ oncelik, ...yetenekIcerigi }),
+);
 
 // Zod hatasından her alanın ilk iletisi. İç içe alanın anahtarı yolun noktayla birleşimidir; şart
 // satırının hatası 'sart.<sıra>.<girdi>' anahtarıyla o satırın altında gösterilir.

@@ -111,6 +111,25 @@ describe('IzinlerSayfasi liste', () => {
     expect(hucreler(ucuncu)).toEqual(['Grup', '—']);
   });
 
+  // İzin adları katalogdan gelir; ekran hiçbir izne ayrı ad yazmaz (TS-008: yasakla ve teshis).
+  it('yasakla ve teshis izinleri öbür izinler gibi kaynak ve eylemiyle yazılır', async () => {
+    sahteFetch.mockResolvedValue(
+      listeCevabi({
+        kayitlar: [
+          ...IKI_KAYIT,
+          { id: 'i3', kaynak: 'Yetenek', eylem: 'yasakla' },
+          { id: 'i4', kaynak: 'Yetenek', eylem: 'teshis' },
+        ],
+      }),
+    );
+
+    await goster();
+
+    const [, , , ucuncu, dorduncu] = screen.getAllByRole('row');
+    expect(hucreler(ucuncu)).toEqual(['Yetenek', 'yasakla']);
+    expect(hucreler(dorduncu)).toEqual(['Yetenek', 'teshis']);
+  });
+
   it('adresteki sayfa ve sıralama backend\'e oturumlu GET isteğiyle gider', async () => {
     sahteFetch.mockResolvedValue(listeCevabi({ sayfa: 3 }));
 

@@ -12,7 +12,13 @@ import {
 import { Kolon } from '../../../shared/yetki/yetki-saglayici';
 import { AlinamayanListeler } from '../alinamayan-listeler';
 import type { Secenekler } from '../uyelik/uyelik-listesi';
-import { adHaritasi, kayitSiniri, kolonSiniri, yetenekTuru } from './yetenek-bicimi';
+import {
+  adHaritasi,
+  etkiYazimi,
+  kayitSiniri,
+  kolonSiniri,
+  yetenekTuru,
+} from './yetenek-bicimi';
 import type {
   YetenekAdListeleri,
   YetenekKaydi,
@@ -123,6 +129,16 @@ export function YetenekTablosu({
                 Kolon sınırı
               </th>
             </Kolon>
+            <Kolon a={KAYNAK} alanlar={['giremez']}>
+              <th scope="col" className={HUCRE}>
+                Etki
+              </th>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['oncelik']}>
+              <th scope="col" className={HUCRE}>
+                Öncelik
+              </th>
+            </Kolon>
             <Kolon a={KAYNAK} alanlar={['sistemSatiri', 'tohumAnahtari']}>
               <th scope="col" className={HUCRE}>
                 Tür
@@ -160,6 +176,14 @@ export function YetenekTablosu({
             </Kolon>
             <Kolon a={KAYNAK} alanlar={['butunKolonlar', 'kolonlar']}>
               <td className="px-3 py-2">{kolonSiniri(kayit.butunKolonlar, kayit.kolonlar)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['giremez']}>
+              <td className="px-3 py-2">{etkiYazimi(kayit.giremez)}</td>
+            </Kolon>
+            <Kolon a={KAYNAK} alanlar={['oncelik']}>
+              <td className="px-3 py-2">
+                {kayit.oncelik === undefined ? BOS : String(kayit.oncelik)}
+              </td>
             </Kolon>
             <Kolon a={KAYNAK} alanlar={['sistemSatiri', 'tohumAnahtari']}>
               <td className="px-3 py-2">{yetenekTuru(kayit.sistemSatiri, kayit.tohumAnahtari)}</td>

@@ -4,6 +4,7 @@ import { kaydiGetir } from '../../../../features/kimlik/kayit-istegi';
 import { KayitBasligi, KayitSatirlari } from '../../../../features/kimlik/kayit-satirlari';
 import {
   adHaritasi,
+  etkiYazimi,
   kayitSiniri,
   kolonSiniri,
   yetenekTuru,
@@ -90,6 +91,16 @@ export default async function YetenekSayfasi({
             etiket: 'Kolon sınırı',
             alanlar: ['butunKolonlar', 'kolonlar'],
             deger: kolonSiniri(kayit.butunKolonlar, kayit.kolonlar),
+          },
+          {
+            etiket: 'Etki',
+            alanlar: ['giremez'],
+            deger: etkiYazimi(kayit.giremez),
+          },
+          {
+            etiket: 'Öncelik',
+            alanlar: ['oncelik'],
+            deger: kayit.oncelik === undefined ? BOS : String(kayit.oncelik),
           },
           {
             etiket: 'Tür',
