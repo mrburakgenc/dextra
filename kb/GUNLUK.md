@@ -71,3 +71,6 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-26] kabul | TS-008@1 Yetenekte etki ve öncelik: giremez kuralı izinleri önceliğe göre kapatır
 ## [2026-11-26] taslak | TS-009 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
 ## [2026-11-26] kabul | TS-009@1 Aracın sertleştirilmesi ve işçiye yazılım yetenekleri: kapılar, skill'ler ve süreklilik
+## [2026-11-26] taslak | DN-003 Lint denetimi: arka yüz ve ön yüz lint'i uyarısız geçer
+## [2026-11-26] taslak | DN-004 Tip denetimi: arka yüz ve ön yüz derleyiciden hatasız geçer
+## [2026-11-26] taslak | KU-021 Lint uyarısı ya da derleyici hatası bırakan dal gönderilmez
