@@ -780,6 +780,55 @@ it('j) yasağı olmayan kişinin yazmasında sorgu sayısı bu karttan öncekiyl
   expect(sayilar).toEqual(ONCEKI_SORGU);
 });
 
+// Bugünkü davranışı sabitleyen iki durum (GV-153 incelemesinin önerisi; GV-154).
+describe('k) sabitlenen davranış', () => {
+  it('değer değiştirmeyen düz güncellemede kaydın bütününü kapatan yasak adayı eler: yetki yok, not yazılmaz', async () => {
+    const kisi = await kisiKur(18);
+    await izinVer(kisi, ['guncelle']);
+    const yasak = await yasakla(kisi, { eylem: 'guncelle', sart: YASAKLI_AD });
+    const hedef = await hedefKur(YASAKLI);
+
+    await expect(
+      guncelle(kisi, hedef, { gorunenAd: YASAKLI }),
+    ).rejects.toMatchObject({ kod: 'yetki_yok', kararVerenYasakId: yasak });
+    expect((await hedefSatiri(hedef))?.gorunen_ad).toBe(YASAKLI);
+    expect(await notSayisi(hedef)).toBe(0);
+  });
+
+  it('önceki hâlde bir aday yasakla elenir, son aday yeni hâlde iki hâl kuralıyla (yasaksız) düşerse karar veren yasak önceki elemenin yasağıdır', async () => {
+    const kisi = await kisiKur(19);
+    // Birinci aday: bütün kayıtlar, öncelik 0; yasak (öncelik 10) onu önceki hâlde eler.
+    await izinVer(kisi, ['guncelle']);
+    // İkinci aday: adı SERBEST olan kayıtlar, öncelik 50; yasak ona uygulanmaz, yeni hâli tutmaz.
+    await yetenekEkle({
+      grup: kisi.grup,
+      rol: MUDUR,
+      eylem: 'guncelle',
+      oncelik: 50,
+      sart: [{ alan: 'gorunenAd', islec: 'esit', deger: SERBEST }],
+    });
+    const yasak = await yasakla(kisi, {
+      eylem: 'guncelle',
+      oncelik: 10,
+      sart: [{ alan: 'telefon', islec: 'esit', deger: '5550009' }],
+    });
+    const hedef = await hedefKur(SERBEST);
+    await gozlemci.query('update kullanici set telefon = $2 where id = $1', [
+      hedef,
+      '5550009',
+    ]);
+
+    const hata = await guncelle(kisi, hedef, { gorunenAd: 'Yeni Ad' }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(hata).toBeInstanceOf(YasakReddi);
+    expect(hata).toMatchObject({ kod: 'yetki_yok', kararVerenYasakId: yasak });
+    expect((await hedefSatiri(hedef))?.gorunen_ad).toBe(SERBEST);
+    expect(await notSayisi(hedef)).toBe(0);
+  });
+});
+
 // Testin sonunda (Kök, Temel) ve (Kök, SuperAdmin) kümelerinde Oturum:kapat yasağı kalır; bu dosyada
 // sonra oturum kapatılmaz.
 it('h) muafiyet: kök yöneticinin yazması aynı yasaklarla geçer; başka rolün sistem satırı kapanır', async () => {

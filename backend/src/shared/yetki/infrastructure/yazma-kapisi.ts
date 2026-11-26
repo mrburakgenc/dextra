@@ -99,6 +99,14 @@ export class YasakReddi extends KodluHata {
   }
 }
 
+// İşin kendi iznine ek olarak aranan izin (TS-008 "Yönetim, izinler ve teşhis", AK-4): satırın sınanan
+// hâli onu gerektiriyorsa kişinin o hâli tutan ve ek eylemin yasaklarınca kapatılmamış bir ek eylem
+// yeteneği olmalıdır; yoksa yetki_yok. Gerekip gerekmediğine repository satırın değerlerinden karar verir.
+export interface EkIzin {
+  readonly eylem: string;
+  readonly gerekirMi: (satir: Readonly<Record<string, unknown>>) => boolean;
+}
+
 type NotunOrtakAlanlari = Omit<DegisiklikKaydiNotu, 'eylem' | 'degisen'>;
 type JsonDegeri = Extract<
   DegisiklikKaydiNotu,
@@ -141,6 +149,10 @@ type JsonDegeri = Extract<
 // Aday kalmazsa yetki_yok atılır (yasakla elenen adayda YasakReddi) ve run işi geri alır. Uygulanan
 // yasağı olmayan kişide sorgular yasaklardan önceki hâliyle aynıdır (TS-008 Değişmez 1).
 //
+// Ek izin (TS-008 AK-4): oluşturma, niyet ve silme işin kendi iznine ek bir eylem isteyebilir. Ek izin
+// aynı işlemde, işin adayı bulunduktan sonra ve yazmadan önce sınanır: oluşturmada yazılan satırda,
+// niyette ve silmede önceki hâlde. Satır ek izni gerektirmiyorsa sorgu gitmez.
+//
 // Her yazma, işle aynı işlemde bir değişiklik kaydı notu bırakır: yazan, kullanılan üyelik ve
 // yetenek, işin adı, kaynak, kayıt, eylem; güncellemede (niyet dahil) yalnız değişen kolonların eski
 // ve yeni değeri, oluşturmada yeni hâl, silmede eski hâl. Not anahtarları kolon adlarıdır (alan adının
@@ -163,6 +175,7 @@ export class YazmaKapisi {
     kaynak: M,
     veri: YazmaVerisi,
     deyim: OlusturmaDeyimi<M>,
+    ekIzin?: EkIzin,
   ): Promise<string> {
     const yaz = deyim as unknown as GenelOlusturmaDeyimi;
     const vt = islem.repo(ISLEM_ISTEMCISI);
@@ -190,6 +203,7 @@ export class YazmaKapisi {
           karar = kapatan;
           continue;
         }
+        await ekIzniSina(vekil, kaynak, id, yeni, ekIzin);
         await this.yazici.degisiklikKaydi(islem, {
           ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
           eylem: 'olusturma',
@@ -233,6 +247,7 @@ export class YazmaKapisi {
     id: string,
     veri: YazmaVerisi,
     deyim: YazmaDeyimi<M>,
+    ekIzin?: EkIzin,
   ): Promise<void> {
     if (DUZ_EYLEMLER.includes(eylem)) {
       throw new Error(`Niyet eylemi değil: ${eylem}`);
@@ -249,6 +264,7 @@ export class YazmaKapisi {
       duz: false,
       yumusak: alanlar.includes(SILINME_ALANI),
       yaz: (where, data) => yaz(vt, where, data),
+      ekIzin,
     });
   }
 
@@ -258,6 +274,7 @@ export class YazmaKapisi {
     kaynak: M,
     id: string,
     deyim: YazmaDeyimi<M>,
+    ekIzin?: EkIzin,
   ): Promise<void> {
     const yaz = deyim as unknown as GenelYazmaDeyimi;
     const vt = islem.repo(ISLEM_ISTEMCISI);
@@ -287,6 +304,7 @@ export class YazmaKapisi {
         continue;
       }
       const eski = await vekil.findUniqueOrThrow({ where: { id } });
+      await ekIzniSina(vekil, kaynak, id, eski, ekIzin);
       await yaz(vt, kosul, yumusak ? { [SILINME_ALANI]: new Date() } : {});
       await this.yazici.degisiklikKaydi(islem, {
         ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
@@ -317,9 +335,10 @@ export class YazmaKapisi {
         where: PrismaKosulu,
         veri: Record<string, unknown>,
       ) => Promise<unknown>;
+      ekIzin?: EkIzin | undefined;
     },
   ): Promise<void> {
-    const { isAdi, kaynak, eylem, id, veri, duz, yumusak, yaz } = istek;
+    const { isAdi, kaynak, eylem, id, veri, duz, yumusak, yaz, ekIzin } = istek;
     // Yeni hâl yetenekten bağımsızdır (aynı veri aynı satıra yazılır); bu yüzden önce önceki hâli
     // tutan ve kolonları kapsayan yetenekler sırayla toplanır, satır bir kez yazılır ve adaylar
     // sırayla yeni hâlde denenir. Önceki hâl yazmadan sonra sorulamayacağı için adaylar yazmadan önce
@@ -375,6 +394,7 @@ export class YazmaKapisi {
     if (ilk === undefined) {
       throw yetkiYok(karar);
     }
+    await ekIzniSina(vekil, kaynak, id, onceki, ekIzin);
     // Değişen alan yoksa yeni hâl önceki hâldir ve ilk aday iki hâli de tutar. Düz güncellemede
     // yazmanın yeteneği yeni hâli de tutan ilk adaydır (KR-008 Seçim 10 ve 18); hiçbiri tutmazsa
     // yetki_yok atılır ve run'dan çıkan hata yazmayı işin bütünüyle geri alır.
@@ -558,6 +578,39 @@ function yetkiYok(karar: DerlenmisKural | undefined): KodluHata {
   return karar === undefined
     ? new KodluHata('yetki_yok', 'Bu işlem için yetki yok')
     : new YasakReddi(karar.yetenekId);
+}
+
+// Ek iznin sınanması (TS-008 AK-4): satır bu işlemde kilitlenmiş ya da yazılmıştır; satır ek izni
+// gerektiriyorsa ek eylemin yetenekleri sırayla denenir ve satırı tutan, ek eylemin yasaklarınca
+// kapatılmayan ilk yetenekte sınama geçer (kayıt düzeyinde, niyet eylemi gibi). Hiçbiri geçmezse
+// yetki_yok: satır işin kendi izniyle bulunduğu için bulunamadi değildir. Sınama yazmaz, not bırakmaz.
+async function ekIzniSina(
+  vekil: YazmaVekili,
+  kaynak: string,
+  id: string,
+  satir: Readonly<Record<string, unknown>>,
+  ekIzin: EkIzin | undefined,
+): Promise<void> {
+  if (ekIzin?.gerekirMi(satir) !== true) {
+    return;
+  }
+  const yasaklari = uygulananYasaklar(
+    yazmaBaglami().yetki,
+    kaynak,
+    ekIzin.eylem,
+  );
+  const tutar = yasakSinamasi(vekil, id);
+  let karar: DerlenmisKural | undefined;
+  for (const kural of kurallar(kaynak, ekIzin.eylem)) {
+    if ((await vekil.count({ where: kayitKosulu(id, kural) })) > 0) {
+      const kapatan = await kapatanYasak(yasaklari(kural), undefined, tutar);
+      if (kapatan === undefined) {
+        return;
+      }
+      karar = kapatan;
+    }
+  }
+  throw yetkiYok(karar);
 }
 
 // Satırı koşul tutuyorsa anahtar dışı güncelleme kilidiyle kilitler. PostgreSQL değeri değişmeyen
