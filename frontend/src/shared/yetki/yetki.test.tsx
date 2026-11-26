@@ -279,3 +279,143 @@ describe('<Kolon>', () => {
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Ad']);
   });
 });
+
+// Yasaklar (ters kurallar; TS-008 "Ekran", kapanan AU-6 ve AU-28). Yasak tutuyorsa kayıt düzeyindeki
+// soru hayır, tutmuyorsa öndeki izin kuralının cevabı (evet) çıkar.
+const IZIN: YetkiKurali = { action: 'guncelle', subject: 'Kullanici' };
+
+function yasakla(conditions: Record<string, unknown>) {
+  return yetkiKur([IZIN, { ...IZIN, conditions, inverted: true }]);
+}
+
+function yalnizIzin(conditions: Record<string, unknown>) {
+  return yetkiKur([{ ...IZIN, conditions }]);
+}
+
+function sor(
+  yetki: ReturnType<typeof yetkiKur>,
+  kayit: Record<string, unknown>,
+) {
+  return yetki.can('guncelle', kaydiEtiketle('Kullanici', kayit));
+}
+
+function telefonSarti(islec: string, deger: unknown) {
+  return { AND: [{ telefon: { [islec]: deger } }] };
+}
+
+// Boş kolonda sekiz işleç; "izin" kurulu yorumlayıcının bugünkü sonucudur (güvenli eşleyiciden geçer).
+const SEKIZ_ISLEC = [
+  { islec: 'equals', deger: '5551001', izin: false },
+  { islec: 'not', deger: '5551001', izin: true },
+  { islec: 'in', deger: ['5551001'], izin: false },
+  { islec: 'notIn', deger: ['5551001'], izin: true },
+  { islec: 'lt', deger: 5, izin: true },
+  { islec: 'lte', deger: 5, izin: true },
+  { islec: 'gt', deger: 5, izin: false },
+  { islec: 'gte', deger: 5, izin: false },
+];
+
+describe('yasakların eşleyicisi', () => {
+  const GRUP_G1 = { AND: [{ grupId: { equals: 'g1' } }] };
+  const TANINMAYAN = { AND: [{ grupId: { benzer: 'g1' } }] };
+
+  it('ters kural yasaktır: koşulu tutan kayıtta hayır, tutmayan kayıtta evet çıkar', () => {
+    const yetki = yasakla(GRUP_G1);
+
+    expect(sor(yetki, { grupId: 'g1' })).toBe(false);
+    expect(sor(yetki, { grupId: 'g9' })).toBe(true);
+  });
+
+  it('şartın baktığı kolon kayıtta yoksa yasak tutuyor sayılır', () => {
+    expect(sor(yasakla(GRUP_G1), { id: 'k1' })).toBe(false);
+  });
+
+  it('tanınmayan işleçli yasak tutuyor sayılır', () => {
+    expect(sor(yasakla(TANINMAYAN), { grupId: 'g9' })).toBe(false);
+  });
+
+  it('kayıtta değerlendirilirken hata veren yasak tutuyor sayılır', () => {
+    const yetki = yasakla({ AND: [{ kullaniciAdi: { startsWith: 'a' } }] });
+
+    expect(sor(yetki, { kullaniciAdi: 5 })).toBe(false);
+  });
+
+  it.each(SEKIZ_ISLEC)(
+    'kolonu boş olan kayıtta $islec yasağı tutmuyor',
+    ({ islec, deger }) => {
+      const yetki = yasakla(telefonSarti(islec, deger));
+
+      expect(sor(yetki, { telefon: null })).toBe(true);
+    },
+  );
+
+  it('iki öğeli şartta bir öğenin kolonu boşsa yasak tutmuyor, kolonu yoksa tutuyor', () => {
+    const yetki = yasakla({
+      AND: [{ grupId: { equals: 'g1' } }, { telefon: { not: 'x' } }],
+    });
+
+    expect(sor(yetki, { grupId: 'g1', telefon: 'y' })).toBe(false);
+    expect(sor(yetki, { grupId: 'g1', telefon: null })).toBe(true);
+    expect(sor(yetki, { grupId: 'g1' })).toBe(false);
+  });
+
+  it('yasaktan sonra verilen izin kazanır: kurallar verildiği sırayla kurulur', () => {
+    const yetki = yetkiKur([
+      { ...IZIN, conditions: GRUP_G1, inverted: true },
+      IZIN,
+    ]);
+
+    expect(sor(yetki, { grupId: 'g1' })).toBe(true);
+  });
+
+  describe('aynı durumlarda izin kuralının sonucu değişmez', () => {
+    it('kolonu kayıtta olmayan ve tanınmayan işleçli izin tutmuyor', () => {
+      expect(sor(yalnizIzin(GRUP_G1), { id: 'k1' })).toBe(false);
+      expect(sor(yalnizIzin(TANINMAYAN), { grupId: 'g1' })).toBe(false);
+    });
+
+    it.each(SEKIZ_ISLEC)(
+      'kolonu boş olan kayıtta $islec izni bugünkü gibi $izin verir',
+      ({ islec, deger, izin }) => {
+        const yetki = yalnizIzin(telefonSarti(islec, deger));
+
+        expect(sor(yetki, { telefon: null })).toBe(izin);
+      },
+    );
+  });
+});
+
+describe('yasaklarda tür düzeyi', () => {
+  const OKU: YetkiKurali = { action: 'oku', subject: 'Kullanici' };
+  const SART = { AND: [{ gorunenAd: { equals: 'Ada' } }] };
+
+  it('şartlı yasak varken menü sorusu ve kolon başlığı evet verir', () => {
+    const kayitYasagi = yetkiKur([
+      OKU,
+      { ...OKU, conditions: SART, inverted: true },
+    ]);
+    const kolonYasagi = yetkiKur([
+      OKU,
+      { ...OKU, conditions: SART, fields: ['telefon'], inverted: true },
+    ]);
+
+    expect(kayitYasagi.can('oku', 'Kullanici')).toBe(true);
+    expect(kolonCizilir(kayitYasagi, 'Kullanici', ['telefon'])).toBe(true);
+    expect(kolonYasagi.can('oku', 'Kullanici')).toBe(true);
+    expect(kolonCizilir(kolonYasagi, 'Kullanici', ['telefon'])).toBe(true);
+  });
+
+  it('şartsız yasak tür düzeyinde de hayır verir: kayıt yasağı menüyü, kolon yasağı o kolonu kapatır', () => {
+    const kayitYasagi = yetkiKur([OKU, { ...OKU, inverted: true }]);
+    const kolonYasagi = yetkiKur([
+      OKU,
+      { ...OKU, fields: ['telefon'], inverted: true },
+    ]);
+
+    expect(kayitYasagi.can('oku', 'Kullanici')).toBe(false);
+    expect(kolonCizilir(kayitYasagi, 'Kullanici', ['gorunenAd'])).toBe(false);
+    expect(kolonYasagi.can('oku', 'Kullanici')).toBe(true);
+    expect(kolonCizilir(kolonYasagi, 'Kullanici', ['telefon'])).toBe(false);
+    expect(kolonCizilir(kolonYasagi, 'Kullanici', ['gorunenAd'])).toBe(true);
+  });
+});

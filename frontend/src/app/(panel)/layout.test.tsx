@@ -275,6 +275,66 @@ describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {
   });
 });
 
+// Yasağı olan kişinin cevabı (TS-008 "Ekran"): yasak ters kuraldır ve sunucunun sırasıyla gelir.
+describe('PanelDuzeni ters kural', () => {
+  const IZIN = { action: 'oku', subject: 'Kullanici', yetenekId: 'y1' };
+
+  it('şartsız ters kuralı olan cevapta menü sorusu hayır verir; yasak izin olarak okunmaz', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        { kurallar: [IZIN, { ...IZIN, yetenekId: 'y2', inverted: true }] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Kullanıcılar' })).toBeNull();
+  });
+
+  it('şartlı ters kural menü sorusunu etkilemez', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        {
+          kurallar: [
+            IZIN,
+            {
+              ...IZIN,
+              yetenekId: 'y2',
+              conditions: { AND: [{ telefon: { equals: '5551001' } }] },
+              inverted: true,
+            },
+          ],
+        },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(
+      screen.getByRole('link', { name: 'Kullanıcılar' }).getAttribute('href'),
+    ).toBe('/kullanicilar');
+  });
+
+  it('yasaktan sonra gelen izin kazanır: kurallar verildiği sırayla kurulur', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValueOnce(
+      jsonCevap(
+        { kurallar: [{ ...IZIN, yetenekId: 'y2', inverted: true }, IZIN] },
+        200,
+      ),
+    );
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('link', { name: 'Kullanıcılar' })).toBeDefined();
+  });
+});
+
 // Yenilenemeyen oturum (GV-099): ara katman backend'e ulaşamayınca çerezlere dokunmaz; erişim
 // çerezi yoktur, yenileme ve cihaz çerezi durur.
 function cerezler(...adlar: string[]) {

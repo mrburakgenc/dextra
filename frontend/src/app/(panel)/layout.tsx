@@ -19,6 +19,7 @@ const YetkilerimCevabi = z.object({
       subject: z.string(),
       conditions: z.record(z.string(), z.unknown()).optional(),
       fields: z.array(z.string()).optional(),
+      inverted: z.boolean().optional(),
     }),
   ),
 });
