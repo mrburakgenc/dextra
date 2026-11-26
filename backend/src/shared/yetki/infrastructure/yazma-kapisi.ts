@@ -17,9 +17,11 @@ import {
   OutboxYazici,
 } from '../../messaging/infrastructure/outbox/outbox-yazici.js';
 import type { PrismaKosulu } from '../application/sart-cevirici.js';
-import type {
-  DerlemeSonucu,
-  YetenekKurali,
+import {
+  type DerlemeSonucu,
+  type DerlenmisKural,
+  uygulananYasaklar,
+  type YetenekKurali,
 } from '../application/yetenek-derleyici.js';
 import {
   KAYNAK_KATALOGU,
@@ -88,6 +90,15 @@ interface YazmaVekili {
   count(args: object): Promise<number>;
 }
 
+// Yasağın reddettiği yazma (TS-008 "Yazma"): cevabı yetki_yok'tur. Karar veren yasak, son adayı kapatan
+// en yüksek öncelikli yasaktır (eşitlikte en eski); yalnız iç bilgidir, hata süzgeci cevaba kod, ileti
+// ve ayrıntıdan başkasını yazmaz.
+export class YasakReddi extends KodluHata {
+  constructor(readonly kararVerenYasakId: string) {
+    super('yetki_yok', 'Bu işlem için yetki yok');
+  }
+}
+
 type NotunOrtakAlanlari = Omit<DegisiklikKaydiNotu, 'eylem' | 'degisen'>;
 type JsonDegeri = Extract<
   DegisiklikKaydiNotu,
@@ -120,6 +131,15 @@ type JsonDegeri = Extract<
 //
 // Oluşturma: alanları kapsayan yetenekler aday olur; satır yazılır ve adayların koşuluyla sırayla
 // yeniden okunur; ilk gören yetenek yazmanın yeteneğidir, hiçbiri görmüyorsa yetki_yok.
+//
+// Yasaklar (TS-008 "Tanım", "Muafiyetler" ve "Yazma"; KU-017, KU-018): adaya, muaf değilse, ondan düşük
+// öncelikli olmayan aynı eylemin yasakları uygulanır. Satır kilitlendikten sonra, kilit altında, satırı
+// kesin tutan yasaklar veritabanına sorulur; adayı kapatan yasak varsa o yetenek aday olmaz (düz
+// güncellemede kaydın bütününü ya da yazılan alanlardan birini kapatan, öbür eylemlerde her yasak).
+// Düz güncellemede yeni hâl de sınanır: yeni hâlde yasağın kapattığı aday yazmanın yeteneği olamaz.
+// Niyet eyleminde ve silmede yalnız önceki hâle bakılır; oluşturmada sınama yazılan satırın üzerindedir.
+// Aday kalmazsa yetki_yok atılır (yasakla elenen adayda YasakReddi) ve run işi geri alır. Uygulanan
+// yasağı olmayan kişide sorgular yasaklardan önceki hâliyle aynıdır (TS-008 Değişmez 1).
 //
 // Her yazma, işle aynı işlemde bir değişiklik kaydı notu bırakır: yazan, kullanılan üyelik ve
 // yetenek, işin adı, kaynak, kayıt, eylem; güncellemede (niyet dahil) yalnız değişen kolonların eski
@@ -156,8 +176,20 @@ export class YazmaKapisi {
     }
     const id = yeniKimlik();
     const yeni = await yaz(vt, { ...yazilan, id });
+    const yasaklari = uygulananYasaklar(
+      yazmaBaglami().yetki,
+      kaynak,
+      OLUSTURMA_EYLEMI,
+    );
+    const tutar = yasakSinamasi(vekil, id);
+    let karar: DerlenmisKural | undefined;
     for (const kural of adaylar) {
       if ((await vekil.count({ where: kayitKosulu(id, kural) })) > 0) {
+        const kapatan = await kapatanYasak(yasaklari(kural), undefined, tutar);
+        if (kapatan !== undefined) {
+          karar = kapatan;
+          continue;
+        }
         await this.yazici.degisiklikKaydi(islem, {
           ...notunOrtakAlanlari(isAdi, kaynak, id, kural),
           eylem: 'olusturma',
@@ -166,7 +198,7 @@ export class YazmaKapisi {
         return id;
       }
     }
-    throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+    throw yetkiYok(karar);
   }
 
   async deyimleGuncelle<M extends Prisma.ModelName>(
@@ -231,6 +263,13 @@ export class YazmaKapisi {
     const vt = islem.repo(ISLEM_ISTEMCISI);
     const { alanlar, vekil } = this.kaynak(vt, kaynak);
     const yumusak = alanlar.includes(SILINME_ALANI);
+    const yasaklari = uygulananYasaklar(
+      yazmaBaglami().yetki,
+      kaynak,
+      SILME_EYLEMI,
+    );
+    const tutar = yasakSinamasi(vekil, id);
+    let karar: DerlenmisKural | undefined;
     for (const kural of kurallar(kaynak, SILME_EYLEMI)) {
       // Yumuşak silinmiş kayıt yeniden silinmez: silinme zamanı bir kez yazılır.
       const kosul = {
@@ -242,6 +281,11 @@ export class YazmaKapisi {
       if (!(await kilitle(vekil, id, kosul))) {
         continue;
       }
+      const kapatan = await kapatanYasak(yasaklari(kural), undefined, tutar);
+      if (kapatan !== undefined) {
+        karar = kapatan;
+        continue;
+      }
       const eski = await vekil.findUniqueOrThrow({ where: { id } });
       await yaz(vt, kosul, yumusak ? { [SILINME_ALANI]: new Date() } : {});
       await this.yazici.degisiklikKaydi(islem, {
@@ -250,6 +294,10 @@ export class YazmaKapisi {
         degisen: kolonlar(eski, (deger) => ({ eski: deger })),
       });
       return;
+    }
+    // Satırı kilitleyen her aday yasakla elendiyse yetki_yok; hiçbiri kilitleyemediyse bulunamadi.
+    if (karar !== undefined) {
+      throw yetkiYok(karar);
     }
     throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
   }
@@ -279,6 +327,9 @@ export class YazmaKapisi {
     let onceki: Record<string, unknown> | undefined;
     let degisen: Record<string, unknown> = {};
     const adaylar: YetenekKurali[] = [];
+    const yasaklari = uygulananYasaklar(yazmaBaglami().yetki, kaynak, eylem);
+    const oncekiniTutar = yasakSinamasi(vekil, id);
+    let karar: DerlenmisKural | undefined;
     for (const kural of kurallar(kaynak, eylem)) {
       // Yumuşak silinmiş kayıt güncellenmez: silinmiş satır kilitlenmez ve sonuç bulunamadi olur.
       const kosul = {
@@ -303,6 +354,15 @@ export class YazmaKapisi {
       if (duz && !kolonlariKapsar(kural, Object.keys(degisen))) {
         continue;
       }
+      const kapatan = await kapatanYasak(
+        yasaklari(kural),
+        duz ? Object.keys(degisen) : undefined,
+        oncekiniTutar,
+      );
+      if (kapatan !== undefined) {
+        karar = kapatan;
+        continue;
+      }
       adaylar.push(kural);
       if (!duz) {
         break;
@@ -313,7 +373,7 @@ export class YazmaKapisi {
       throw new KodluHata('bulunamadi', 'Kayıt bulunamadı');
     }
     if (ilk === undefined) {
-      throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+      throw yetkiYok(karar);
     }
     // Değişen alan yoksa yeni hâl önceki hâldir ve ilk aday iki hâli de tutar. Düz güncellemede
     // yazmanın yeteneği yeni hâli de tutan ilk adaydır (KR-008 Seçim 10 ve 18); hiçbiri tutmazsa
@@ -323,8 +383,18 @@ export class YazmaKapisi {
       await yaz(kayitKosulu(id, ilk), degisen);
       if (duz) {
         yazan = undefined;
+        const yeniyiTutar = yasakSinamasi(vekil, id);
         for (const kural of adaylar) {
           if ((await vekil.count({ where: kayitKosulu(id, kural) })) > 0) {
+            const kapatan = await kapatanYasak(
+              yasaklari(kural),
+              Object.keys(degisen),
+              yeniyiTutar,
+            );
+            if (kapatan !== undefined) {
+              karar = kapatan;
+              continue;
+            }
             yazan = kural;
             break;
           }
@@ -332,7 +402,7 @@ export class YazmaKapisi {
       }
     }
     if (yazan === undefined) {
-      throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+      throw yetkiYok(karar);
     }
     await this.yazici.degisiklikKaydi(islem, {
       ...notunOrtakAlanlari(isAdi, kaynak, id, yazan),
@@ -431,6 +501,63 @@ function kolonlariKapsar(
 
 function kayitKosulu(id: string, kural: YetenekKurali): PrismaKosulu {
   return { AND: [{ id: { equals: id } }, kural.conditions ?? {}] };
+}
+
+// Satırın bir hâlinde, yasağın satırı kesin tutup tutmadığı (TS-008 "Yazma"): veritabanına yasağın
+// "kesin tutmuyor" koşuluyla sorulur, her yasak o hâlde bir kez. Koşulsuz yasak (bozuk yasak dahil)
+// sorgusuz tutar. Satır kilitli olduğu için sorulan hâl kilidi alan işlemin gördüğü hâldir.
+function yasakSinamasi(
+  vekil: YazmaVekili,
+  id: string,
+): (yasak: DerlenmisKural) => Promise<boolean> {
+  const sonuclar = new Map<DerlenmisKural, boolean>();
+  return async (yasak) => {
+    let tutar = sonuclar.get(yasak);
+    if (tutar === undefined) {
+      tutar =
+        yasak.conditions === undefined ||
+        yasak.kesinTutmuyor === undefined ||
+        (await vekil.count({
+          where: { AND: [{ id: { equals: id } }, yasak.kesinTutmuyor] },
+        })) === 0;
+      sonuclar.set(yasak, tutar);
+    }
+    return tutar;
+  };
+}
+
+// Adayı kapatan yasak (TS-008 "Tanım"); kapatan yoksa tanımsız. Yasaklar adaya uygulananlardır. Düz
+// güncellemede (yazılan verilir) satırı kesin tutan yasak, kaydın bütününü ya da yazılan alanlardan
+// birini kapatıyorsa adayı kapatır; oluşturma, silme ve niyet eylemi kayıt düzeyindedir: satırı kesin
+// tutan her yasak kapatır. Birden çok yasak kapatıyorsa dönen, en yüksek öncelikli olandır (eşitlikte
+// en eski); sorgular bu sırayla, ilk tutan yasağa kadar gider.
+async function kapatanYasak(
+  yasaklar: readonly DerlenmisKural[],
+  yazilan: readonly string[] | undefined,
+  tutar: (yasak: DerlenmisKural) => Promise<boolean>,
+): Promise<DerlenmisKural | undefined> {
+  const kapatabilen = yasaklar
+    .filter(
+      (y) =>
+        yazilan === undefined ||
+        y.fields === undefined ||
+        [y.fields].flat().some((alan) => yazilan.includes(alan)),
+    )
+    .sort((a, b) => b.oncelik - a.oncelik);
+  for (const yasak of kapatabilen) {
+    if (await tutar(yasak)) {
+      return yasak;
+    }
+  }
+  return undefined;
+}
+
+// Aday kalmayan yazmanın reddi: karar, yasakla elenen son adayı kapatan yasaktır; yasakla elenen aday
+// yoksa ret yasaklardan önceki hâliyledir.
+function yetkiYok(karar: DerlenmisKural | undefined): KodluHata {
+  return karar === undefined
+    ? new KodluHata('yetki_yok', 'Bu işlem için yetki yok')
+    : new YasakReddi(karar.yetenekId);
 }
 
 // Satırı koşul tutuyorsa anahtar dışı güncelleme kilidiyle kilitler. PostgreSQL değeri değişmeyen

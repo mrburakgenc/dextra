@@ -5,9 +5,10 @@ import {
   istekBaglami,
 } from '../../observability/istek-baglami/istek-baglami.js';
 import type { PrismaKosulu } from '../application/sart-cevirici.js';
-import type {
-  DerlenmisKural,
-  YetenekKurali,
+import {
+  type DerlenmisKural,
+  uygulananYasaklar,
+  type YetenekKurali,
 } from '../application/yetenek-derleyici.js';
 import {
   KAYNAK_KATALOGU,
@@ -149,20 +150,12 @@ export class OkumaKapisi {
     if (yetki === undefined) {
       throw new Error('İstek bağlamında derlenmiş yetki yok');
     }
-    const yasaklar = yetki.butunKurallar.filter(
-      (k) => k.giremez && k.subject === kaynak && k.action === OKUMA_EYLEMI,
-    );
-    const izinler = new Map(yetki.butunKurallar.map((k) => [k.yetenekId, k]));
+    const yasaklari = uygulananYasaklar(yetki, kaynak, OKUMA_EYLEMI);
     const katilanlar: Katilan[] = yetki.kurallar
       .filter((k) => k.subject === kaynak && k.action === OKUMA_EYLEMI)
       .flatMap((kural) => {
         // Muaf izne yasak uygulanmaz (KU-018); öbürüne ondan düşük öncelikli olmayan yasaklar uygulanır.
-        const izin = izinler.get(kural.yetenekId);
-        const uygulanan =
-          izin?.yasaktanMuaf === true
-            ? []
-            : yasaklar.filter((y) => y.oncelik >= (izin?.oncelik ?? 0));
-        const katilan = katilimi(kural, alanlar, bakilan, uygulanan);
+        const katilan = katilimi(kural, alanlar, bakilan, yasaklari(kural));
         return katilan === undefined ? [] : [katilan];
       });
     // Kısa yol yalnız yasak bu okumaya katılan bir izne gerçekten uygulanıyorsa kapanır (TS-008 AU-34,
