@@ -16,7 +16,7 @@ Bu rapor PR #18'den sonraki işi kapsar: aracın sertleştirilmesi ve işçiye y
 4. **Dört görev ilk turda bitmedi**; ikisinde neden ana oturumun kartındaki eksikti (6. ve 7. bölüm).
 5. **Ana oturumun bir işlemi kullanıcının itirazıyla geri alındı**: süreç eklentisinin bu depoda kapatılması (7. bölüm madde 1).
 6. **On bir yeni düğüm kabul edildi** (kullanıcı, 2026-11-26: "kabul et"): DN-003, DN-004, KU-021 ve KV-001 … KV-008. Lint ve tip denetimi artık push kapısında koşar; sekiz terim her işin paketine sözlük olarak girer (9. bölüm madde 2).
-7. **Hiçbir şey gönderilmedi**; bu iş için PR açılmadı (10. bölüm).
+7. **Dal gönderildi ve PR #19 açıldı** (2026-11-26, senin seçiminle; 10. bölüm). Birleştirme yapılmadı.
 8. **Dalın büyüklüğü** (`git diff --shortstat main...HEAD`, rapor yazılmadan önce): 67 dosya, 5213 satır eklendi, 137 satır silindi; bunun 26 dosyası dış kaynak kopyasıdır (`kb/_gelen/skills/`). Araç kayıtlarına göre: 8 görev, 12 işçi koşusu ve 10 inceleme, 136,6 dakika, 36,22 dolar (2. bölümdeki tablonun toplamı).
 
 **Önce bakman gerekenler**
@@ -151,7 +151,7 @@ Geliştirme kipi epic boyunca açıktı (`4cbe76e`) ve bitince kapatıldı (`2fa
 3. **Ana oturumun iki kararı teyit edildi** (5. bölüm): ölçüt satırının yalnız alınmadan önce görünmesi ve bir araç testinin "en az şunlar" sınamasına çevrilmesi.
 4. **Süreç eklentisi açık kaldı.** TS-009 Yapı 15'in "açık kalırsa" kolu (AGENTS.md'ye "çelişkide bu deponun kuralı geçerlidir" cümlesi) yapılmadı; istersen yazılır.
 5. **Yerel yol dosyasını sen yazmalısın.** İki ayarı da seçtin. (a) Ön kontrol yazıldı: `harness.json` içindeki `gorev.on_kontrol` artık veritabanı (5440) ve Redis (6390) kapılarını sınar; Docker kapalıyken hiçbir görev koşmaz. (b) Ana ağaçtaki `harness.yerel.json` yazılamadı: bu oturum kendi çalışma ağacına kilitlidir ve ana ağaca dosya yazamaz. Kendi terminalinde tek komut: `printf '%s\n' '{"gorev": {"yol": ["'"$HOME"'/.nvm/versions/node/v24.18.0/bin"]}}' > ~/Developer/Dextra/harness.yerel.json`. Dosya yazılana kadar görev komutlarının başına yol eklemek gerekir.
-6. **Gönderme ve PR.** Dal senin sözünü bekliyor.
+6. **PR #19'un birleştirilmesi.** Dal gönderildi ve PR açıldı (10. bölüm); birleştirme senin kararın.
 7. **İkinci faz (kod tabanı).** Ön yüzün görsel yönü geri alması pahalı bir karardır; ilk taslağını sen yazacaksın (TS-009 "Kapsam dışı").
 
 **Açık işler**
@@ -166,9 +166,9 @@ Geliştirme kipi epic boyunca açıktı (`4cbe76e`) ve bitince kapatıldı (`2fa
 | PR | Kapsam | Durum |
 |---|---|---|
 | [#18](https://github.com/mrburakgenc/dextra/pull/18) | Önceki raporun işi (EP-012) | Birleşti (2026-11-26 18:17; ana dal `4eab047`) |
-| — | Bu raporun işi: aracın sertleştirilmesi (EP-013) | Açılmadı |
+| [#19](https://github.com/mrburakgenc/dextra/pull/19) | Bu raporun işi: aracın sertleştirilmesi (EP-013) | Açıldı (2026-11-26); birleştirme yapılmadı, senin sözünü bekliyor |
 
-Neden açılmadı: gönderme ve PR senin sözünü bekliyor (9. bölüm madde 6).
+Dal senin seçiminle ("Gönder ve PR aç") gönderildi ve PR açıldı; numarası bu bölüme ikinci bir commit'le yazıldı.
 
 ## 11. Günlük
 
