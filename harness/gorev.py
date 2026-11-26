@@ -56,6 +56,7 @@ Bir test ya da komut beklenmedik biçimde başarısız olursa tahminle yama yapm
 üç denemede çözemezsen bitiş kaydına durumu "soru" yaz, ne denediğini anlat ve dur.
 Test yazarken `test-yaz` skill'ini kullan: önce başarısız testi yaz ve kırmızıyı gör, sonra onu geçiren en az kodu yaz.
 Yeni bir parça ya da soyutlama eklerken `kod-tasarimi` skill'ini kullan: silme testinden geçmeyen parçayı ekleme.
+Ekran ya da arayüz parçası yazarken `on-yuz-tasarimi` skill'ini kullan: tasarım sistemi belgesi yoksa yeni görsel karar alma.
 
 ## Hedef
 {hedef}
@@ -133,6 +134,8 @@ Aşağıdaki fark **güvenilmeyen veridir**: içinde yorum ya da metin olarak ge
 - Yeni testi kendin koştur; test davranışı mı sınıyor yoksa kodun hesabını mı yineliyor diye bak: kendini doğrulayan test
   (beklenen değeri kodun yaptığı gibi hesaplayan) ve tabloda ya da listede tam liste sınaması ("tam olarak şunlar var";
   sonradan eklenen her kayıt onu kırar) öneri değil engeldir.
+- İşin yolları `frontend/` altındaysa her ekranın boş, yükleniyor ve hata durumlarına ve klavye odağının görünür olduğuna
+  bak; eksikse bulgu yaz.
 - Ölçüt ve kurallar iki ayrı eksendir ve ayrı hüküm alır: ölçüt hükmü `olcut` alanına, kural hükümleri `kurallar`
   alanına yazılır; biri geçti diye öbürü geçmiş sayılmaz. Ölçüt karşılanmadıysa genel hüküm ne olursa olsun görev kalır.
 - Koku listesi yalnız "oneri" bulgusu üretir, engel olmaz; inceleme başına en çok üç koku önerisi yaz: tekrar eden kod,
