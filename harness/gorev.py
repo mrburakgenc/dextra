@@ -561,6 +561,20 @@ def kosu_isareti(kayit: pathlib.Path) -> dict | None:
     return isaret
 
 
+def _kesisen_kosu(kayitlar: pathlib.Path, kimlik: str, yollar: list) -> tuple | None:
+    """Şu an süren (kosuyor.json işareti canlı) ve yolları `yollar` ile kesişen başka görev: (kimlik, işaret); yoksa
+    None (TS-009 Yapı 5). Denetim plan yürütmesindekiyle aynıdır; plan yürütmesinin yan yana koşturduğu yapraklar
+    zaten kesişmez."""
+    import plan  # aynı dizinde; döngüsel yüklemeyi önlemek için burada
+    for kayit in sorted(kayitlar.glob("GV-*")):
+        if kayit.name == kimlik:
+            continue
+        isaret = kosu_isareti(kayit)
+        if isaret and plan._kesisir(yollar, _json_oku(kayit / "durum.json").get("yollar") or []):
+            return kayit.name, isaret
+    return None
+
+
 def kosu_metni(isaret: dict) -> str:
     """Koşu işaretinin okunur hâli: 'koşuyor · 12 dk' ya da 'inceleniyor · 3 dk'."""
     dk = (datetime.datetime.now() - datetime.datetime.fromisoformat(isaret["basla"])).total_seconds() // 60
@@ -880,16 +894,61 @@ def kosu_gecmisi(kayit: pathlib.Path) -> list:
 
 
 @contextlib.contextmanager
-def _kosuyor(kayit: pathlib.Path, tip: str):
-    """Oturum sürerken görevin kaydına koşu işareti koyar; oturum bitince (hata olsa da) kaldırır."""
+def _kosuyor(kayit: pathlib.Path, tip: str, yollar: list | None = None):
+    """Oturum sürerken görevin kaydına koşu işareti koyar; oturum bitince (hata olsa da) kaldırır.
+
+    `yollar` verilirse (gorev kos) işaret, yolları kesişen süren görev yoksa konur, varsa hiçbir şey yazılmadan
+    durulur. Denetim ile işaret, görev kayıtlarının ortak dosya kilidi altında tek adımdır: iki süreç aynı anda
+    başlasa da kesişen iki görevden yalnız biri geçer (TS-009 Yapı 5). Kilidi süreç tutar, ölünce işletim sistemi
+    bırakır; ölen sürecin işaretini kosu_isareti geçersiz sayar."""
     yol = kayit / "kosuyor.json"
     gecici = kayit / "kosuyor.json.yaz"   # yarım yazılmış işareti okuyan onu ölü sanıp silmesin
-    _json_yaz(gecici, {"tip": tip, "pid": os.getpid(), "basla": _simdi()})
-    os.replace(gecici, yol)
+    with open(kayit.parent / "kesisim.kilit", "a") as kilit:
+        fcntl.flock(kilit, fcntl.LOCK_EX)
+        kesisen = None if yollar is None else _kesisen_kosu(kayit.parent, kayit.name, yollar)
+        if kesisen:
+            raise h.HarnessHata("%s koşturulmadı: dosya yolları şu an süren %s görevininkilerle kesişiyor (%s). O "
+                                "oturum bitince yeniden koştur" % (kayit.name, kesisen[0], kosu_metni(kesisen[1])))
+        _json_yaz(gecici, {"tip": tip, "pid": os.getpid(), "basla": _simdi()})
+        os.replace(gecici, yol)
     try:
         yield
     finally:
         yol.unlink(missing_ok=True)
+
+
+def _ortam(kok: pathlib.Path) -> dict:
+    """Görevin komutlarına ve oturumlarına verilen ortam değişkenleri: deponun kökündeki harness.yerel.json
+    (depoya girmez) gorev.yol klasörleri sayıyorsa onlar PATH'in başına eklenir; dosya yoksa ortam olduğu gibidir."""
+    ana = h.ortak_kok(kok)
+    ortam = dict(os.environ)
+    yol = [str(ana / y) for y in (_json_oku(ana / "harness.yerel.json").get("gorev") or {}).get("yol") or []]
+    if yol:
+        ortam["PATH"] = os.pathsep.join(yol + [ortam.get("PATH", os.defpath)])
+    return ortam
+
+
+def _ortam_hatasi(kayit: pathlib.Path, tip: str, agac: pathlib.Path, mesaj: str) -> None:
+    """Ortam hazır değil: koşu geçmişine sonucu 'ortam' olan satırı yazar ve oturumu başlatmadan durur. Satırın tipi
+    'ortam'dır, takılan adım (isci ya da inceleme) 'adim'dadır: oturum başlamadığı için koşu sayılmaz."""
+    _gecmise_ekle(kayit, dict(_gecmis_satiri("ortam", datetime.datetime.now(), 0, "", "ortam", agac), adim=tip))
+    raise h.HarnessHata(mesaj)
+
+
+def _on_kontrol(g: dict, agac: pathlib.Path, kayit: pathlib.Path, kimlik: str, tip: str, ortam: dict) -> None:
+    """gorev.on_kontrol komutlarını kum havuzunun dışında, görev ağacında sırayla koşturur (TS-009 Yapı 4);
+    biri sıfırdan farklı kodla çıkarsa ya da bulunamazsa oturum başlamaz."""
+    for komut in g.get("on_kontrol") or []:
+        komut = [str(a) for a in komut]
+        try:
+            r = subprocess.run(komut, cwd=agac, env=ortam, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", stdin=subprocess.DEVNULL)
+            kod, cikti = r.returncode, (r.stdout or "") + (r.stderr or "")
+        except FileNotFoundError:
+            kod, cikti = "yok", "'%s' yolda bulunamadı (PATH: %s)" % (komut[0], ortam.get("PATH", os.defpath))
+        if kod != 0:
+            _ortam_hatasi(kayit, tip, agac, "%s: ortam hazır değil, oturum başlamadı. Ön kontrol komutu kaldı "
+                          "(çıkış: %s): %s\n%s" % (kimlik, kod, " ".join(komut), cikti[-400:]))
 
 
 def _ust_talimat_dosyalari(agac: pathlib.Path) -> list:
@@ -948,7 +1007,7 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
     if ek_ayar:
         komut += ["--settings", json.dumps(ek_ayar)]
     # Oturum bağımsızdır: üst oturumun kimliği, eforu, proje dizini ve bağlantıları devralınmaz.
-    ortam = {k: v for k, v in os.environ.items() if not k.startswith("CLAUDE")}
+    ortam = {k: v for k, v in _ortam(agac).items() if not k.startswith("CLAUDE")}
     ortam.update(HARNESS_GOREV=kimlik, HARNESS_KOK=str(agac), HARNESS_ROL=rol)
     sorunlar, zaman_asimi, cikti = [], False, ""
     try:
@@ -1068,88 +1127,97 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None, tas
     taslaklar = is_taslaklari(kok, d, p)
     if taslaklar and not taslakla:
         raise h.HarnessHata(taslak_engeli(kimlik, taslaklar, "python3 harness/h.py gorev kos %s --taslakla" % kimlik))
-    onceki = _json_oku(kayit / "bitis.json")    # aşağıda silinir; soru ya da sorun varsa işçiye geri verilir
-    onceki_sorunlar = _json_oku(kayit / "rapor.json").get("sorunlar") or []
-    if cevap:
-        if not onceki.get("soru"):  # soru, başka bir sorunla birlikte de gelebilir (koşum "sorunlu" olur)
-            raise h.HarnessHata("%s soru sormadı; --cevap yalnız soru sormuş göreve verilir" % kimlik)
-        if h.acik_uc_kimlikleri(onceki["soru"]) and not kullanici_onayi:
-            raise h.HarnessHata("%s: işçinin sorusu bir açık uca dayanıyor; cevabı yalnız kullanıcı verir (kanca "
-                                "sorar): python3 harness/h.py gorev kos %s --cevap \"...\"" % (kimlik, kimlik))
-        satir = {"soru": onceki["soru"], "cevap": cevap}
-        if kullanici_onayi:
-            satir["onay"] = "kullanıcı onayıyla"
-        eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
-        _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [satir]})
-    if notu:
-        eski_notlar = _json_oku(kayit / "notlar.json").get("notlar") or []
-        _json_yaz(kayit / "notlar.json", {"notlar": eski_notlar + [{"zaman": _simdi(), "not": notu}]})
-    onceki_kayit = ""
-    if onceki_sorunlar:             # araç sorun ölçtüyse işçi neyi gidereceğini bilir; iş baştan yapılmaz
-        onceki_kayit += ("\n\n## Önceki koşuda aracın ölçtüğü sorunlar\nBu görev daha önce koştu ve araç şu sorunları "
-                         "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
-                         "ve bitiş kaydını yeniden yaz:\n"
-                         + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
-    if onceki and (cevap or notu or onceki_sorunlar or _onceki_bulgular(kayit)):
-        onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
-                         "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
-                         "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
-    kart = (kayit / "kart.md").read_text(encoding="utf-8")
-    if HEDEF_YERTUTUCU in kart or OLCUT_YERTUTUCU in kart:
-        raise h.HarnessHata("%s kartında hedef ya da kabul ölçütü doldurulmamış" % kimlik)
-    if d.get("plan"):
-        import plan
-        plan.onkosul_denetle(kok, d)
-    with _ORTAK_KILIT:
-        agac = _agac_ac(kok, kimlik, d)
-    if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
-        r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, capture_output=True, text=True,
-                           stdin=subprocess.DEVNULL)
-        if r.returncode != 0:
-            raise h.HarnessHata("%s koşturulamadı: hazırlık komutu %d koduyla çıktı: %s"
-                                % (kimlik, r.returncode, (r.stderr or r.stdout)[-400:]))
-    if taslaklar:   # kullanıcının bu çağrıya özel izni: zamanı ve taslakları kayda geçer
-        d.setdefault("taslak_izinleri", []).append({"zaman": _simdi(), "taslaklar": [t["kimlik"] for t in taslaklar]})
-        _json_yaz(kayit / "durum.json", d)
-        print("[harness] %s kullanıcının izniyle %d taslağa rağmen koşuyor: %s"
-              % (kimlik, len(taslaklar), ", ".join(t["kimlik"] for t in taslaklar)), flush=True)
-    eski = h.PAKET.search(kart)
-    if eski:
-        taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak ve açık uç blokları da yenilenir
-        uclar = h.ACIK_UC_BLOGU.match(kart, (taslak or eski).end())
-        eski_metin = kart[eski.start():(uclar or taslak or eski).end()]
-        if eski_metin != p["tam"]:   # kurallar kart yazıldıktan sonra değişmiş
-            kart = kart.replace(eski_metin, p["tam"])
-            (kayit / "kart.md").write_text(kart, encoding="utf-8")
-    yerel = _yerel(agac, kimlik)
-    yerel.mkdir(parents=True, exist_ok=True)
-    (yerel / "kart.md").write_text(kart, encoding="utf-8")
-    _json_yaz(yerel / "durum.json", d)
-    for eski_kayit in (yerel / "bitis.json", kayit / "bitis.json", yerel / "inceleme.json"):
-        if eski_kayit.is_file():
-            eski_kayit.unlink()
+    # işaret ağaçtan, hazırlıktan ve ön kontrolden önce konur, oturumlar bitince kalkar; kesişen görev varsa
+    # hiçbir şey yazılmaz ve ağaç açılmaz (TS-009 Yapı 5)
+    with _kosuyor(kayit, "isci", d["yollar"]):
+        onceki = _json_oku(kayit / "bitis.json")    # aşağıda silinir; soru ya da sorun varsa işçiye geri verilir
+        onceki_sorunlar = _json_oku(kayit / "rapor.json").get("sorunlar") or []
+        if cevap:
+            if not onceki.get("soru"):  # soru, başka bir sorunla birlikte de gelebilir (koşum "sorunlu" olur)
+                raise h.HarnessHata("%s soru sormadı; --cevap yalnız soru sormuş göreve verilir" % kimlik)
+            if h.acik_uc_kimlikleri(onceki["soru"]) and not kullanici_onayi:
+                raise h.HarnessHata("%s: işçinin sorusu bir açık uca dayanıyor; cevabı yalnız kullanıcı verir (kanca "
+                                    "sorar): python3 harness/h.py gorev kos %s --cevap \"...\"" % (kimlik, kimlik))
+            satir = {"soru": onceki["soru"], "cevap": cevap}
+            if kullanici_onayi:
+                satir["onay"] = "kullanıcı onayıyla"
+            eski_cevaplar = _json_oku(kayit / "cevaplar.json").get("cevaplar") or []
+            _json_yaz(kayit / "cevaplar.json", {"cevaplar": eski_cevaplar + [satir]})
+        if notu:
+            eski_notlar = _json_oku(kayit / "notlar.json").get("notlar") or []
+            _json_yaz(kayit / "notlar.json", {"notlar": eski_notlar + [{"zaman": _simdi(), "not": notu}]})
+        onceki_kayit = ""
+        if onceki_sorunlar:             # araç sorun ölçtüyse işçi neyi gidereceğini bilir; iş baştan yapılmaz
+            onceki_kayit += ("\n\n## Önceki koşuda aracın ölçtüğü sorunlar\nBu görev daha önce koştu ve araç şu sorunları "
+                             "ölçtü. Önceki koşunun işi çalışma ağacında duruyor; baştan yazma, yalnız bu sorunları gider "
+                             "ve bitiş kaydını yeniden yaz:\n"
+                             + "\n".join("- [%s] %s" % (s["ad"], s["mesaj"]) for s in onceki_sorunlar) + "\n")
+        if onceki and (cevap or notu or onceki_sorunlar or _onceki_bulgular(kayit)):
+            onceki_kayit += ("\n\n## Önceki bitiş kaydın\nÖnceki koşunun işi çalışma ağacında duruyor; baştan yazma, "
+                             "yukarıdakine göre sürdür ve bitiş kaydını yeniden yaz.\n"
+                             "```json\n%s\n```\n" % json.dumps(onceki, ensure_ascii=False, indent=1))
+        kart = (kayit / "kart.md").read_text(encoding="utf-8")
+        if HEDEF_YERTUTUCU in kart or OLCUT_YERTUTUCU in kart:
+            raise h.HarnessHata("%s kartında hedef ya da kabul ölçütü doldurulmamış" % kimlik)
+        if d.get("plan"):
+            import plan
+            plan.onkosul_denetle(kok, d)
+        with _ORTAK_KILIT:
+            agac = _agac_ac(kok, kimlik, d)
+        _json_yaz(kayit / "durum.json", d)   # ortam hatasından sonraki koşu, açık ağacın tabanını kayıttan okur
+        ortam = _ortam(kok)
+        if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
+            try:
+                r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, env=ortam, capture_output=True, text=True,
+                                   stdin=subprocess.DEVNULL)
+            except FileNotFoundError:
+                _ortam_hatasi(kayit, "isci", agac, "%s: ortam hazır değil, oturum başlamadı. Hazırlık komutu '%s' yolda "
+                              "bulunamadı (PATH: %s)" % (kimlik, g["hazirlik"][0], ortam.get("PATH", os.defpath)))
+            if r.returncode != 0:
+                raise h.HarnessHata("%s koşturulamadı: hazırlık komutu %d koduyla çıktı: %s"
+                                    % (kimlik, r.returncode, (r.stderr or r.stdout)[-400:]))
+        _on_kontrol(g, agac, kayit, kimlik, "isci", ortam)
+        if taslaklar:   # kullanıcının bu çağrıya özel izni: zamanı ve taslakları kayda geçer
+            d.setdefault("taslak_izinleri", []).append({"zaman": _simdi(), "taslaklar": [t["kimlik"] for t in taslaklar]})
+            _json_yaz(kayit / "durum.json", d)
+            print("[harness] %s kullanıcının izniyle %d taslağa rağmen koşuyor: %s"
+                  % (kimlik, len(taslaklar), ", ".join(t["kimlik"] for t in taslaklar)), flush=True)
+        eski = h.PAKET.search(kart)
+        if eski:
+            taslak = h.TASLAK.match(kart, eski.end())   # paketin ardındaki taslak ve açık uç blokları da yenilenir
+            uclar = h.ACIK_UC_BLOGU.match(kart, (taslak or eski).end())
+            eski_metin = kart[eski.start():(uclar or taslak or eski).end()]
+            if eski_metin != p["tam"]:   # kurallar kart yazıldıktan sonra değişmiş
+                kart = kart.replace(eski_metin, p["tam"])
+                (kayit / "kart.md").write_text(kart, encoding="utf-8")
+        yerel = _yerel(agac, kimlik)
+        yerel.mkdir(parents=True, exist_ok=True)
+        (yerel / "kart.md").write_text(kart, encoding="utf-8")
+        _json_yaz(yerel / "durum.json", d)
+        for eski_kayit in (yerel / "bitis.json", kayit / "bitis.json", yerel / "inceleme.json"):
+            if eski_kayit.is_file():
+                eski_kayit.unlink()
 
-    basla = datetime.datetime.now()
-    komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
-    istem = kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + _notlar(kayit) + onceki_kayit
-    devam, ek = g["kendiliginden_devam"], ""
-    while True:
-        kosu_basla = datetime.datetime.now()
-        with _kosuyor(kayit, "isci"):
+        basla = datetime.datetime.now()
+        komsular = {a: _agac_ozeti(a) for a in {kok.resolve(), h.ortak_kok(kok).resolve()}}
+        istem = kart + _onceki_bulgular(kayit) + _cevaplar(kayit) + _notlar(kayit) + onceki_kayit
+        devam, ek = g["kendiliginden_devam"], ""
+        while True:
+            kosu_basla = datetime.datetime.now()
             cikti, sorunlar, zaman_asimi = _oturum_kos(g, istem + ek, agac, kimlik, d["rol"], g["model"])
-        kosu_sure = round((datetime.datetime.now() - kosu_basla).total_seconds(), 1)
-        if (yerel / "bitis.json").is_file():   # öz değerlendirme ağaçta kalmaz: inceleyici onu görmemeli
-            shutil.move(str(yerel / "bitis.json"), str(kayit / "bitis.json"))
-        tur_siniri = _cikti_oku(cikti).get("subtype") == "error_max_turns"
-        if (devam <= 0 or not (zaman_asimi or tur_siniri) or (kayit / "bitis.json").is_file()
-                or not _degisen(agac, d["taban"])):
-            break
-        devam -= 1
-        _gecmise_ekle(kayit, _gecmis_satiri("isci", kosu_basla, kosu_sure, cikti,
-                                            "zaman-asimi" if zaman_asimi else "tur-siniri", agac))
-        sinir = "süre sınırında" if zaman_asimi else "tur sınırında"
-        ek = DEVAM_NOTU % sinir
-        print("[harness] %s: işçi %s kesildi; kaldığı yerden kendiliğinden sürdürülüyor" % (kimlik, sinir), flush=True)
+            kosu_sure = round((datetime.datetime.now() - kosu_basla).total_seconds(), 1)
+            if (yerel / "bitis.json").is_file():   # öz değerlendirme ağaçta kalmaz: inceleyici onu görmemeli
+                shutil.move(str(yerel / "bitis.json"), str(kayit / "bitis.json"))
+            tur_siniri = _cikti_oku(cikti).get("subtype") == "error_max_turns"
+            if (devam <= 0 or not (zaman_asimi or tur_siniri) or (kayit / "bitis.json").is_file()
+                    or not _degisen(agac, d["taban"])):
+                break
+            devam -= 1
+            _gecmise_ekle(kayit, _gecmis_satiri("isci", kosu_basla, kosu_sure, cikti,
+                                                "zaman-asimi" if zaman_asimi else "tur-siniri", agac))
+            sinir = "süre sınırında" if zaman_asimi else "tur sınırında"
+            ek = DEVAM_NOTU % sinir
+            print("[harness] %s: işçi %s kesildi; kaldığı yerden kendiliğinden sürdürülüyor" % (kimlik, sinir), flush=True)
     (kayit / "sonuc.json").write_text(cikti or "", encoding="utf-8")
     uyarilar = []
     for komsu, once in komsular.items():   # işçi kendi ağacından çıkıp orchestrator'ın ya da ana ağacın dosyasına yazdı mı
@@ -1210,6 +1278,7 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
                             % (kimlik, asama(d, _json_oku(kayit / "rapor.json"), True)[1]))
     _degismedi_mi(kok, kimlik, d, d.get("kosum_imza"), "koşumdan sonra",
                   "Yeniden koştur: python3 harness/h.py gorev kos %s" % kimlik)
+    _on_kontrol(g, agac, kayit, kimlik, "inceleme", _ortam(kok))
     kart = (kayit / "kart.md").read_text(encoding="utf-8")
     paket = h.paket(kok, "inceleyici", d["yollar"], d["konular"], d.get("dayanak") or [])
     degisen = _degisen(agac, d["taban"])

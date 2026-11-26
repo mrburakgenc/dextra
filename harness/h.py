@@ -78,6 +78,9 @@ VARSAYILAN_AYAR = {
               # yerel_ag: kum havuzundaki komutlar yerel adresteki kapılara bağlanabilir (macOS); dinleyen bütün
               # yerel servisleri kapsar · hazirlik: ağaç açılınca, kum havuzunun dışında koşan komut (argüman listesi)
               "yerel_ag": False, "hazirlik": [],
+              # on_kontrol: gorev kos ve gorev incele oturumdan önce bu komutları (her biri argüman listesi) sırayla,
+              # kum havuzunun dışında, görev ağacında koşturur; biri sıfırdan farklı kodla çıkarsa oturum başlamaz
+              "on_kontrol": [],
               # orkestrasyon: işçi alt ajan ve iş akışı başlatabilir (inceleyici başlatamaz) · efor, inceleme_efor:
               # oturuma --effort ile verilen düzey; boşsa bayrak komuta girmez
               "orkestrasyon": False, "efor": "", "inceleme_efor": "",
