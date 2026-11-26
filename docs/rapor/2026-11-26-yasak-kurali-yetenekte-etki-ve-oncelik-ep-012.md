@@ -15,13 +15,13 @@ Bu rapor PR #17'den sonraki işi kapsar: yasak kuralının uygulaması (EP-012).
 1. **Yetenek artık yasak ve öncelik taşıyor (EP-012, 16/16).** Altı aşama alındı: veri ve taşıma (GV-144 … GV-147), okuma motoru (GV-148 … GV-150), ekranın okuma tarafı (GV-151, GV-152), yazma motoru (GV-153, GV-154), ret kaydı (GV-155), teşhis ucu ve ekranı, ekranın yazma tarafı ve göçten önce tarama (GV-156 … GV-159). Kaynak: TS-008, KR-016, KU-017 … KU-020 (hepsi kabul; `kb/GUNLUK.md`, 2026-11-26).
 2. **Kendi ölçümüm yalnız son görevi kapsar** (son alımdan sonra, `3e584de`): arka yüz tip denetimi 0, lint 0, `backend/test/yasak-tarama.e2e-spec.ts` 6/6. Öbür on beş görevin kanıtı kendi inceleme kayıtlarıdır (hepsinin son incelemesi "geçti"); onların testlerini yeniden koşturmadım, bütün test takımını da koşturmadım.
 3. **Son görev (GV-159) üç kez incelendi, ikisinde kaldı.** İlk inceleme feature içinde ham SQL buldu; ikincisi, onun düzeltmesinin kalıcı kipi ilk kurulumda durdurduğunu buldu. Yolu sen seçtin (AU-38: "Tablo yoksa 'yasak yok'"); üçüncü inceleme geçti (6. bölüm).
-4. **Sekiz ayrıntıyı sen karara bağladın** (TS-008 AU-31 … AU-38; 4. bölüm). AU-38'in kararı verildi ama düğümde hâlâ açık duruyor: kapatma komutu 9. bölüm madde 1.
-5. **Hiçbir şey gönderilmedi.** Dal uzaktaki hâlinden 39 commit ve bu rapor kadar ileride; bu iş için PR açılmadı (10. bölüm).
+4. **Sekiz ayrıntıyı sen karara bağladın** (TS-008 AU-31 … AU-38; 4. bölüm). AU-38 de 2026-11-26'da kapandı (9. bölüm madde 1).
+5. **Dal gönderildi ve PR #18 açıldı** (2026-11-26, senin sözünle; 10. bölüm). Birleştirme yapılmadı.
 6. **Dalın büyüklüğü** (`git diff --shortstat $(git merge-base main HEAD)..3e584de`): 117 dosya, 12.482 satır eklendi, 193 satır silindi. Araç kayıtlarına göre: 16 görev, 29 işçi koşusu ve 23 inceleme, 447,7 dakika, 174,40 dolar (2. bölümdeki tablonun toplamı).
 
 **Önce bakman gerekenler**
 
-- 9. bölüm madde 1 ve 2: AU-38'in kapatılması ve gönderme kararı.
+- 9. bölüm madde 2: PR #18'in birleştirilmesi.
 - 7. bölüm: kaybolan oturum ve hatalar.
 - 9. bölüm madde 3: kalıcı kip gerçek yerel veritabanında hiç denenmedi.
 - Yasağın beklenen sonuçları tek dosyada: `backend/test/veri/yetki-eslik.json` (ana oturumun GV-152 notuna göre 14 durum, 210 kayıt ve kolon kararı; ben saymadım).
@@ -108,7 +108,7 @@ Hepsi 2026-11-26'da verildi. İlk sekiz satırın sözleri bilgi tabanındaki ka
 | Teşhiste kolon sızıntısı (AU-35) | "'Değerlendirilemedi' de" | TS-008 "Kapanan uçlar"; GV-156 notu 08:22 |
 | Göçten önce tarama (AU-36) | "Eklensin: yalnız okuyan dar parça" ve "Dursun" | TS-008 "Kapanan uçlar"; KR-010 Seçim 48 eki (`fc7fd52`) |
 | Ret kaydının iki ayrıntısı (AU-37) | "İkisi de kalsın" | TS-008 "Kapanan uçlar" |
-| Tablo hiç yokken tarama (AU-38) | "Tablo yoksa 'yasak yok'" (soru penceresindeki seçenek) | TS-008 "Açık uçlar" (henüz kapatılmadı); commit `83c5a2a`; GV-159 notu 12:21 |
+| Tablo hiç yokken tarama (AU-38) | "Tablo yoksa 'yasak yok'" (soru penceresindeki seçenek) | TS-008 "Kapanan uçlar" (2026-11-26'da kapandı); commit `83c5a2a`; GV-159 notu 12:21 |
 | Docker'ı kim başlatsın | "Sen başlat" (soru penceresindeki seçenek) | Bu rapor |
 | Kalan işin devralınması | "tamam ordakilerin son durumu varsa tamamla yada yeni ortama aktaralım" | Bu rapor |
 
@@ -167,7 +167,7 @@ Koşu sayıları ve sonuçları aracın koşu geçmişinden (`kosular.jsonl`); n
 4. **İşçiyi `pnpm` yolda mı diye bakmadan koşturdum.** Komut işçi başlamadan çöktü. Parası yok, not kaydedilmişti; yol verilerek yeniden koşturuldu.
 5. **Sana kayıp oturum için erken konuştum.** Önce "konuşma geri gelmez" dedim; commit'lerdeki oturum bağlantısını sonra buldum. İlk cümleyi commit geçmişine bakmadan söylemiştim.
 6. **İşçilerin tekrarlayan süreç hataları** (inceleme kayıtlarından): biçim betiğinin yazan komutu başkasının satırlarını değiştirdi (GV-146, GV-149); dosyalar düzenleme aracı yerine kabuk komutuyla yazıldı (GV-148, GV-152 önerileri). Ana oturum bunu notlarla yasakladı; araçta engeli yok.
-7. **Kod yorumları bilgi tabanının önüne geçti.** Üç inceleme (GV-150, GV-155, GV-156 önerileri) kodun bir açık ucu "kapanan" diye andığını, düğümde ise açık durduğunu yazdı. AU-31 … AU-37 için 09:09'da kapandı; aynı durum şimdi AU-38 için geçerli (9. bölüm madde 1).
+7. **Kod yorumları bilgi tabanının önüne geçti.** Üç inceleme (GV-150, GV-155, GV-156 önerileri) kodun bir açık ucu "kapanan" diye andığını, düğümde ise açık durduğunu yazdı. AU-31 … AU-37 için 09:09'da kapandı; AU-38 de iş alındıktan sonra, aynı gün kapandı (9. bölüm madde 1).
 
 ## 8. Araçta değişenler
 
@@ -185,8 +185,8 @@ Yok: bu aralıkta `harness/**` altında fark yok (`git diff --stat $(git merge-b
 
 **Senden beklenenler**
 
-1. **AU-38'in kapatılması.** Kararı verdin, kapatmayı araç bana yaptırmıyor. Terminalinde: `cd ~/Developer/Dextra/.claude/worktrees/base-mimari-tasarim` ve `python3 harness/h.py acik-uc kapat TS-008 AU-38 --karar "Kullanıcı (2026-11-26): \"Tablo yoksa 'yasak yok'\": tarama komutu yetenek tablosunun yokluğunu da iki kolonun yokluğu gibi sayar, 'taranacak yasak yok' yazar ve 0 ile çıkar; başka her hata yükselir ve tarama 1 ile çıkar. Yerel başlatma betiği değişmez; kalıcı kip boş veritabanında göçleri uygular."`. Değişikliği ben commit ederim.
-2. **Gönderme ve PR kararı.** Dal uzaktan 39 commit ve bu rapor kadar ileride. Sen söylemeden göndermedim, PR açmadım.
+1. **AU-38 kapandı; yapılacak bir şey kalmadı.** Kararı sen verdin. Kapatma komutunu ben çalıştırmadım (araç bu izin kipinde bana yaptırmıyor); 2026-11-26'da değişikliği çalışma ağacında aracın biçimiyle buldum (TS-008 "Kapanan uçlar", senin kararının metniyle) ve commit ettim.
+2. **PR #18'in birleştirilmesi.** Dal senin sözünle gönderildi ve PR açıldı (10. bölüm); birleştirme senin kararın, ben birleştirmedim.
 3. **Kalıcı kipin denenmesi.** `node scripts/yerel-deneme.mjs --kalici` yerel `dextra` veritabanında hiç koşturulmadı (kart işçiye yasaklıyor; ben de koşturmadım, veritabanına dokunur). İnceleyici durma yolunu ve boş veritabanı yolunu geçici veritabanlarında koşturdu, ikisi de beklendiği gibi.
 4. **Kayıp oturumun konuşması.** Commit'lerdeki `Claude-Session` bağlantısını kendi tarayıcında aç; orada duruyorsa bu raporun 4. ve 5. bölümlerinde eksik kalan karar var mı bakılabilir.
 5. **AU-38'in sürümü.** Kabul edilmiş TS-008'e sürüm artırmadan açık uç ekledim (5. bölüm); sürüm artışı ve yeniden kabul isteyip istemediğine sen karar verirsin.
@@ -209,9 +209,9 @@ Yok: bu aralıkta `harness/**` altında fark yok (`git diff --stat $(git merge-b
 | PR | Kapsam | Durum |
 |---|---|---|
 | [#17](https://github.com/mrburakgenc/dextra/pull/17) | Önceki raporun işi | Birleşti (2026-11-26 01:01; ana dal `134e9fa`) |
-| — | Bu raporun işi: yasak kuralının uygulaması (EP-012) | Açılmadı |
+| [#18](https://github.com/mrburakgenc/dextra/pull/18) | Bu raporun işi: yasak kuralının uygulaması (EP-012) | Açıldı (2026-11-26); birleştirme commit'iyle ana dala alınır |
 
-Neden açılmadı: gönderme ve PR senin sözünü bekliyor (9. bölüm madde 2). Dal ana dalın üç birleştirme commit'inin (PR #15, #16, #17) gerisinde; içerik olarak eksiği yok, çünkü üçü de bu dalın birleştirmeleridir.
+Dal, senin sözünle ("tamam dalı gönder pr at", 2026-11-26) gönderildi ve PR açıldı; numarası bu bölüme ikinci bir commit'le yazıldı. Dal ana dalın üç birleştirme commit'inin (PR #15, #16, #17) gerisinde; içerik olarak eksiği yok, çünkü üçü de bu dalın birleştirmeleridir. Deneme birleştirmesi (`git merge-tree origin/main HEAD`) çakışma göstermedi.
 
 ## 11. Günlük
 
