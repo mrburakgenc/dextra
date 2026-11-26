@@ -38,14 +38,15 @@ Tasarımın tamamı: `docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md` (bu d
 | `python3 harness/h.py plan yurut EP-NNN [--en-cok N]` | Epic'i tek onayla yürüt: hazır yapraklar sırayla koşar, incelenir, alınır; ilk sorunda durur |
 | `python3 harness/h.py plan durum [<space> \| EP-NNN]` | Ağaç, türetilmiş işaretler, şimdi ne koşturulabilir |
 | `python3 harness/h.py gorev yeni "<başlık>" --rol <rol> --yol <desen> --hedef "..." --olcut "..."` | Plansız tek görev kartı |
-| `python3 harness/h.py gorev kos GV-NNN` | Görevi kendi çalışma ağacında `claude -p` ile koştur; kullanıcıya sorulur |
+| `python3 harness/h.py gorev kos GV-NNN` | Görevi kendi çalışma ağacında `claude -p` ile koştur; kullanıcıya sorulur. Ortam ön kontrolü (`gorev.on_kontrol`; yola eklenecek klasörler depoya girmeyen `harness.yerel.json` dosyasında) kalırsa oturum başlamaz; bitiş kaydında `testler` alanı zorunludur |
 | `python3 harness/h.py gorev incele GV-NNN` | İşi yapmayan ikinci bir oturuma incelet |
-| `python3 harness/h.py gorev al GV-NNN` | Temiz ve incelenmiş işi bu oturumun dalına birleştir; kullanıcıya sorulur |
+| `python3 harness/h.py gorev al GV-NNN` | Temiz ve incelenmiş işi bu oturumun dalına birleştir; kullanıcıya sorulur. İnceleme kaydı ölçüt hükmü (`olcut`) taşımalı, "geçti" hükmü koşturulmuş komut (`kosulan`) istemeli; ölçüt karşılanmadıysa alınmaz |
 | `python3 harness/h.py gorev at GV-NNN` | Görevin ağacını ve dalını sil; kullanıcıya sorulur |
 | `python3 harness/h.py gorev durum` | Bütün görevler ve aşamaları |
 | `python3 harness/h.py rapor yeni "<konu>"` | İşin raporunu şablondan aç; görev tablosunu araç üretir, kısa özet ve kullanıcıdan beklenenler elle yazılır |
 | `python3 harness/h.py rapor uret <dosya>` | Raporun görev tablosunu kayıtlardan yenile |
 | `python3 harness/h.py rapor durum` | Raporsuz görevler ve boş bölümler; push kapısı aynı şeyi arar ve raporsuz dalı göndermez |
+| `python3 harness/h.py soz [--gun YYYY-AA-GG] [--agac AD]` | Söz defteri: kullanıcının iletileri ve soru cevapları, zaman sırasıyla; `rapor yeni` bu ağacın sözlerini raporun 4. bölümüne koyar |
 
 Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 
