@@ -69,6 +69,14 @@ export function kolonSiniri(
   return 'Kolon vermez';
 }
 
+// Etki (TS-008): 'Yasak' ya da 'İzin'; kolon gelmediyse boş işaret.
+export function etkiYazimi(giremez: boolean | undefined): string {
+  if (giremez === undefined) {
+    return BOS;
+  }
+  return giremez ? 'Yasak' : 'İzin';
+}
+
 // 'Sistem', 'Tohum' ya da boş metin; iki kolondan biri gelmediği için tür bilinemiyorsa boş işaret.
 export function yetenekTuru(
   sistemSatiri: boolean | undefined,

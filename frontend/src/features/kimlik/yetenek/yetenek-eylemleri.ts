@@ -38,6 +38,15 @@ function icerikGirdisi(form: FormData) {
   };
 }
 
+// Etki ve öncelik alanları yalnız yasakla izni olan kişinin formunda bulunur (TS-008 "Yönetim,
+// izinler ve teşhis"); formda olmayan alan da boş öncelik de gövdeye girmez.
+function oncelikGirdisi(form: FormData) {
+  const oncelik = form.get('oncelik');
+  return typeof oncelik === 'string' && oncelik.trim() !== ''
+    ? oncelik
+    : undefined;
+}
+
 // Silinmiş grup ya da rol, katalogda olmayan izin ve izin veren kümenin kısıtına takılan yazma
 // backend'de 409 olur; iletisi ekranda gösterilir.
 // İçerik alanları denetimli olduğu için formda kalır; döndürülen değerler grup, rol ve izin
@@ -48,6 +57,8 @@ export async function yetenekYaz(_onceki: FormDurumu, form: FormData): Promise<F
     grupId: form.get('grupId'),
     rolId: form.get('rolId'),
     izinId: form.get('izinId'),
+    giremez: form.get('giremez') ?? undefined,
+    oncelik: oncelikGirdisi(form),
     ...icerikGirdisi(form),
   });
   if (!girdi.success) {
@@ -75,7 +86,10 @@ export async function yetenekYenile(
   if (!id.success) {
     return { ...BOS_FORM_DURUMU, genelHata: KAYIT_BULUNAMADI };
   }
-  const girdi = YetenekYenileSemasi.safeParse(icerikGirdisi(form));
+  const girdi = YetenekYenileSemasi.safeParse({
+    oncelik: oncelikGirdisi(form),
+    ...icerikGirdisi(form),
+  });
   if (!girdi.success) {
     return { ...BOS_FORM_DURUMU, alanHatalari: semaAlanHatalari(girdi.error) };
   }
