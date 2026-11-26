@@ -64,6 +64,8 @@ Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 | `test-yaz` | Yeni davranış eklenirken ya da bir hata düzeltilmeden önce test yazılacakken |
 | `kb-ice-al` | Var olan bir belge taslak düğümlere dökülecekken |
 | `kb-tara` | Kurallar arası çelişki, bayat karar ve boşluk aranacakken |
+| `kod-tasarimi` | Yeni parça ya da soyutlama eklenirken, bir arayüz biçimlenirken ya da karmaşıklık incelenirken; ortak sözlük ve silme testi |
+| `mimari-tara` | Kodda mimari sürtünme ve derinleştirme adayları aranacakken; ana oturum elle çağırır, salt okur |
 
 Bilgi tabanının günlüğü (`kb/GUNLUK.md`) elle yazılmaz; taslak açılınca ve kabul verilince araç ekler.
 

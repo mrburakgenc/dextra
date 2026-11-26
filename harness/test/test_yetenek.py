@@ -10,6 +10,15 @@ e) İnceleme istemi kendini doğrulayan test ile tam liste sınamasının engel 
 f) hata-ayikla altı yeni maddeyi taşır, var olan sekiz adımı korur.
 g) İki skill dosyası kaynak ve lisans satırıyla biter.
 
+GV-165 (TS-009 Yapı 10 ve 14): kod tasarımı sözlüğü ve mimari taraması proje skill'idir; tasarım protokolü iki ek taşır.
+
+h) kod-tasarimi ve mimari-tara vardır, ön blok ve altı bölümü taşır, 120 satırı geçmez; mimari-tara elle çağrılır.
+i) kod-tasarimi yedi terimi, silme testini, KU-008 ve KU-005'i taşır.
+j) mimari-tara çıktısını depoya yazmaz ve üç güç düzeyini söyler.
+k) Tasarım protokolü iki yeni konuşma kuralını ve dokuz bakış açısını taşır; tek soru kuralı yerindedir.
+l) Yeni görev kartı ve inceleme istemi kod-tasarimi adını anar; AGENTS.md skill tablosu iki yeni satırı taşır.
+m) İki yeni skill kaynak ve lisans satırıyla biter.
+
 Her test geçici bir git deposu kurar; gerçek görev kayıtlarına ve gerçek bilgi tabanına dokunmaz.
 
 Koşum: python3 harness/test/test_yetenek.py
@@ -180,6 +189,88 @@ class IncelemeIstemi(unittest.TestCase):
         madde = next(s for s in istem.split("\n- ") if "kendini doğrulayan" in s)
         for parca in ("kendin koştur", "tam liste", "engel"):
             self.assertIn(parca, madde)
+
+
+KOK = BURASI.parents[1]
+
+
+class KodTasarimiVeMimariTara(unittest.TestCase):
+    """h), i), j) ve m)"""
+
+    def test_on_blok_alti_bolum_ve_en_cok_120_satir(self):
+        for ad in ("kod-tasarimi", "mimari-tara"):
+            metin = skill(ad)
+            on_blok = metin.split("---")[1]
+            self.assertIn("\nname: %s\n" % ad, on_blok)
+            self.assertIn("\ndescription: ", on_blok)
+            basliklar = [s[3:].strip() for s in metin.split("\n") if s.startswith("## ")]
+            for b in BOLUMLER:
+                self.assertIn(b, basliklar, ad)
+            self.assertLessEqual(len(metin.splitlines()), 120, ad)
+
+    def test_mimari_tara_elle_cagrilir(self):
+        self.assertIn("\ndisable-model-invocation: true\n", skill("mimari-tara").split("---")[1])
+
+    def test_kod_tasarimi_yedi_terim_silme_testi_ve_iki_kural(self):
+        metin = skill("kod-tasarimi")
+        for parca in ("**Modül**", "**Arayüz**", "**Derinlik**", "**Dikiş**", "**Bağdaştırıcı**", "**Kaldıraç**",
+                      "**Yerellik**", "Silme testi", "KU-008", "KU-005"):
+            self.assertIn(parca, metin)
+
+    def test_mimari_tara_ciktiyi_depoya_yazmaz_ve_uc_guc_duzeyi_soyler(self):
+        metin = skill("mimari-tara")
+        for parca in ("depoya yazılmaz", "güçlü", "araştırmaya değer", "spekülatif"):
+            self.assertIn(parca, metin)
+
+    def test_iki_skill_kaynak_ve_lisans_satiriyla_biter(self):
+        for ad in ("kod-tasarimi", "mimari-tara"):
+            son = [s for s in skill(ad).splitlines() if s.strip()][-1]
+            self.assertIn("Kaynak", son, ad)
+            self.assertIn("MIT", son, ad)
+
+
+class TasarimProtokolu(unittest.TestCase):
+    """k)"""
+
+    def test_iki_yeni_konusma_kurali_ve_tek_soru_kurali(self):
+        metin = (KOK / "harness/protokol/tasarim.md").read_text(encoding="utf-8")
+        kurallar = metin.split("## Konuşma kuralları")[1].split("\n## ")[0]
+        self.assertIn("Her seferinde tek soru sorulur.", kurallar)
+        self.assertIn("önerilen cevabı ve gerekçesiyle sorulur", kurallar)
+        self.assertIn("Ortamdan öğrenilebilecek olgu kullanıcıya sorulmaz", kurallar)
+
+    def test_dokuz_bakis_acisi_adimlar_tablosunun_altinda(self):
+        metin = (KOK / "harness/protokol/tasarim.md").read_text(encoding="utf-8")
+        bolum = metin.split("Seçenek üretirken bakış açıları")[1].split("## Konuşma kuralları")[0]
+        for aci in ("Tersine çevir", "Yük taşıyan varsayımı kaldır", "Sıfır bütçe ve bir saat",
+                    "Sınırsız bütçe ve on yıl", "Gece üçte nöbetçi", "Denetçi", "Sistemi kırmaya çalışan rakip",
+                    "On yaşında bir çocuk", "Başka bir alandan bak"):
+            self.assertIn(aci, bolum)
+        self.assertLess(metin.index("| 12 | Çürütme turu"), metin.index("Seçenek üretirken bakış açıları"))
+
+
+class KodTasarimiGondermeleri(unittest.TestCase):
+    """l)"""
+
+    def test_yeni_kart_kod_tasarimi_skillini_anar(self):
+        metin = gorev.yeni(gorev_deposu(), "İş", "uygulayici", ["src/siparis/**"], []).read_text(encoding="utf-8")
+        self.assertIn("`kod-tasarimi`", metin)
+
+    def test_inceleme_istemi_karmasiklik_sorusunda_kod_tasarimini_anar(self):
+        os.environ.pop("KAYIT_MOD", None)
+        kok = kayit_deposu()
+        kimlik = dolu_kart(kok)
+        gorev.kos(kok, kimlik)
+        gorev.incele(kok, kimlik)
+        istem = (kayit(kok, kimlik) / "inceleme-istem.md").read_text(encoding="utf-8")
+        cumle = istem.split("gereğinden karmaşık")[1].split("Değişen dosyaların tamamını oku")[0]
+        self.assertIn("`kod-tasarimi`", cumle)
+
+    def test_agents_skill_tablosu_iki_yeni_satiri_tasir(self):
+        metin = (KOK / "AGENTS.md").read_text(encoding="utf-8")
+        tablo = metin.split("## İş akışları (skill)")[1].split("\n\n")[2]
+        self.assertIn("| `kod-tasarimi` |", tablo)
+        self.assertIn("| `mimari-tara` |", tablo)
 
 
 if __name__ == "__main__":
