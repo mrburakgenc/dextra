@@ -13,3 +13,46 @@
 - **Kapatmak:** Ctrl-C (ya da SIGTERM). Süreçler kapanır, betik 0 ile çıkar; geçici kipte iki veritabanı silinir, kalıcı kipte veritabanlarına dokunulmaz. Açılışta bir adım hata verirse süreçler kapanır (geçici veritabanları silinir, kalıcılar durur) ve betik 1 ile çıkar.
 - **Hatalı kullanım:** bilinmeyen bayrak, tek başına `--kurulum` ya da iki veritabanı adresinden yalnız biri hiçbir şeye dokunmadan 1 ile çıkar.
 - **Neye dokunmaz:** geçici kipte `dextra` ve `dextra_iz` veritabanlarına yazmaz (yalnız veritabanı açıp silmek için bağlanır); anahtar ve sırrı diske ya da ekrana yazmaz; izlenen dosyaları değiştirmez (derleme çıktıları yok sayılan `dist/` ve `generated/` klasörlerine gider). Veritabanını boşaltmak bu betiğin işi değildir.
+
+## Sunucu tarafı kapı
+
+Geliştiricinin makinesindeki kapılar (git kancaları) atlatılabilir; aynı denetimler GitHub'da da koşar. İki iş akışı vardır (`.github/workflows/`). Bunların PR'ı birleştirmeyi engellemesi (main dalının koruma kuralı) ve ajanın GitHub'da hangi kimlikle çalıştığı kullanıcının GitHub ayarıdır; bu depodan kurulmaz.
+
+- **`kapi.yml`:** main'e açılan her PR'da ve main'e her push'ta koşar; gizli değer kullanmaz, belirteci yalnız okur. Dört işi vardır:
+  - `zincir`: `python3 harness/h.py denetle --dal` (pre-push kancasının koşturduğu komutun aynısı).
+  - `arac-testleri`: `harness/test/test_*.py` dosyalarının her birini tek başına koşturur; hepsi koşar, kalanlar sonda adlarıyla yazılır.
+  - `arka-yuz`: `docker compose up -d --wait postgres redis`, ardından `pnpm -C backend test` ve `pnpm -C backend test:e2e`.
+  - `on-yuz`: `pnpm -C frontend test`.
+- **`ozet.yml`:** main'e açılan PR'da `pull_request_target` ile koşar. Taban dalın kodu çalışır; PR'ın ucu çalışma ağacına çekilmez, yalnız git nesnesi olarak getirilir. `python3 harness/h.py ozet --taban origin/<taban dal> --uc pr/<PR numarası>` çıktısını PR'a tek yorum olarak yazar; sonraki koşular aynı yorumu yeniler.
+
+**Aynı komutlar yerelde:**
+
+```sh
+python3 harness/h.py denetle --dal
+for dosya in harness/test/test_*.py; do python3 "$dosya" || echo "KALDI: $dosya"; done
+docker compose up -d --wait postgres redis
+pnpm -C backend test && pnpm -C backend test:e2e
+pnpm -C frontend test
+python3 harness/h.py ozet --taban main
+```
+
+**Özet yorumu ne gösterir:** `ozet` ortak atadan uca kadarki farkı yalnız git nesnelerinden okur (commit edilmemiş değişiklik girmez, uçtaki kod çalışmaz); karar vermez, kapı değildir. Üç bölümü vardır, boş bölümde "yok" yazar:
+
+1. *Kabule geçen düğümler:* uçta `kabul` olup tabanda kabul olmayan düğümler (`taslak → kabul`; uçta yeni eklenmişse `yeni → kabul`) ve sürümleri. `durum:` satırı elle çevrilmiş bir düğüm burada görünür. Baş bloğu okunamayan düğüm de burada "okunamadı" diye geçer.
+2. *Kabul edilmiş düğümde değişiklik:* sürümü değişen (`1 → 2`), gövdesi değişip sürümü artmayan ("sürüm artmadı"), kabulden çıkan ya da silinen kabul düğümleri.
+3. *Kapı dosyalarında değişiklik:* `harness/**`, `.claude/**`, `.github/**`, `harness.json`, `AGENTS.md`, `CLAUDE.md`, ESLint, TypeScript ve Vitest ayarları, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` ve tabandaki `harness.json`'un `korunan_ayar` desenleri; her biri eklendi, değişti ya da silindi diye.
+
+`--taban` verilmezse taban dal uçtaki `harness.json`'dan okunur, yani uç onu değiştirebilir; güvenilmeyen uçta taban açıkça verilir.
+
+**Görev oturumunun ortamı ve MCP (`harness.json`, `gorev` altında):**
+
+- `gorev.ortam_izinli`: görev oturumuna, hazırlık komutuna ve ön kontrole geçen ortam değişkenleri. Sonu `*` ile biten öğe ön ektir (`LC_*`). Ayarda yazmıyorsa varsayılan liste geçerlidir: `PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `TMPDIR`, `LANG`, `LC_*`, `TERM`, `TZ`; ayarda yazıyorsa varsayılanın yerine geçer. `CLAUDE` ile başlayan değişkenler listede olsa da oturuma geçmez; oturuma ayrıca `HARNESS_GOREV`, `HARNESS_KOK` ve `HARNESS_ROL` verilir. Listede olmayan bir değişken (örneğin üst kabuktaki bir belirteç) işçiye de inceleyiciye de ulaşmaz.
+- `gorev.mcp_roller`: `gorev.mcp` sunucularının hangi rollerdeki oturuma verileceği; varsayılan `["uygulayici"]`, yani inceleme oturumu MCP sunucusu almaz. İki rol sayılırsa ikisi de alır, boş listede hiçbiri almaz.
+
+**Makineye özel değişken:** yalnız bu makinede gereken bir değişken (örneğin `SSH_AUTH_SOCK`) depoya girmeyen `harness.yerel.json` dosyasıyla eklenir. Dosya ana çalışma ağacının kökünde durur ve `.gitignore`'dadır:
+
+```json
+{ "gorev": { "ortam_izinli": ["SSH_AUTH_SOCK"] } }
+```
+
+Buradaki liste ayardaki (ya da varsayılan) listeye eklenir, onu daraltmaz. Aynı dosyadaki `gorev.yol` klasörleri görev komutlarının `PATH`'inin başına eklenir.

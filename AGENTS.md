@@ -47,6 +47,7 @@ Tasarımın tamamı: `docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md` (bu d
 | `python3 harness/h.py rapor uret <dosya>` | Raporun görev tablosunu kayıtlardan yenile |
 | `python3 harness/h.py rapor durum` | Raporsuz görevler ve boş bölümler; push kapısı aynı şeyi arar ve raporsuz dalı göndermez |
 | `python3 harness/h.py soz [--gun YYYY-AA-GG] [--agac AD]` | Söz defteri: kullanıcının iletileri ve soru cevapları, zaman sırasıyla; `rapor yeni` bu ağacın sözlerini raporun 4. bölümüne koyar |
+| `python3 harness/h.py ozet [--taban <başvuru>] [--uc <başvuru>]` | PR özeti: ortak atadan uca kabule geçen düğümler, kabul edilmiş düğümde değişiklik ve kapı dosyalarındaki değişiklik; yalnız git nesnelerinden okur, karar vermez. `--taban` verilmezse taban dal uçtaki `harness.json`'dan okunur; güvenilmeyen uçta açıkça verilir |
 
 Plan ve mimari işlerinde: `harness/protokol/tasarim.md`.
 
