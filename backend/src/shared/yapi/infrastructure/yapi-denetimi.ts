@@ -696,10 +696,45 @@ export function ortakKoduDenetle(srcKlasoru: string): KonuRaporu[] {
   return konular.map((konu) => konuyuDenetle(srcKlasoru, konu));
 }
 
-// Metnin yorumsuz hâli: blok yorumlar ve satır başında ya da boşluktan sonra başlayan satır yorumları
-// silinir. Metin düzeyindedir: dizge içindeki " //" de yorum sayılır.
+// Metnin yorumsuz hâli: metin tek geçişte okunur; blok yorumlar ve satır yorumları silinir, dizgeler
+// (tek tırnak, çift tırnak, şablon dizgesi) ve kod olduğu gibi kalır. Dizge ya da satır yorumu içindeki
+// `/*` blok yorum başlatmaz. Ters bölüden sonraki karakter her yerde olduğu gibi alınır, yorum ya da
+// dizge başlatmaz ve bitirmez (`/https?:\/\//` yorum değildir). Tek ve çift tırnaklı dizge satır
+// sonunda biter. Tam bir ayrıştırıcı değildir; bilinen artıklar: düzenli ifade değişmezi kod olarak
+// okunur, içindeki tırnak (`/^[^']+$/`) satır sonuna kadar sahte bir dizge açar. Bu zararsızdır, çünkü
+// dizge çıktıda kalır (yalnız yorumlar silinir) ve satır sonunda biter; yalnız aynı satırda sonra
+// gelen bir dizgenin içindeki `/*` ya da `//` o zaman yorum sayılabilir. Şablon dizgesinin `${…}`
+// bölümü dizge sayılır; içinde iç içe şablon dizgesi varsa eşleşme kayar.
 function yorumsuz(metin: string): string {
-  return metin.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
+  let cikti = '';
+  let i = 0;
+  while (i < metin.length) {
+    const ilk = metin[i] ?? '';
+    const iki = metin.slice(i, i + 2);
+    if (iki === '//') {
+      const son = metin.indexOf('\n', i);
+      i = son === -1 ? metin.length : son;
+    } else if (iki === '/*') {
+      const son = metin.indexOf('*/', i + 2);
+      i = son === -1 ? metin.length : son + 2;
+    } else if (ilk === "'" || ilk === '"' || ilk === '`') {
+      let j = i + 1;
+      while (
+        j < metin.length &&
+        metin[j] !== ilk &&
+        (ilk === '`' || metin[j] !== '\n')
+      ) {
+        j += metin[j] === '\\' ? 2 : 1;
+      }
+      cikti += metin.slice(i, j + 1);
+      i = j + 1;
+    } else {
+      const uzunluk = ilk === '\\' ? 2 : 1;
+      cikti += metin.slice(i, i + uzunluk);
+      i += uzunluk;
+    }
+  }
+  return cikti;
 }
 
 // features altındaki uygulama kodu (spec dışındaki .ts dosyaları), src'ye göreli yolu ve yorumsuz
@@ -844,7 +879,7 @@ export function ucIsaretleriniDenetle(srcKlasoru: string): {
 const ISTEYEN_ADLARI = ['requesterId', 'isteyenId'];
 
 // s) features altında application ve presentation dosyalarının kodunda (yorumlar dışında) isteği
-// yapanı gösteren ad geçmez (KU-013).
+// yapanı gösteren ad geçmez (KU-013). Ad yerel değişkende de ihlal sayılır; yerel için başka ad kullanılır.
 export function isteyenAlaniniDenetle(srcKlasoru: string): Ihlal[] {
   const ad = new RegExp(`\\b(${ISTEYEN_ADLARI.join('|')})\\b`);
   return featureKodu(srcKlasoru).flatMap(({ yol, metin }) => {
