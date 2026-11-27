@@ -6,7 +6,7 @@
   "duzey": 1,
   "ogretici": true,
   "profil": "",
-  "harness_gelistirme": true,
+  "harness_gelistirme": false,
   "korunan_ayar": [
     "**/eslint.config.*",
     "**/tsconfig*.json",
