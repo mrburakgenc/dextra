@@ -48,10 +48,11 @@ export class ParolaController {
     if (oturum === undefined) {
       throw new Error('İstek bağlamında oturum yok');
     }
+    // Kimlik alanları gövdeden sonra yazılır: gövde onların üstüne yazamaz (KU-013).
     return this.parolaDegistir.calistir({
+      ...govde,
       kullaniciId: oturum.kullaniciId,
       oturumId: oturum.oturumId,
-      ...govde,
     });
   }
 }

@@ -23,16 +23,20 @@ export class YetkiGuard implements CanActivate {
 
   async canActivate(baglam: ExecutionContext): Promise<boolean> {
     const [isaret] = isaretleriOku(baglam.getHandler());
+    // İşaretsiz uç, kimlik guard'ına ya da açılış denetimine bırakılmadan burada da kapanır (AK-37).
+    if (isaret === undefined) {
+      throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
+    }
     const { oturum } = istekBaglami();
     if (oturum === undefined) {
-      if (isaret?.tur === 'izin') {
+      if (isaret.tur === 'izin') {
         throw new KodluHata('yetki_yok', 'Bu işlem için yetki yok');
       }
       return true;
     }
     const yetki = await this.bellek.al(oturum.kullaniciId, oturum);
     istekYetkisiniYaz(yetki);
-    if (isaret?.tur !== 'izin') {
+    if (isaret.tur !== 'izin') {
       return true;
     }
     // Koşula ve kolona bakmadan o eylem ve tür için kural var mı (kayıt üzerinde karar verilmez). Yetenek
