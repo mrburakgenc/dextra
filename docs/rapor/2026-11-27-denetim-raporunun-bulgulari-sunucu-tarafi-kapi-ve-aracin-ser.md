@@ -17,11 +17,14 @@ Bu rapor PR #19'dan sonraki işi kapsar: 2026-11-27 tarihli dış denetim raporu
 5. **Dört yaprak ilk seferde geçmedi** (6. bölüm): üçü benim yazdığım karttaki çelişki ya da dar dosya listesi yüzünden (7. bölüm madde 1 … 3), biri işçinin kırılgan testi yüzünden. İncelemeler iki gerçek gerilemeyi alınmadan yakaladı (GV-168: satır devamı; GV-170: çalışma ağacından okunan taban).
 6. **Dalın büyüklüğü** (`git diff --shortstat fdbceef..ec733fc`): 18 dosya, 1.448 satır eklendi, 32 satır silindi. Araç kayıtlarına göre: 6 görev, 11 işçi koşusu ve 10 inceleme, 127,2 dakika, 33,45 dolar (2. bölümdeki tablonun toplamı). Başta 12 oturum demiştim; 21 oldu.
 
+7. **Epic'ten sonra dört cevabınla şunlar yapıldı** (4. bölüm madde 4 … 7): `harness.json`'da `orkestrasyon` kapatıldı ve dört desen korunan ayara girdi (`b0ad66a`); sunucu tarafı kapının kararı ve kuralı taslak olarak yazıldı (KR-017, KU-022; `830bfdf`). Dört kuralın mekanik sürümü yazıldı ama dala girmedi: kabulünü ve açık uçlarının kapatılmasını bu oturumdan yapamıyorum (7. bölüm madde 8; 9. bölüm madde 4).
+
 **Önce bakman gerekenler**
 
-- 9. bölüm madde 1 ve 2: dalın gönderilmesi ve `main` dalının korunması.
+- 9. bölüm madde 1 ve 2: PR'ın ilk koşusu ve `main` dalının korunması.
+- 9. bölüm madde 4: senin terminalinden çalışması gereken kabul ve kapatma komutları.
 - 8. bölüm: işçilerin ortamı ve inceleyicinin MCP'si bu dalla değişti.
-- 7. bölüm madde 4: bu oturumda verdiğin iki cevap söz defterine yazılmadı.
+- 7. bölüm madde 4 ve 8: bu oturumda verdiğin cevaplar söz defterine yazılmadı ve kancanın soruları sana gösterilmedi.
 
 ## 2. Görevler
 
@@ -67,15 +70,19 @@ Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablo
 
 ## 4. Kullanıcının verdiği kararlar
 
-Üçünün de tek kaydı bu oturumun konuşması ve aşağıda sayılan görev notudur; söz defterinde yoktur (7. bölüm madde 4).
+Hepsinin tek kaydı bu oturumun konuşması, aşağıda sayılan görev notu ve commit iletileridir; söz defterinde yoktur (7. bölüm madde 4).
 
 1. **İşin kendisi** (2026-11-27, ileti): "/Users/burak.genc/Downloads/Dextra denetim raporu.md gerekenleri yap planı çıkart". Plan sunulduktan sonra: "yürüt".
 2. **GV-168, değer olarak geçen bayrak** (soru penceresi): "Kapalı kalsın". Bayrağa benzeyen ve tek başına ayrı sözcük olan değer (`-m -n`, `-m "--no-veri"`) reddedilir. Kayıt: `.harness/gorev/GV-168/notlar.json` (14:32:26). Kartın hedef metni eski kısıtı taşımaya devam ediyor (7. bölüm madde 1).
 3. **GV-168, önceden var olan iki atlatma** (soru penceresi): "Evet, aynı yaprakta". Satır devamıyla bölünen komut ve `--attr-source` seçeneğinden sonra gelen alt komut aynı yaprakta kapandı. Kayıt: aynı not.
+4. **Gönderme** (epic bittikten sonra, soru penceresi): "Gönder ve PR aç". Birleştirme istenmedi.
+5. **Orkestrasyon** (soru penceresi): "Kapat". `harness.json` içinde `gorev.orkestrasyon` kapatıldı (`b0ad66a`).
+6. **Korunan ayar** (soru penceresi): "Girsin". Lint, derleyici, test ve iş akışı ayar dosyaları `korunan_ayar` listesine girdi (`b0ad66a`).
+7. **Bilgi tabanı** (soru penceresi): "Şimdi yaz, aynı PR'a girsin". Taslaklar yazıldı; kabul senin (9. bölüm madde 4).
 
 ## 5. Ajanın verdiği kararlar
 
-Hepsi teyidini bekler; bu iş için tasarım kaydı ya da karar düğümü açılmadı (9. bölüm madde 4).
+Hepsi teyidini bekler. İş bir karar düğümü olmadan yürüdü; karar sonradan taslak olarak yazıldı (KR-017; madde 12).
 
 **Ana oturumun kararları**
 
@@ -90,6 +97,9 @@ Hepsi teyidini bekler; bu iş için tasarım kaydı ya da karar düğümü açı
 9. GV-171'in ikinci koşusunda özet iş akışının güvenlik testi iki yerde sıkılaştırıldı (iş düzeyinde izin, PR'ın deposunu çeken adım). İncelemenin önerisiydi, engel değildi.
 10. Üç atlatma bilerek kapatılmadı ve izleyen işe bırakıldı: bash'in `$'...'` tırnağı, git takma adı, yorum satırındaki satır devamı (3. bölüm, GV-168).
 11. Yürütme için Docker Desktop'ı ve durmuş iki kapsayıcıyı (`dextra-postgres`, `dextra-redis`) ben başlattım; `harness.json`'da araç geliştirme kipini açtım (`6972f32`) ve epic bitince kapattım (`ec733fc`).
+12. Sunucu tarafı kapının kararı ve kuralı iş bittikten sonra yazıldı (KR-017, KU-022; ikisi de taslak). KR-017 altı ajan kararı (AK-1 … AK-6) ve iki açık uç taşır: `main` dalının koruma kuralı ve ajanın GitHub kimliği. KU-022 gözden geçirme düzeyindedir, çünkü birleştirmeyi durduran bir düzenek yok.
+13. KU-009 mekanik düzeye çekilmedi; sana sorduğum soruda onu da saymıştım. Gerekçe: yeni sınama ve lint kuralın yalnız bir bölümünü yakalıyor (guard, süzgeç, kuyruk paketi); öbür yeteneklerin kopyası makineyle aranmıyor. Kurala yalnız "kısmen sınanır" notu yazıldı (bağlayıcı içerik değişmedi).
+14. Korunan ayar için dört desen seçtim: `**/eslint.config.*`, `**/tsconfig*.json`, `**/vitest.config*.ts`, `.github/workflows/**`. `package.json` ve kilit dosyası listeye girmedi: bağımlılık ekleyen her işte soru çıkardı.
 
 **İşçilerin kararları** (tamamı: her görevin `bitis.json` dosyasında, `kararlar` alanı)
 
@@ -118,6 +128,8 @@ Atılan görev yok. Dört görev yeniden koştu:
 5. **Oturum sayısını yanlış tahmin ettim.** 12 dedim, 21 oldu (33,45 dolar).
 6. **Denetim raporunun 3. bulgusundaki git denemesini yineleyemedim.** Kanca, deneme komutunu metnindeki bayrak yüzünden reddetti; işçi ve inceleyiciler de gerçek git ile ölçemedi. Bulgu, raporun kendi ölçümüne (git 2.43) ve inceleyicinin `git rev-parse --parseopt` ölçümüne dayanıyor.
 7. **Üç işçi dosyayı komutla yazdı ve kanca yakalamadı.** GV-168 ve GV-171 işçileri bir düzeltmeyi kabuktan python ile yazdıklarını kendileri bildirdi; GV-172'de yürütme "kapı dışı yazım" uyarısı verdi (`yapi-denetimi.spec.ts`, biçim sapmasıyla). Hata benim değil ama aracın boşluğu: görev oturumundaki "dosyayı komutla yazmaz" yasağı python ile yazmayı görmüyor (9. bölüm madde 6).
+8. **Sana "kanca soracak" dedim; sormadı.** İki neden ölçüldü: `harness.json` içinde `gorev.onay` değeri "yok", yani yürütme, yeniden koşturma, genişletme ve alma ayar gereği sorulmaz; ve oturum soru göstermeyen izin modunda (bypassPermissions) koşuyor: kanca açık uç kapatma komutumu "bu izin modunda soru gösterilmez" diyerek reddetti. `harness.json` düzenlemelerinde kancanın sorusunun sana gösterilip gösterilmediğini bilmiyorum. Yaptığım her adımı konuşmada yazdım ve dört kararı soru penceresiyle aldım; ama aracın kendi onay kaydı bu işte yok. Aynı nedenle taslakları kabul ettiremiyorum ve açık uç kapatamıyorum (9. bölüm madde 4).
+9. **Dört kuralı önce taslağa çevirdim, sonra geri aldım.** KU-007, KU-010, KU-011 ve KU-013'ü sürüm 2 taslağı yaptım; kabul edilemeyeceğini görünce kabul edilmiş sürüm 1 hâllerine geri getirdim, yoksa dal kabul edilmiş dört kuralı taslağa düşürmüş olarak giderdi. Sürüm 2 metni yama olarak saklı (9. bölüm madde 4).
 
 ## 8. Araçta değişenler
 
@@ -127,14 +139,17 @@ Atılan görev yok. Dört görev yeniden koştu:
 4. **Yeni komut** `python3 harness/h.py ozet [--taban <başvuru>] [--uc <başvuru>]` (GV-170): kabule geçen düğümler, kabul edilmiş düğümdeki değişiklik ve kapı dosyalarındaki değişiklik; yalnız git nesnelerini okur.
 5. **Depoda iki GitHub iş akışı var** (`.github/workflows/`; GV-171). Araç kodu değil ama kapıdır: `kapi.yml` zincir denetimini ve bütün testleri, `ozet.yml` PR özetini koşturur.
 6. **Yapı denetimi dört madde daha sınıyor** (q, r, s, t; GV-172). Push kapısındaki DN-002 artık guard sırasını, uç işaretlerini, isteği yapanı gösteren adı ve feature'daki guard ya da süzgeç kopyasını da yakalar.
-7. `harness.json` değişmedi: geliştirme kipi açıldı (`6972f32`) ve kapatıldı (`ec733fc`). Yeni iki ayarın değeri dosyaya yazılmadı; koddaki varsayılan geçerli.
+7. **`harness.json` iki yerde değişti** (`b0ad66a`; senin kararınla): `gorev.orkestrasyon` kapalı, yani işçi alt ajan ve iş akışı başlatamaz; `korunan_ayar` dört desen taşıyor (`**/eslint.config.*`, `**/tsconfig*.json`, `**/vitest.config*.ts`, `.github/workflows/**`), yani bu dosyalar kapıların ayarı sayılır: ana oturum düzenlerken kanca sorar, görev oturumu hiç düzenleyemez. Geliştirme kipi açıldı (`6972f32`) ve kapatıldı (`ec733fc`). Yeni iki ayarın (`ortam_izinli`, `mcp_roller`) değeri dosyaya yazılmadı; koddaki varsayılan geçerli.
 
 ## 9. Kullanıcıdan beklenenler ve açık işler
 
-1. **Dalın gönderilmesi ve PR.** Dal gönderilmedi; senin sözünü bekliyor. Sunucu tarafı kapının ilk gerçek koşusu o PR'da görülecek. Koşucuda `postgres:19-alpine` imajının çekilebildiği, `node-version: 24`'ün 24.15 ve üstünü verdiği ve PR'ın birleştirme commit'inde `denetle --dal`'ın çalıştığı ölçülmedi; ilk koşu kırmızı çıkabilir.
-2. **`main` dalının korunması ve ajanın kimliği (bulgu 2).** Senin GitHub ayarın. Önerim: `main` için "PR zorunlu, dört kontrol (zincir, arac-testleri, arka-yuz, on-yuz) geçmeden birleşmez, 1 onay zorunlu" kuralı ve ajan için ayrı bir hesap. Aynı hesabın belirteciyle açılan PR'ı sen onaylayamazsın; tek hesapla "onay zorunlu" kurulmuyor.
-3. **`harness.json` için üç değer.** `orkestrasyon` kapansın mı (denetim raporunun küçük notu: işçinin alt ajanları araç sınırını aşıyor); MCP hangi rollerde açık kalsın (bugün koddaki varsayılan: yalnız işçi); lint, derleyici ve iş akışı dosyaları `korunan_ayar`'a girsin mi (girerse ajan onları düzenlerken kanca sana sorar).
-4. **Bilgi tabanı.** Bu dalda hiçbir düğüm yazılmadı. Yazılması gerekenler, hepsi senin kabulünle: KU-009, KU-010, KU-011 ve KU-013'ün DN-002'ye, KU-007'nin DN-003'e bağlanması (denetim düzeyi mekanik; sürüm artar); DN-002'nin metninin dört yeni maddeyi sayması; "kapılar sunucuda da koşar" kararı ve kuralı. Bunların kapattığı açık uçlar: KU-007/AU-2, KU-010/AU-2, KU-011/AU-2, KU-013/AU-1.
+1. **PR'ın ilk koşusu.** Dal senin sözünle gönderildi ve PR açıldı (10. bölüm). Sunucu tarafı kapının ilk gerçek koşusu o PR'dadır. Koşucuda `postgres:19-alpine` imajının çekilebildiği, `node-version: 24`'ün 24.15 ve üstünü verdiği ve PR'ın birleştirme commit'inde `denetle --dal`'ın çalıştığı önceden ölçülmedi; sonuç 10. bölümdedir. Birleştirme senin kararın.
+2. **`main` dalının korunması ve ajanın kimliği (bulgu 2).** Senin GitHub ayarın; KR-017'nin iki açık ucu olarak da duruyor (AU-1, AU-2). Önerim: `main` için "PR zorunlu, dört kontrol (zincir, arac-testleri, arka-yuz, on-yuz) geçmeden birleşmez, 1 onay zorunlu" kuralı ve ajan için ayrı bir hesap. Aynı hesabın belirteciyle açılan PR'ı sen onaylayamazsın; tek hesapla "onay zorunlu" kurulmuyor.
+3. **`harness.json`.** İki değer yazıldı (8. bölüm madde 7). Açık kalan: MCP hangi rollerde açık kalsın (bugün koddaki varsayılan: yalnız işçi).
+4. **Bilgi tabanı: senin terminalinden çalışması gerekenler.** Bu oturum soru göstermeyen izin modunda olduğu için kabul ve açık uç kapatma komutlarını ben çalıştıramıyorum (7. bölüm madde 8). Sırayla:
+   - KR-017 ve KU-022 taslak olarak dalda duruyor. Kabul edersen: `python3 harness/h.py kabul KR-017 KU-022`.
+   - KU-007 (DN-003'e), KU-010, KU-011 ve KU-013 (DN-002'ye) için mekanik sürüm 2 metni yazıldı ama dala girmedi; yama dosyası bu oturumun geçici klasöründe ve kalıcı değil. İzin modunu değiştirip bana "kuralları işle" dersen yamayı uygular, dört açık ucu (KU-007/AU-2, KU-010/AU-2, KU-011/AU-2, KU-013/AU-1) kapatır ve kabul sorusunu sana getiririm; yama kaybolmuşsa yeniden yazarım (dört küçük düzenleme).
+   - Kabul edilene kadar sayım değişmez: 19 kabul kuralın 4'ü mekanik.
 5. **Yerel `main`.** GitHub'ın 37 commit gerisinde; ana ağaçta `git pull --ff-only` gerekli. Yapılmadan açılan her oturum eski kanca ayarıyla koşar (7. bölüm madde 4).
 6. **İzleyen iş önerileri** (hiçbiri yapılmadı; ayrıntı 3. bölümde):
    - Kanca: bash'in `$'...'` tırnağı, git takma adı ve yorum satırındaki satır devamı ile kapı hâlâ atlatılabiliyor (GV-168).
@@ -147,7 +162,7 @@ Atılan görev yok. Dört görev yeniden koştu:
 
 ## 10. PR'lar
 
-Yok. Dal (`worktree-denetim-raporu-bulgulari`) gönderilmedi: gönderme ve PR senin sözünü bekliyor (9. bölüm madde 1).
+Dal (`worktree-denetim-raporu-bulgulari`) senin sözünle ("Gönder ve PR aç") gönderildi ve `main`'e PR açıldı. PR'ın numarası ve sunucu tarafı kapının ilk koşusunun sonucu bu bölüme ayrı bir commit'le yazılır. Birleştirme yapılmadı.
 
 ## 11. Günlük
 
@@ -163,4 +178,5 @@ Saatler görevlerin koşu geçmişinden (`kosular.jsonl`) ve commit'lerden okund
 - 14:50 — GV-168 alındı. GV-170'in 14:46'da başlayan incelemesi kaldı; 14:51'de yeniden koştu, 14:58'de alındı.
 - 14:58 — GV-171 koştu; 15:06'da başlayan incelemesi kaldı; 15:22'de yeniden koştu; 15:37'de alındı.
 - 15:38 — GV-173 koştu, incelendi ve 15:50'de alındı; epic bitti.
-- 15:51 — Birleşmiş dalda dokuz araç test dosyası ve yapı denetimi spec'i koşturuldu; geliştirme kipi kapatıldı (`ec733fc`); bu rapor yazıldı.
+- 15:51 — Birleşmiş dalda dokuz araç test dosyası ve yapı denetimi spec'i koşturuldu; geliştirme kipi kapatıldı (`ec733fc`); bu rapor yazıldı (`9ad2fc5`). Push kapısı yerelde koşturuldu: temiz.
+- Sonra — Dört soru cevaplandı (4. bölüm madde 4 … 7). `harness.json`'da iki ayar yazıldı (`b0ad66a`). KR-017 ve KU-022 taslak olarak yazıldı, DN-002 ve KU-009'a not düşüldü (`830bfdf`). Dört kuralın sürüm 2 taslağı yazıldı, açık uç kapatma komutu reddedilince geri alındı. Rapor güncellendi, dal gönderildi ve PR açıldı.
