@@ -44,8 +44,10 @@ export async function proxy(istek: NextRequest): Promise<NextResponse> {
     undefined,
   );
 
-  if (sonuc.basarili) {
-    const yeni = YenilemeCevabi.parse(sonuc.govde);
+  // Sözleşmeye uymayan başarı cevabı da geçici arızadır: aşağıdaki son dala düşer.
+  const okunan = sonuc.basarili ? YenilemeCevabi.safeParse(sonuc.govde) : null;
+  if (okunan?.success === true) {
+    const yeni = okunan.data;
     // Süren isteğin çerez başlığı değişir; sayfa aynı istekte yeni belirteci görür.
     cerezler.set(OTURUM_CEREZLERI.erisim, yeni.erisimBelirteci);
     cerezler.set(OTURUM_CEREZLERI.yenileme, yeni.yenilemeBelirteci);
@@ -64,7 +66,7 @@ export async function proxy(istek: NextRequest): Promise<NextResponse> {
   }
 
   // Yenilenemeyen oturum biter (TS-004 Değişmez 5).
-  if (sonuc.hata.kod === 'kimlik_gerekli') {
+  if (!sonuc.basarili && sonuc.hata.kod === 'kimlik_gerekli') {
     const cevap = NextResponse.redirect(new URL('/giris', istek.url));
     for (const ad of Object.values(OTURUM_CEREZLERI)) {
       cevap.cookies.delete(ad);
@@ -72,7 +74,7 @@ export async function proxy(istek: NextRequest): Promise<NextResponse> {
     return cevap;
   }
 
-  // Ulaşılamadı ya da öbür hatalar (5xx dahil): geçici arıza oturumu düşürmez; çerezlere
+  // Ulaşılamadı, sözleşmeye uymayan cevap ya da öbür hatalar (5xx dahil): geçici arıza oturumu düşürmez; çerezlere
   // dokunulmaz, istek sürer.
   return NextResponse.next();
 }

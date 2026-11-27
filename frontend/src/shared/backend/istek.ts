@@ -12,6 +12,8 @@ import { imzaBasliklari } from './imza';
 const BACKEND_ADRESI = 'BACKEND_ADRESI';
 const ARACI_KATMAN_SIRRI = 'ARACI_KATMAN_SIRRI';
 const SIR_EN_AZ_UZUNLUK = 32;
+// Backend cevap vermezse istek bu süre dolunca bırakılır ve ulaşılamadı sayılır.
+const ISTEK_SURE_SINIRI_MS = 10_000;
 
 export interface BackendIstegi {
   // '/' ile başlar; BACKEND_ADRESI'ne eklenir.
@@ -35,7 +37,7 @@ function ortamDegiskeni(ad: string): string {
 
 export const ULASILAMIYOR = 'Şu an ulaşılamıyor';
 
-// Ağ hatası ve JSON olmayan cevap; durum ağ hatasında 0'dır.
+// Ağ hatası, süre sınırının dolması ve JSON olmayan cevap; durum ağ hatasında ve cevap gelmeden süre dolunca 0'dır.
 function ulasilamadi(durum: number): BackendSonucu {
   return {
     basarili: false,
@@ -106,6 +108,7 @@ export async function backendCagrisi(
       method: istek.yontem,
       headers: basliklar,
       body: istek.govde === undefined ? null : JSON.stringify(istek.govde),
+      signal: AbortSignal.timeout(ISTEK_SURE_SINIRI_MS),
     });
   } catch {
     return ulasilamadi(0);

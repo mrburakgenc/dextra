@@ -5,6 +5,7 @@ import {
   OTURUM_CEREZLERI,
   oturumCerezleriniSil,
   oturumCerezleriniYaz,
+  secenekler,
   yenilemeCerezleriVar,
 } from './cerezler';
 
@@ -57,6 +58,17 @@ describe('oturum çerezleri', () => {
     for (const [, , secenek] of depo.set.mock.calls) {
       expect(secenek).toMatchObject({ secure: true });
     }
+  });
+
+  it.each([
+    { ad: 'tanımsızken', deger: undefined, beklenen: true },
+    { ad: "'production' iken", deger: 'production', beklenen: true },
+    { ad: "'test' iken", deger: 'test', beklenen: true },
+    { ad: "'development' iken", deger: 'development', beklenen: false },
+  ])('NODE_ENV $ad Secure $beklenen olur', ({ deger, beklenen }) => {
+    vi.stubEnv('NODE_ENV', deger);
+
+    expect(secenekler(60).secure).toBe(beklenen);
   });
 
   it('erişim belirtecini erişim çerezinden okur', async () => {

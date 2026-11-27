@@ -63,6 +63,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('backend isteği', () => {
@@ -180,6 +181,49 @@ describe('backend isteği', () => {
         durum: 0,
       },
     });
+  });
+
+  it('backend cevap vermezse 10 saniyelik süre sınırı dolunca ulasilamadi (durum 0) döner', async () => {
+    const denetci = new AbortController();
+    const sureSiniri = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(denetci.signal);
+    // Hiç cevap vermeyen backend: istek yalnız sinyal iptal edilince düşer (gerçek fetch gibi).
+    sahteFetch.mockImplementation(
+      (_adres, init) =>
+        new Promise((_cevapla, reddet) => {
+          init?.signal?.addEventListener('abort', () => {
+            reddet(new DOMException('süre doldu', 'TimeoutError'));
+          });
+        }),
+    );
+
+    const bekleyen = backendIstegi({ yol: '/x', yontem: 'GET', oturumlu: false });
+    await vi.waitFor(() => {
+      expect(sahteFetch).toHaveBeenCalledOnce();
+    });
+    denetci.abort();
+
+    await expect(bekleyen).resolves.toEqual({
+      basarili: false,
+      hata: {
+        kod: 'ulasilamadi',
+        ileti: 'Şu an ulaşılamıyor',
+        ayrinti: null,
+        durum: 0,
+      },
+    });
+    expect(sureSiniri).toHaveBeenCalledExactlyOnceWith(10_000);
+  });
+
+  it('süre sınırından önce gelen cevap bugünkü gibi okunur', async () => {
+    const denetci = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(denetci.signal);
+
+    const sonuc = await backendIstegi({ yol: '/x', yontem: 'GET', oturumlu: false });
+
+    expect(sonIstek().init.signal).toBe(denetci.signal);
+    expect(sonuc).toEqual({ basarili: true, durum: 200, govde: { tamam: true } });
   });
 
   it.each([
