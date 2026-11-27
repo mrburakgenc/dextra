@@ -113,6 +113,18 @@ export default defineConfig(
     },
   },
   {
+    // Tür zorlama (`as Tür`, `<Tür>deger`) yasaktır; tür daraltılarak ya da şemayla okunarak elde
+    // edilir. `as const` serbesttir (kural onu kendisi muaf tutar). Test dosyaları kapsam dışıdır.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        { assertionStyle: 'never' },
+      ],
+    },
+  },
+  {
     // Tarih ve sayı yalnız src/shared/bicim içinde biçimlenir (KR-014; TS-004 Yapı).
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/shared/bicim/**'],
