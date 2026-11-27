@@ -11,9 +11,9 @@
 Bu rapor PR #19'dan sonraki işi kapsar: 2026-11-27 tarihli dış denetim raporunun (denetlenen commit `fdbceef`) bulguları için açılan EP-014. 6 görevin 6'sı alındı (tablo 2. bölümde); epic bitti.
 
 1. **Altı bulgunun beşi bu dalda kapandı, biri başka işte.** Bulgu 1 ve 2: GitHub'da koşan iki iş akışı (`.github/workflows/kapi.yml`, `ozet.yml`; GV-171) ve `h.py ozet` komutu (GV-170). Bulgu 3: kanca, kapı atlatan bayrağın kısaltmalarını ve commit'in kısa `-n` seçeneğini reddediyor (GV-168). Bulgu 5: işçiye yalnız izin listesindeki ortam değişkenleri geçiyor, MCP yalnız ayarda sayılan role veriliyor (GV-169). Bulgu 6: yapı denetimine dört sınama eklendi (GV-172). Bulgu 4 (deneme sınırı ve yayın şartı) plana alınmadı: `arac-sertlestirme` ağacındaki TS-010 taslağı aynı işi tasarlıyor (Yapı A.7).
-2. **Sunucu tarafı kapı henüz hiç koşmadı.** İş akışları yalnız yazıldı ve metin olarak sınandı (`harness/test/test_is_akisi.py`, 13 test); GitHub'daki ilk gerçek koşu dal gönderilip PR açılınca görülecek. `ozet.yml` `pull_request_target` ile koştuğu için bu dalın PR'ında koşmaz: ilk özet yorumu, bu dal `main`'e girdikten sonra açılan ilk PR'da görülür (GV-171 incelemesinin notu).
+2. **Sunucu tarafı kapı ilk kez PR #20'de koştu: dört işten üçü geçti, biri kaldı** (10. bölüm). Geçenler: `zincir`, `arka-yuz` (35 birim ve 65 e2e test dosyası; bu testler ilk kez bir kapıda koştu), `on-yuz` (33 dosya). Kalan: `arac-testleri`, 25 dosyadan biri (`test_hook.py`, 109 testten 1'i). Kalan test bu dalla gelmedi: yalnız araç geliştirme kipi açıkken geçiyor ve `main`'de de kip kapalı. Kapının ilk yakaladığı şey budur. `ozet.yml` `pull_request_target` ile koştuğu için bu PR'da koşmadı: ilk özet yorumu, bu dal `main`'e girdikten sonra açılan ilk PR'da görülür (GV-171 incelemesinin notu).
 3. **Bulgu 2'nin asıl kısmı kodla kapanmaz.** `main` dalı korumasız, depo herkese açık ve bu makinedeki `gh` deponun sahibinin hesabıyla açık (2026-11-27'de `gh api` ile ölçüldü); zorunlu kontrol ve ajanın ayrı kimliği senin GitHub ayarın (9. bölüm madde 2).
-4. **Kendi ölçümüm** (son alımdan sonra, birleşmiş dalda, `f3f42e0`): bu epic'te eklenen ya da değişen dokuz araç test dosyası tek tek koştu ve geçti (`test_hook`, `test_ortam`, `test_gorev`, `test_acikuc`, `test_kapi`, `test_butun_ts009`, `test_ozet`, `test_is_akisi`, `test_butun_denetim_raporu`); yapı denetimi spec'i 110/110 (38 uç sınandı, 0,5 saniye); `h.py denetle` temiz. Arka yüz ve ön yüz test kümelerinin tamamını koşturmadım; onları ilk kez GitHub koşturacak.
+4. **Kendi ölçümüm** (son alımdan sonra, birleşmiş dalda, `f3f42e0`): bu epic'te eklenen ya da değişen dokuz araç test dosyası tek tek koştu ve geçti (`test_hook`, `test_ortam`, `test_gorev`, `test_acikuc`, `test_kapi`, `test_butun_ts009`, `test_ozet`, `test_is_akisi`, `test_butun_denetim_raporu`); yapı denetimi spec'i 110/110 (38 uç sınandı, 0,5 saniye); `h.py denetle` temiz. Bu ölçüm geliştirme kipi açıkken yapıldı; kip kapandıktan sonra `test_hook.py` içindeki bir test kalıyor ve bunu ben değil GitHub'daki koşu gösterdi (7. bölüm madde 10). Arka yüz ve ön yüz test kümelerinin tamamını yerelde koşturmadım; onları ilk kez GitHub koşturdu.
 5. **Dört yaprak ilk seferde geçmedi** (6. bölüm): üçü benim yazdığım karttaki çelişki ya da dar dosya listesi yüzünden (7. bölüm madde 1 … 3), biri işçinin kırılgan testi yüzünden. İncelemeler iki gerçek gerilemeyi alınmadan yakaladı (GV-168: satır devamı; GV-170: çalışma ağacından okunan taban).
 6. **Dalın büyüklüğü** (`git diff --shortstat fdbceef..ec733fc`): 18 dosya, 1.448 satır eklendi, 32 satır silindi. Araç kayıtlarına göre: 6 görev, 11 işçi koşusu ve 10 inceleme, 127,2 dakika, 33,45 dolar (2. bölümdeki tablonun toplamı). Başta 12 oturum demiştim; 21 oldu.
 
@@ -130,6 +130,7 @@ Atılan görev yok. Dört görev yeniden koştu:
 7. **Üç işçi dosyayı komutla yazdı ve kanca yakalamadı.** GV-168 ve GV-171 işçileri bir düzeltmeyi kabuktan python ile yazdıklarını kendileri bildirdi; GV-172'de yürütme "kapı dışı yazım" uyarısı verdi (`yapi-denetimi.spec.ts`, biçim sapmasıyla). Hata benim değil ama aracın boşluğu: görev oturumundaki "dosyayı komutla yazmaz" yasağı python ile yazmayı görmüyor (9. bölüm madde 6).
 8. **Sana "kanca soracak" dedim; sormadı.** İki neden ölçüldü: `harness.json` içinde `gorev.onay` değeri "yok", yani yürütme, yeniden koşturma, genişletme ve alma ayar gereği sorulmaz; ve oturum soru göstermeyen izin modunda (bypassPermissions) koşuyor: kanca açık uç kapatma komutumu "bu izin modunda soru gösterilmez" diyerek reddetti. `harness.json` düzenlemelerinde kancanın sorusunun sana gösterilip gösterilmediğini bilmiyorum. Yaptığım her adımı konuşmada yazdım ve dört kararı soru penceresiyle aldım; ama aracın kendi onay kaydı bu işte yok. Aynı nedenle taslakları kabul ettiremiyorum ve açık uç kapatamıyorum (9. bölüm madde 4).
 9. **Dört kuralı önce taslağa çevirdim, sonra geri aldım.** KU-007, KU-010, KU-011 ve KU-013'ü sürüm 2 taslağı yaptım; kabul edilemeyeceğini görünce kabul edilmiş sürüm 1 hâllerine geri getirdim, yoksa dal kabul edilmiş dört kuralı taslağa düşürmüş olarak giderdi. Sürüm 2 metni yama olarak saklı (9. bölüm madde 4).
+10. **Testleri yanlış anda ölçtüm.** Birleşmiş daldaki ölçümü (15:51) geliştirme kipini kapatmadan önce yaptım; `test_hook.py` içindeki `test_surec_olarak_kosunca_agacin_kendi_betigine_devreder` testi deponun kendi `harness.json` dosyasındaki kipe bakıyor ve kip kapalıyken kalıyor. Kipi kapattıktan sonra dosyayı yeniden koşturmadım; push kapısı da araç testlerini koşturmadığı için dal bu testle gitti. PR #20'nin `arac-testleri` işi yakaladı; yerelde yineledim, aynı hata. Test bu dalda değişmedi (dosyada yalnız 39 satır ekleme var) ve `main`'de kip kapalı, yani test `main`'de de kalıyor; EP-013'ün incelemeleri de kip açıkken koştuğu için görülmemiş.
 
 ## 8. Araçta değişenler
 
@@ -143,7 +144,7 @@ Atılan görev yok. Dört görev yeniden koştu:
 
 ## 9. Kullanıcıdan beklenenler ve açık işler
 
-1. **PR'ın ilk koşusu.** Dal senin sözünle gönderildi ve PR açıldı (10. bölüm). Sunucu tarafı kapının ilk gerçek koşusu o PR'dadır. Koşucuda `postgres:19-alpine` imajının çekilebildiği, `node-version: 24`'ün 24.15 ve üstünü verdiği ve PR'ın birleştirme commit'inde `denetle --dal`'ın çalıştığı önceden ölçülmedi; sonuç 10. bölümdedir. Birleştirme senin kararın.
+1. **PR #20 kırmızı: `arac-testleri` işi kalıyor.** Neden tek testtir ve bu dalın kodu değildir (7. bölüm madde 10). Düzeltilmesi ayrı bir görev ister (araç testi değişir, incelenir); yapılmadı, kararını bekliyor. Önerim testi deponun ayarından bağımsız kılmak: test kendi geçici iskeletini kursun, kipi orada açsın. Öbür yol testi projede atlamaktır; o zaman davranış bu depoda hiç sınanmaz. Öbür üç iş geçti; koşucuya dair varsayımlar (imajlar, node sürümü, birleştirme commit'inde `denetle --dal`) doğrulandı. Birleştirme senin kararın.
 2. **`main` dalının korunması ve ajanın kimliği (bulgu 2).** Senin GitHub ayarın; KR-017'nin iki açık ucu olarak da duruyor (AU-1, AU-2). Önerim: `main` için "PR zorunlu, dört kontrol (zincir, arac-testleri, arka-yuz, on-yuz) geçmeden birleşmez, 1 onay zorunlu" kuralı ve ajan için ayrı bir hesap. Aynı hesabın belirteciyle açılan PR'ı sen onaylayamazsın; tek hesapla "onay zorunlu" kurulmuyor.
 3. **`harness.json`.** İki değer yazıldı (8. bölüm madde 7). Açık kalan: MCP hangi rollerde açık kalsın (bugün koddaki varsayılan: yalnız işçi).
 4. **Bilgi tabanı: senin terminalinden çalışması gerekenler.** Bu oturum soru göstermeyen izin modunda olduğu için kabul ve açık uç kapatma komutlarını ben çalıştıramıyorum (7. bölüm madde 8). Sırayla:
@@ -162,7 +163,18 @@ Atılan görev yok. Dört görev yeniden koştu:
 
 ## 10. PR'lar
 
-Dal (`worktree-denetim-raporu-bulgulari`) senin sözünle ("Gönder ve PR aç") gönderildi ve `main`'e PR açıldı. PR'ın numarası ve sunucu tarafı kapının ilk koşusunun sonucu bu bölüme ayrı bir commit'le yazılır. Birleştirme yapılmadı.
+**PR #20** — https://github.com/mrburakgenc/dextra/pull/20 — açık, birleştirilmedi. Dal (`worktree-denetim-raporu-bulgulari`) senin sözünle ("Gönder ve PR aç") gönderildi; push kapısı yerelde temiz geçti.
+
+Sunucu tarafı kapının ilk koşusu (koşu 46009538016, commit `3fffc9d`, 2026-11-27):
+
+| İş | Sonuç | Süre | Ne koştu |
+|---|---|---|---|
+| zincir | geçti | 58 sn | `denetle --dal`: temiz (zincir ve DN-001 … DN-004) |
+| arac-testleri | **kaldı** | 1 dk 11 sn | 25 dosyadan 24'ü geçti; `test_hook.py` 109 testten 1'inde kaldı (7. bölüm madde 10) |
+| arka-yuz | geçti | 5 dk 14 sn | 35 birim test dosyası, 65 e2e test dosyası (e2e 271 saniye) |
+| on-yuz | geçti | 40 sn | 33 test dosyası |
+
+`ozet` iş akışı bu PR'da koşmadı (taban dalda henüz yok).
 
 ## 11. Günlük
 
@@ -179,4 +191,5 @@ Saatler görevlerin koşu geçmişinden (`kosular.jsonl`) ve commit'lerden okund
 - 14:58 — GV-171 koştu; 15:06'da başlayan incelemesi kaldı; 15:22'de yeniden koştu; 15:37'de alındı.
 - 15:38 — GV-173 koştu, incelendi ve 15:50'de alındı; epic bitti.
 - 15:51 — Birleşmiş dalda dokuz araç test dosyası ve yapı denetimi spec'i koşturuldu; geliştirme kipi kapatıldı (`ec733fc`); bu rapor yazıldı (`9ad2fc5`). Push kapısı yerelde koşturuldu: temiz.
-- Sonra — Dört soru cevaplandı (4. bölüm madde 4 … 7). `harness.json`'da iki ayar yazıldı (`b0ad66a`). KR-017 ve KU-022 taslak olarak yazıldı, DN-002 ve KU-009'a not düşüldü (`830bfdf`). Dört kuralın sürüm 2 taslağı yazıldı, açık uç kapatma komutu reddedilince geri alındı. Rapor güncellendi, dal gönderildi ve PR açıldı.
+- Sonra — Dört soru cevaplandı (4. bölüm madde 4 … 7). `harness.json`'da iki ayar yazıldı (`b0ad66a`). KR-017 ve KU-022 taslak olarak yazıldı, DN-002 ve KU-009'a not düşüldü (`830bfdf`). Dört kuralın sürüm 2 taslağı yazıldı, açık uç kapatma komutu reddedilince geri alındı. Rapor güncellendi, dal gönderildi ve PR #20 açıldı.
+- 16:43 — Kapının ilk koşusu başladı; üç iş geçti, `arac-testleri` tek testte kaldı. Neden yerelde yinelendi ve rapora yazıldı.
