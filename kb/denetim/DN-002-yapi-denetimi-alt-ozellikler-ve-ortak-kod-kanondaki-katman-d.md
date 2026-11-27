@@ -12,6 +12,9 @@ Backend'in alt özelliklerinde ve ortak kodunda kanondaki katman düzeninden (TS
 ## Nasıl koşar
 Baş bloktaki komut deponun kökünde koşar; `pnpm` gerektirmez (yalnız `node` ve kurulu bağımlılıklar). Elle: `python3 harness/h.py denetim kos DN-002`. Denetimin kendisi `backend/src/shared/yapi/infrastructure/yapi-denetimi.ts` dosyasıdır; `backend/src/features/*/` altındaki her alt özelliği, `features/kimlik/_shared` klasörünü ve `backend/src/shared` altındaki her konuyu sınar ve sınadıklarını adlarıyla yazar. Push kapısında koşması için bu düğümün ve KU-008'in kabul edilmiş olması gerekir (taslak denetim kapıda koşmaz).
 
+## Ek maddeler (2026-11-27; GV-172)
+Aynı spec dört maddeyi daha sınar; komut değişmedi. q: `app.module.ts` içindeki guard bağlamalarının sırası ve `features` altında guard bağlaması (KU-010). r: `features` altındaki her ucun üç yetki işaretinden tam birini taşıması (KU-011). s: `features/**/application/**` ve `presentation/**` altında isteği yapanı gösteren ad (`requesterId`, `isteyenId`; KU-013). t: `features` altında guard, hata süzgeci ya da genel süzgeç, interceptor, pipe bağlaması (KU-009'un bir bölümü). Ölçüm (2026-11-27, bu depo): 110 test, 38 uç, ihlal 0, 0,5 saniye.
+
 ## Kırmızı örnek
 `backend/src/features/kimlik/rol/application/rol-olustur.handler.ts` (işleyici kendi `commands/<iş>/` klasöründe değil) ya da `domain/` altındaki bir dosyanın `@nestjs/common` içe aktarması: denetim dosyayı ve çiğnenen maddeyi adıyla bildirir, komut 1 ile çıkar.
 
