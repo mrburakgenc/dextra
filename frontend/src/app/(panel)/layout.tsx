@@ -76,16 +76,20 @@ export default async function PanelDuzeni({
   let icerik: ReactNode;
   // Hatada kural yoktur; menüdeki bağlantılar görünmez.
   let kurallar: z.infer<typeof YetkilerimCevabi>['kurallar'] = [];
-  if (sonuc.basarili) {
-    kurallar = YetkilerimCevabi.parse(sonuc.govde).kurallar;
+  // Sözleşmeye uymayan başarı cevabı ulaşılamadı gibi gösterilir; düzen fırlatmaz.
+  const okunan = sonuc.basarili ? YetkilerimCevabi.safeParse(sonuc.govde) : null;
+  if (okunan?.success === true) {
+    kurallar = okunan.data.kurallar;
     icerik = children;
   } else {
     // 401 çerezleri silen /oturum-bitti yoluna gider; öbür hatalarda (ulaşılamadı dahil)
     // içerik yerine ileti gösterilir ve çerezler silinmez.
-    kimlikGerekliyseOturumuBitir(sonuc.hata);
+    if (!sonuc.basarili) {
+      kimlikGerekliyseOturumuBitir(sonuc.hata);
+    }
     icerik = (
       <main id="ana-icerik" className="mx-auto max-w-2xl p-8">
-        <p role="alert">{sonuc.hata.ileti}</p>
+        <p role="alert">{sonuc.basarili ? ULASILAMIYOR : sonuc.hata.ileti}</p>
       </main>
     );
   }

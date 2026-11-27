@@ -7,7 +7,10 @@ import { cikisYap, girisYap, parolaBelirle } from './eylemler';
 import { BOS_FORM_DURUMU } from './form-durumu';
 
 vi.mock('server-only', () => ({}));
-vi.mock('../../shared/backend/istek', () => ({ backendIstegi: vi.fn() }));
+vi.mock('../../shared/backend/istek', () => ({
+  backendIstegi: vi.fn(),
+  ULASILAMIYOR: 'Şu an ulaşılamıyor',
+}));
 // Gerçek çerez modülü sahte çerez deposuyla koşar; yazılan ve silinen çerezler depodan okunur.
 const depo = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn(), delete: vi.fn() }));
 vi.mock('next/headers', () => ({ cookies: () => Promise.resolve(depo) }));
@@ -137,6 +140,21 @@ describe('girisYap', () => {
       alanHatalari: {},
     });
     expect(depo.set).not.toHaveBeenCalled();
+  });
+
+  it('backend 200 ile sözleşmeye uymayan gövde dönünce "Şu an ulaşılamıyor" döner ve çerez yazmaz', async () => {
+    vi.mocked(backendIstegi).mockResolvedValue({
+      basarili: true,
+      durum: 200,
+      govde: { erisimBelirteci: 'erisim' },
+    });
+
+    await expect(girisYap(BOS_FORM_DURUMU, form(GECERLI))).resolves.toEqual({
+      genelHata: 'Şu an ulaşılamıyor',
+      alanHatalari: {},
+    });
+    expect(depo.set).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
 

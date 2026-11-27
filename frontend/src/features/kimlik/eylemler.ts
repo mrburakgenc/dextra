@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { alanHatalari } from '../../shared/backend/hata';
-import { backendIstegi } from '../../shared/backend/istek';
+import { backendIstegi, ULASILAMIYOR } from '../../shared/backend/istek';
 import {
   oturumCerezleriniSil,
   oturumCerezleriniYaz,
@@ -20,7 +20,6 @@ import {
 // Kimlik ekranlarının Server Action'ları (TS-004 Değişmez 4): girdi önce şemayla doğrulanır,
 // sonra backend çağrılır. Başarıda yönlendirilir; redirect fırlattığı için try dışındadır.
 
-const ULASILAMIYOR = 'Şu an ulaşılamıyor';
 const GIRIS_HATALI = 'Kullanıcı adı ya da parola hatalı';
 const PAROLA_BELIRLENEMEDI =
   'Parola belirlenemedi. Bağlantı geçersiz ya da süresi dolmuş olabilir.';
@@ -65,7 +64,12 @@ export async function girisYap(
     return genelHata(sonuc.hata.ileti);
   }
 
-  await oturumCerezleriniYaz(GirisCevabi.parse(sonuc.govde));
+  // Sözleşmeye uymayan başarı cevabı ulaşılamadı sayılır; çerez yazılmaz.
+  const giris = GirisCevabi.safeParse(sonuc.govde);
+  if (!giris.success) {
+    return genelHata(ULASILAMIYOR);
+  }
+  await oturumCerezleriniYaz(giris.data);
   redirect('/');
 }
 
