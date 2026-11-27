@@ -1018,6 +1018,10 @@ describe('yapı denetimi: guard sırası, uç işaretleri, isteyen alanı, çapr
       '// isteyenId alanı yoktur; isteyen oturumdan okunur.\nexport const altYazKomutuSemasi = z.object({ ad: z.string() });',
     ],
     [
+      'yalnız blok yorumda geçen isteyenId',
+      '/*\n * isteyenId alanı yoktur; isteyen oturumdan okunur.\n */\nexport const altYazKomutuSemasi = z.object({ ad: z.string() });',
+    ],
+    [
       'adın parçası olarak geçen isteyen',
       'export const altYazKomutuSemasi = z.object({ isteyenIdsi: z.string(), isteyenSuperAdminMi: z.boolean() });',
     ],
@@ -1035,6 +1039,12 @@ describe('yapı denetimi: guard sırası, uç işaretleri, isteyen alanı, çapr
       'denetleyicide requesterId',
       DENETLEYICI,
       'interface Govde {\n  readonly requesterId?: string;\n}',
+    ],
+    // s bilinçli olarak kapalı kalır: ad yerel değişkende de ihlaldir.
+    [
+      'application kodunda yerel değişken isteyenId',
+      'features/ornek/alt/application/commands/alt-yaz/alt-yaz.handler.ts',
+      'const isteyenId = oturum.kullaniciId;',
     ],
   ])('isteyen alanı: %s kural s ile yakalanır', (_ad, yol, metin) => {
     expect(isteyenAlaniniDenetle(kurSrc({ [yol]: metin }))).toEqual([
@@ -1082,6 +1092,76 @@ describe('yapı denetimi: guard sırası, uç işaretleri, isteyen alanı, çapr
       expect(caprazKesenKopyayiDenetle(src)).toEqual([]);
     },
   );
+
+  // İçinde `/*` geçen satır yorumu ya da dizge blok yorum başlatmaz: ardından gelen kod, dosyanın
+  // sonundaki `*/` işaretine kadar silinmez ve oradaki ihlal görülür.
+  const SAHTE_BLOK_ACILISLARI: [string, string][] = [
+    ['satır yorumundaki yol deseni', '// yol: features/**/presentation/**'],
+    ['tek tırnaklı dizge', "const desen = 'a/*';"],
+    ['çift tırnaklı dizge', 'const desen = "a/*";'],
+    ['şablon dizgesi', 'const desen = `a/*`;'],
+    ['boşluksuz satır yorumu', 'const a = 1;// a/*b'],
+  ];
+  const SON_BLOK_YORUM = '/* dosyanın sonundaki blok yorum */';
+
+  it.each(SAHTE_BLOK_ACILISLARI)(
+    'yorum silici: %s içindeki /* sonraki guard sınıfını silmez; kural t ile yakalanır',
+    (_ad, onceki) => {
+      const yol = 'features/ornek/alt/infrastructure/baska.ts';
+      const metin = [
+        onceki,
+        '@Injectable()',
+        'export class BaskaGuard implements CanActivate {}',
+        SON_BLOK_YORUM,
+      ].join('\n');
+      expect(caprazKesenKopyayiDenetle(kurSrc({ [yol]: metin }))).toEqual([
+        ihlal('t', yol),
+      ]);
+    },
+  );
+
+  it.each(SAHTE_BLOK_ACILISLARI)(
+    'yorum silici: %s içindeki /* sonraki komut şemasını silmez; isteyenId kural s ile yakalanır',
+    (_ad, onceki) => {
+      const metin = [
+        onceki,
+        'export const altYazKomutuSemasi = z.object({ isteyenId: z.string() });',
+        SON_BLOK_YORUM,
+      ].join('\n');
+      expect(isteyenAlaniniDenetle(kurSrc({ [KOMUT]: metin }))).toEqual([
+        ihlal('s', KOMUT),
+      ]);
+    },
+  );
+
+  it.each<[string, string]>([
+    [
+      'blok yorumdaki',
+      '/*\n * export class BaskaGuard implements CanActivate {}\n */\nexport class Baska {}',
+    ],
+    [
+      'satır yorumundaki',
+      '// export class BaskaGuard implements CanActivate {}\nexport class Baska {}',
+    ],
+  ])('yorum silici: %s `implements CanActivate` ihlal değildir', (_ad, metin) => {
+    const yol = 'features/ornek/alt/infrastructure/baska.ts';
+    expect(caprazKesenKopyayiDenetle(kurSrc({ [yol]: metin }))).toEqual([]);
+  });
+
+  // Düzenli ifade değişmezi kod olarak okunur; içindeki tırnak satır sonuna kadar sahte bir dizge açar.
+  // Dizge çıktıda kaldığı ve satır sonunda kapandığı için sonraki satırlardaki ihlal görülür.
+  it('yorum silici: tırnak taşıyan düzenli ifade değişmezinden sonraki isteyenId (s) ve guard sınıfı (t) yakalanır', () => {
+    const metin = [
+      "const ad = z.string().regex(/^[^']+$/);",
+      "const desen = 'a/*';",
+      'export const altYazKomutuSemasi = z.object({ ad, isteyenId: z.string() });',
+      'export class BaskaGuard implements CanActivate {}',
+      SON_BLOK_YORUM,
+    ].join('\n');
+    const src = kurSrc({ [KOMUT]: metin });
+    expect(isteyenAlaniniDenetle(src)).toEqual([ihlal('s', KOMUT)]);
+    expect(caprazKesenKopyayiDenetle(src)).toEqual([ihlal('t', KOMUT)]);
+  });
 });
 
 describe('yapı denetimi: gerçek depo', () => {

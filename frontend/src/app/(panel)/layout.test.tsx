@@ -225,6 +225,19 @@ describe('PanelDuzeni', () => {
     expect(depo.delete).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
+
+  it('yetkilerim 200 ile sözleşmeye uymayan gövde dönünce fırlatmaz, içerik yerine ulaşılamıyor iletisi gösterir', async () => {
+    oturumVar();
+    sahteFetch.mockResolvedValue(jsonCevap({ kurallar: 'bozuk' }, 200));
+
+    render(await PanelDuzeni({ children: icerik }));
+
+    expect(screen.getByRole('alert').textContent).toBe('Şu an ulaşılamıyor');
+    expect(screen.queryByText('içerik')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Kullanıcılar' })).toBeNull();
+    expect(depo.delete).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
 });
 
 describe('PanelDuzeni parola ve oturumlar bağlantıları', () => {

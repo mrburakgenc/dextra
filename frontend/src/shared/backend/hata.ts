@@ -23,19 +23,22 @@ const dogrulamaAyrintisi = z.array(
   z.object({ alan: z.string(), neden: z.string() }),
 );
 
+const BEKLENMEYEN_HATA = 'Beklenmeyen bir hata oluştu';
+
 // Biçimi tanınmayan hata gövdesi beklenmeyen hatadır; gövdenin içeriği iletiye taşınmaz.
+// 5xx cevabında kod korunur ama backend'in iletisi ekrana taşınmaz; ileti sabittir.
 export function hataGovdesiniOku(govde: unknown, durum: number): BackendHatasi {
   const sonuc = hataGovdesi.safeParse(govde);
   if (!sonuc.success) {
     return {
       kod: 'beklenmeyen_hata',
-      ileti: 'Beklenmeyen bir hata oluştu',
+      ileti: BEKLENMEYEN_HATA,
       ayrinti: null,
       durum,
     };
   }
   const { kod, ileti, ayrinti } = sonuc.data;
-  return { kod, ileti, ayrinti, durum };
+  return { kod, ileti: durum >= 500 ? BEKLENMEYEN_HATA : ileti, ayrinti, durum };
 }
 
 // dogrulama_hatasi için alan adından iletiye eşleme; aynı alanın ilk iletisi kalır.

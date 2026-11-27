@@ -191,6 +191,13 @@ describe('ara katman: oturumun sessiz yenilenmesi', () => {
           ),
         ),
     ],
+    [
+      'backend 200 ile sözleşmeye uymayan gövde döner',
+      () =>
+        sahteFetch.mockResolvedValue(
+          jsonCevap({ erisimBelirteci: 'yeni-erisim' }, 200),
+        ),
+    ],
   ])('%s: çerezler değişmez ve istek sürer', async (_ad, kur) => {
     kur();
 

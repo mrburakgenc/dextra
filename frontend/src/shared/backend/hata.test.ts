@@ -40,6 +40,29 @@ describe('hata eşleme', () => {
     });
   });
 
+  it.each([500, 503])(
+    '%i durumunda gövdedeki ileti taşınmaz: ileti sabittir, kod korunur',
+    (durum) => {
+      expect(
+        hataGovdesiniOku(
+          { kod: 'veritabani_hatasi', ileti: 'iç ayrıntı: bağlantı havuzu dolu', ayrinti: null },
+          durum,
+        ),
+      ).toEqual({
+        kod: 'veritabani_hatasi',
+        ileti: 'Beklenmeyen bir hata oluştu',
+        ayrinti: null,
+        durum,
+      });
+    },
+  );
+
+  it('409 durumunda backend iletisi taşınır', () => {
+    expect(
+      hataGovdesiniOku({ kod: 'cakisma', ileti: 'Bu ad kullanılıyor', ayrinti: null }, 409),
+    ).toEqual({ kod: 'cakisma', ileti: 'Bu ad kullanılıyor', ayrinti: null, durum: 409 });
+  });
+
   it('dogrulama_hatasi ayrıntısını alan adından iletiye eşler; aynı alanın ilk iletisi kalır', () => {
     const hata = hataGovdesiniOku(
       {

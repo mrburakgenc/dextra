@@ -24,7 +24,7 @@ Her uç üç yetki işaretinden tam birini taşır: `@Izin(kaynak, eylem)`, `@Ya
 Bir denetleyici metodunun işaretsiz olması ya da iki işaret taşıması (örnek: `@Izin('Rol', 'oku')` ile `@YalnizKendisi()` birlikte).
 
 ## Uygun örnek
-`backend/src/features/kimlik/rol/presentation/rol.controller.ts`: altı ucun her biri tek bir `@Izin(...)` taşır. İşaretler `backend/src/shared/guvenlik/application/isaretler.ts` içindedir. Ölçüm (2026-11-25): denetleyicilerde 31 `@Izin`, 3 `@YalnizKendisi`, 4 `@HerkeseAcik` (giriş, oturum yenileme, parola belirleme, sağlık ucu).
+`backend/src/features/kimlik/rol/presentation/rol.controller.ts`: altı ucun her biri tek bir `@Izin(...)` taşır. İşaretler `backend/src/shared/guvenlik/application/isaretler.ts` içindedir. Ölçüm (2026-11-27): denetleyicilerde 32 `@Izin`, 3 `@YalnizKendisi`, 4 `@HerkeseAcik` (giriş, oturum yenileme, parola belirleme, sağlık ucu); 2026-11-25 ölçümü 31 `@Izin` idi, teşhis ucu sonradan eklendi.
 
 ## Bu depodaki denetim
 Açılış denetimi (`backend/src/shared/guvenlik/infrastructure/isaret-denetimi.ts`) uygulama açılırken her ucu sınar; işareti olmayan ya da birden çok işaret taşıyan uç varsa uygulama açılmaz. Bu denetim henüz bir denetim düğümüne bağlanmadı.

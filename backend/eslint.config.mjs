@@ -216,6 +216,12 @@ export default defineConfig(
                 to: { file: { categories: ['uygulama', 'altyapi'] } },
               },
             },
+            {
+              // Uygulama katmanı feature'ın altyapı katmanını içe aktarmaz; altyapıya alan
+              // katmanındaki arayüzle ulaşır (KU-008: bağımlılık içe doğru akar).
+              from: { file: { categories: 'uygulama' } },
+              disallow: { to: { file: { categories: 'altyapi' } } },
+            },
           ],
         },
       ],

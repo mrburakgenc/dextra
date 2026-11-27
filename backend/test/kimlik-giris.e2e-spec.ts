@@ -30,6 +30,7 @@ import {
 } from '../src/shared/guvenlik/application/istemci-adresi-imzasi.js';
 import { TohumKosucusu } from '../src/shared/tohum/infrastructure/tohum-kosucusu.js';
 import { YetkiBellegi } from '../src/shared/yetki/infrastructure/yetki-bellegi.js';
+import { kalanBaglantiSayisi } from './baglanti-sayisi.js';
 import { localInfrastructure } from './local-infrastructure.js';
 import { type AppDatabases, createAppDatabases } from './test-database.js';
 
@@ -308,14 +309,12 @@ beforeAll(async () => {
 afterAll(async () => {
   await app?.close();
   // Uygulama kapanınca asıl veritabanında gözlemciden başka bağlantı kalmaz.
-  const [satir] = await satirlar<{ sayi: number }>(
-    `select count(*)::int as sayi from pg_stat_activity
-      where datname = $1 and backend_type = 'client backend' and pid <> $2`,
-    [databases.asil.name, gozlemciPid],
-  );
+  const acikKalan = await kalanBaglantiSayisi(gozlemci, databases.asil.name, [
+    gozlemciPid,
+  ]);
   await gozlemci.end();
   await databases.drop();
-  expect(satir?.sayi).toBe(0);
+  expect(acikKalan).toBe(0);
   expect(
     await kalanVeritabanlari([databases.asil.name, databases.iz.name]),
   ).toEqual([]);

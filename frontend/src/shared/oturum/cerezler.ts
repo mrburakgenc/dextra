@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 
-// Oturum çerezleri (TS-004 Yapı): betiğe kapalı, SameSite=Lax, Path=/, üretimde Secure.
+// Oturum çerezleri (TS-004 Yapı): betiğe kapalı, SameSite=Lax, Path=/, geliştirme dışında Secure.
 // Yazma ve silme yalnız Server Action ya da Route Handler içinde çalışır (çatının kuralı).
 export const OTURUM_CEREZLERI = {
   erisim: 'dextra_erisim',
@@ -27,7 +27,8 @@ export function secenekler(maxAge: number) {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: process.env.NODE_ENV === 'production',
+    // Güvenli taraf: NODE_ENV tanımsız ya da beklenmeyen değerdeyse de Secure yazılır.
+    secure: process.env.NODE_ENV !== 'development',
     maxAge,
   } as const;
 }

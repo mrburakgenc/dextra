@@ -43,12 +43,18 @@ function guvenliKosul(kosul: Record<string, unknown>): MatchConditions {
 // Şartın baktığı kolonlar: "ve" listesinin öğelerine inilir, öbür anahtarlar kolondur. Sunucunun
 // yasak şartı kolon öğelerinin "ve"sidir (TS-008 "Derleme"); başka bir biçimin anahtarı kayıtta
 // kolon olarak bulunmadığı için o yasak tutuyor sayılır.
-function sartKolonlari(kosul: Record<string, unknown>): string[] {
-  return Object.entries(kosul).flatMap(([anahtar, deger]) =>
+function sartKolonlari(kosul: object | string): string[] {
+  return Object.entries(kosul).flatMap(([anahtar, deger]: [string, unknown]) =>
     anahtar === 'AND' && Array.isArray(deger)
-      ? (deger as Record<string, unknown>[]).flatMap(sartKolonlari)
+      ? deger.filter(anahtarliMi).flatMap(sartKolonlari)
       : [anahtar],
   );
+}
+
+// "ve" öğesinin Object.entries ile anahtar verebilen biçimi. Süzülenler bugünkü sonucu
+// değiştirmez: sayı ve mantıksal değerin anahtarı yoktur; boş öğeli şartı yorumlayıcı kurmaz.
+function anahtarliMi(deger: unknown): deger is object | string {
+  return typeof deger === 'string' || (typeof deger === 'object' && deger !== null);
 }
 
 // Yasakların (ters kuralların) eşleyicisi (TS-008 "Ekran"; kapanan AU-6 ve AU-28): ekran emin
