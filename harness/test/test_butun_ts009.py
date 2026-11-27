@@ -107,7 +107,8 @@ class TekGorevinYasami(unittest.TestCase):
         sahte.write_text(SAHTE, encoding="utf-8")
         kontrol, bayrak = bayrakli_kontrol()
         ayar = {"gorev": {"komut": [sys.executable, str(sahte)], "model": "sonnet", "max_tur": 5,
-                          "zaman_asimi_sn": 20, "izin_modu": "acceptEdits", "on_kontrol": [kontrol]}}
+                          "zaman_asimi_sn": 20, "izin_modu": "acceptEdits", "on_kontrol": [kontrol],
+                          "ortam_izinli": h.VARSAYILAN_AYAR["gorev"]["ortam_izinli"] + list(ORTAM_ADLARI)}}
         sablon = (BURASI.parent / "sablon" / "rapor.md").read_text(encoding="utf-8")
         kok = git_depo(depo(dict(KONUSUZ, **{"harness/sablon/rapor.md": sablon}), ayar=ayar))
 

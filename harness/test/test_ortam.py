@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.dont_write_bytecode = True
 BURASI = pathlib.Path(__file__).resolve().parent
@@ -231,6 +232,128 @@ class YerelAyar(Temel):
         for rol in ("uygulayici", "inceleyici"):
             yol = (agac(kok, kimlik) / ".harness/gorev" / kimlik / ("path-%s.txt" % rol)).read_text().strip()
             self.assertEqual(yol.split(os.pathsep)[:2], [str(kontrol), str(oturum)])
+
+
+UST_ORTAM = {"GIZLI_BELIRTEC": "gizli-41", "SSH_AUTH_SOCK": "/tmp/ajan.sock", "LC_ALL": "tr_TR.UTF-8",
+             "CLAUDE_X": "ust"}
+
+
+def ortam_yazan(hedef: pathlib.Path) -> list:
+    """Kendi ortamını `hedef` dosyasına JSON olarak yazan komut (argüman listesi)."""
+    return [sys.executable, "-c", "import json, os; open(%r, 'w').write(json.dumps(dict(os.environ)))" % str(hedef)]
+
+
+def ortam_yazan_oturum(kok) -> None:
+    """Oturum komutunu, ortamını görev kaydına yazıp sahte oturumu başlatan sarmalayıcıyla değiştirir."""
+    ayar = json.loads((kok / "harness.json").read_text(encoding="utf-8"))
+    sahte = ayar["gorev"]["komut"]
+    sarmal = pathlib.Path(tempfile.mkdtemp(prefix="harness-sarmal-")) / "oturum.py"
+    sarmal.write_text("import json, os, pathlib, sys\n"
+                      "gd = pathlib.Path(os.environ['HARNESS_KOK'], '.harness/gorev', os.environ['HARNESS_GOREV'])\n"
+                      "(gd / ('env-%%s.json' %% os.environ['HARNESS_ROL'])).write_text(json.dumps(dict(os.environ)))\n"
+                      "os.execv(%r, %r + sys.argv[1:])\n" % (sahte[0], sahte), encoding="utf-8")
+    ayar["gorev"]["komut"] = [sys.executable, str(sarmal)]
+    (kok / "harness.json").write_text(json.dumps(ayar), encoding="utf-8")
+    subprocess.run(["git", "commit", "-qam", "oturum komutu"], cwd=kok, check=True, capture_output=True)
+
+
+def oturum_ortami(kok, kimlik, rol="uygulayici") -> dict:
+    yol = agac(kok, kimlik) / ".harness/gorev" / kimlik / ("env-%s.json" % rol)
+    return json.loads(yol.read_text(encoding="utf-8"))
+
+
+def oturum_argv(kok, kimlik, rol) -> list:
+    yol = agac(kok, kimlik) / ".harness/gorev" / kimlik / ("argv-%s.json" % rol)
+    return json.loads(yol.read_text(encoding="utf-8"))
+
+
+class OrtamIzinListesi(Temel):
+    """GV-169 a-d) Oturuma, hazırlığa ve ön kontrole yalnız gorev.ortam_izinli ile eşleşen değişkenler geçer."""
+
+    def setUp(self):
+        super().setUp()
+        yama = mock.patch.dict(os.environ, UST_ORTAM)
+        yama.start()
+        self.addCleanup(yama.stop)
+
+    def _kos(self, **ayar):
+        kok = gorev_deposu(**ayar)
+        ortam_yazan_oturum(kok)
+        kimlik = dolu_kart(kok)
+        return kok, kimlik
+
+    def test_varsayilan_listeyle_yalniz_izinli_ve_harness_degiskenleri_gecer(self):
+        kok, kimlik = self._kos(ortam_izinli="VARSAYILAN")
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        ortam = oturum_ortami(kok, kimlik)
+        for ad in ("PATH", "LC_ALL", "HARNESS_GOREV", "HARNESS_KOK", "HARNESS_ROL"):
+            self.assertIn(ad, ortam)
+        for ad in ("GIZLI_BELIRTEC", "SSH_AUTH_SOCK", "CLAUDE_X"):
+            self.assertNotIn(ad, ortam)
+
+    def test_ayardaki_liste_on_ekle_eslesir_ve_varsayilanin_yerine_gecer(self):
+        kok, kimlik = self._kos(ortam_izinli=["PATH", "HOME", "GIZLI_*"])
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        ortam = oturum_ortami(kok, kimlik)
+        self.assertEqual(ortam.get("GIZLI_BELIRTEC"), "gizli-41")
+        self.assertNotIn("LC_ALL", ortam)
+
+    def test_listede_olsa_da_claude_degiskeni_oturuma_gecmez(self):
+        kok, kimlik = self._kos(ortam_izinli=["PATH", "CLAUDE_*"])
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        self.assertNotIn("CLAUDE_X", oturum_ortami(kok, kimlik))
+
+    def test_yerel_ayar_listeye_ekler_daraltmaz(self):
+        kok, kimlik = self._kos(ortam_izinli="VARSAYILAN")
+        (kok / "harness.yerel.json").write_text(json.dumps({"gorev": {"ortam_izinli": ["SSH_AUTH_SOCK"]}}),
+                                                encoding="utf-8")
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        ortam = oturum_ortami(kok, kimlik)
+        self.assertEqual(ortam.get("SSH_AUTH_SOCK"), "/tmp/ajan.sock")
+        self.assertIn("LC_ALL", ortam)   # varsayılan liste yerinde
+        self.assertNotIn("GIZLI_BELIRTEC", ortam)
+
+    def test_hazirlik_ve_on_kontrol_suzulmus_ortami_gorur(self):
+        klasor = pathlib.Path(tempfile.mkdtemp(prefix="harness-ortam-"))
+        kok, kimlik = self._kos(ortam_izinli="VARSAYILAN", hazirlik=ortam_yazan(klasor / "hazirlik.json"),
+                                on_kontrol=[ortam_yazan(klasor / "on-kontrol.json")])
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        for ad in ("hazirlik.json", "on-kontrol.json"):
+            ortam = json.loads((klasor / ad).read_text(encoding="utf-8"))
+            self.assertIn("PATH", ortam, ad)
+            self.assertIn("LC_ALL", ortam, ad)
+            for gizli in ("GIZLI_BELIRTEC", "SSH_AUTH_SOCK", "CLAUDE_X"):
+                self.assertNotIn(gizli, ortam, ad)
+
+
+class McpRolleri(Temel):
+    """GV-169 e) gorev.mcp sunucuları yalnız rolü gorev.mcp_roller içinde olan oturuma verilir."""
+
+    MCP = {"belge": {"command": "belge-sunucusu"}}
+
+    def _bayraklar(self, **ayar):
+        kok = gorev_deposu(mcp=self.MCP, **ayar)
+        kimlik = dolu_kart(kok)
+        self.assertEqual(gorev.kos(kok, kimlik)["durum"], "tamam")
+        self.assertEqual(gorev.incele(kok, kimlik)["sonuc"], "gecti")
+        return {rol: oturum_argv(kok, kimlik, rol) for rol in ("uygulayici", "inceleyici")}
+
+    def test_varsayilanda_yalniz_isci_mcp_alir(self):
+        argv = self._bayraklar()
+        self.assertIn("--mcp-config", argv["uygulayici"])
+        self.assertNotIn("--mcp-config", argv["inceleyici"])
+        self.assertIn("--strict-mcp-config", argv["inceleyici"])
+
+    def test_iki_rol_sayilinca_ikisi_de_alir(self):
+        argv = self._bayraklar(mcp_roller=["uygulayici", "inceleyici"])
+        self.assertIn("--mcp-config", argv["uygulayici"])
+        self.assertIn("--mcp-config", argv["inceleyici"])
+
+    def test_bos_listede_hicbiri_almaz(self):
+        argv = self._bayraklar(mcp_roller=[])
+        self.assertNotIn("--mcp-config", argv["uygulayici"])
+        self.assertNotIn("--mcp-config", argv["inceleyici"])
+        self.assertIn("--strict-mcp-config", argv["uygulayici"])
 
 
 class Kesisim(Temel):
