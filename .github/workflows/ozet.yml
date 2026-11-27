@@ -1,0 +1,48 @@
+# PR özeti (GV-171): taban dalın koduyla üretilir ve PR'a tek yorum olarak yazılır.
+# pull_request_target yazma yetkili belirteçle koşar: PR'dan gelen kod çalıştırılmaz, PR'ın ucu çalışma
+# ağacına çekilmez (yalnız git nesnesi olarak getirilir), PR'dan gelen değerler kabuğa ortam değişkeniyle verilir.
+name: ozet
+
+on:
+  pull_request_target:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ozet-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ozet:
+    runs-on: ubuntu-latest
+    steps:
+      # ref verilmez: pull_request_target'ta çekilen, taban dalın ucudur.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Özeti yaz
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NO: ${{ github.event.pull_request.number }}
+          TABAN_DAL: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "refs/pull/$PR_NO/head:refs/remotes/pr/$PR_NO"
+          govde="$RUNNER_TEMP/ozet.md"
+          { echo "<!-- harness-ozet -->"; python3 harness/h.py ozet --taban "origin/$TABAN_DAL" --uc "pr/$PR_NO"; } > "$govde"
+          # Bu iş akışının önceki yorumu varsa yenilenir, yoksa yeni yorum açılır.
+          yorumlar=$(gh api --paginate "repos/$GH_REPO/issues/$PR_NO/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- harness-ozet -->"))) | .id')
+          yorum=${yorumlar%%$'\n'*}
+          if [ -n "$yorum" ]; then
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$yorum" --silent -F "body=@$govde"
+          else
+            gh api -X POST "repos/$GH_REPO/issues/$PR_NO/comments" --silent -F "body=@$govde"
+          fi
