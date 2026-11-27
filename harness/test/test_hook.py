@@ -9,7 +9,9 @@ import json
 import pathlib
 import subprocess
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -666,16 +668,32 @@ class KodVeAgac(unittest.TestCase):
     def test_harness_tasimayan_agacta_devir_olmaz(self):
         self.assertIsNone(ajan_hook.yetkili_betik({"cwd": str(depo())}, gelistirme=True))
 
-    def _surec(self, kok, **ortam):
-        return subprocess.run([sys.executable, ajan_hook.__file__, "durus"], capture_output=True, text=True,
-                              input=json.dumps({"cwd": str(kok), "session_id": "s1", "stop_hook_active": False}),
-                              env=dict(os.environ, **ortam))
+    def _iskelet(self, gelistirme):
+        """Betiğin geçici iskelet kopyası; kipi bu deponun harness.json'u değil, testin yazdığı ayar belirler."""
+        kaynak = pathlib.Path(ajan_hook.__file__).resolve().parents[1]
+        kok = pathlib.Path(tempfile.mkdtemp(prefix="harness-iskelet-"))
+        (kok / "harness/hook").mkdir(parents=True)
+        for modul in kaynak.glob("*.py"):
+            shutil.copy(modul, kok / "harness" / modul.name)
+        shutil.copy(kaynak / "hook/ajan_hook.py", kok / "harness/hook/ajan_hook.py")
+        (kok / "harness.json").write_text(json.dumps({**AYAR, "harness_gelistirme": gelistirme}), encoding="utf-8")
+        return kok / "harness/hook/ajan_hook.py"
+
+    def _surec(self, kok, gelistirme, **ortam):
+        return subprocess.run([sys.executable, str(self._iskelet(gelistirme)), "durus"], capture_output=True,
+                              text=True, env=dict(os.environ, **ortam),
+                              input=json.dumps({"cwd": str(kok), "session_id": "s1", "stop_hook_active": False}))
 
     def test_surec_olarak_kosunca_agacin_kendi_betigine_devreder(self):
-        self.assertIn("AGACIN-KENDI-KODU durus", self._surec(self._kendi_betigi_olan_agac()).stdout)
+        self.assertIn("AGACIN-KENDI-KODU durus", self._surec(self._kendi_betigi_olan_agac(), True).stdout)
 
     def test_devralan_betik_yeniden_devretmez(self):
-        r = self._surec(self._kendi_betigi_olan_agac(), HARNESS_HOOK_DEVIR="1")
+        r = self._surec(self._kendi_betigi_olan_agac(), True, HARNESS_HOOK_DEVIR="1")
+        self.assertNotIn("AGACIN-KENDI-KODU", r.stdout)
+        self.assertEqual(r.returncode, 0)
+
+    def test_kip_kapali_iskelette_surec_devretmez(self):
+        r = self._surec(self._kendi_betigi_olan_agac(), False)
         self.assertNotIn("AGACIN-KENDI-KODU", r.stdout)
         self.assertEqual(r.returncode, 0)
 
