@@ -7,7 +7,12 @@
   "ogretici": true,
   "profil": "",
   "harness_gelistirme": false,
-  "korunan_ayar": [],
+  "korunan_ayar": [
+    "**/eslint.config.*",
+    "**/tsconfig*.json",
+    "**/vitest.config*.ts",
+    ".github/workflows/**"
+  ],
   "oturum_agaci": "zorunlu",
   "konular": [],
   "katmanlar": [],
@@ -34,7 +39,7 @@
       ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 5440), 2)"],
       ["python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 6390), 2)"]
     ],
-    "orkestrasyon": true,
+    "orkestrasyon": false,
     "paralel": 3,
     "efor": "high",
     "inceleme_efor": "xhigh",

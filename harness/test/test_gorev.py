@@ -94,8 +94,10 @@ print(cikti)
 def gorev_deposu(kesin: bool = False, git_li: bool = True, **gorev_ayari):
     sahte = pathlib.Path(tempfile.mkdtemp(prefix="harness-sahte-")) / "isci.py"
     sahte.write_text(SAHTE_ISCI, encoding="utf-8")
+    # Sahte oturumların kipini seçen değişkenler (SAHTE_*, YASAM_MOD, KAYIT_MOD, INCELEME_*) oturuma geçsin
+    izinli = h.VARSAYILAN_AYAR["gorev"]["ortam_izinli"] + ["SAHTE_*", "YASAM_MOD", "KAYIT_MOD", "INCELEME_*"]
     ayar = {"gorev": dict({"komut": [sys.executable, str(sahte)], "model": "sonnet", "max_tur": 5,
-                           "zaman_asimi_sn": 20, "izin_modu": "acceptEdits"}, **gorev_ayari)}
+                           "zaman_asimi_sn": 20, "izin_modu": "acceptEdits", "ortam_izinli": izinli}, **gorev_ayari)}
     ayar["gorev"] = {k: v for k, v in ayar["gorev"].items() if v != "VARSAYILAN"}   # ayarda hiç yazmıyormuş gibi
     kok = kesin_depo(ayar=ayar) if kesin else depo(ayar=ayar)
     return git_depo(kok) if git_li else kok

@@ -932,12 +932,16 @@ def _kosuyor(kayit: pathlib.Path, tip: str, yollar: list | None = None):
         yol.unlink(missing_ok=True)
 
 
-def _ortam(kok: pathlib.Path) -> dict:
-    """Görevin komutlarına ve oturumlarına verilen ortam değişkenleri: deponun kökündeki harness.yerel.json
-    (depoya girmez) gorev.yol klasörleri sayıyorsa onlar PATH'in başına eklenir; dosya yoksa ortam olduğu gibidir."""
+def _ortam(kok: pathlib.Path, g: dict) -> dict:
+    """Görevin komutlarına ve oturumlarına verilen ortam değişkenleri: yalnız gorev.ortam_izinli ile eşleşenler (sonu *
+    ile biten öğe ön ektir). Deponun kökündeki harness.yerel.json (depoya girmez) gorev.ortam_izinli sayıyorsa o adlar
+    listeye eklenir; gorev.yol klasörleri sayıyorsa onlar PATH'in başına eklenir."""
     ana = h.ortak_kok(kok)
-    ortam = dict(os.environ)
-    yol = [str(ana / y) for y in (_json_oku(ana / "harness.yerel.json").get("gorev") or {}).get("yol") or []]
+    yerel = _json_oku(ana / "harness.yerel.json").get("gorev") or {}
+    izinli = [str(a) for a in g["ortam_izinli"] + (yerel.get("ortam_izinli") or [])]
+    ortam = {k: v for k, v in os.environ.items()
+             if any(k.startswith(a[:-1]) if a.endswith("*") else k == a for a in izinli)}
+    yol = [str(ana / y) for y in yerel.get("yol") or []]
     if yol:
         ortam["PATH"] = os.pathsep.join(yol + [ortam.get("PATH", os.defpath)])
     return ortam
@@ -1004,7 +1008,7 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
         # Talimat dosyaları ayrıca üst klasörlerden de toplanır (ev klasöründeki kişisel dosya dahil);
         # oturumun kendi ağacının üstündeki her biri adıyla hariç tutulur.
         ek_ayar["claudeMdExcludes"] = _ust_talimat_dosyalari(agac)
-    if g.get("mcp"):                # yalnız ayarda sayılan MCP sunucuları; MCP sunucusu kum havuzunun dışında çalışır
+    if g.get("mcp") and rol in g["mcp_roller"]:   # yalnız sayılan sunucular, sayılan rolde; kum havuzunun dışında çalışır
         komut += ["--mcp-config", json.dumps({"mcpServers": g["mcp"]})]
     if g.get("kum_havuzu", True):
         # Komutlar sormadan koşar ama işletim sistemi kum havuzunda: yalnız kendi ağacına ve geçici klasöre yazar.
@@ -1022,7 +1026,7 @@ def _oturum_kos(g: dict, istem: str, agac: pathlib.Path, kimlik: str, rol: str, 
     if ek_ayar:
         komut += ["--settings", json.dumps(ek_ayar)]
     # Oturum bağımsızdır: üst oturumun kimliği, eforu, proje dizini ve bağlantıları devralınmaz.
-    ortam = {k: v for k, v in _ortam(agac).items() if not k.startswith("CLAUDE")}
+    ortam = {k: v for k, v in _ortam(agac, g).items() if not k.startswith("CLAUDE")}
     ortam.update(HARNESS_GOREV=kimlik, HARNESS_KOK=str(agac), HARNESS_ROL=rol)
     sorunlar, zaman_asimi, cikti = [], False, ""
     try:
@@ -1180,7 +1184,7 @@ def kos(kok: pathlib.Path, kimlik: str, cevap: str = None, notu: str = None, tas
         with _ORTAK_KILIT:
             agac = _agac_ac(kok, kimlik, d)
         _json_yaz(kayit / "durum.json", d)   # ortam hatasından sonraki koşu, açık ağacın tabanını kayıttan okur
-        ortam = _ortam(kok)
+        ortam = _ortam(kok, g)
         if g.get("hazirlik"):           # kum havuzunun dışında, oturumdan önce (örnek: ağsız paket kurulumu)
             try:
                 r = subprocess.run([str(a) for a in g["hazirlik"]], cwd=agac, env=ortam, capture_output=True, text=True,
@@ -1294,7 +1298,7 @@ def incele(kok: pathlib.Path, kimlik: str) -> dict:
                             % (kimlik, asama(d, _json_oku(kayit / "rapor.json"), True)[1]))
     _degismedi_mi(kok, kimlik, d, d.get("kosum_imza"), "koşumdan sonra",
                   "Yeniden koştur: python3 harness/h.py gorev kos %s" % kimlik)
-    _on_kontrol(g, agac, kayit, kimlik, "inceleme", _ortam(kok))
+    _on_kontrol(g, agac, kayit, kimlik, "inceleme", _ortam(kok, g))
     kart = (kayit / "kart.md").read_text(encoding="utf-8")
     paket = h.paket(kok, "inceleyici", d["yollar"], d["konular"], d.get("dayanak") or [])
     degisen = _degisen(agac, d["taban"])

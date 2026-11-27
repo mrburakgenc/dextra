@@ -9,7 +9,9 @@ import json
 import pathlib
 import subprocess
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -172,6 +174,45 @@ class KomutKapisi(unittest.TestCase):
 
     def test_okuma_bicimi_baska_yasak_bayragi_aklamaz(self):
         self.assertEqual(karar(komut(depo(), "git config --get core.hooksPath; git commit --no-verify -m x")), "deny")
+
+    def test_kapi_atlatan_bayragin_kisaltmasi_ve_commitin_kisa_secenegi_reddedilir(self):
+        for metin in ("git commit -n -m x", "git commit -nm x", "git commit -anm x", "git -C . commit -n -m x",
+                      "sh -c 'git commit -n -m x'", "time git commit -n -m x", "git commit --no-verif -m x",
+                      "git commit --no-v -m x", "git push --no-veri origin dal", "git push --no-ver",
+                      "eval git commit -n -m x", "echo $(git commit -n -m x)", "echo `git push --no-ve`",
+                      "sudo git commit -n -m x", "echo x | xargs git commit -n -m", "git -c a=b commit -nS",
+                      "git commit -m x && git push --no-v", "git commit -n -m 'kapanmamış"):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_baska_secenek_ve_deger_olarak_gecen_sozcuk_reddedilmez(self):
+        for metin in ("git commit -m n", "git commit -mnot", 'git commit -m "--no-veri hakkında"',
+                      "git commit --no-verbose -m x", "git push -n origin dal", "git merge -n dal", "git log -n 5",
+                      "git commit -Sn -m x", "git -C commit status -n",
+                      "git commit -F - <<'EOF'\n-n ile --no-veri hakkında not\nEOF"):
+            self.assertNotEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_tek_basina_sozcuk_olan_bayraga_benzer_deger_reddedilir(self):
+        # Kullanıcının kararı (2026-11-27): ayrı sözcük olan değer bayrak sayılır; içinde başka sözcük de olan değer sayılmaz
+        for metin in ("git commit -m -n", 'git commit -m "-n"', 'git commit -m "--no-veri"'):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_satir_devamiyla_bolunmus_cagri_taninir(self):
+        for metin in ("git \\\ncommit -n -m x", "git commit \\\n-n -m x"):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+        self.assertTrue(ajan_hook.push_mu("git \\\npush origin dal"))
+
+    def test_kacisli_ters_boluden_sonraki_satir_sonu_ayiricidir(self):
+        # Çift ters bölü kaçışlı ters bölüdür; ardındaki satır sonu komutu ayırır, satır devamı değildir
+        self.assertTrue(ajan_hook.push_mu("echo a\\\\\ngit push origin dal"))
+        self.assertEqual(karar(komut(depo(), "echo a\\\\\ngit commit -n -m x")), "deny")
+
+    def test_uc_ters_boluyle_biten_satir_birlestirilir(self):
+        # Kaçışlı ters bölü ve ardından satır devamı: -n aynı commit çağrısının sözcüğüdür
+        self.assertEqual(karar(komut(depo(), "git commit -m x\\\\\\\n -n")), "deny")
+
+    def test_attr_source_degeri_alt_komut_sayilmaz(self):
+        self.assertEqual(karar(komut(depo(), "git --attr-source HEAD commit -n -m x")), "deny")
+        self.assertTrue(ajan_hook.push_mu("git --attr-source HEAD push origin dal"))
 
     def test_gorev_oturumu_kabul_komutunu_calistiramaz(self):
         c = komut(taslakli_depo(), "python3 harness/h.py kabul KU-002", ortam={"HARNESS_GOREV": "GV-001"})
@@ -627,16 +668,32 @@ class KodVeAgac(unittest.TestCase):
     def test_harness_tasimayan_agacta_devir_olmaz(self):
         self.assertIsNone(ajan_hook.yetkili_betik({"cwd": str(depo())}, gelistirme=True))
 
-    def _surec(self, kok, **ortam):
-        return subprocess.run([sys.executable, ajan_hook.__file__, "durus"], capture_output=True, text=True,
-                              input=json.dumps({"cwd": str(kok), "session_id": "s1", "stop_hook_active": False}),
-                              env=dict(os.environ, **ortam))
+    def _iskelet(self, gelistirme):
+        """Betiğin geçici iskelet kopyası; kipi bu deponun harness.json'u değil, testin yazdığı ayar belirler."""
+        kaynak = pathlib.Path(ajan_hook.__file__).resolve().parents[1]
+        kok = pathlib.Path(tempfile.mkdtemp(prefix="harness-iskelet-"))
+        (kok / "harness/hook").mkdir(parents=True)
+        for modul in kaynak.glob("*.py"):
+            shutil.copy(modul, kok / "harness" / modul.name)
+        shutil.copy(kaynak / "hook/ajan_hook.py", kok / "harness/hook/ajan_hook.py")
+        (kok / "harness.json").write_text(json.dumps({**AYAR, "harness_gelistirme": gelistirme}), encoding="utf-8")
+        return kok / "harness/hook/ajan_hook.py"
+
+    def _surec(self, kok, gelistirme, **ortam):
+        return subprocess.run([sys.executable, str(self._iskelet(gelistirme)), "durus"], capture_output=True,
+                              text=True, env=dict(os.environ, **ortam),
+                              input=json.dumps({"cwd": str(kok), "session_id": "s1", "stop_hook_active": False}))
 
     def test_surec_olarak_kosunca_agacin_kendi_betigine_devreder(self):
-        self.assertIn("AGACIN-KENDI-KODU durus", self._surec(self._kendi_betigi_olan_agac()).stdout)
+        self.assertIn("AGACIN-KENDI-KODU durus", self._surec(self._kendi_betigi_olan_agac(), True).stdout)
 
     def test_devralan_betik_yeniden_devretmez(self):
-        r = self._surec(self._kendi_betigi_olan_agac(), HARNESS_HOOK_DEVIR="1")
+        r = self._surec(self._kendi_betigi_olan_agac(), True, HARNESS_HOOK_DEVIR="1")
+        self.assertNotIn("AGACIN-KENDI-KODU", r.stdout)
+        self.assertEqual(r.returncode, 0)
+
+    def test_kip_kapali_iskelette_surec_devretmez(self):
+        r = self._surec(self._kendi_betigi_olan_agac(), False)
         self.assertNotIn("AGACIN-KENDI-KODU", r.stdout)
         self.assertEqual(r.returncode, 0)
 

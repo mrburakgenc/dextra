@@ -47,10 +47,14 @@ OGRETICI = ("Öğretici mod açık: her tasarım seçiminde tekniğin adını, n
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b|\bgh\s+pr\s+(?:create|merge)\b")   # çözümlenemeyen komut için
 KOMUT_AYIRICI = ";&|()\n`"
-GIT_DEGERLI_SECENEK = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix")
+GIT_DEGERLI_SECENEK = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix",
+                       "--attr-source")
 GH_DEGERLI_SECENEK = ("-R", "--repo")
 KABUK = ("sh", "bash", "zsh", "dash")   # -c seçeneğinin değeri komuttur
 YASAK_BAYRAK = re.compile(r"--no-verify\b|core\.hooksPath|include\.path", re.I)   # git'in ayar anahtarları harfe duyarsız
+# Çözümlenemeyen komut için (_kapi_atlatir_mi): --no-verify'ın kısaltması ya da commit'ten sonra -n içeren kısa seçenek
+KAPI_ATLATAN = re.compile(r"\bgit\b[^|;&\n]*(?:(?<![\w-])--no-v(?:e|er|eri|erif)?(?![\w-])"
+                          r"|\bcommit\b[^|;&\n]*(?<![\w-])-[A-Za-z]*n)")
 # Hook yolunu yalnız okuyan tek biçim serbesttir; anahtarın geçtiği başka her komut (atama, silme, -c, alıntı)
 # reddedilir. Dar tutulur: kapıyı gevşeten istisna, kapının kendisinden geniş olmamalı.
 HOOK_YOLU_OKUMA = re.compile(r"\bgit(?:\s+-C\s+\S+)?\s+config(?:\s+--(?:local|global|system|worktree))?\s+--get(?:-all)?"
@@ -242,15 +246,46 @@ def _alt_komutlar(sozcukler: list, degerli: tuple) -> list:
 
 
 def push_mu(metin: str) -> bool:
-    """Komut gerçekten gönderiyor mu. Komut ayırıcılarla (; & | ve satır sonu, alt kabuk ayraçları, ters tırnak)
-    parçalara, parçalar boşluğa göre kabuk sözcüklerine bölünür; tırnak içi metin tek sözcüktür, komut sayılmaz.
-    Komutun konumuna bakılmaz: parçanın herhangi bir sözcüğünün dosya adı git ise ve ondan sonra git'in seçenekleri
-    atlanınca gelen alt komut push ise, ya da dosya adı gh olan sözcükten sonra (seçenekler atlanarak) `pr create|merge`
-    geliyorsa push'tur; böylece her sarmalayıcı (time, nice, xargs, sudo, if … then) kendiliğinden kapsanır.
+    """Komut gerçekten gönderiyor mu: dosya adı git olan sözcükten sonra git'in seçenekleri atlanınca gelen alt komut
+    push ise, ya da dosya adı gh olan sözcükten sonra (seçenekler atlanarak) `pr create|merge` geliyorsa push'tur.
+    Komut _komutta ile çözülür; çözümlenemeyen komutta PUSH desenine düşülür."""
+    return _komutta(metin, PUSH, lambda ad, sonra: (
+        ad == "git" and _alt_komutlar(sonra, GIT_DEGERLI_SECENEK)[:1] == ["push"]
+        or ad == "gh" and _alt_komutlar(sonra, GH_DEGERLI_SECENEK)[:2] in (["pr", "create"], ["pr", "merge"])))
+
+
+def _kapi_atlatir_mi(metin: str) -> bool:
+    """Git çağrısı kancaları atlatan bayrağı kısaltılmış yazımıyla taşıyor mu: --no-verify sözcüğünün --no-v ile
+    başlayan her ön eki (git tek anlamlı kısaltmayı kabul eder) ya da alt komutu commit olan çağrıda kısa -n seçeneği.
+    Kısa seçenek kümesi soldan okunur; değer alan harfte okuma durur (-mnot iletidir). Komut _komutta ile çözülür;
+    çözümlenemeyen komutta KAPI_ATLATAN desenine düşülür."""
+    def sinama(ad, sonra):
+        if ad != "git":
+            return False
+        if any(s.startswith("--no-v") and "--no-verify".startswith(s) for s in sonra):
+            return True
+        i = 0   # alt komutun yeri: git'in genel seçenekleri (değer alanlar değeriyle) atlanır
+        while i < len(sonra) and sonra[i].startswith("-"):
+            i += 2 if sonra[i] in GIT_DEGERLI_SECENEK else 1
+        if sonra[i:i + 1] != ["commit"]:
+            return False
+        return any(re.fullmatch(r"-[A-Za-z]+", s) and "n" in re.split(r"[mFCctSu]", s[1:])[0]
+                   for s in sonra[i + 1:])
+    return _komutta(metin, KAPI_ATLATAN, sinama)
+
+
+def _komutta(metin: str, yedek: re.Pattern, sinama) -> bool:
+    """Komutun bir parçası `sinama(ad, sonra)` sınamasını geçiyor mu. Komut ayırıcılarla (; & | ve satır sonu, alt
+    kabuk ayraçları, ters tırnak) parçalara, parçalar boşluğa göre kabuk sözcüklerine bölünür; tırnak içi metin tek
+    sözcüktür, komut sayılmaz. Komutun konumuna bakılmaz: parçanın her sözcüğü için dosya adı (ad) ve ondan sonraki
+    sözcükler (sonra) sınanır; böylece her sarmalayıcı (time, nice, xargs, sudo, if … then) kendiliğinden kapsanır.
     Kabukta çalışan iç metin aynı tanıyıcıya yeniden verilir: tek tırnak dışındaki $( … ) ve ters tırnak gövdeleri,
     sh/bash/zsh/dash için -c değeri ve eval'in bağımsız değişkenleri. Çözümlenemeyen komutta (kapanmamış tırnak,
-    yorumdaki kesme işareti) sözcük desenine düşülür: kapı ölçemediğini geçirmez."""
-    if any(push_mu(g) for g in _yerine_koymalar(metin)):
+    yorumdaki kesme işareti) yedek desene düşülür: kapı ölçemediğini geçirmez. Satır devamı (ters bölü ve satır sonu)
+    kabuktaki gibi silinir: iki satıra bölünmüş çağrı tek çağrıdır; yalnız tek sayıda ters bölüyle biten satır
+    birleşir, çift ters bölü kaçışlı ters bölüdür ve ardındaki satır sonu ayırıcı kalır."""
+    metin = re.sub(r"(?<!\\)((?:\\\\)*)\\\n", r"\1", metin)
+    if any(_komutta(g, yedek, sinama) for g in _yerine_koymalar(metin)):
         return True
     lex = shlex.shlex(metin, posix=True, punctuation_chars=KOMUT_AYIRICI)
     lex.whitespace = " \t\r"   # satır sonu ayırıcıdır
@@ -259,7 +294,7 @@ def push_mu(metin: str) -> bool:
     try:
         sozcukler = list(lex)
     except ValueError:
-        return bool(PUSH.search(metin))
+        return bool(yedek.search(metin))
     parca = []
     for s in sozcukler + [";"]:
         if not (s and all(c in KOMUT_AYIRICI for c in s)):
@@ -267,11 +302,10 @@ def push_mu(metin: str) -> bool:
             continue
         for i, sozcuk in enumerate(parca):
             ad, sonra = posixpath.basename(sozcuk), parca[i + 1:]
-            if (ad == "git" and _alt_komutlar(sonra, GIT_DEGERLI_SECENEK)[:1] == ["push"]
-                    or ad == "gh" and _alt_komutlar(sonra, GH_DEGERLI_SECENEK)[:2] in (["pr", "create"],
-                                                                                        ["pr", "merge"])
-                    or ad == "eval" and push_mu(" ".join(sonra))
-                    or ad in KABUK and any(re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", secenek) and push_mu(deger)
+            if (sinama(ad, sonra)
+                    or ad == "eval" and _komutta(" ".join(sonra), yedek, sinama)
+                    or ad in KABUK and any(re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", secenek)
+                                           and _komutta(deger, yedek, sinama)
                                            for secenek, deger in zip(sonra, sonra[1:]))):
                 return True
         parca = []
@@ -805,7 +839,7 @@ def _kapanmis(kok: pathlib.Path, kimlik: str) -> bool:
 def _komut_karari(girdi: dict, ortam: dict, metin: str, cagrilar: list | None) -> dict | None:
     """`cagrilar`: komuttaki `h.py` çağrılarının bağımsız değişkenleri (_arac_cagrilari); None ise komut
     çözümlenemedi. İzin isteyen araç komutu bunlardan tanınır, karar onlara göre verilir."""
-    if YASAK_BAYRAK.search(HOOK_YOLU_OKUMA.sub(" ", metin)):
+    if YASAK_BAYRAK.search(HOOK_YOLU_OKUMA.sub(" ", metin)) or _kapi_atlatir_mi(metin):
         return _red("--no-verify ve hook yolunu değiştiren bayraklar kullanılmaz; kapı kırmızıysa düzeltilir. "
                     "Hook yolunu yalnız görmek için: `git config --get core.hooksPath`.")
     if cagrilar is None and re.search(r"h\.py", metin) and IZINLI_SOZCUK.search(metin):

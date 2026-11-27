@@ -214,7 +214,8 @@ def sahte_depo():
     sahte = pathlib.Path(tempfile.mkdtemp(prefix="harness-sahte-")) / "isci.py"
     sahte.write_text(SAHTE.format(harness=str(BURASI.parent), hook=str(BURASI.parent / "hook")), encoding="utf-8")
     ayar = {"gorev": {"komut": [sys.executable, str(sahte)], "model": "sonnet", "max_tur": 5,
-                      "zaman_asimi_sn": 30, "izin_modu": "acceptEdits"}}
+                      "zaman_asimi_sn": 30, "izin_modu": "acceptEdits",
+                      "ortam_izinli": h.VARSAYILAN_AYAR["gorev"]["ortam_izinli"] + ["SAHTE_KAPI"]}}
     return git_depo(depo({"kb/kural/KU-002-kabuk.md": KABUK_KURALI}, ayar=ayar))
 
 

@@ -93,3 +93,5 @@ Yalnız eklenir; satırları araç yazar (`h.py yeni`, `h.py kabul`). Son kayıt
 ## [2026-11-26] kabul | KV-006@1 Üyelik
 ## [2026-11-26] kabul | KV-007@1 Yasak
 ## [2026-11-26] kabul | KV-008@1 Öncelik
+## [2026-11-27] taslak | KR-017 Kapılar sunucuda da koşar: denetimler ve testler ajanın makinesinin dışında yinelenir
+## [2026-11-27] taslak | KU-022 Ana dala sunucu tarafı kapı geçmeden birleştirilmez
