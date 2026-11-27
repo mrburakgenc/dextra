@@ -86,6 +86,11 @@ VARSAYILAN_AYAR = {
               "orkestrasyon": False, "efor": "", "inceleme_efor": "",
               # mcp: oturuma verilen MCP sunucuları (ad → ayar); boşsa oturum MCP sunucusu olmadan başlar
               "mcp": {},
+              # mcp_roller: mcp sunucuları yalnız bu rollerdeki oturuma verilir (MCP sunucusu kum havuzunun dışındadır)
+              "mcp_roller": ["uygulayici"],
+              # ortam_izinli: oturuma, hazırlığa ve ön kontrole geçen ortam değişkenleri; sonu * ile biten öğe ön ektir.
+              # harness.yerel.json'daki gorev.ortam_izinli bu listeye eklenir. CLAUDE* oturuma hiç geçmez
+              "ortam_izinli": ["PATH", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "LANG", "LC_*", "TERM", "TZ"],
               # paralel: epic yürütülürken dosyaları kesişmeyen en çok kaç yaprak yan yana koşar; 1 = sırayla
               "paralel": 1,
               # kendiliginden_devam: işçi tur ya da süre sınırında bitiş kaydı yazmadan kesilir ve ağaçta değişiklik

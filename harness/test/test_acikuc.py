@@ -61,7 +61,8 @@ def deposu(ek=None, git_li=True, **gorev_ayari):
     sahte = pathlib.Path(tempfile.mkdtemp(prefix="harness-sahte-")) / "isci.py"
     sahte.write_text(SAHTE, encoding="utf-8")
     ayar = {"gorev": dict({"komut": [sys.executable, str(sahte)], "model": "sonnet", "max_tur": 5,
-                           "zaman_asimi_sn": 20, "izin_modu": "acceptEdits"}, **gorev_ayari)}
+                           "zaman_asimi_sn": 20, "izin_modu": "acceptEdits",
+                           "ortam_izinli": h.VARSAYILAN_AYAR["gorev"]["ortam_izinli"] + ["SAHTE_*"]}, **gorev_ayari)}
     kok = depo(ek, ayar=ayar)
     return git_depo(kok) if git_li else kok
 
