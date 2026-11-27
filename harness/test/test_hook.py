@@ -173,6 +173,45 @@ class KomutKapisi(unittest.TestCase):
     def test_okuma_bicimi_baska_yasak_bayragi_aklamaz(self):
         self.assertEqual(karar(komut(depo(), "git config --get core.hooksPath; git commit --no-verify -m x")), "deny")
 
+    def test_kapi_atlatan_bayragin_kisaltmasi_ve_commitin_kisa_secenegi_reddedilir(self):
+        for metin in ("git commit -n -m x", "git commit -nm x", "git commit -anm x", "git -C . commit -n -m x",
+                      "sh -c 'git commit -n -m x'", "time git commit -n -m x", "git commit --no-verif -m x",
+                      "git commit --no-v -m x", "git push --no-veri origin dal", "git push --no-ver",
+                      "eval git commit -n -m x", "echo $(git commit -n -m x)", "echo `git push --no-ve`",
+                      "sudo git commit -n -m x", "echo x | xargs git commit -n -m", "git -c a=b commit -nS",
+                      "git commit -m x && git push --no-v", "git commit -n -m 'kapanmamış"):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_baska_secenek_ve_deger_olarak_gecen_sozcuk_reddedilmez(self):
+        for metin in ("git commit -m n", "git commit -mnot", 'git commit -m "--no-veri hakkında"',
+                      "git commit --no-verbose -m x", "git push -n origin dal", "git merge -n dal", "git log -n 5",
+                      "git commit -Sn -m x", "git -C commit status -n",
+                      "git commit -F - <<'EOF'\n-n ile --no-veri hakkında not\nEOF"):
+            self.assertNotEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_tek_basina_sozcuk_olan_bayraga_benzer_deger_reddedilir(self):
+        # Kullanıcının kararı (2026-11-27): ayrı sözcük olan değer bayrak sayılır; içinde başka sözcük de olan değer sayılmaz
+        for metin in ("git commit -m -n", 'git commit -m "-n"', 'git commit -m "--no-veri"'):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+
+    def test_satir_devamiyla_bolunmus_cagri_taninir(self):
+        for metin in ("git \\\ncommit -n -m x", "git commit \\\n-n -m x"):
+            self.assertEqual(karar(komut(depo(), metin)), "deny", metin)
+        self.assertTrue(ajan_hook.push_mu("git \\\npush origin dal"))
+
+    def test_kacisli_ters_boluden_sonraki_satir_sonu_ayiricidir(self):
+        # Çift ters bölü kaçışlı ters bölüdür; ardındaki satır sonu komutu ayırır, satır devamı değildir
+        self.assertTrue(ajan_hook.push_mu("echo a\\\\\ngit push origin dal"))
+        self.assertEqual(karar(komut(depo(), "echo a\\\\\ngit commit -n -m x")), "deny")
+
+    def test_uc_ters_boluyle_biten_satir_birlestirilir(self):
+        # Kaçışlı ters bölü ve ardından satır devamı: -n aynı commit çağrısının sözcüğüdür
+        self.assertEqual(karar(komut(depo(), "git commit -m x\\\\\\\n -n")), "deny")
+
+    def test_attr_source_degeri_alt_komut_sayilmaz(self):
+        self.assertEqual(karar(komut(depo(), "git --attr-source HEAD commit -n -m x")), "deny")
+        self.assertTrue(ajan_hook.push_mu("git --attr-source HEAD push origin dal"))
+
     def test_gorev_oturumu_kabul_komutunu_calistiramaz(self):
         c = komut(taslakli_depo(), "python3 harness/h.py kabul KU-002", ortam={"HARNESS_GOREV": "GV-001"})
         self.assertEqual(karar(c), "deny")
