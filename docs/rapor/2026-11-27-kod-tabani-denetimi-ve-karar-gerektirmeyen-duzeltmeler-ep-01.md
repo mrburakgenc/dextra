@@ -74,6 +74,9 @@ Bu bölümü araç üretir (`python3 harness/h.py rapor uret <bu dosya>`): tablo
 
 1. **PR #20'nin birleştirilmesi** (2026-11-27, ileti): "birleştir onları sonrasında işimize bakalım". Son commit'in ilk koşusunda `arka-yuz` kaldığı için hemen birleştirilmedi; kalan iş yeniden koşturuldu, dört iş geçince birleştirildi (`133a538`).
 2. **Bu işin kendisi** (2026-11-27, ileti): "tamam şimdi ana kurallara göre codebase'e bak sorunları bitir sonrasında frontend için kararlar verilecek yetki delikleri var gibi use guardlar vs yok şuan daha ilerlemeden bütün denetimleri yaptır sonrasında düzeltmelere başla".
+3. **Gönderme** (düzeltmeler alındıktan sonra, soru penceresi): "Gönder ve PR aç". Birleştirme istenmedi.
+4. **İki lint kuralı** (soru penceresi): "İkisini de ekle". Arka yüzde uygulama katmanının feature altyapısını içe aktarma yasağı ve ön yüzde tür zorlama yasağı eklendi (`67dc506`).
+5. **Süre sınırı** (soru penceresi): "10 saniye kalsın".
 
 ## 5. Ajanın verdiği kararlar
 
@@ -87,6 +90,7 @@ Hepsi teyidini bekler.
 4. Ön yüz isteğinin süre sınırı 10 saniye seçildi; ölçüme dayanmaz, adlandırılmış sabittir (`ISTEK_SURE_SINIRI_MS`).
 5. Yapı denetiminde yasak adın (`requesterId`, `isteyenId`) yalnız alan olarak sayılması denemesinden vazgeçildi (6. bölüm madde 1). Sınama bugünkü kapalı hâliyle kalır: ad, yerel değişkende de ihlaldir. Teknik: ad yasağı; kazancı sadelik ve sessiz kaçak olmaması, bedeli yerel değişkene o adın verilememesi; alternatifi metinde biçim tanımaydı.
 6. Epic'e "bütünü sınayan" son yaprak eklenmedi: dört yaprak birbirinden bağımsız dosyalara dokunuyor; bütünü push kapısı (lint, tip, yapı denetimi) ve PR'daki sunucu tarafı kapı sınar.
+7. Ön yüzdeki tür zorlama yasağını test dosyalarına uygulamadım (`src/**/*.test.{ts,tsx}` kapsam dışı): bir test dosyasında (`yetki-eslik.test.ts:32`) okunan veriye tür zorlaması var ve test kodunu incelemesiz değiştirmek istemedim. İki kuralın da ihlali yakaladığını geçici dosyalarla gösterdim (arka yüz: "Denied by policy at index 9"; ön yüz: `as Record<…>` kırmızı, `as const` serbest), sonra dosyaları sildim.
 
 **İşçilerin kararları** (tamamı: her görevin `bitis.json` dosyasında)
 
@@ -115,9 +119,9 @@ Yok: `harness/` altında değişiklik yapılmadı. Push kapısının koşturduğ
 
 **A. Hemen**
 
-1. **Dalın gönderilmesi.** Dal (`worktree-kod-tabani-denetimi`) gönderilmedi; senin sözünü bekliyor. Ana dal kırmızı ve onu düzelten değişiklik (GV-175) bu dalda.
-2. **İki lint kuralı.** Lint ayarı korunan dosya olduğu için senin onayınla ben eklerim: (a) arka yüzde bir feature'ın uygulama katmanının kendi altyapı katmanını içe aktarma yasağı (KU-008 mekanik sayılıyor ama bu yönü hiçbir kapı tutmuyor; bugün ihlal yok); (b) ön yüzde `as` ile tür zorlama yasağı (tek kullanım GV-177 ile kalktı; lint tutmuyor).
-3. **Süre sınırı.** Ön yüzün arka yüz isteği için 10 saniye seçtim; teyit et ya da sayıyı ver.
+1. **PR'ın birleştirilmesi.** Dal senin sözünle gönderildi ve PR açıldı (10. bölüm); birleştirme senin kararın. Ana dal, bu PR girene kadar kırılgan e2e sayımı yüzünden ara sıra kırmızı kalır.
+2. **İki lint kuralı eklendi** (senin kararın; `67dc506`). Test dosyaları tür zorlama yasağının dışında bırakıldı (5. bölüm madde 7); kapsama alınsın mı, ön yüz kararlarıyla birlikte söylersin.
+3. **Süre sınırı 10 saniye olarak teyit edildi.**
 
 **B. Arka yüz: kararını bekleyenler**
 
@@ -166,7 +170,7 @@ On karar (KR-004, KR-006, KR-008 … KR-014, KR-017) ve beş tasarım (TS-001 �
 
 ## 10. PR'lar
 
-Bu iş için PR yok: dal (`worktree-kod-tabani-denetimi`) gönderilmedi, senin sözünü bekliyor. PR #20 bu işten önce, senin sözünle birleştirildi (`133a538`). Ana dalın birleştirme sonrası koşusu (46038021904) kırmızı: `arka-yuz` işi `kimlik-giris.e2e-spec.ts` kapanış sayımında kaldı; düzeltmesi bu dalda (GV-175).
+Dal (`worktree-kod-tabani-denetimi`) senin sözünle ("Gönder ve PR aç") gönderildi ve `main`'e PR açıldı; numarası ve kapının koşusunun sonucu bu bölüme ayrı bir commit'le yazılır. Birleştirme yapılmadı. PR #20 bu işten önce, senin sözünle birleştirildi (`133a538`). Ana dalın birleştirme sonrası koşusu (46038021904) kırmızı: `arka-yuz` işi `kimlik-giris.e2e-spec.ts` kapanış sayımında kaldı; düzeltmesi bu dalda (GV-175).
 
 ## 11. Günlük
 
