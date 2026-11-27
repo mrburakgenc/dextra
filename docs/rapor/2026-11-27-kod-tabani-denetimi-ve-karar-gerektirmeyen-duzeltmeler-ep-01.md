@@ -170,7 +170,13 @@ On karar (KR-004, KR-006, KR-008 … KR-014, KR-017) ve beş tasarım (TS-001 �
 
 ## 10. PR'lar
 
-Dal (`worktree-kod-tabani-denetimi`) senin sözünle ("Gönder ve PR aç") gönderildi ve `main`'e PR açıldı; numarası ve kapının koşusunun sonucu bu bölüme ayrı bir commit'le yazılır. Birleştirme yapılmadı. PR #20 bu işten önce, senin sözünle birleştirildi (`133a538`). Ana dalın birleştirme sonrası koşusu (46038021904) kırmızı: `arka-yuz` işi `kimlik-giris.e2e-spec.ts` kapanış sayımında kaldı; düzeltmesi bu dalda (GV-175).
+**PR #21** — https://github.com/mrburakgenc/dextra/pull/21 — açık, birleştirilmedi. Dal (`worktree-kod-tabani-denetimi`) senin sözünle ("Gönder ve PR aç") gönderildi; push kapısı yerelde temiz geçti.
+
+Sunucu tarafı kapının koşusu (koşu 46057549345, commit `56f304d`, 2026-11-27): beş iş de geçti. zincir 1 dk 20 sn, arac-testleri 1 dk 37 sn, arka-yuz 4 dk 59 sn, on-yuz 42 sn, ozet 7 sn. Bu raporun son commit'i yalnız bu satırları ekler; onun koşusu ayrıca yazılmadı.
+
+Özet iş akışı ilk kez bu PR'da koştu ve yorumunu yazdı (PR #20 ile ana dala girmişti). Yorumun dediği: kabule geçen düğüm yok; kabul edilmiş bir düğümde değişiklik var (KU-011, sürüm artmadı: değişen yalnız ölçüm cümlesidir, bağlayıcı içerik değil); iki kapı dosyası değişti (`backend/eslint.config.mjs`, `frontend/eslint.config.mjs`). Üçü de bu dalda bilerek yapılanlarla örtüşüyor.
+
+PR #20 bu işten önce, senin sözünle birleştirildi (`133a538`). Ana dalın birleştirme sonrası koşusu (46038021904) kırmızı: `arka-yuz` işi `kimlik-giris.e2e-spec.ts` kapanış sayımında kaldı; düzeltmesi bu dalda (GV-175).
 
 ## 11. Günlük
 
