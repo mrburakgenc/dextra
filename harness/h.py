@@ -5,7 +5,7 @@ Bağımlılık yok: Python 3.9+ standart kütüphanesi ve git.
 Tasarım: docs/tasarim/2026-11-20-iskelet-harness-tasarimi.md
 
 Komutlar:  denetle · sor · paket · uret · yeni · kabul · durum · kur · gorev · plan · rapor · denetim · acik-uc · etki ·
-           sorgu · dizin · graf · ajan-karari
+           sorgu · dizin · graf · ajan-karari · ozet
 Çıkış kodu: 0 temiz · 1 bulgu var · 2 ölçülemedi (kapılar 2'yi kırmızı sayar)
 """
 from __future__ import annotations
@@ -1894,6 +1894,82 @@ def _komut_denetim(kok: pathlib.Path, arg: list) -> int:
     return 1 if kalan or gecersiz else 2 if kimlikler and kosmayan else 0
 
 
+# ozet komutunun 3. bölümü: kapıların kodu ve ayarı sayılan yollar; tabandaki korunan_ayar desenleri bunlara eklenir
+KAPI_DOSYALARI = ("harness/**", ".claude/**", ".github/**", "harness.json", "AGENTS.md", "CLAUDE.md",
+                  "**/eslint.config.*", "**/tsconfig*.json", "**/vitest.config*.ts", "**/package.json",
+                  "pnpm-lock.yaml", "pnpm-workspace.yaml")
+FARK_TURU = {"A": "eklendi", "M": "değişti", "T": "değişti", "D": "silindi"}
+
+
+def _komut_ozet(kok: pathlib.Path, arg: list) -> int:
+    """PR özeti: ortak atadan uca kabule geçen düğümler ve kapı dosyaları. Kapı değildir, karar vermez.
+
+    İçerik yalnız git nesnelerinden okunur; uçtaki kod çalışmaz, böylece sunucuda taban dalın koduyla koşar.
+    --taban verilmezse taban dal uçtaki harness.json'dan okunur, yani uç onu değiştirebilir: sunucuda ve
+    güvenilmeyen uçta --taban açıkça verilir.
+    """
+    if len(arg) % 2 or any(a not in ("--taban", "--uc") for a in arg[::2]):
+        raise HarnessHata("kullanım: h.py ozet [--taban <başvuru>] [--uc <başvuru>] — --taban verilmezse taban "
+                          "dal uçtaki harness.json'dan okunur (uç değiştirebilir); sunucuda --taban açıkça verilir")
+    uc = (_secenek(arg, "--uc") or ["HEAD"])[0]
+    taban = (_secenek(arg, "--taban") or [None])[0]
+    if not taban:
+        try:
+            taban = json.loads(_git(kok, "show", "%s:harness.json" % uc)).get("taban_dal")
+        except (HarnessHata, ValueError, AttributeError):
+            taban = None
+        taban = taban if isinstance(taban, str) and taban else VARSAYILAN_AYAR["taban_dal"]
+    for bas in (uc, taban):
+        if subprocess.run(["git", "rev-parse", "--verify", "--quiet", bas + "^{commit}"], cwd=kok,
+                          capture_output=True).returncode != 0:
+            raise HarnessHata("başvuru bulunamadı: %s" % bas)
+    ata = _git(kok, "merge-base", taban, uc).strip()
+    try:
+        korunan = json.loads(_git(kok, "show", "%s:harness.json" % taban)).get("korunan_ayar") or []
+    except (HarnessHata, ValueError):
+        korunan = []
+    eski, yeni, okunamadi, kapi, bozuk = {}, {}, [], [], set()
+    for satir in _git(kok, "diff", "--name-status", "--no-renames", ata, uc).splitlines():
+        tur, yol = satir.split("\t", 1)
+        if any(desen_eslesir(d, yol) for d in (*KAPI_DOSYALARI, *korunan)):
+            kapi.append("- `%s`: %s" % (yol, FARK_TURU.get(tur[0], tur)))
+        m = DOSYA_ADI.match(yol.rsplit("/", 1)[-1])
+        if not yol.startswith("kb/") or not m or {"_gelen", "_arsiv"} & set(yol.split("/")):
+            continue
+        if tur != "A":
+            try:
+                eski[m.group(1)] = ayristir(_git(kok, "show", "%s:%s" % (ata, yol)))[0]
+            except BicimHatasi:
+                eski[m.group(1)] = {"durum": "okunamadı"}
+        if tur != "D":
+            try:
+                yeni[m.group(1)] = ayristir(_git(kok, "show", "%s:%s" % (uc, yol)))[0]
+            except BicimHatasi as e:
+                okunamadi.append("- `%s`: okunamadı (%s)" % (yol, e))
+                bozuk.add(m.group(1))   # bozuk dosya silinmiş sayılmasın: yalnız okunamadı diye geçer
+    gecen, degisen = [], []
+    for kimlik in sorted((set(eski) | set(yeni)) - bozuk):
+        e, y = eski.get(kimlik), yeni.get(kimlik)
+        ad = "%s (%s) %s" % (kimlik, (y or e).get("tur", "?"), (y or e).get("baslik", ""))
+        if y and y.get("durum") == "kabul" and (not e or e.get("durum") != "kabul"):
+            gecen.append("- %s: %s → kabul, sürüm %s" % (ad, e.get("durum", "?") if e else "yeni", y.get("surum")))
+        elif e and e.get("durum") == "kabul" and not y:
+            degisen.append("- %s: kabul düğümü silindi (sürüm %s)" % (ad, e.get("surum")))
+        elif e and e.get("durum") == "kabul" and y.get("durum") != "kabul":
+            degisen.append("- %s: kabul → %s, sürüm %s → %s" % (ad, y.get("durum"), e.get("surum"), y.get("surum")))
+        elif e and e.get("durum") == "kabul":
+            artmadi = not (isinstance(y.get("surum"), int) and isinstance(e.get("surum"), int)
+                           and y["surum"] > e["surum"])
+            degisen.append("- %s: sürüm %s → %s%s" % (ad, e.get("surum"), y.get("surum"),
+                                                     " (sürüm artmadı)" if artmadi else ""))
+    print("# PR özeti: %s → %s (ortak ata %s)\n" % (taban, uc, ata[:10]))
+    for baslik, satirlar in (("Kabule geçen düğümler", gecen + okunamadi),
+                             ("Kabul edilmiş düğümde değişiklik", degisen),
+                             ("Kapı dosyalarında değişiklik", kapi)):
+        print("## %s\n%s\n" % (baslik, "\n".join(satirlar) or "yok"))
+    return 0
+
+
 def _graf_komutu(ad: str):
     def kos(kok: pathlib.Path, arg: list) -> int:
         import graf  # aynı dizinde; yalnız bu komutlarda yüklenir
@@ -1905,7 +1981,7 @@ KOMUTLAR = {"denetle": _komut_denetle, "sor": _komut_sor, "paket": _komut_paket,
             "uret": _komut_uret, "yeni": _komut_yeni, "kabul": _komut_kabul,
             "durum": _komut_durum, "kur": _komut_kur, "gorev": _komut_gorev, "plan": _komut_plan,
             "rapor": _komut_rapor, "denetim": _komut_denetim, "acik-uc": _komut_acik_uc,
-            "ajan-karari": _komut_ajan_karari, "soz": _komut_soz,
+            "ajan-karari": _komut_ajan_karari, "soz": _komut_soz, "ozet": _komut_ozet,
             # Türetilmiş görünümler: kaynak kb/ dosyalarıdır, kapılar bunlara bakmaz
             "etki": _graf_komutu("etki"), "sorgu": _graf_komutu("sorgu"), "dizin": _graf_komutu("dizin"),
             "graf": _graf_komutu("graf")}
