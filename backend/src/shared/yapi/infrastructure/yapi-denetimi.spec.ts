@@ -2,15 +2,26 @@
 // gerçek depoda bütün alt özelliklerin, ortak kodun bütün konularının ve feature içi ortak klasörün
 // ihlali olmadığı, sınanan adlar yazılarak sınanır.
 // Koşturma: pnpm -C backend test src/shared/yapi/infrastructure/yapi-denetimi.spec.ts --reporter=verbose
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   bekleyenler,
+  caprazKesenKopyayiDenetle,
   featureKokunuDenetle,
+  guardSirasiniDenetle,
+  isteyenAlaniniDenetle,
   ortakKoduDenetle,
   testIceAktarmasiniDenetle,
+  ucIsaretleriniDenetle,
   type YapiKurali,
   yapiyiDenetle,
 } from './yapi-denetimi.js';
@@ -882,6 +893,197 @@ describe('yapı denetimi: feature kökü ve test klasörü', () => {
   });
 });
 
+// Uygulama genelinde bağlanan guard'ların sırası (q; KU-010), uç işaretleri (r; KU-011), isteği yapanı
+// gösteren alan (s; KU-013) ve feature'da çapraz kesen yeteneğin kopyası (t; KU-009). Yollar src
+// klasörüne görelidir.
+describe('yapı denetimi: guard sırası, uç işaretleri, isteyen alanı, çapraz kesen kopya', () => {
+  const appModulu = (...guardlar: string[]): Record<string, string> => ({
+    'app.module.ts': [
+      '@Module({',
+      '  providers: [',
+      '    YetkiBellegi,',
+      ...guardlar.map((g) => `    { provide: APP_GUARD, useClass: ${g} },`),
+      '  ],',
+      '})',
+      'export class AppModule {}',
+    ].join('\n'),
+  });
+  const DENETLEYICI = 'features/ornek/alt/presentation/alt.controller.ts';
+  const denetleyici = (...govde: string[]): Record<string, string> => ({
+    [DENETLEYICI]: [
+      "@Controller('alt')",
+      'export class AltController {',
+      '  constructor(private readonly oku: AltOkuHandler) {}',
+      ...govde,
+      '}',
+    ].join('\n'),
+  });
+  const ihlal = (kural: YapiKurali, yol: string) => ({
+    kural,
+    yol,
+    neden: expect.any(String) as string,
+  });
+
+  it.each<[string, string[]]>([
+    ['kimlik guardı ve ardından yetki guardı', ['KimlikGuard', 'YetkiGuard']],
+    [
+      'kimlikten önce ve ikisinin arasında başka guard',
+      ['HizGuard', 'KimlikGuard', 'OturumHiziGuard', 'YetkiGuard'],
+    ],
+  ])('guard sırası: %s ihlal değildir', (_ad, guardlar) => {
+    expect(guardSirasiniDenetle(kurSrc(appModulu(...guardlar)))).toEqual([]);
+  });
+
+  it.each<[string, string[]]>([
+    ['yetki guardı kimlik guardından önce', ['YetkiGuard', 'KimlikGuard']],
+    [
+      'yetki guardından sonra üçüncü guard',
+      ['KimlikGuard', 'YetkiGuard', 'HizGuard'],
+    ],
+    ['kimlik guardı yok', ['YetkiGuard']],
+    ['yetki guardı yok', ['KimlikGuard']],
+  ])('guard sırası: %s kural q ile yakalanır', (_ad, guardlar) => {
+    expect(guardSirasiniDenetle(kurSrc(appModulu(...guardlar)))).toEqual([
+      ihlal('q', 'app.module.ts'),
+    ]);
+  });
+
+  it.each<[string, string]>([
+    [
+      'feature denetleyicisinde @UseGuards(',
+      "  @Get()\n  @UseGuards(BaskaGuard)\n  @Izin('Alt', 'oku')\n  listele() {}",
+    ],
+    [
+      'feature modülünde APP_GUARD bağlaması',
+      '  x = [{ provide: APP_GUARD, useClass: BaskaGuard }];',
+    ],
+  ])('guard sırası: %s kural q ile yakalanır', (_ad, govde) => {
+    const src = kurSrc({
+      ...appModulu('KimlikGuard', 'YetkiGuard'),
+      ...denetleyici(govde),
+    });
+    expect(guardSirasiniDenetle(src)).toEqual([ihlal('q', DENETLEYICI)]);
+  });
+
+  it('uç işaretleri: tek işaretli uç ve HTTP işareti taşımayan yardımcı yöntem ihlal değildir', () => {
+    const src = kurSrc(
+      denetleyici(
+        "  @Get(':id')",
+        "  @Izin('Alt', 'oku')",
+        '  @HttpCode(HttpStatus.OK)',
+        "  oku(@Param({ schema: altOkuSemasi }) { id }: AltOku): Promise<AltOkuSonucu> {",
+        '    return this.oku.calistir({ id });',
+        '  }',
+        "  @Post('giris')",
+        '  @HerkeseAcik()',
+        '  async giris(@Body({ schema: girisSemasi }) govde: Giris) {}',
+        "  @Delete(':id')",
+        '  @YalnizKendisi()',
+        '  sil() {}',
+        '  private yardimci(x: string): string {',
+        '    return x;',
+        '  }',
+      ),
+    );
+    expect(ucIsaretleriniDenetle(src)).toEqual({
+      uclar: ['AltController.oku', 'AltController.giris', 'AltController.sil'],
+      ihlaller: [],
+    });
+  });
+
+  it.each<[string, string[], string]>([
+    ['işaretsiz @Get yöntemi', ['  @Get()', '  listele() {}'], 'listele'],
+    [
+      '@Izin ile @YalnizKendisi birlikte',
+      ["  @Patch(':id')", "  @Izin('Alt', 'guncelle')", '  @YalnizKendisi()', '  guncelle() {}'],
+      'guncelle',
+    ],
+    [
+      'işareti yalnız yorumda duran yöntem',
+      ['  @All()', '  // @HerkeseAcik()', '  hepsi() {}'],
+      'hepsi',
+    ],
+  ])('uç işaretleri: %s kural r ile yakalanır; bildirim sınıfı ve yöntemi adıyla söyler', (_ad, govde, yontem) => {
+    const { ihlaller } = ucIsaretleriniDenetle(kurSrc(denetleyici(...govde)));
+    expect(ihlaller).toEqual([ihlal('r', DENETLEYICI)]);
+    expect(ihlaller[0]?.neden).toContain(`AltController.${yontem}`);
+  });
+
+  const KOMUT =
+    'features/ornek/alt/application/commands/alt-yaz/alt-yaz.command.ts';
+
+  it.each<[string, string]>([
+    [
+      'yalnız yorum satırında geçen isteyenId',
+      '// isteyenId alanı yoktur; isteyen oturumdan okunur.\nexport const altYazKomutuSemasi = z.object({ ad: z.string() });',
+    ],
+    [
+      'adın parçası olarak geçen isteyen',
+      'export const altYazKomutuSemasi = z.object({ isteyenIdsi: z.string(), isteyenSuperAdminMi: z.boolean() });',
+    ],
+  ])('isteyen alanı: %s ihlal değildir', (_ad, metin) => {
+    expect(isteyenAlaniniDenetle(kurSrc({ [KOMUT]: metin }))).toEqual([]);
+  });
+
+  it.each<[string, string, string]>([
+    [
+      'komut şemasında isteyenId',
+      KOMUT,
+      'export const altYazKomutuSemasi = z.object({ ad: z.string(), isteyenId: z.string() });',
+    ],
+    [
+      'denetleyicide requesterId',
+      DENETLEYICI,
+      'interface Govde {\n  readonly requesterId?: string;\n}',
+    ],
+  ])('isteyen alanı: %s kural s ile yakalanır', (_ad, yol, metin) => {
+    expect(isteyenAlaniniDenetle(kurSrc({ [yol]: metin }))).toEqual([
+      ihlal('s', yol),
+    ]);
+  });
+
+  it('isteyen alanı: application ve presentation dışında aranmaz', () => {
+    const src = kurSrc({
+      'features/ornek/alt/infrastructure/x.ts': 'const isteyenId = 1;',
+      'shared/konu/application/x.ts': 'const isteyenId = 1;',
+    });
+    expect(isteyenAlaniniDenetle(src)).toEqual([]);
+  });
+
+  const KOPYALAR: [string, string][] = [
+    [
+      '`implements CanActivate` sınıfı',
+      '@Injectable()\nexport class BaskaGuard implements CanActivate {\n  canActivate(): boolean {\n    return true;\n  }\n}',
+    ],
+    [
+      '`implements ExceptionFilter` sınıfı',
+      'export class BaskaSuzgec<T> implements OnModuleInit, ExceptionFilter<T> {}',
+    ],
+    ['`@Catch(` işareti', '@Catch(HttpException)\nexport class BaskaSuzgec {}'],
+    ['APP_FILTER bağlaması', '[{ provide: APP_FILTER, useClass: BaskaSuzgec }]'],
+    ['APP_INTERCEPTOR bağlaması', '[{ provide: APP_INTERCEPTOR, useClass: X }]'],
+    ['APP_PIPE bağlaması', '[{ provide: APP_PIPE, useClass: X }]'],
+  ];
+
+  it.each(KOPYALAR)(
+    "çapraz kesen kopya: feature altında %s kural t ile yakalanır",
+    (_ad, metin) => {
+      const yol = 'features/ornek/alt/infrastructure/baska.ts';
+      expect(caprazKesenKopyayiDenetle(kurSrc({ [yol]: metin }))).toEqual([
+        ihlal('t', yol),
+      ]);
+    },
+  );
+
+  it.each(KOPYALAR)(
+    'çapraz kesen kopya: shared altında %s ihlal değildir',
+    (_ad, metin) => {
+      const src = kurSrc({ 'shared/konu/infrastructure/baska.ts': metin });
+      expect(caprazKesenKopyayiDenetle(src)).toEqual([]);
+    },
+  );
+});
+
 describe('yapı denetimi: gerçek depo', () => {
   it('bütün alt özellikler sınanır ve ihlal yoktur', () => {
     const features = fileURLToPath(
@@ -948,5 +1150,40 @@ describe('yapı denetimi: gerçek depo', () => {
   it('kaynak kodunun hiçbir dosyası test klasöründen içe aktarmaz', () => {
     const src = fileURLToPath(new URL('../../..', import.meta.url));
     expect(testIceAktarmasiniDenetle(src)).toEqual([]);
+  });
+
+  it('guard zinciri kimlik guardıyla başlar, yetki guardıyla biter; feature guard bağlamaz', () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(guardSirasiniDenetle(src)).toEqual([]);
+  });
+
+  // Uç sayısı denetleyicilerdeki HTTP yöntemi işaretlerinin sayısıyla karşılaştırılır: uç bulamayan
+  // denetim ihlalsiz görünmesin.
+  it('feature denetleyicilerinin her ucu üç işaretten tam birini taşır', () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    const { uclar, ihlaller } = ucIsaretleriniDenetle(src);
+    const httpIsaretleri = readdirSync(join(src, 'features'), {
+      recursive: true,
+      encoding: 'utf8',
+    })
+      .filter((y) => y.endsWith('.controller.ts'))
+      .flatMap((y) => [
+        ...readFileSync(join(src, 'features', y), 'utf8').matchAll(
+          /@(?:Get|Post|Put|Patch|Delete|Head|Options|All)\(/g,
+        ),
+      ]);
+    process.stdout.write(`sınanan uç: ${String(uclar.length)}\n`);
+    expect(uclar).toHaveLength(httpIsaretleri.length);
+    expect(ihlaller).toEqual([]);
+  });
+
+  it('komut, sorgu ve sunum dosyalarında isteği yapanı gösteren alan yoktur', () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(isteyenAlaniniDenetle(src)).toEqual([]);
+  });
+
+  it("feature'lar guard, hata süzgeci, interceptor ya da boru kopyası kurmaz", () => {
+    const src = fileURLToPath(new URL('../../..', import.meta.url));
+    expect(caprazKesenKopyayiDenetle(src)).toEqual([]);
   });
 });

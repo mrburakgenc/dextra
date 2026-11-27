@@ -6,6 +6,8 @@
 // yüzünü hâlâ çağıran alt özellikleri adlarıyla döndürür; geçiş bittiği için böyle bir alt özellik
 // kural m ile de ihlaldir (TS-007 "Adlar, denetim ve geçiş"). featureKokunuDenetle feature'ın kökünde
 // doğrudan duran dosyalara n ve o'yu uygular; testIceAktarmasiniDenetle src'nin bütün dosyalarına p'yi.
+// guardSirasiniDenetle, ucIsaretleriniDenetle, isteyenAlaniniDenetle ve caprazKesenKopyayiDenetle
+// KU-010, KU-011, KU-013 ve KU-009'u (q, r, s, t) kaynak metniyle sınar.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 
@@ -16,6 +18,8 @@ import { join, posix } from 'node:path';
 // i sözleşme ve repository arayüzü dosyasının adı, j feature içi ortak klasörde Prisma vekili çağrısı.
 // İkisinde ve feature'ın kökünde, feature altında: n .kapi-repository.ts adı, o test kodunun ya da eski
 // yüzün adının içe aktarılması. src'nin her yerinde: p test klasörünün içe aktarılması.
+// Uygulama ve feature'lar: q genel guard'ların sırası (KU-010), r ucun işareti (KU-011), s isteği yapanı
+// gösteren alan (KU-013), t çapraz kesen yeteneğin feature'daki kopyası (KU-009).
 export type YapiKurali =
   | 'a'
   | 'b'
@@ -32,7 +36,11 @@ export type YapiKurali =
   | 'm'
   | 'n'
   | 'o'
-  | 'p';
+  | 'p'
+  | 'q'
+  | 'r'
+  | 's'
+  | 't';
 
 export interface Ihlal {
   readonly kural: YapiKurali;
@@ -686,4 +694,193 @@ export function ortakKoduDenetle(srcKlasoru: string): KonuRaporu[] {
       ),
   ];
   return konular.map((konu) => konuyuDenetle(srcKlasoru, konu));
+}
+
+// Metnin yorumsuz hâli: blok yorumlar ve satır başında ya da boşluktan sonra başlayan satır yorumları
+// silinir. Metin düzeyindedir: dizge içindeki " //" de yorum sayılır.
+function yorumsuz(metin: string): string {
+  return metin.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
+}
+
+// features altındaki uygulama kodu (spec dışındaki .ts dosyaları), src'ye göreli yolu ve yorumsuz
+// metniyle.
+function featureKodu(srcKlasoru: string): { yol: string; metin: string }[] {
+  return kaynaklar(join(srcKlasoru, 'features'))
+    .filter((y) => y.endsWith('.ts') && !y.endsWith('.spec.ts'))
+    .map((y) => ({
+      yol: `features/${y}`,
+      metin: yorumsuz(readFileSync(join(srcKlasoru, 'features', y), 'utf8')),
+    }));
+}
+
+// Uygulama genelinde bağlanan yetenek: { provide: APP_GUARD, use…: Ad }. Ad useClass ya da useExisting
+// ile verilmediyse boştur.
+const GENEL_BAGLAMA =
+  /provide:\s*(APP_GUARD|APP_FILTER|APP_INTERCEPTOR|APP_PIPE)\b(?:[^}]*?\buse(?:Class|Existing):\s*(\w+))?/g;
+
+// q) app.module'de genel guard'lar önce KimlikGuard, sonra YetkiGuard sırasıyla bağlanır ve YetkiGuard
+// sondadır; kimlikten önce ya da ikisinin arasında başka guard durabilir (KU-010). Feature guard
+// bağlamaz: @UseGuards( ve APP_GUARD bağlaması yoktur.
+export function guardSirasiniDenetle(srcKlasoru: string): Ihlal[] {
+  const guardlar = [
+    ...yorumsuz(readFileSync(join(srcKlasoru, 'app.module.ts'), 'utf8')).matchAll(
+      GENEL_BAGLAMA,
+    ),
+  ]
+    .filter(([, tur]) => tur === 'APP_GUARD')
+    .map(([, , ad = '']) => ad);
+  const sira = `genel guard sırası: ${guardlar.join(', ')}`;
+  const kimlik = guardlar.indexOf('KimlikGuard');
+  const yetki = guardlar.indexOf('YetkiGuard');
+  const nedenler =
+    kimlik === -1 || yetki === -1
+      ? [`KimlikGuard ve YetkiGuard genel guard olarak bağlanır; ${sira}`]
+      : kimlik > yetki
+        ? [`KimlikGuard YetkiGuard'dan önce bağlanır; ${sira}`]
+        : yetki !== guardlar.length - 1
+          ? [`YetkiGuard son genel guard'dır; ${sira}`]
+          : [];
+  return [
+    ...nedenler.map((neden) => ({
+      kural: 'q' as const,
+      yol: 'app.module.ts',
+      neden,
+    })),
+    ...featureKodu(srcKlasoru).flatMap(({ yol, metin }) =>
+      /@UseGuards\s*\(/.test(metin) ||
+      [...metin.matchAll(GENEL_BAGLAMA)].some(([, tur]) => tur === 'APP_GUARD')
+        ? [
+            {
+              kural: 'q' as const,
+              yol,
+              neden:
+                "feature guard bağlar (@UseGuards ya da APP_GUARD); guard zinciri app.module'dedir",
+            },
+          ]
+        : [],
+    ),
+  ];
+}
+
+const HTTP_YONTEMLERI = [
+  'Get',
+  'Post',
+  'Put',
+  'Patch',
+  'Delete',
+  'Head',
+  'Options',
+  'All',
+];
+const UC_ISARETLERI = ['Izin', 'YalnizKendisi', 'HerkeseAcik'];
+
+// Metindeki arka arkaya yazılmış işaret (dekoratör) öbekleri: işaretlerin adları, öbekten hemen sonra
+// gelen yöntemin adı (yoksa boş) ve öbeğin başı.
+function isaretObekleri(
+  metin: string,
+): { adlar: string[]; yontem: string; bas: number }[] {
+  const obekler: { adlar: string[]; yontem: string; bas: number }[] = [];
+  const isaret = /@(\w+)\s*/y;
+  let bas = metin.indexOf('@');
+  while (bas !== -1) {
+    const adlar: string[] = [];
+    let i = bas;
+    isaret.lastIndex = i;
+    for (let m = isaret.exec(metin); m !== null; m = isaret.exec(metin)) {
+      adlar.push(m[1] ?? '');
+      i = isaret.lastIndex;
+      if (metin[i] === '(') {
+        i = kapanis(metin, i) + 1;
+      }
+      i += /^\s*/.exec(metin.slice(i))?.[0].length ?? 0;
+      isaret.lastIndex = i;
+    }
+    const yontem =
+      /^(?:(?:public|protected|private|static|async)\s+)*(\w+)\s*[(<]/.exec(
+        metin.slice(i),
+      )?.[1] ?? '';
+    obekler.push({ adlar, yontem, bas });
+    bas = metin.indexOf('@', Math.max(i, bas + 1));
+  }
+  return obekler;
+}
+
+// r) features altındaki her denetleyicinin HTTP yöntemi işareti taşıyan her yöntemi (uç) üç işaretten
+// tam birini taşır (KU-011). uclar sınanan uçlardır (<Sınıf>.<yöntem>). Açılış denetiminin
+// (shared/guvenlik IsaretDenetimi) metin düzeyindeki karşılığıdır; o denetim yalnız uygulama açılırken
+// koşar.
+export function ucIsaretleriniDenetle(srcKlasoru: string): {
+  uclar: string[];
+  ihlaller: Ihlal[];
+} {
+  const uclar: string[] = [];
+  const ihlaller: Ihlal[] = [];
+  for (const { yol, metin } of featureKodu(srcKlasoru)) {
+    if (!/@Controller\s*\(/.test(metin)) {
+      continue;
+    }
+    for (const { adlar, yontem, bas } of isaretObekleri(metin)) {
+      if (yontem === '' || !adlar.some((a) => HTTP_YONTEMLERI.includes(a))) {
+        continue;
+      }
+      const sinif =
+        [...metin.slice(0, bas).matchAll(/\bclass\s+(\w+)/g)].at(-1)?.[1] ?? '';
+      const uc = `${sinif}.${yontem}`;
+      uclar.push(uc);
+      const sayi = adlar.filter((a) => UC_ISARETLERI.includes(a)).length;
+      if (sayi !== 1) {
+        ihlaller.push({
+          kural: 'r',
+          yol,
+          neden: `${uc} ucu üç işaretten (HerkeseAcik, YalnizKendisi, Izin) tam birini taşımalı; ${String(sayi)} işaret var`,
+        });
+      }
+    }
+  }
+  return { uclar, ihlaller };
+}
+
+// İsteği yapanı gösteren, komut ve sorgu şemasında ve sunumda yasak adlar (KU-013 "İhlal örneği").
+const ISTEYEN_ADLARI = ['requesterId', 'isteyenId'];
+
+// s) features altında application ve presentation dosyalarının kodunda (yorumlar dışında) isteği
+// yapanı gösteren ad geçmez (KU-013).
+export function isteyenAlaniniDenetle(srcKlasoru: string): Ihlal[] {
+  const ad = new RegExp(`\\b(${ISTEYEN_ADLARI.join('|')})\\b`);
+  return featureKodu(srcKlasoru).flatMap(({ yol, metin }) => {
+    const bulunan = ad.exec(metin)?.[1];
+    const katmani = katman(yol);
+    return bulunan !== undefined &&
+      (katmani === 'application' || katmani === 'presentation')
+      ? [
+          {
+            kural: 's' as const,
+            yol,
+            neden: `isteği yapanı gösteren alan: ${bulunan}; isteyen oturumdan okunur`,
+          },
+        ]
+      : [];
+  });
+}
+
+// t) features altında guard (CanActivate), hata süzgeci (ExceptionFilter, @Catch) gerçeklenmez; genel
+// süzgeç, interceptor ve boru bağlanmaz (KU-009). Feature'ın APP_GUARD bağlaması q'dadır.
+export function caprazKesenKopyayiDenetle(srcKlasoru: string): Ihlal[] {
+  return featureKodu(srcKlasoru).flatMap(({ yol, metin }) =>
+    [
+      ...[
+        ...metin.matchAll(
+          /\bclass\s+(\w+)[^{]*\bimplements\b[^{]*\b(CanActivate|ExceptionFilter)\b/g,
+        ),
+      ].map(([, sinif = '', arayuz = '']) => `${sinif} ${arayuz} gerçekler`),
+      ...(/@Catch\s*\(/.test(metin) ? ['@Catch işareti taşır'] : []),
+      ...[...metin.matchAll(GENEL_BAGLAMA)]
+        .filter(([, tur]) => tur !== 'APP_GUARD')
+        .map(([, tur = '']) => `${tur} bağlar`),
+    ].map((ne) => ({
+      kural: 't' as const,
+      yol,
+      neden: `feature çapraz kesen yeteneğin kopyasını kurar: ${ne}; yalnız shared altında yaşar`,
+    })),
+  );
 }
